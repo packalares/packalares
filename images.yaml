@@ -1,0 +1,133 @@
+# All Docker images used by the system
+# One file, one place to update versions
+
+# Reverse proxy — replaces BFL + L4 proxy + OpenResty + Lua
+proxy:
+  caddy: caddy:2.9
+
+# Database & messaging
+platform:
+  database: beclab/citus:13.0.3-vchord
+  cache: beclab/kvrocks:0.1.2
+  messaging: nats:2.10.17-alpine
+  messaging_reloader: beclab/nats-server-config-reloader:v1
+  directory: beclab/lldap:0.0.17
+
+# Authentication
+auth:
+  backend: beclab/auth:0.2.49
+  login: beclab/login:v1.9.22
+
+# App management
+apps:
+  service: beclab/app-service:0.5.8
+  image_service: beclab/image-service:0.4.65
+  chartrepo: beclab/dynamic-chart-repository:v0.3.10
+  market: beclab/market-backend:v0.6.22
+
+# System services
+system:
+  server: beclab/system-server:0.1.33
+  user_service: beclab/user-service:v0.0.87
+  provider_proxy: beclab/provider-proxy:0.1.1
+  integration: beclab/integration-server:0.0.3
+  monitoring: beclab/monitoring-server-v1:v0.3.9
+  osnode_init: beclab/osnode-init:v0.0.11
+  upgrade: beclab/upgrade-job:0.1.7
+
+# Middleware
+middleware:
+  operator: beclab/middleware-operator:0.2.32
+  s3: beclab/s3rver:latest
+  sys_event: beclab/sys-event:0.2.16
+
+# Frontend
+frontend:
+  desktop: ghcr.io/packalares/system-frontend:latest
+  nginx: beclab/docker-nginx-headers-more:ubuntu-v0.1.0
+  wizard: ghcr.io/packalares/wizard:latest
+  envoy: bytetrade/envoy:v1.25.11
+
+# Files
+files:
+  server: beclab/files-server:v0.2.152
+  rclone: beclab/rclone:v1.73.0
+  samba: beclab/samba-server:0.0.8
+  download: beclab/download-server:v0.1.22
+  aria2: beclab/aria2:v0.0.4
+  images_uploader: beclab/images-uploader:0.2.3
+  seafile_init: beclab/seahub-init:v0.0.7
+  seafile_server: beclab/pg_seafile_server:v0.0.21
+  fsnotify_daemon: beclab/fsnotify-daemon:0.1.4
+  fsnotify_proxy: beclab/fsnotify-proxy:0.1.11
+
+# Secrets
+secrets:
+  infisical: beclab/infisical:0.1.2
+  vault: beclab/secret-vault:0.1.15
+
+# Backup
+backup:
+  server: beclab/backup-server:v0.3.62
+  velero: beclab/velero:v1.11.3
+  velero_plugin: beclab/velero-plugin-for-terminus:v1.0.2
+
+# Workflows
+workflows:
+  argo_cli: quay.io/argoproj/argocli:v3.7.2
+  argo_controller: quay.io/argoproj/workflow-controller:v3.7.2
+
+# Policy & security
+security:
+  opa: openpolicyagent/opa:1.11.0
+  opa_mgmt: openpolicyagent/kube-mgmt:9.3.0
+
+# Database operator
+kubeblocks:
+  operator: beclab/kubeblocks:1.0.1-ext1
+  tools: beclab/apecloud-kubeblocks-tools:1.0.1
+  addons: beclab/kubeblock-addon-charts:v1.0.1-ext3
+
+# Monitoring
+monitoring:
+  prometheus: prom/prometheus:v2.34.0
+  prometheus_operator: kubesphere/prometheus-operator:v0.55.1
+  prometheus_reloader: kubesphere/prometheus-config-reloader:v0.55.1
+  node_exporter: beclab/node-exporter:0.0.5
+  kube_state_metrics: beclab/kube-state-metrics:v2.3.0-ext.1
+  kube_rbac_proxy: beclab/kube-rbac-proxy:0.19.0
+
+# GPU (only pulled if GPU detected)
+gpu:
+  hami: beclab/hami:v2.6.13
+  hami_webui_fe: beclab/hami-webui-fe-oss:v1.0.8
+  hami_webui_be: beclab/hami-webui-be-oss:v1.0.8
+  dcgm_exporter: beclab/dcgm-exporter:4.2.3-4.1.3-ubuntu22.04
+  scheduler: beclab/gpu-scheduler:v0.1.1
+
+# Networking
+networking:
+  calico_cni: calico/cni:v3.29.2
+  calico_node: calico/node:v3.29.2
+  calico_controllers: calico/kube-controllers:v3.29.2
+  coredns: registry.k8s.io/coredns/coredns:v1.11.3
+
+# Storage
+storage:
+  openebs: openebs/provisioner-localpv:3.3.0
+  openebs_utils: openebs/linux-utils:3.3.0
+
+# KubeSphere
+kubesphere:
+  apiserver: beclab/ks-apiserver:0.0.24
+
+# Misc (init containers, utilities)
+misc:
+  busybox: busybox:1.28
+  wait_for: owncloudci/wait-for:latest
+  openssl: beclab/openssl:v3
+  alpine: beclab/alpine:3.14
+  osm_init: openservicemesh/init:v1.2.3
+  postgres_init: postgres:16.0-alpine3.18
+  nginx: nginx:stable-alpine3.17-slim
+  reverse_proxy: beclab/reverse-proxy:v0.1.10

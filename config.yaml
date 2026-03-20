@@ -1,0 +1,38 @@
+# Packalares Configuration
+# Single config file — everything reads from here
+
+server:
+  name: ""              # username, set during install or wizard
+  domain: olares.local  # base domain (user gets {name}.{domain})
+  password: ""          # set during install or wizard
+  timezone: auto        # auto-detect or manual (e.g. Europe/Amsterdam)
+  language: en-US
+
+network:
+  mode: local           # local | tailscale
+  ip: auto              # auto-detect server IP
+  tailscale:
+    auth_key: ""        # optional, for remote access
+
+auth:
+  totp_enabled: false
+  session_timeout: 24h
+  policy: one_factor    # one_factor | two_factor
+
+storage:
+  data_path: /packalares/data
+  mounts: []
+  # Example mounts (configured via Settings UI):
+  # - name: nas
+  #   type: smb
+  #   address: 192.168.1.50
+  #   share: /media
+  # - name: gdrive
+  #   type: rclone
+  #   provider: drive
+
+gpu:
+  enabled: auto         # auto | true | false
+
+apps:
+  marketplace: https://market.olares.com

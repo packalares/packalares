@@ -1,0 +1,116 @@
+# Generated from config.yaml — do not edit manually
+# Caddy reverse proxy configuration
+#
+# Replaces: L4 BFL proxy + BFL nginx + OpenResty + Lua + token_auth
+# One file instead of 5 components
+
+{
+    auto_https disable_redirects
+}
+
+# Accept connections by IP or hostname
+{{USER_ZONE}}, {{NODE_IP}} {
+    tls internal  # auto self-signed cert, works with IP
+
+    # Auth — all routes require login except /api/firstfactor
+    @protected not path /api/firstfactor /api/secondfactor/*
+
+    route @protected {
+        forward_auth authelia-backend.os-framework:9091 {
+            uri /api/authz/auth-request
+            copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+        }
+    }
+
+    # Desktop
+    route /desktop* {
+        reverse_proxy desktop-svc.user-space-{{USERNAME}}:80
+    }
+
+    # Settings
+    route /settings* {
+        reverse_proxy settings-svc.user-space-{{USERNAME}}:80
+    }
+
+    # Market
+    route /market* {
+        reverse_proxy market-svc.user-space-{{USERNAME}}:80
+    }
+
+    # Files
+    route /files* {
+        reverse_proxy files-svc.user-space-{{USERNAME}}:80
+    }
+
+    # Auth pages
+    route /api/* {
+        reverse_proxy authelia-backend.os-framework:9091
+    }
+
+    # BFL API
+    route /bfl/* {
+        reverse_proxy bfl.user-space-{{USERNAME}}:80
+    }
+
+    # Default → desktop
+    route {
+        redir / /desktop permanent
+    }
+}
+
+# Per-app subdomains (apps installed from marketplace)
+*.{{USER_ZONE}} {
+    tls internal
+
+    @auth host auth.{{USER_ZONE}}
+    handle @auth {
+        reverse_proxy authelia-backend.os-framework:9091
+    }
+
+    @desktop host desktop.{{USER_ZONE}}
+    handle @desktop {
+        forward_auth authelia-backend.os-framework:9091 {
+            uri /api/authz/auth-request
+        }
+        reverse_proxy desktop-svc.user-space-{{USERNAME}}:80
+    }
+
+    @settings host settings.{{USER_ZONE}}
+    handle @settings {
+        forward_auth authelia-backend.os-framework:9091 {
+            uri /api/authz/auth-request
+        }
+        reverse_proxy settings-svc.user-space-{{USERNAME}}:80
+    }
+
+    @market host market.{{USER_ZONE}}
+    handle @market {
+        forward_auth authelia-backend.os-framework:9091 {
+            uri /api/authz/auth-request
+        }
+        reverse_proxy market-svc.user-space-{{USERNAME}}:80
+    }
+
+    @files host files.{{USER_ZONE}}
+    handle @files {
+        forward_auth authelia-backend.os-framework:9091 {
+            uri /api/authz/auth-request
+        }
+        reverse_proxy files-svc.user-space-{{USERNAME}}:80
+    }
+
+    # Catch-all for installed apps
+    handle {
+        forward_auth authelia-backend.os-framework:9091 {
+            uri /api/authz/auth-request
+        }
+        reverse_proxy {http.request.host.labels.3}-svc.user-space-{{USERNAME}}:80
+    }
+}
+
+# Wizard (available during setup, no auth)
+:30180 {
+    root * /wizard
+    file_server
+    try_files {path} /index.html
+}
