@@ -6,15 +6,10 @@ echo "  Packalares Installer"
 echo "================================"
 echo ""
 
-# ============================================================
-# Read config
-# ============================================================
-USERNAME="${PACKALARES_USER:-}"
-PASSWORD="${PACKALARES_PASSWORD:-}"
+USERNAME="${PACKALARES_USER:-${OLARES_USER:-}}"
+PASSWORD="${PACKALARES_PASSWORD:-${OLARES_PASSWORD:-}}"
 DOMAIN="${PACKALARES_DOMAIN:-olares.local}"
-NODE_IP=$(hostname -I | awk '{print $1}')
 REPO="packalares/packalares"
-OLARES_REPO="packalares/olares-fork"
 
 if [ -z "$USERNAME" ]; then
     read -p "Username: " USERNAME
@@ -24,6 +19,7 @@ if [ -z "$PASSWORD" ]; then
     echo ""
 fi
 
+NODE_IP=$(hostname -I | awk '{print $1}')
 USER_ZONE="${USERNAME}.${DOMAIN}"
 
 echo ""
@@ -33,42 +29,40 @@ echo "  Domain:  $USER_ZONE"
 echo ""
 
 # ============================================================
-# Phase 1: Download tools
+# Step 1: Download CLI and wizard tarball
 # ============================================================
-echo "[1/7] Downloading tools..."
+echo "Downloading tools..."
 
-RELEASE_URL="https://github.com/$OLARES_REPO/releases/latest/download"
+RELEASE_URL="https://github.com/$REPO/releases/latest/download"
 
-# CLI
-curl -sfL "$RELEASE_URL/olares-cli-linux-amd64" -o /usr/local/bin/olares-cli && chmod +x /usr/local/bin/olares-cli
+curl -sfL "$RELEASE_URL/olares-cli-linux-amd64" -o /usr/local/bin/olares-cli
+chmod +x /usr/local/bin/olares-cli
+echo "  CLI downloaded"
 
-# Olaresd
 curl -sfL "$RELEASE_URL/olaresd-linux-amd64" -o /tmp/olaresd-linux-amd64
+echo "  Daemon downloaded"
 
-# Wizard tarball (contains Helm charts + manifests)
 curl -sfL "$RELEASE_URL/install-wizard.tar.gz" -o /tmp/install-wizard.tar.gz
-
-# Extract wizard to temp, detect version, move to correct location
 mkdir -p /tmp/wizard-extract
 tar -xzf /tmp/install-wizard.tar.gz -C /tmp/wizard-extract/
-VERSION=$(cat /tmp/wizard-extract/version.hint 2>/dev/null || echo "1.12.6-20260317")
+VERSION=$(cat /tmp/wizard-extract/version.hint 2>/dev/null || cat VERSION 2>/dev/null || echo "1.12.6-20260317")
 mkdir -p "$HOME/.olares/versions/v$VERSION"
 cp -a /tmp/wizard-extract/* "$HOME/.olares/versions/v$VERSION/"
 rm -rf /tmp/wizard-extract /tmp/install-wizard.tar.gz
+echo "  Wizard extracted (version: $VERSION)"
 
-# Create olaresd tarball
-mkdir -p /tmp/olaresd-pkg && cp /tmp/olaresd-linux-amd64 /tmp/olaresd-pkg/olaresd
+# Create olaresd tarball for prepare step
+mkdir -p /tmp/olaresd-pkg "$HOME/.olares/versions/v$VERSION/pkg"
+cp /tmp/olaresd-linux-amd64 /tmp/olaresd-pkg/olaresd
 chmod +x /tmp/olaresd-pkg/olaresd
-mkdir -p "$HOME/.olares/versions/v$VERSION/pkg"
 tar -czf "$HOME/.olares/versions/v$VERSION/pkg/olaresd-v$VERSION.tar.gz" -C /tmp/olaresd-pkg olaresd
 rm -rf /tmp/olaresd-pkg /tmp/olaresd-linux-amd64
 
-echo "  Tools downloaded (version: $VERSION)"
-
 # ============================================================
-# Phase 2: Remove old Docker/containerd conflicts
+# Step 2: Clean environment
 # ============================================================
-echo "[2/7] Cleaning environment..."
+echo ""
+echo "Cleaning environment..."
 
 systemctl stop docker containerd 2>/dev/null || true
 systemctl disable containerd 2>/dev/null || true
@@ -77,24 +71,34 @@ rm -f /usr/bin/containerd /usr/bin/ctr
 nft flush ruleset 2>/dev/null || true
 
 # ============================================================
-# Phase 3: System precheck + download binaries
+# Step 3: Precheck
 # ============================================================
-echo "[3/7] Downloading system binaries..."
+echo ""
+echo "Running system precheck..."
 
-olares-cli precheck 2>/dev/null || true
-olares-cli download component --version "$VERSION" 2>/dev/null || true
-
-# ============================================================
-# Phase 4: Prepare (containerd, redis, olaresd)
-# ============================================================
-echo "[4/7] Preparing system..."
-
-olares-cli prepare --version "$VERSION" 2>/dev/null || true
+olares-cli precheck
 
 # ============================================================
-# Phase 5: Install K3s + all services
+# Step 4: Download system binaries
 # ============================================================
-echo "[5/7] Installing system (this takes a few minutes)..."
+echo ""
+echo "Downloading system components..."
+
+olares-cli download component --version "$VERSION" 2>/dev/null || echo "  Some components will be pulled on demand"
+
+# ============================================================
+# Step 5: Prepare (containerd, redis, olaresd)
+# ============================================================
+echo ""
+echo "Preparing system..."
+
+olares-cli prepare --version "$VERSION"
+
+# ============================================================
+# Step 6: Install K3s + all services
+# ============================================================
+echo ""
+echo "Installing..."
 
 INSTALL_FLAGS="--version $VERSION --os-domainname $DOMAIN"
 [ -n "$USERNAME" ] && INSTALL_FLAGS="$INSTALL_FLAGS --os-username $USERNAME"
@@ -102,13 +106,14 @@ INSTALL_FLAGS="--version $VERSION --os-domainname $DOMAIN"
 olares-cli install $INSTALL_FLAGS
 
 # ============================================================
-# Phase 6: Activate
+# Step 7: Activate
 # ============================================================
-echo "[6/7] Activating..."
+echo ""
+echo "Activating user..."
 
 export KUBECONFIG=/root/.kube/config
 
-# 6a. Set LLDAP password via HTTP API
+# 7a. Set LLDAP password via HTTP API
 LLDAP_IP=$(kubectl get svc lldap-service -n os-platform -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
 LLDAP_PASS=$(kubectl get secret lldap-credentials -n os-platform -o jsonpath='{.data.lldap-ldap-user-pass}' 2>/dev/null | base64 -d)
 
@@ -125,7 +130,8 @@ if [ -n "$ADMIN_TOKEN" ]; then
     echo "  Password set"
 fi
 
-# 6b. Generate self-signed TLS cert → zone-ssl-config configmap
+# 7b. Generate TLS cert → zone-ssl-config configmap
+echo "  Generating TLS certificate..."
 openssl req -x509 -nodes -days 3650 \
     -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
     -keyout /tmp/tls.key -out /tmp/tls.crt \
@@ -149,9 +155,9 @@ $(echo "$CERT_DATA" | sed 's/^/    /')
   key: |
 $(echo "$KEY_DATA" | sed 's/^/    /')
 EOCM
-echo "  TLS certificate generated"
 
-# 6c. Set user annotations
+# 7c. Set user annotations
+echo "  Configuring user..."
 kubectl annotate user "$USERNAME" \
     "bytetrade.io/zone=$USER_ZONE" \
     "bytetrade.io/creator=$USERNAME" \
@@ -165,9 +171,9 @@ kubectl annotate user "$USERNAME" \
     "bytetrade.io/local-domain-ip=$NODE_IP" \
     "bytetrade.io/local-domain-dns-record=$NODE_IP" \
     --overwrite 2>/dev/null
-echo "  User configured"
 
-# 6d. Patch authelia config
+# 7d. Patch authelia config
+echo "  Configuring auth..."
 kubectl get configmap authelia-configs -n os-framework -o yaml > /tmp/authelia-patch.yaml 2>/dev/null
 sed -i "s/example\.myterminus\.com/$USER_ZONE/g" /tmp/authelia-patch.yaml
 sed -i "s/files\.example\.myterminus\.com/files.$USER_ZONE/g" /tmp/authelia-patch.yaml
@@ -176,14 +182,14 @@ sed -i "s/authelia-svc\.example\.com/auth.$USER_ZONE/g" /tmp/authelia-patch.yaml
 sed -i "s/www\.example\.com/desktop.$USER_ZONE/g" /tmp/authelia-patch.yaml
 kubectl apply -f /tmp/authelia-patch.yaml 2>/dev/null
 rm -f /tmp/authelia-patch.yaml
-echo "  Auth configured"
 
-# 6e. Restart services to pick up changes
+# 7e. Restart services
 kubectl delete pod -l app=authelia-backend -n os-framework --force 2>/dev/null
 kubectl delete pod bfl-0 -n "user-space-$USERNAME" 2>/dev/null
 sleep 15
 
-# 6f. Trigger L4 proxy generation
+# 7f. Trigger L4 proxy
+echo "  Setting up proxy..."
 kubectl annotate user "$USERNAME" "bytetrade.io/wizard-status=network_activating" --overwrite 2>/dev/null
 for i in $(seq 1 60); do
     if kubectl get pods -n os-network -l app=l4-bfl-proxy --no-headers 2>/dev/null | grep -q Running; then
@@ -193,20 +199,11 @@ for i in $(seq 1 60); do
 done
 kubectl annotate user "$USERNAME" "bytetrade.io/wizard-status=completed" --overwrite 2>/dev/null
 
-# 6g. Final BFL restart (cert + L4 proxy + apps all ready)
+# 7g. Final restart
 kubectl delete pod bfl-0 -n "user-space-$USERNAME" 2>/dev/null
 sleep 15
 
-echo "  Activation complete"
-
-# ============================================================
-# Phase 7: Deploy Caddy (future — currently using BFL + L4)
-# ============================================================
-echo "[7/7] Finalizing..."
-
-# TODO: Deploy Caddy as replacement for BFL + L4 proxy
-# For now, the system uses stock BFL + L4 proxy from Olares
-# Caddy deployment will be added in Phase 2
+echo "  Activation complete!"
 
 echo ""
 echo "================================"
@@ -216,7 +213,7 @@ echo ""
 echo "  Add to your hosts file:"
 echo "  $NODE_IP  desktop.$USER_ZONE  auth.$USER_ZONE  settings.$USER_ZONE  market.$USER_ZONE  files.$USER_ZONE  $USER_ZONE"
 echo ""
-echo "  Then open: https://desktop.$USER_ZONE"
+echo "  Open: https://desktop.$USER_ZONE"
 echo "  Login: $USERNAME / (your password)"
 echo ""
 echo "  Wizard: http://$NODE_IP:30180"

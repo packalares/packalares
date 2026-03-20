@@ -1,0 +1,548 @@
+# Default values for hami-vgpu.
+
+nameOverride: ""
+fullnameOverride: ""
+namespaceOverride: ""
+imagePullSecrets: []
+version: "v2.6.13"
+
+# Nvidia GPU Parameters
+resourceName: "nvidia.com/gpu"
+resourceMem: "nvidia.com/gpumem"
+resourceMemPercentage: "nvidia.com/gpumem-percentage"
+resourceCores: "nvidia.com/gpucores"
+resourcePriority: "nvidia.com/priority"
+
+# MLU Parameters
+mluResourceName: "cambricon.com/vmlu"
+mluResourceMem: "cambricon.com/mlu.smlu.vmemory"
+mluResourceCores: "cambricon.com/mlu.smlu.vcore"
+
+# Hygon DCU Parameters
+dcuResourceName: "hygon.com/dcunum"
+dcuResourceMem: "hygon.com/dcumem"
+dcuResourceCores: "hygon.com/dcucores"
+
+# Iluvatar GPU Parameters
+iluvatarResourceName: "iluvatar.ai/vgpu"
+iluvatarResourceMem: "iluvatar.ai/vcuda-memory"
+iluvatarResourceCore: "iluvatar.ai/vcuda-core"
+
+# Metax SGPU Parameters
+metaxResourceName: "metax-tech.com/sgpu"
+metaxResourceCore: "metax-tech.com/vcore"
+metaxResourceMem: "metax-tech.com/vmemory"
+
+schedulerName: "hami-scheduler"
+
+podSecurityPolicy:
+  enabled: false
+
+global:
+  gpuHookPath: /usr/local
+  labels: {}
+  annotations: {}
+  managedNodeSelectorEnable: false
+  managedNodeSelector:
+    usage: "gpu"
+
+
+scheduler:
+  # @param nodeName defines the node name and the nvidia-vgpu-scheduler-scheduler will schedule to the node.
+  # if we install the nvidia-vgpu-scheduler-scheduler as default scheduler, we need to remove the k8s default
+  # scheduler pod from the cluster first, we must specify node name to skip the schedule workflow.
+  nodeName: ""
+  # nodeLabelSelector:
+  #  "gpu": "on"
+  overwriteEnv: "false"
+  defaultSchedulerPolicy:
+    nodeSchedulerPolicy: binpack
+    gpuSchedulerPolicy: spread
+  metricsBindAddress: ":9395"
+  livenessProbe: false
+  leaderElect: true
+  # when leaderElect is true, replicas is available, otherwise replicas is 1.
+  replicas: 1
+  kubeScheduler:
+    # @param enabled indicate whether to run kube-scheduler container in the scheduler pod, it's true by default.
+    enabled: true
+    image: registry.k8s.io/kube-scheduler
+    imageTag: ""
+    imagePullPolicy: IfNotPresent
+    resources: {}
+      # If you do want to specify resources, uncomment the following lines, adjust them as necessary.
+      # and remove the curly braces after 'resources:'.
+#      limits:
+#        cpu: 1000m
+#        memory: 1000Mi
+#      requests:
+#        cpu: 100m
+#        memory: 100Mi
+    extraNewArgs:
+      - --config=/config/config.yaml
+      - -v=4
+    extraArgs:
+      - --policy-config-file=/config/config.json
+      - -v=4
+  extender:
+    image: "projecthami/hami"
+    imagePullPolicy: IfNotPresent
+    resources: {}
+      # If you do want to specify resources, uncomment the following lines, adjust them as necessary,
+      # and remove the curly braces after 'resources:'.
+#      limits:
+#        cpu: 1000m
+#        memory: 1000Mi
+#      requests:
+#        cpu: 100m
+#        memory: 100Mi
+    extraArgs:
+      - --debug
+      - -v=4
+  podAnnotations: {}
+  tolerations: []
+  # serviceAccountName: "hami-vgpu-scheduler-sa"
+  admissionWebhook:
+    customURL:
+      enabled: false
+      # must be an endpoint using https.
+      # should generate host certs here
+      host: 127.0.0.1  # hostname or ip, can be your node'IP if you want to use https://<nodeIP>:<schedulerPort>/<path>
+      port: 31998
+      path: /webhook
+    whitelistNamespaces:
+    # Specify the namespaces that the webhook will not be applied to.
+      # - default
+      # - kube-system
+      # - istio-system
+    reinvocationPolicy: Never
+    failurePolicy: Ignore
+  ## TLS Certificate Option 1: Use cert-manager to generate self-signed certificate.
+  ## If enabled, always takes precedence over options 2.
+  certManager:
+    enabled: false
+  ## TLS Certificate Option 2: Use kube-webhook-certgen to generate self-signed certificate.
+  ## If true and certManager.enabled is false, Helm will automatically create a self-signed cert and secret for you.
+  patch:
+    enabled: true
+    image: jettech/kube-webhook-certgen:v1.5.2
+    imageNew: liangjw/kube-webhook-certgen:v1.1.1
+    imagePullPolicy: IfNotPresent
+    priorityClassName: ""
+    podAnnotations: {}
+    nodeSelector: {}
+    tolerations: []
+    runAsUser: 2000
+  service:
+    type: ClusterIP  # Default type is NodePort, can be changed to ClusterIP
+    httpPort: 443   # HTTP port
+    schedulerPort: 31998  # NodePort for HTTP
+    monitorPort: 31993    # Monitoring port
+    monitorTargetPort: 9395
+    labels: {}
+    annotations: {}
+
+devicePlugin:
+  image: "projecthami/hami"
+  monitorimage: "projecthami/hami"
+  monitorctrPath: /usr/local/vgpu/containers
+  imagePullPolicy: IfNotPresent
+  deviceSplitCount: 30
+  deviceMemoryScaling: 1
+  deviceCoreScaling: 1
+  # The runtime class name to be used by the device plugin, and added to the pod.spec.runtimeClassName of applications utilizing NVIDIA GPUs
+  runtimeClassName: "nvidia"
+  # Whether to create runtime class, name comes from runtimeClassName when it is set
+  createRuntimeClass: true
+  migStrategy: "none"
+  disablecorelimit: "false"
+  passDeviceSpecsEnabled: false
+  extraArgs:
+    - -v=4
+
+  service:
+    type: ClusterIP  # Default type is NodePort, can be changed to ClusterIP
+    httpPort: 31992
+    labels: {}
+    annotations: {}
+
+  pluginPath: /var/lib/kubelet/device-plugins
+  libPath: /usr/local/vgpu
+
+  podAnnotations: {}
+  nvidianodeSelector:
+    gpu.bytetrade.io/cuda-supported: "true"
+  tolerations: []
+  # The updateStrategy for DevicePlugin DaemonSet.
+  # If you want to update the DaemonSet by manual, set type as "OnDelete".
+  # We recommend use OnDelete update strategy because DevicePlugin pod restart will cause business pod restart, this behavior is destructive.
+  # Otherwise, you can use RollingUpdate update strategy to rolling update DevicePlugin pod.
+  updateStrategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+
+  resources: {}
+    # If you do want to specify resources, uncomment the following lines, adjust them as necessary.
+    # and remove the curly braces after 'resources:'.
+#    limits:
+#       cpu: 1000m
+#       memory: 1000Mi
+#    requests:
+#      cpu: 100m
+#      memory: 100Mi
+
+  vgpuMonitor:
+    resources: {}
+      # If you do want to specify resources, uncomment the following lines, adjust them as necessary.
+      # and remove the curly braces after 'resources:'.
+#      limits:
+#        cpu: 1000m
+#        memory: 1000Mi
+#      requests:
+#        cpu: 100m
+#        memory: 100Mi
+
+devices:
+  enflame:
+    enabled: false
+    customresources:
+      - enflame.com/vgcu
+      - enflame.com/vgcu-percentage
+  mthreads:
+    enabled: false
+    customresources:
+      - mthreads.com/vgpu
+  nvidia:
+    gpuCorePolicy: default
+  ascend:
+    enabled: false
+    image: ""
+    imagePullPolicy: IfNotPresent
+    extraArgs: []
+    nodeSelector:
+      ascend: "on"
+    tolerations: []
+    customresources:
+      - huawei.com/Ascend910A
+      - huawei.com/Ascend910A-memory
+      - huawei.com/Ascend910B2
+      - huawei.com/Ascend910B2-memory
+      - huawei.com/Ascend910B
+      - huawei.com/Ascend910B-memory
+      - huawei.com/Ascend910B4
+      - huawei.com/Ascend910B4-memory
+      - huawei.com/Ascend310P
+      - huawei.com/Ascend310P-memory
+
+dcgmExporter:
+  image:
+    repository: beclab/dcgm-exporter
+    pullPolicy: IfNotPresent
+    tag: 4.2.3-4.1.3-ubuntu22.04
+
+  # Change the following reference to "/etc/dcgm-exporter/default-counters.csv"
+  # to stop profiling metrics from DCGM
+  arguments: ["-f", "/etc/dcgm-exporter/default-counters.csv"]
+  # NOTE: in general, add any command line arguments to arguments above
+  # and they will be passed through.
+  # Use "-r", "<HOST>:<PORT>" to connect to an already running hostengine
+  # Example arguments: ["-r", "host123:5555"]
+  # Use "-n" to remove the hostname tag from the output.
+  # Example arguments: ["-n"]
+  # Use "-d" to specify the devices to monitor. -d must be followed by a string
+  # in the following format: [f] or [g[:numeric_range][+]][i[:numeric_range]]
+  # Where a numeric range is something like 0-4 or 0,2,4, etc.
+  # Example arguments: ["-d", "g+i"] to monitor all GPUs and GPU instances or
+  # ["-d", "g:0-3"] to monitor GPUs 0-3.
+  # Use "-m" to specify the namespace and name of a configmap containing
+  # the watched exporter fields.
+  # Example arguments: ["-m", "default:exporter-metrics-config-map"]
+
+  # Overrides the chart's name
+  nameOverride: "nvidia-dcgm-exporter"
+
+  # Overrides the chart's computed fullname
+  fullnameOverride: ""
+
+  # Overrides the deployment namespace
+  namespaceOverride: ""
+
+  # Defines the runtime class that will be used by the pod
+  runtimeClassName: ""
+  # Defines serviceAccount names for components.
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name:
+
+  rollingUpdate:
+    # Specifies maximum number of DaemonSet pods that can be unavailable during the update
+    maxUnavailable: 1
+    # Specifies maximum number of nodes with an existing available DaemonSet pod that can have an updated DaemonSet pod during during an update
+    maxSurge: 0
+
+  # Labels to be added to dcgm-exporter pods
+  podLabels: {}
+
+  # Annotations to be added to dcgm-exporter pods
+  podAnnotations:
+    gpu.bytetrade.io/restart-for-metric: "DCGM_FI_DEV_ENFORCED_POWER_LIMIT"
+    # Using this annotation which is required for prometheus scraping
+    # prometheus.io/scrape: "true"
+  # prometheus.io/port: "9400"
+
+  # The SecurityContext for the dcgm-exporter pods
+  podSecurityContext: {}
+  # fsGroup: 2000
+
+  # The SecurityContext for the dcgm-exporter containers
+  securityContext:
+    runAsNonRoot: false
+    runAsUser: 0
+    capabilities:
+      add: ["SYS_ADMIN"]
+    # readOnlyRootFilesystem: true
+
+  # Defines the dcgm-exporter service
+  service:
+    # When enabled, the helm chart will create service
+    enable: true
+    type: ClusterIP
+    clusterIP: ""
+    port: 9400
+    address: ":9400"
+    # Annotations to add to the service
+    annotations: {}
+
+  # Allows to control pod resources
+  resources: {}
+    # limits:
+    #   cpu: 100m
+    #   memory: 128Mi
+    # requests:
+    #   cpu: 100m
+  #   memory: 128Mi
+  serviceMonitor:
+    apiVersion: "monitoring.coreos.com/v1"
+    enabled: true
+    interval: 3s
+    honorLabels: false
+    additionalLabels: {}
+    # monitoring: prometheus
+    relabelings: []
+      # - sourceLabels: [__meta_kubernetes_pod_node_name]
+      #   separator: ;
+      #   regex: ^(.*)$
+      #   targetLabel: nodename
+      #   replacement: $1
+    #   action: replace
+
+  nodeSelector: {}
+  # node: gpu
+
+  tolerations: []
+  # - operator: Exists
+
+  affinity: {}
+    # nodeAffinity:
+    #  requiredDuringSchedulingIgnoredDuringExecution:
+    #    nodeSelectorTerms:
+    #    - matchExpressions:
+    #      - key: nvidia-gpu
+  #        operator: Exists
+
+  extraHostVolumes: []
+  # - name: host-binaries
+  #  hostPath: /opt/bin
+
+  extraConfigMapVolumes:
+    - name: exporter-metrics-volume
+      configMap:
+        name: exporter-metrics-config-map
+        items:
+          - key: metrics
+            path: default-counters.csv
+
+  extraVolumeMounts:
+    - name: exporter-metrics-volume
+      mountPath: /etc/dcgm-exporter/default-counters.csv
+      subPath: default-counters.csv
+
+  extraEnv: []
+  # - name: EXTRA_VAR
+  #  value: "TheStringValue"
+
+  # Path to the kubelet socket for /pod-resources
+  kubeletPath: "/var/lib/kubelet/pod-resources"
+
+  # HTTPS configuration
+  tlsServerConfig:
+    # Enable or disable HTTPS configuration
+    enabled: false
+    # Use autogenerated self-signed TLS certificates. Not recommended for production environments.
+    autoGenerated: true
+    # Existing secret containing your own server key and certificate
+    existingSecret: ""
+    # Certificate file name
+    certFilename: "tls.crt"
+    # Key file name
+    keyFilename: "tls.key"
+    # CA certificate file name
+    caFilename: "ca.crt"
+    # Server policy for client authentication. Maps to ClientAuth Policies.
+    # For more detail on clientAuth options:
+    # https://golang.org/pkg/crypto/tls/#ClientAuthType
+    #
+    # NOTE: If you want to enable client authentication, you need to use
+    # RequireAndVerifyClientCert. Other values are insecure.
+    clientAuthType: ""
+    # TLS Key for HTTPS - ignored if existingSecret is provided
+    key: ""
+    # TLS Certificate for HTTPS - ignored if existingSecret is provided
+    cert: ""
+    # CA Certificate for HTTPS - ignored if existingSecret is provided
+    ca: ""
+
+  basicAuth:
+    # Object containing <user>:<passwords> key-value pairs for each user that will have access via basic authentication
+    users: {}
+
+    # Customized list of metrics to emit. Expected to be in the same format (CSV) as the default list.
+    # Must be the complete list and is not additive. If unset, the default list will take effect.
+    # customMetrics: |
+    # Format
+    # If line starts with a '#' it is considered a comment
+    # DCGM FIELD, Prometheus metric type, help message
+
+webui:
+  replicaCount: 1
+
+  vendorNodeSelectors:
+    NVIDIA: gpu.bytetrade.io/cuda-supported=true
+    Ascend: ascend=on
+    DCU: dcu=on
+    MLU: mlu=on
+
+  image:
+    frontend:
+      repository: beclab/hami-webui-fe-oss
+      pullPolicy: IfNotPresent
+      # Overrides the image tag whose default is the chart appVersion.
+      tag: "v1.0.8"
+    backend:
+      repository: beclab/hami-webui-be-oss
+      pullPolicy: IfNotPresent
+      tag: "v1.0.8"
+
+  imagePullSecrets: []
+  nameOverride: "webui"
+  fullnameOverride: ""
+  namespaceOverride: ""
+
+  serviceAccount:
+    # Specifies whether a service account should be created
+    create: true
+    # Annotations to add to the service account
+    annotations: {}
+    # The name of the service account to use.
+    # If not set and create is true, a name is generated using the fullname template
+    name: ""
+
+  podAnnotations: {}
+
+  podSecurityContext: {}
+  # fsGroup: 2000
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+  service:
+    type: ClusterIP
+    port: 3000
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    hosts:
+      - host: chart-example.local
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+    #  - secretName: chart-example-tls
+    #    hosts:
+    #      - chart-example.local
+
+  resources:
+    frontend:
+      limits:
+        cpu: 200m
+        memory: 500Mi
+      requests:
+        cpu: 200m
+        memory: 500Mi
+    backend:
+      limits:
+        cpu: 50m
+        memory: 250Mi
+      requests:
+        cpu: 50m
+        memory: 250Mi
+      # We usually recommend not to specify default resources and to leave this as a conscious
+      # choice for the user. This also increases chances charts run on environments with little
+      # resources, such as Minikube. If you do want to specify resources, uncomment the following
+      # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+      # limits:
+      #   cpu: 100m
+      #   memory: 128Mi
+      # requests:
+      #   cpu: 100m
+      #   memory: 128Mi
+
+  env:
+    frontend:
+      - name: TZ
+        value: "Asia/Shanghai"
+    backend:
+      - name: TZ
+        value: "Asia/Shanghai"
+
+  serviceMonitor:
+    enabled: true
+    interval: 3s
+    honorLabels: false
+    additionalLabels:
+      jobRelease: hami-webui-prometheus
+    relabelings: []
+
+  hamiServiceMonitor:
+    enabled: true
+    interval: 3s
+    honorLabels: false
+    additionalLabels:
+      jobRelease: hami-webui-prometheus
+    svcNamespace: kube-system
+    relabelings: []
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+  externalPrometheus:
+    address: "http://prometheus-k8s.kubesphere-monitoring-system:9090"
+    enabled: true

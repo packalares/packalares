@@ -1,0 +1,54 @@
+project_name: olares-cli
+builds:
+  - env:
+      - CGO_ENABLED=0
+    binary: olares-cli
+    main: ./cmd/main.go
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm
+      - arm64
+    goarm:
+      - 7
+    ignore:
+      - goos: darwin
+        goarch: arm
+      - goos: darwin
+        goarch: amd64
+      - goos: windows
+        goarch: arm
+      - goos: windows
+        goarch: arm64
+    ldflags:
+      - -s
+      - -w
+      - -X github.com/beclab/Olares/cli/version.VERSION={{ .Version }}
+      - >-
+        {{- if index .Env "OLARES_VENDOR_TYPE" }}
+        -X github.com/beclab/Olares/cli/version.VENDOR={{ .Env.OLARES_VENDOR_TYPE }}
+        {{- end }}
+      - >-
+        {{- if index .Env "OLARES_VENDOR_REPO_PATH" }}
+        -X github.com/beclab/Olares/cli/version.VENDOR_REPO_PATH={{ .Env.OLARES_VENDOR_REPO_PATH }}
+        {{- end }}
+dist: ./output
+archives:
+  - id: without-release-id
+    name_template: "{{ .ProjectName }}-v{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  - id: with-release-id
+    name_template: >-
+                   {{- if index .Env "OLARES_RELEASE_ID" }}
+                   {{- .ProjectName }}-v{{ .Version }}_{{ .Os }}_{{ .Arch }}.{{ .Env.OLARES_RELEASE_ID }}
+                   {{- else }}
+                   {{- .ProjectName }}-v{{ .Version }}_{{ .Os }}_{{ .Arch }}.no-release-id
+                   {{- end }}
+checksum:
+  name_template: "checksums.txt"
+release:
+  disable: true
+changelog:
+  skip: true
