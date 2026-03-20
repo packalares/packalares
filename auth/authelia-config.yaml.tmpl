@@ -1,0 +1,118 @@
+###############################################################
+# Authelia Configuration Template (v4.38 format)
+# Variables substituted at deploy time by setup-auth.sh:
+#   __USER_ZONE__          e.g. laurs.olares.local
+#   __DOMAIN__             e.g. olares.local
+#   __AUTH_SECRET__         HMAC secret for JWT/sessions
+#   __LLDAP_ADMIN_PASSWORD__ LLDAP admin password
+#   __REDIS_PASSWORD__     Redis password
+#   __USERNAME__           primary user
+###############################################################
+
+server:
+  address: 'tcp://0.0.0.0:9091'
+
+log:
+  level: info
+
+# Identity validation (password reset tokens)
+identity_validation:
+  reset_password:
+    jwt_secret: '__AUTH_SECRET__'
+
+# TOTP 2FA configuration
+totp:
+  disable: false
+  issuer: 'Packalares'
+  algorithm: sha1
+  digits: 6
+  period: 30
+  skew: 1
+
+# Authentication backend — LLDAP over LDAP
+authentication_backend:
+  password_reset:
+    disable: false
+  ldap:
+    implementation: lldap
+    address: 'ldap://lldap-svc.packalares-auth:3890'
+    base_dn: 'dc=packalares,dc=local'
+    additional_users_dn: 'ou=people'
+    users_filter: '(&(|({username_attribute}={input})({mail_attribute}={input}))(objectClass=person))'
+    additional_groups_dn: 'ou=groups'
+    groups_filter: '(member={dn})'
+    user: 'uid=admin,ou=people,dc=packalares,dc=local'
+    password: '__LLDAP_ADMIN_PASSWORD__'
+    attributes:
+      distinguished_name: 'dn'
+      username: 'uid'
+      display_name: 'displayName'
+      mail: 'mail'
+      member_of: 'memberOf'
+      group_name: 'cn'
+
+# Session configuration
+session:
+  secret: '__AUTH_SECRET__'
+  cookies:
+    - domain: '__USER_ZONE__'
+      authelia_url: 'https://auth.__USER_ZONE__'
+      default_redirection_url: 'https://desktop.__USER_ZONE__/'
+      name: 'packalares_session'
+      expiration: 24h
+      inactivity: 4h
+      remember_me: 720h
+
+  redis:
+    host: 'redis-svc.packalares-auth'
+    port: 6379
+    password: '__REDIS_PASSWORD__'
+
+# Storage backend — local SQLite (no external DB dependency)
+storage:
+  encryption_key: '__AUTH_SECRET__'
+  local:
+    path: '/data/db.sqlite3'
+
+# Notifier — filesystem (no email needed for self-hosted)
+notifier:
+  disable_startup_check: false
+  filesystem:
+    filename: '/data/notifications.txt'
+
+# Access control policy
+access_control:
+  default_policy: one_factor
+
+  rules:
+    # Auth endpoints are public (login page itself)
+    - domain: 'auth.__USER_ZONE__'
+      policy: bypass
+      resources:
+        - '^/api/.*$'
+
+    # Desktop, Settings, Market, Files, Control Hub — require auth
+    - domain: 'desktop.__USER_ZONE__'
+      policy: one_factor
+
+    - domain: 'settings.__USER_ZONE__'
+      policy: one_factor
+
+    - domain: 'market.__USER_ZONE__'
+      policy: one_factor
+
+    - domain: 'files.__USER_ZONE__'
+      policy: one_factor
+
+    - domain: 'controlhub.__USER_ZONE__'
+      policy: one_factor
+
+    - domain: 'dashboard.__USER_ZONE__'
+      policy: one_factor
+
+    - domain: 'profile.__USER_ZONE__'
+      policy: one_factor
+
+    # Catch-all for any subdomain — require auth
+    - domain: '*.__USER_ZONE__'
+      policy: one_factor

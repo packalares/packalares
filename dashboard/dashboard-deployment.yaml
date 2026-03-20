@@ -1,0 +1,124 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: packalares-dashboard
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-html
+  namespace: packalares-dashboard
+data:
+  index.html: |
+    <!-- Populated by init container from the dashboard image -->
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dashboard
+  namespace: packalares-dashboard
+  labels:
+    app: dashboard
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dashboard
+  template:
+    metadata:
+      labels:
+        app: dashboard
+    spec:
+      containers:
+        - name: dashboard
+          image: caddy:2.9-alpine
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: USER_ZONE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.annotations['packalares.io/user-zone']
+            - name: USERNAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.annotations['packalares.io/username']
+            - name: NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          volumeMounts:
+            - name: html
+              mountPath: /srv
+              readOnly: true
+            - name: caddyfile
+              mountPath: /etc/caddy
+              readOnly: true
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 5
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 10
+      volumes:
+        - name: html
+          configMap:
+            name: dashboard-html
+        - name: caddyfile
+          configMap:
+            name: dashboard-caddyfile
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-caddyfile
+  namespace: packalares-dashboard
+data:
+  Caddyfile: |
+    :80 {
+      root * /srv
+      file_server
+      try_files {path} /index.html
+
+      header {
+        X-Content-Type-Options nosniff
+        X-Frame-Options DENY
+        Referrer-Policy strict-origin-when-cross-origin
+        Cache-Control "no-cache, no-store, must-revalidate"
+      }
+
+      log {
+        output stdout
+        format console
+      }
+    }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dashboard
+  namespace: packalares-dashboard
+  labels:
+    app: dashboard
+spec:
+  selector:
+    app: dashboard
+  ports:
+    - port: 80
+      targetPort: 80
+      name: http
+  type: ClusterIP

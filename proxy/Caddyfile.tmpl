@@ -1,116 +1,180 @@
-# Generated from config.yaml — do not edit manually
-# Caddy reverse proxy configuration
+# Packalares Caddyfile template
+# Processed by envsubst with: USER_ZONE, USERNAME, NODE_IP, AUTH_SERVICE
 #
-# Replaces: L4 BFL proxy + BFL nginx + OpenResty + Lua + token_auth
-# One file instead of 5 components
+# Replaces: L4 proxy, BFL nginx, OpenResty, Lua scripts, token_auth
 
 {
-    auto_https disable_redirects
+	# Listen on all interfaces (hostNetwork mode)
+	http_port 80
+	https_port 443
+
+	# Self-signed certs — works with both IP and hostname
+	local_certs
+	auto_https disable_redirects
 }
 
-# Accept connections by IP or hostname
-{{USER_ZONE}}, {{NODE_IP}} {
-    tls internal  # auto self-signed cert, works with IP
-
-    # Auth — all routes require login except /api/firstfactor
-    @protected not path /api/firstfactor /api/secondfactor/*
-
-    route @protected {
-        forward_auth authelia-backend.os-framework:9091 {
-            uri /api/authz/auth-request
-            copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
-        }
-    }
-
-    # Desktop
-    route /desktop* {
-        reverse_proxy desktop-svc.user-space-{{USERNAME}}:80
-    }
-
-    # Settings
-    route /settings* {
-        reverse_proxy settings-svc.user-space-{{USERNAME}}:80
-    }
-
-    # Market
-    route /market* {
-        reverse_proxy market-svc.user-space-{{USERNAME}}:80
-    }
-
-    # Files
-    route /files* {
-        reverse_proxy files-svc.user-space-{{USERNAME}}:80
-    }
-
-    # Auth pages
-    route /api/* {
-        reverse_proxy authelia-backend.os-framework:9091
-    }
-
-    # BFL API
-    route /bfl/* {
-        reverse_proxy bfl.user-space-{{USERNAME}}:80
-    }
-
-    # Default → desktop
-    route {
-        redir / /desktop permanent
-    }
+# ============================================================
+# Snippet: forward auth to Authelia
+# ============================================================
+(authelia) {
+	forward_auth ${AUTH_SERVICE} {
+		uri /api/verify?rd=https://auth.${USER_ZONE}/
+		copy_headers Remote-User Remote-Groups Remote-Name Remote-Email
+	}
 }
 
-# Per-app subdomains (apps installed from marketplace)
-*.{{USER_ZONE}} {
-    tls internal
+# ============================================================
+# Auth portal — Authelia UI
+# ============================================================
+auth.${USER_ZONE}, https://auth.${USER_ZONE} {
+	tls internal
 
-    @auth host auth.{{USER_ZONE}}
-    handle @auth {
-        reverse_proxy authelia-backend.os-framework:9091
-    }
-
-    @desktop host desktop.{{USER_ZONE}}
-    handle @desktop {
-        forward_auth authelia-backend.os-framework:9091 {
-            uri /api/authz/auth-request
-        }
-        reverse_proxy desktop-svc.user-space-{{USERNAME}}:80
-    }
-
-    @settings host settings.{{USER_ZONE}}
-    handle @settings {
-        forward_auth authelia-backend.os-framework:9091 {
-            uri /api/authz/auth-request
-        }
-        reverse_proxy settings-svc.user-space-{{USERNAME}}:80
-    }
-
-    @market host market.{{USER_ZONE}}
-    handle @market {
-        forward_auth authelia-backend.os-framework:9091 {
-            uri /api/authz/auth-request
-        }
-        reverse_proxy market-svc.user-space-{{USERNAME}}:80
-    }
-
-    @files host files.{{USER_ZONE}}
-    handle @files {
-        forward_auth authelia-backend.os-framework:9091 {
-            uri /api/authz/auth-request
-        }
-        reverse_proxy files-svc.user-space-{{USERNAME}}:80
-    }
-
-    # Catch-all for installed apps
-    handle {
-        forward_auth authelia-backend.os-framework:9091 {
-            uri /api/authz/auth-request
-        }
-        reverse_proxy {http.request.host.labels.3}-svc.user-space-{{USERNAME}}:80
-    }
+	reverse_proxy authelia-svc.packalares-auth.svc.cluster.local:9091
 }
 
-# Wizard (available during setup, no auth)
-:30180 {
-    root * /wizard
-    file_server
-    try_files {path} /index.html
+# ============================================================
+# Desktop — main frontend
+# ============================================================
+desktop.${USER_ZONE}, https://desktop.${USER_ZONE} {
+	tls internal
+
+	import authelia
+
+	reverse_proxy desktop-svc.user-space-${USERNAME}.svc.cluster.local:80
+}
+
+# ============================================================
+# Settings
+# ============================================================
+settings.${USER_ZONE}, https://settings.${USER_ZONE} {
+	tls internal
+
+	import authelia
+
+	reverse_proxy settings-svc.user-space-${USERNAME}.svc.cluster.local:80
+}
+
+# ============================================================
+# Market / App Store
+# ============================================================
+market.${USER_ZONE}, https://market.${USER_ZONE} {
+	tls internal
+
+	import authelia
+
+	reverse_proxy market-svc.user-space-${USERNAME}.svc.cluster.local:80
+}
+
+# ============================================================
+# Files
+# ============================================================
+files.${USER_ZONE}, https://files.${USER_ZONE} {
+	tls internal
+
+	import authelia
+
+	reverse_proxy files-svc.user-space-${USERNAME}.svc.cluster.local:80
+}
+
+# ============================================================
+# Vault / Secrets
+# ============================================================
+vault.${USER_ZONE}, https://vault.${USER_ZONE} {
+	tls internal
+
+	import authelia
+
+	reverse_proxy vault-svc.user-space-${USERNAME}.svc.cluster.local:80
+}
+
+# ============================================================
+# API — system-server (no auth, uses its own tokens)
+# ============================================================
+api.${USER_ZONE}, https://api.${USER_ZONE} {
+	tls internal
+
+	reverse_proxy system-server.user-space-${USERNAME}.svc.cluster.local:80
+}
+
+# ============================================================
+# BFL — backend for launcher (internal API)
+# ============================================================
+bfl.${USER_ZONE}, https://bfl.${USER_ZONE} {
+	tls internal
+
+	reverse_proxy bfl.user-space-${USERNAME}.svc.cluster.local:80
+}
+
+# ============================================================
+# Wildcard — catch-all for user-installed apps
+# Apps are routed by subdomain: {app}.USER_ZONE
+# ============================================================
+*.${USER_ZONE}, https://*.${USER_ZONE} {
+	tls internal
+
+	import authelia
+
+	# Extract app name from subdomain: "foo.laurs.olares.local" → "foo"
+	map {http.request.host} {app_name} {
+		~"^([^.]+)\.(.+)$"  "${1}"
+		default              "unknown"
+	}
+
+	reverse_proxy {app_name}-svc.user-space-${USERNAME}.svc.cluster.local:80
+}
+
+# ============================================================
+# IP/bare access — path-based routing
+# Useful when DNS is not configured; user hits https://NODE_IP
+# ============================================================
+${NODE_IP}, https://${NODE_IP} {
+	tls internal
+
+	# Path-based routes for core services
+	handle /desktop/* {
+		uri strip_prefix /desktop
+		import authelia
+		reverse_proxy desktop-svc.user-space-${USERNAME}.svc.cluster.local:80
+	}
+
+	handle /market/* {
+		uri strip_prefix /market
+		import authelia
+		reverse_proxy market-svc.user-space-${USERNAME}.svc.cluster.local:80
+	}
+
+	handle /settings/* {
+		uri strip_prefix /settings
+		import authelia
+		reverse_proxy settings-svc.user-space-${USERNAME}.svc.cluster.local:80
+	}
+
+	handle /files/* {
+		uri strip_prefix /files
+		import authelia
+		reverse_proxy files-svc.user-space-${USERNAME}.svc.cluster.local:80
+	}
+
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy system-server.user-space-${USERNAME}.svc.cluster.local:80
+	}
+
+	handle /auth/* {
+		uri strip_prefix /auth
+		reverse_proxy authelia-svc.packalares-auth.svc.cluster.local:9091
+	}
+
+	# Default: redirect to desktop
+	handle {
+		redir /desktop/ permanent
+	}
+}
+
+# ============================================================
+# Fallback — anything else gets a 404
+# ============================================================
+:80, :443 {
+	tls internal
+	respond "Not Found" 404
 }
