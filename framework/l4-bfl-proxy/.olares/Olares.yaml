@@ -1,7 +1,0 @@
-apiVersion: v1
-target: prebuilt
-output:
-  containers:
-    - 
-      name: beclab/l4-bfl-proxy:v0.3.12
-# must have blank new line            

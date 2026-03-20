@@ -1,220 +1,294 @@
 #!/bin/bash
-set -e
+# ==========================================================================
+# Packalares — Master Installer
+# ==========================================================================
+# Orchestrates all modules to install a self-hosted personal cloud OS.
+#
+# Usage:
+#   Interactive:   bash install.sh
+#   Non-interactive:
+#     PACKALARES_USER=alice PACKALARES_PASSWORD=secret bash install.sh
+#   Via curl:
+#     curl -fsSL https://raw.githubusercontent.com/packalares/packalares/main/install.sh | bash
+#
+# Idempotent — safe to re-run. Each module checks its own state and skips
+# if already installed.
+# ==========================================================================
 
-echo "================================"
+set -euo pipefail
+
+# --------------------------------------------------------------------------
+# Constants
+# --------------------------------------------------------------------------
+REPO_OWNER="packalares"
+REPO_NAME="packalares"
+REPO="${REPO_OWNER}/${REPO_NAME}"
+REPO_RAW="https://raw.githubusercontent.com/${REPO}/main"
+REPO_RELEASES="https://github.com/${REPO}/releases/latest/download"
+
+# Where we are — detect git clone vs curl-pipe
+SCRIPT_DIR=""
+if [ -f "${BASH_SOURCE[0]:-}" ]; then
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+
+# --------------------------------------------------------------------------
+# Colors / helpers
+# --------------------------------------------------------------------------
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+info()  { echo -e "${CYAN}[INFO]${NC}  $*"; }
+ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
+warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+err()   { echo -e "${RED}[ERROR]${NC} $*"; }
+die()   { err "$@"; exit 1; }
+step()  { echo ""; echo -e "${BOLD}── Step $1: $2${NC}"; }
+
+# --------------------------------------------------------------------------
+# Root check
+# --------------------------------------------------------------------------
+if [ "$(id -u)" -ne 0 ]; then
+    die "This installer must be run as root (sudo bash install.sh)"
+fi
+
+# --------------------------------------------------------------------------
+# Banner
+# --------------------------------------------------------------------------
+echo ""
+echo "=========================================="
 echo "  Packalares Installer"
-echo "================================"
+echo "=========================================="
 echo ""
 
-USERNAME="${PACKALARES_USER:-${OLARES_USER:-}}"
-PASSWORD="${PACKALARES_PASSWORD:-${OLARES_PASSWORD:-}}"
-DOMAIN="${PACKALARES_DOMAIN:-olares.local}"
-REPO="packalares/packalares"
+# --------------------------------------------------------------------------
+# Step 1: Read configuration
+# --------------------------------------------------------------------------
+step "1/7" "Configuration"
 
-if [ -z "$USERNAME" ]; then
-    read -p "Username: " USERNAME
+# Accept both PACKALARES_ and legacy OLARES_ prefixes
+export PACKALARES_USER="${PACKALARES_USER:-${OLARES_USER:-}}"
+export PACKALARES_PASSWORD="${PACKALARES_PASSWORD:-${OLARES_PASSWORD:-}}"
+export PACKALARES_DOMAIN="${PACKALARES_DOMAIN:-olares.local}"
+
+# Prompt interactively if not set
+if [ -z "$PACKALARES_USER" ]; then
+    read -r -p "  Username: " PACKALARES_USER
+    [ -z "$PACKALARES_USER" ] && die "Username is required"
+    export PACKALARES_USER
 fi
-if [ -z "$PASSWORD" ]; then
-    read -s -p "Password: " PASSWORD
+
+if [ -z "$PACKALARES_PASSWORD" ]; then
+    read -r -s -p "  Password: " PACKALARES_PASSWORD
     echo ""
+    [ -z "$PACKALARES_PASSWORD" ] && die "Password is required"
+    export PACKALARES_PASSWORD
 fi
 
-NODE_IP=$(hostname -I | awk '{print $1}')
-USER_ZONE="${USERNAME}.${DOMAIN}"
+# Derived values
+export NODE_IP
+NODE_IP="$(hostname -I | awk '{print $1}')"
 
-echo ""
-echo "  Server:  $NODE_IP"
-echo "  User:    $USERNAME"
-echo "  Domain:  $USER_ZONE"
-echo ""
+export USER_ZONE="${PACKALARES_USER}.${PACKALARES_DOMAIN}"
+export KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
 
-# ============================================================
-# Step 1: Download CLI and wizard tarball
-# ============================================================
-echo "Downloading tools..."
-
-RELEASE_URL="https://github.com/$REPO/releases/latest/download"
-
-curl -sfL "$RELEASE_URL/olares-cli-linux-amd64" -o /usr/local/bin/olares-cli
-chmod +x /usr/local/bin/olares-cli
-echo "  CLI downloaded"
-
-curl -sfL "$RELEASE_URL/olaresd-linux-amd64" -o /tmp/olaresd-linux-amd64
-echo "  Daemon downloaded"
-
-curl -sfL "$RELEASE_URL/install-wizard.tar.gz" -o /tmp/install-wizard.tar.gz
-mkdir -p /tmp/wizard-extract
-tar -xzf /tmp/install-wizard.tar.gz -C /tmp/wizard-extract/
-VERSION=$(cat /tmp/wizard-extract/version.hint 2>/dev/null || cat VERSION 2>/dev/null || echo "1.12.6-20260317")
-mkdir -p "$HOME/.olares/versions/v$VERSION"
-cp -a /tmp/wizard-extract/* "$HOME/.olares/versions/v$VERSION/"
-rm -rf /tmp/wizard-extract /tmp/install-wizard.tar.gz
-echo "  Wizard extracted (version: $VERSION)"
-
-# Create olaresd tarball for prepare step
-mkdir -p /tmp/olaresd-pkg "$HOME/.olares/versions/v$VERSION/pkg"
-cp /tmp/olaresd-linux-amd64 /tmp/olaresd-pkg/olaresd
-chmod +x /tmp/olaresd-pkg/olaresd
-tar -czf "$HOME/.olares/versions/v$VERSION/pkg/olaresd-v$VERSION.tar.gz" -C /tmp/olaresd-pkg olaresd
-rm -rf /tmp/olaresd-pkg /tmp/olaresd-linux-amd64
-
-# ============================================================
-# Step 2: Clean environment
-# ============================================================
-echo ""
-echo "Cleaning environment..."
-
-systemctl stop docker containerd 2>/dev/null || true
-systemctl disable containerd 2>/dev/null || true
-apt-get remove -y docker.io docker-ce containerd.io 2>/dev/null || true
-rm -f /usr/bin/containerd /usr/bin/ctr
-nft flush ruleset 2>/dev/null || true
-
-# ============================================================
-# Step 3: Precheck
-# ============================================================
-echo ""
-echo "Running system precheck..."
-
-olares-cli precheck
-
-# ============================================================
-# Step 4: Download system binaries
-# ============================================================
-echo ""
-echo "Downloading system components..."
-
-olares-cli download component --version "$VERSION" 2>/dev/null || echo "  Some components will be pulled on demand"
-
-# ============================================================
-# Step 5: Prepare (containerd, redis, olaresd)
-# ============================================================
-echo ""
-echo "Preparing system..."
-
-olares-cli prepare --version "$VERSION"
-
-# ============================================================
-# Step 6: Install K3s + all services
-# ============================================================
-echo ""
-echo "Installing..."
-
-INSTALL_FLAGS="--version $VERSION --os-domainname $DOMAIN"
-[ -n "$USERNAME" ] && INSTALL_FLAGS="$INSTALL_FLAGS --os-username $USERNAME"
-[ -n "$PASSWORD" ] && INSTALL_FLAGS="$INSTALL_FLAGS --os-password $PASSWORD"
-olares-cli install $INSTALL_FLAGS
-
-# ============================================================
-# Step 7: Activate
-# ============================================================
-echo ""
-echo "Activating user..."
-
-export KUBECONFIG=/root/.kube/config
-
-# 7a. Set LLDAP password via HTTP API
-LLDAP_IP=$(kubectl get svc lldap-service -n os-platform -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-LLDAP_PASS=$(kubectl get secret lldap-credentials -n os-platform -o jsonpath='{.data.lldap-ldap-user-pass}' 2>/dev/null | base64 -d)
-
-ADMIN_TOKEN=$(curl -s -X POST "http://$LLDAP_IP:17170/auth/simple/login" \
-    -H 'Content-Type: application/json' \
-    -d "{\"username\":\"admin\",\"password\":\"$LLDAP_PASS\"}" 2>/dev/null | \
-    python3 -c 'import sys,json; print(json.load(sys.stdin).get("token",""))' 2>/dev/null)
-
-if [ -n "$ADMIN_TOKEN" ]; then
-    curl -s -X POST "http://$LLDAP_IP:17170/api/graphql" \
-        -H 'Content-Type: application/json' \
-        -H "Authorization: Bearer $ADMIN_TOKEN" \
-        -d "{\"query\":\"mutation { modifyUser(user: {id: \\\"$USERNAME\\\", password: \\\"$PASSWORD\\\"}) { ok } }\"}" >/dev/null 2>&1
-    echo "  Password set"
+# GPU detection
+export PACKALARES_GPU="false"
+if command -v nvidia-smi &>/dev/null && nvidia-smi &>/dev/null; then
+    PACKALARES_GPU="true"
+    info "NVIDIA GPU detected"
 fi
 
-# 7b. Generate TLS cert → zone-ssl-config configmap
-echo "  Generating TLS certificate..."
-openssl req -x509 -nodes -days 3650 \
-    -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
-    -keyout /tmp/tls.key -out /tmp/tls.crt \
-    -subj "/CN=*.$USER_ZONE" \
-    -addext "subjectAltName=DNS:*.$USER_ZONE,DNS:$USER_ZONE" 2>/dev/null
+# OS version
+export PACKALARES_OS
+PACKALARES_OS="$(. /etc/os-release 2>/dev/null && echo "${ID}-${VERSION_ID}" || uname -s)"
 
-CERT_DATA=$(cat /tmp/tls.crt)
-KEY_DATA=$(cat /tmp/tls.key)
-rm -f /tmp/tls.key /tmp/tls.crt
+# Version from repo
+export PACKALARES_VERSION
+if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/VERSION" ]; then
+    PACKALARES_VERSION="$(cat "$SCRIPT_DIR/VERSION" | tr -d '[:space:]')"
+else
+    PACKALARES_VERSION="1.12.6-20260317"
+fi
 
-cat <<EOCM | kubectl apply -f - 2>/dev/null
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: zone-ssl-config
-  namespace: user-space-$USERNAME
-data:
-  zone: $USER_ZONE
-  cert: |
-$(echo "$CERT_DATA" | sed 's/^/    /')
-  key: |
-$(echo "$KEY_DATA" | sed 's/^/    /')
-EOCM
+info "User:     $PACKALARES_USER"
+info "Domain:   $USER_ZONE"
+info "Node IP:  $NODE_IP"
+info "GPU:      $PACKALARES_GPU"
+info "OS:       $PACKALARES_OS"
+info "Version:  $PACKALARES_VERSION"
 
-# 7c. Set user annotations
-echo "  Configuring user..."
-kubectl annotate user "$USERNAME" \
-    "bytetrade.io/zone=$USER_ZONE" \
-    "bytetrade.io/creator=$USERNAME" \
-    "bytetrade.io/owner-role=owner" \
-    "bytetrade.io/language=en-US" \
-    "bytetrade.io/location=Europe/Amsterdam" \
-    "bytetrade.io/theme=light" \
-    "bytetrade.io/launcher-access-level=1" \
-    "bytetrade.io/launcher-auth-policy=one_factor" \
-    "bytetrade.io/is-ephemeral=false" \
-    "bytetrade.io/local-domain-ip=$NODE_IP" \
-    "bytetrade.io/local-domain-dns-record=$NODE_IP" \
-    --overwrite 2>/dev/null
+# --------------------------------------------------------------------------
+# Helper: resolve a module script path
+# --------------------------------------------------------------------------
+resolve_script() {
+    local name="$1"
+    if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/scripts/$name" ]; then
+        echo "$SCRIPT_DIR/scripts/$name"
+    else
+        # Running via curl — download to temp
+        local tmp="/tmp/packalares-$name"
+        if [ ! -f "$tmp" ]; then
+            info "Downloading scripts/$name ..."
+            curl -fsSL "$REPO_RAW/scripts/$name" -o "$tmp"
+            chmod +x "$tmp"
+        fi
+        echo "$tmp"
+    fi
+}
 
-# 7d. Patch authelia config
-echo "  Configuring auth..."
-kubectl get configmap authelia-configs -n os-framework -o yaml > /tmp/authelia-patch.yaml 2>/dev/null
-sed -i "s/example\.myterminus\.com/$USER_ZONE/g" /tmp/authelia-patch.yaml
-sed -i "s/files\.example\.myterminus\.com/files.$USER_ZONE/g" /tmp/authelia-patch.yaml
-sed -i "s/'example\.com'/$USER_ZONE/g" /tmp/authelia-patch.yaml
-sed -i "s/authelia-svc\.example\.com/auth.$USER_ZONE/g" /tmp/authelia-patch.yaml
-sed -i "s/www\.example\.com/desktop.$USER_ZONE/g" /tmp/authelia-patch.yaml
-kubectl apply -f /tmp/authelia-patch.yaml 2>/dev/null
-rm -f /tmp/authelia-patch.yaml
+# --------------------------------------------------------------------------
+# Helper: resolve a manifest path
+# --------------------------------------------------------------------------
+resolve_manifest() {
+    local relpath="$1"
+    if [ -n "$SCRIPT_DIR" ] && [ -f "$SCRIPT_DIR/$relpath" ]; then
+        echo "$SCRIPT_DIR/$relpath"
+    else
+        local tmp="/tmp/packalares-$(basename "$relpath")"
+        if [ ! -f "$tmp" ]; then
+            info "Downloading $relpath ..."
+            curl -fsSL "$REPO_RAW/$relpath" -o "$tmp"
+        fi
+        echo "$tmp"
+    fi
+}
 
-# 7e. Restart services
-kubectl delete pod -l app=authelia-backend -n os-framework --force 2>/dev/null
-kubectl delete pod bfl-0 -n "user-space-$USERNAME" 2>/dev/null
-sleep 15
+# --------------------------------------------------------------------------
+# Step 2: System detection and prerequisites
+# --------------------------------------------------------------------------
+step "2/7" "System prerequisites"
 
-# 7f. Trigger L4 proxy
-echo "  Setting up proxy..."
-kubectl annotate user "$USERNAME" "bytetrade.io/wizard-status=network_activating" --overwrite 2>/dev/null
+# Minimal packages
+for pkg in curl openssl jq; do
+    if ! command -v "$pkg" &>/dev/null; then
+        info "Installing $pkg ..."
+        apt-get update -qq && apt-get install -y -qq "$pkg" >/dev/null 2>&1 || true
+    fi
+done
+ok "Prerequisites satisfied"
+
+# --------------------------------------------------------------------------
+# Step 3: Install K3s (Kubernetes)
+# --------------------------------------------------------------------------
+step "3/7" "Kubernetes (K3s)"
+
+SETUP_K3S="$(resolve_script setup-k3s.sh)"
+info "Running $SETUP_K3S"
+bash "$SETUP_K3S"
+
+# Ensure kubeconfig is available
+export KUBECONFIG="/etc/rancher/k3s/k3s.yaml"
+if [ -f "$KUBECONFIG" ]; then
+    ok "K3s is running, kubeconfig at $KUBECONFIG"
+else
+    die "K3s install failed — kubeconfig not found"
+fi
+
+# Wait for K3s node to be ready
+info "Waiting for K3s node to be ready ..."
 for i in $(seq 1 60); do
-    if kubectl get pods -n os-network -l app=l4-bfl-proxy --no-headers 2>/dev/null | grep -q Running; then
+    if kubectl get nodes 2>/dev/null | grep -q " Ready"; then
         break
     fi
     sleep 5
 done
-kubectl annotate user "$USERNAME" "bytetrade.io/wizard-status=completed" --overwrite 2>/dev/null
+kubectl get nodes 2>/dev/null | grep -q " Ready" || die "K3s node never became Ready"
+ok "K3s node is Ready"
 
-# 7g. Final restart
-kubectl delete pod bfl-0 -n "user-space-$USERNAME" 2>/dev/null
-sleep 15
+# --------------------------------------------------------------------------
+# Step 4: Install Auth stack (Authelia + LLDAP + Redis)
+# --------------------------------------------------------------------------
+step "4/7" "Authentication (Authelia + LLDAP + Redis)"
 
-echo "  Activation complete!"
+SETUP_AUTH="$(resolve_script setup-auth.sh)"
+info "Running $SETUP_AUTH"
+bash "$SETUP_AUTH"
 
+ok "Auth stack deployed"
+
+# --------------------------------------------------------------------------
+# Step 5: Install reverse proxy (Caddy)
+# --------------------------------------------------------------------------
+step "5/7" "Reverse proxy (Caddy)"
+
+SETUP_CADDY="$(resolve_script setup-caddy.sh)"
+info "Running $SETUP_CADDY"
+bash "$SETUP_CADDY"
+
+ok "Caddy deployed"
+
+# --------------------------------------------------------------------------
+# Step 6: Deploy core applications
+# --------------------------------------------------------------------------
+step "6/7" "Core applications"
+
+# 6a. App-service
+APP_SERVICE_MANIFEST="$(resolve_manifest app-service/app-service-deployment.yaml)"
+if [ -f "$APP_SERVICE_MANIFEST" ]; then
+    if kubectl get deployment app-service -n packalares-system &>/dev/null; then
+        ok "app-service already deployed — skipping"
+    else
+        info "Deploying app-service ..."
+        envsubst < "$APP_SERVICE_MANIFEST" | kubectl apply -f -
+        ok "app-service deployed"
+    fi
+else
+    warn "app-service manifest not found — skipping"
+fi
+
+# 6b. Dashboard
+DASHBOARD_MANIFEST="$(resolve_manifest dashboard/dashboard-deployment.yaml)"
+if [ -f "$DASHBOARD_MANIFEST" ]; then
+    if kubectl get deployment dashboard -n packalares-system &>/dev/null; then
+        ok "dashboard already deployed — skipping"
+    else
+        info "Deploying dashboard ..."
+        envsubst < "$DASHBOARD_MANIFEST" | kubectl apply -f -
+        ok "dashboard deployed"
+    fi
+else
+    warn "dashboard manifest not found — skipping"
+fi
+
+# --------------------------------------------------------------------------
+# Step 7: Activate user account
+# --------------------------------------------------------------------------
+step "7/7" "User activation"
+
+ACTIVATE_SCRIPT="$(resolve_script activate.sh)"
+info "Running $ACTIVATE_SCRIPT"
+bash "$ACTIVATE_SCRIPT"
+
+ok "User '$PACKALARES_USER' activated"
+
+# --------------------------------------------------------------------------
+# Done — print access info
+# --------------------------------------------------------------------------
 echo ""
-echo "================================"
-echo "  Packalares is ready!"
-echo "================================"
+echo "=========================================="
+echo -e "  ${GREEN}Packalares is ready!${NC}"
+echo "=========================================="
 echo ""
-echo "  Add to your hosts file:"
-echo "  $NODE_IP  desktop.$USER_ZONE  auth.$USER_ZONE  settings.$USER_ZONE  market.$USER_ZONE  files.$USER_ZONE  $USER_ZONE"
+echo "  Add this line to your hosts file (/etc/hosts on Linux/Mac,"
+echo "  C:\\Windows\\System32\\drivers\\hosts on Windows):"
 echo ""
-echo "  Open: https://desktop.$USER_ZONE"
-echo "  Login: $USERNAME / (your password)"
+echo "    $NODE_IP  $USER_ZONE desktop.$USER_ZONE auth.$USER_ZONE settings.$USER_ZONE market.$USER_ZONE files.$USER_ZONE"
 echo ""
-echo "  Wizard: http://$NODE_IP:30180"
+echo "  Then open:"
+echo "    https://desktop.$USER_ZONE"
+echo ""
+echo "  Login:"
+echo "    Username: $PACKALARES_USER"
+echo "    Password: (the password you provided)"
+echo ""
+echo "  Or access directly by IP:"
+echo "    https://$NODE_IP  (path-based routing)"
+echo ""
+echo "  If mDNS was set up, .local domains resolve automatically"
+echo "  on the same LAN — no hosts file needed."
 echo ""
