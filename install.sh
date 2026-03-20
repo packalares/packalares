@@ -48,14 +48,12 @@ curl -sfL "$RELEASE_URL/olaresd-linux-amd64" -o /tmp/olaresd-linux-amd64
 # Wizard tarball (contains Helm charts + manifests)
 curl -sfL "$RELEASE_URL/install-wizard.tar.gz" -o /tmp/install-wizard.tar.gz
 
-# Extract wizard and detect version
+# Extract wizard to temp, detect version, move to correct location
 mkdir -p /tmp/wizard-extract
 tar -xzf /tmp/install-wizard.tar.gz -C /tmp/wizard-extract/
 VERSION=$(cat /tmp/wizard-extract/version.hint 2>/dev/null || echo "1.12.6-20260317")
-
-# Move to correct location (olares-cli expects wizard/ subdirectory)
-mkdir -p "$HOME/.olares/versions/v$VERSION/wizard"
-mv /tmp/wizard-extract/* "$HOME/.olares/versions/v$VERSION/wizard/" 2>/dev/null || true
+mkdir -p "$HOME/.olares/versions/v$VERSION"
+cp -a /tmp/wizard-extract/* "$HOME/.olares/versions/v$VERSION/"
 rm -rf /tmp/wizard-extract /tmp/install-wizard.tar.gz
 
 # Create olaresd tarball
@@ -72,8 +70,10 @@ echo "  Tools downloaded (version: $VERSION)"
 # ============================================================
 echo "[2/7] Cleaning environment..."
 
-systemctl stop docker 2>/dev/null || true
+systemctl stop docker containerd 2>/dev/null || true
+systemctl disable containerd 2>/dev/null || true
 apt-get remove -y docker.io docker-ce containerd.io 2>/dev/null || true
+rm -f /usr/bin/containerd /usr/bin/ctr
 nft flush ruleset 2>/dev/null || true
 
 # ============================================================
