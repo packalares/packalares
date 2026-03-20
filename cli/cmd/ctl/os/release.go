@@ -35,8 +35,9 @@ func NewCmdRelease() *cobra.Command {
 				fmt.Printf("failed to get current working directory: %s\n", err)
 				os.Exit(1)
 			}
-			if !strings.HasPrefix(strings.ToLower(filepath.Base(cwd)), "olares") {
-				fmt.Println("error: please run release command under the root path of Olares repo")
+			dirName := strings.ToLower(filepath.Base(cwd))
+			if !strings.Contains(dirName, "olares") && !strings.Contains(dirName, "packalares") {
+				fmt.Println("error: please run release command under the root path of the repo")
 				os.Exit(1)
 			}
 			if baseDir == "" {
