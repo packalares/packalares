@@ -52,6 +52,12 @@ PACKALARES_USER=alice PACKALARES_PASSWORD=secret sudo -E bash install.sh
           | Redis  | |  K3s   |  Kubernetes runtime
           +--------+ +--------+
                          |
+              +----------+----------+
+              |          |          |
+          +--------+ +------+ +-------+
+          |Postgres| | NATS | | MinIO |  platform services
+          +--------+ +------+ +-------+
+                         |
                     +---------+
                     | Storage  |  local disk, NAS mounts
                     +---------+
@@ -67,6 +73,7 @@ The installer is modular. Each module is an independent script in `scripts/` tha
 |--------|--------|-------------|
 | **K3s** | `scripts/setup-k3s.sh` | Installs K3s (lightweight Kubernetes). Skips if already running. |
 | **Auth** | `scripts/setup-auth.sh` | Deploys Authelia (SSO/2FA), LLDAP (user directory), and Redis (session store) into the `packalares-auth` namespace. |
+| **Platform** | `scripts/setup-platform.sh` | Deploys PostgreSQL, NATS, and MinIO into the `packalares-platform` namespace. Shared services for marketplace apps. |
 | **Caddy** | `scripts/setup-caddy.sh` | Deploys Caddy as a DaemonSet with hostNetwork. Processes `proxy/Caddyfile.tmpl` with environment variables. |
 | **Activate** | `scripts/activate.sh` | Creates the user in LLDAP, generates TLS certs, configures Caddy, sets up mDNS. |
 
@@ -92,6 +99,12 @@ Every module script:
 | `PACKALARES_OS` | OS identifier | *auto-detected* |
 | `PACKALARES_VERSION` | Version string | from `VERSION` file |
 | `KUBECONFIG` | Path to kubeconfig | `/etc/rancher/k3s/k3s.yaml` |
+| `POSTGRES_VERSION` | PostgreSQL image tag | `16-alpine` |
+| `NATS_VERSION` | NATS image tag | `2.10-alpine` |
+| `MINIO_VERSION` | MinIO image tag | `RELEASE.2024-06-13T22-53-53Z` |
+| `POSTGRES_PASSWORD` | PostgreSQL admin password | *auto-generated* |
+| `MINIO_ROOT_USER` | MinIO root user | `packalares` |
+| `MINIO_ROOT_PASSWORD` | MinIO root password | *auto-generated* |
 
 ## Configuration
 
@@ -185,11 +198,18 @@ packalares/
   scripts/
     setup-k3s.sh          — K3s installer module
     setup-auth.sh         — auth stack module
+    setup-platform.sh     — platform services module
     setup-caddy.sh        — reverse proxy module
     activate.sh           — user activation module
   proxy/
     Caddyfile.tmpl        — Caddy config template
     caddy-deployment.yaml — Caddy K8s manifest
+  database/
+    postgres-deployment.yaml — PostgreSQL K8s manifest
+  messaging/
+    nats-deployment.yaml  — NATS K8s manifest
+  objectstore/
+    minio-deployment.yaml — MinIO K8s manifest
   app-service/
     app-service-deployment.yaml
   dashboard/

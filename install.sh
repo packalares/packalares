@@ -68,7 +68,7 @@ echo ""
 # --------------------------------------------------------------------------
 # Step 1: Read configuration
 # --------------------------------------------------------------------------
-step "1/7" "Configuration"
+step "1/8" "Configuration"
 
 # Accept both PACKALARES_ and legacy OLARES_ prefixes
 export PACKALARES_USER="${PACKALARES_USER:-${OLARES_USER:-}}"
@@ -161,7 +161,7 @@ resolve_manifest() {
 # --------------------------------------------------------------------------
 # Step 2: System detection and prerequisites
 # --------------------------------------------------------------------------
-step "2/7" "System prerequisites"
+step "2/8" "System prerequisites"
 
 # Minimal packages
 for pkg in curl openssl jq; do
@@ -175,7 +175,7 @@ ok "Prerequisites satisfied"
 # --------------------------------------------------------------------------
 # Step 3: Install K3s (Kubernetes)
 # --------------------------------------------------------------------------
-step "3/7" "Kubernetes (K3s)"
+step "3/8" "Kubernetes (K3s)"
 
 SETUP_K3S="$(resolve_script setup-k3s.sh)"
 info "Running $SETUP_K3S"
@@ -203,7 +203,7 @@ ok "K3s node is Ready"
 # --------------------------------------------------------------------------
 # Step 4: Install Auth stack (Authelia + LLDAP + Redis)
 # --------------------------------------------------------------------------
-step "4/7" "Authentication (Authelia + LLDAP + Redis)"
+step "4/8" "Authentication (Authelia + LLDAP + Redis)"
 
 SETUP_AUTH="$(resolve_script setup-auth.sh)"
 info "Running $SETUP_AUTH"
@@ -212,9 +212,20 @@ bash "$SETUP_AUTH"
 ok "Auth stack deployed"
 
 # --------------------------------------------------------------------------
-# Step 5: Install reverse proxy (Caddy)
+# Step 5: Platform services (PostgreSQL, NATS, MinIO)
 # --------------------------------------------------------------------------
-step "5/7" "Reverse proxy (Caddy)"
+step "5/8" "Platform services (PostgreSQL, NATS, MinIO)"
+
+SETUP_PLATFORM="$(resolve_script setup-platform.sh)"
+info "Running $SETUP_PLATFORM"
+bash "$SETUP_PLATFORM"
+
+ok "Platform services deployed"
+
+# --------------------------------------------------------------------------
+# Step 6: Install reverse proxy (Caddy)
+# --------------------------------------------------------------------------
+step "6/8" "Reverse proxy (Caddy)"
 
 SETUP_CADDY="$(resolve_script setup-caddy.sh)"
 info "Running $SETUP_CADDY"
@@ -223,11 +234,11 @@ bash "$SETUP_CADDY"
 ok "Caddy deployed"
 
 # --------------------------------------------------------------------------
-# Step 6: Deploy core applications
+# Step 7: Deploy core applications
 # --------------------------------------------------------------------------
-step "6/7" "Core applications"
+step "7/8" "Core applications"
 
-# 6a. App-service
+# 7a. App-service
 APP_SERVICE_MANIFEST="$(resolve_manifest app-service/app-service-deployment.yaml)"
 if [ -f "$APP_SERVICE_MANIFEST" ]; then
     if kubectl get deployment app-service -n packalares-system &>/dev/null; then
@@ -241,7 +252,7 @@ else
     warn "app-service manifest not found — skipping"
 fi
 
-# 6b. Dashboard
+# 7b. Dashboard
 DASHBOARD_MANIFEST="$(resolve_manifest dashboard/dashboard-deployment.yaml)"
 if [ -f "$DASHBOARD_MANIFEST" ]; then
     if kubectl get deployment dashboard -n packalares-system &>/dev/null; then
@@ -256,9 +267,9 @@ else
 fi
 
 # --------------------------------------------------------------------------
-# Step 7: Activate user account
+# Step 8: Activate user account
 # --------------------------------------------------------------------------
-step "7/7" "User activation"
+step "8/8" "User activation"
 
 ACTIVATE_SCRIPT="$(resolve_script activate.sh)"
 info "Running $ACTIVATE_SCRIPT"
