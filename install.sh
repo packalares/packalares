@@ -48,14 +48,14 @@ curl -sfL "$RELEASE_URL/olaresd-linux-amd64" -o /tmp/olaresd-linux-amd64
 # Wizard tarball (contains Helm charts + manifests)
 curl -sfL "$RELEASE_URL/install-wizard.tar.gz" -o /tmp/install-wizard.tar.gz
 
-# Extract wizard and detect version from VERSION file inside
+# Extract wizard and detect version
 mkdir -p /tmp/wizard-extract
 tar -xzf /tmp/install-wizard.tar.gz -C /tmp/wizard-extract/
-VERSION=$(cat /tmp/wizard-extract/wizard/VERSION 2>/dev/null || echo "1.12.6-20260317")
+VERSION=$(cat /tmp/wizard-extract/version.hint 2>/dev/null || echo "1.12.6-20260317")
 
-# Move to correct location
-mkdir -p "$HOME/.olares/versions/v$VERSION"
-mv /tmp/wizard-extract/* "$HOME/.olares/versions/v$VERSION/" 2>/dev/null || true
+# Move to correct location (olares-cli expects wizard/ subdirectory)
+mkdir -p "$HOME/.olares/versions/v$VERSION/wizard"
+mv /tmp/wizard-extract/* "$HOME/.olares/versions/v$VERSION/wizard/" 2>/dev/null || true
 rm -rf /tmp/wizard-extract /tmp/install-wizard.tar.gz
 
 # Create olaresd tarball
