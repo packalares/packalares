@@ -38,21 +38,30 @@ echo ""
 echo "[1/7] Downloading tools..."
 
 RELEASE_URL="https://github.com/$OLARES_REPO/releases/latest/download"
-VERSION=$(curl -sL "$RELEASE_URL/version.hint" 2>/dev/null || echo "1.12.6-20260317")
 
-# CLI + daemon
-curl -sL "$RELEASE_URL/olares-cli-linux-amd64" -o /usr/local/bin/olares-cli && chmod +x /usr/local/bin/olares-cli
-curl -sL "$RELEASE_URL/olaresd-linux-amd64" -o /tmp/olaresd-linux-amd64
+# CLI
+curl -sfL "$RELEASE_URL/olares-cli-linux-amd64" -o /usr/local/bin/olares-cli && chmod +x /usr/local/bin/olares-cli
+
+# Olaresd
+curl -sfL "$RELEASE_URL/olaresd-linux-amd64" -o /tmp/olaresd-linux-amd64
 
 # Wizard tarball (contains Helm charts + manifests)
-curl -sL "$RELEASE_URL/install-wizard.tar.gz" -o /tmp/install-wizard.tar.gz
+curl -sfL "$RELEASE_URL/install-wizard.tar.gz" -o /tmp/install-wizard.tar.gz
+
+# Extract wizard and detect version from VERSION file inside
+mkdir -p /tmp/wizard-extract
+tar -xzf /tmp/install-wizard.tar.gz -C /tmp/wizard-extract/
+VERSION=$(cat /tmp/wizard-extract/wizard/VERSION 2>/dev/null || echo "1.12.6-20260317")
+
+# Move to correct location
 mkdir -p "$HOME/.olares/versions/v$VERSION"
-tar -xzf /tmp/install-wizard.tar.gz -C "$HOME/.olares/versions/v$VERSION/"
-rm -f /tmp/install-wizard.tar.gz
+mv /tmp/wizard-extract/* "$HOME/.olares/versions/v$VERSION/" 2>/dev/null || true
+rm -rf /tmp/wizard-extract /tmp/install-wizard.tar.gz
 
 # Create olaresd tarball
 mkdir -p /tmp/olaresd-pkg && cp /tmp/olaresd-linux-amd64 /tmp/olaresd-pkg/olaresd
 chmod +x /tmp/olaresd-pkg/olaresd
+mkdir -p "$HOME/.olares/versions/v$VERSION/pkg"
 tar -czf "$HOME/.olares/versions/v$VERSION/pkg/olaresd-v$VERSION.tar.gz" -C /tmp/olaresd-pkg olaresd
 rm -rf /tmp/olaresd-pkg /tmp/olaresd-linux-amd64
 
