@@ -1,5 +1,5 @@
 #!/bin/bash
-# setup-k3s.sh — Install K3s, Calico CNI, and OpenEBS for Packalares
+# setup-k3s.sh — Install K3s, Calico CNI, OpenEBS, Redis, KubeBlocks for Packalares
 # Part of the Packalares self-hosted personal cloud OS
 #
 # This script is idempotent: re-running it skips already-completed steps.
@@ -21,6 +21,16 @@ export KUBECONFIG="$KUBECONFIG_PATH"
 # Calico and OpenEBS versions — pulled from images.yaml defaults
 CALICO_VERSION="${CALICO_VERSION:-v3.29.2}"
 OPENEBS_VERSION="${OPENEBS_VERSION:-3.3.0}"
+
+# Redis
+REDIS_VERSION="${REDIS_VERSION:-7.2}"
+REDIS_MAXMEMORY="${REDIS_MAXMEMORY:-256mb}"
+
+# KubeBlocks
+KUBEBLOCKS_VERSION="${KUBEBLOCKS_VERSION:-1.0.2}"
+
+# Monitoring (deployed via setup-monitoring.sh, called from here)
+MONITORING_ENABLED="${MONITORING_ENABLED:-true}"
 
 # Timeouts
 READY_TIMEOUT="${READY_TIMEOUT:-300}"
@@ -398,7 +408,271 @@ EOF
 }
 
 # ---------------------------------------------------------------------------
-# Step 5: Post-install verification
+# Step 5: Kernel modules — load and persist for boot
+# ---------------------------------------------------------------------------
+setup_kernel_modules() {
+    local conf="/etc/modules-load.d/packalares.conf"
+    local modules=(ip_vs ip_vs_rr ip_vs_wrr ip_vs_sh nf_conntrack br_netfilter overlay)
+
+    if [[ -f "$conf" ]]; then
+        # Check whether all modules are already listed
+        local missing=0
+        for mod in "${modules[@]}"; do
+            if ! grep -qw "$mod" "$conf" 2>/dev/null; then
+                missing=1
+                break
+            fi
+        done
+        if [[ "$missing" -eq 0 ]]; then
+            info "Kernel modules already configured in $conf — skipping"
+            return 0
+        fi
+    fi
+
+    info "Configuring kernel modules for persistence..."
+
+    mkdir -p /etc/modules-load.d
+
+    cat > "$conf" <<EOF
+# Packalares — kernel modules loaded at boot
+# IPVS modules for kube-proxy
+ip_vs
+ip_vs_rr
+ip_vs_wrr
+ip_vs_sh
+# Connection tracking
+nf_conntrack
+# Bridge netfilter (required for Calico/iptables)
+br_netfilter
+# OverlayFS (required for containerd)
+overlay
+EOF
+
+    # Load them now
+    for mod in "${modules[@]}"; do
+        if ! lsmod | grep -qw "$mod" 2>/dev/null; then
+            modprobe "$mod" 2>/dev/null || warn "Could not load kernel module: $mod"
+        fi
+    done
+
+    info "Kernel modules configured and loaded"
+}
+
+# ---------------------------------------------------------------------------
+# Step 6: Sysctl tuning
+# ---------------------------------------------------------------------------
+setup_sysctl() {
+    local conf="/etc/sysctl.d/99-packalares.conf"
+
+    if [[ -f "$conf" ]]; then
+        info "Sysctl tuning already applied ($conf exists) — skipping"
+        return 0
+    fi
+
+    info "Applying sysctl tuning..."
+
+    mkdir -p /etc/sysctl.d
+
+    cat > "$conf" <<EOF
+# Packalares — kernel parameter tuning for K3s workloads
+
+# Network: increase listen backlog and port range
+net.core.somaxconn = 65535
+net.ipv4.ip_local_port_range = 1024 65535
+
+# Network: faster connection recycling
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_fin_timeout = 10
+
+# Network: aggressive keepalive for container connections
+net.ipv4.tcp_keepalive_time = 30
+net.ipv4.tcp_keepalive_probes = 3
+net.ipv4.tcp_keepalive_intvl = 15
+
+# Memory: allow overcommit (required by Redis and similar)
+vm.overcommit_memory = 1
+
+# File descriptors: raise system-wide limit
+fs.file-max = 1048576
+
+# Virtual memory: raise mmap count (required by Elasticsearch, etc.)
+vm.max_map_count = 262144
+EOF
+
+    sysctl --system >/dev/null 2>&1 || warn "sysctl --system returned non-zero"
+
+    info "Sysctl tuning applied"
+}
+
+# ---------------------------------------------------------------------------
+# Step 7: Redis host service
+# ---------------------------------------------------------------------------
+install_redis() {
+    if systemctl is-active --quiet redis-server 2>/dev/null || systemctl is-active --quiet redis 2>/dev/null; then
+        info "Redis already running — skipping"
+        return 0
+    fi
+
+    info "Installing Redis as a host service..."
+
+    # Install via apt if available, otherwise bail with guidance
+    if command -v apt-get >/dev/null 2>&1; then
+        export DEBIAN_FRONTEND=noninteractive
+        apt-get update -qq
+        apt-get install -y -qq redis-server >/dev/null 2>&1
+    else
+        die "apt-get not found — Redis install requires Debian/Ubuntu"
+    fi
+
+    # Generate a random password
+    local password
+    password=$(head -c 32 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32)
+
+    # Save password for other Packalares modules
+    mkdir -p /etc/packalares
+    echo "$password" > /etc/packalares/redis-password
+    chmod 600 /etc/packalares/redis-password
+
+    # Write config
+    mkdir -p /etc/redis
+
+    cat > /etc/redis/redis.conf <<EOF
+# Packalares Redis configuration
+bind ${NODE_IP} 127.0.0.1
+port 6379
+protected-mode yes
+requirepass ${password}
+
+# Memory
+maxmemory ${REDIS_MAXMEMORY}
+maxmemory-policy allkeys-lru
+
+# Persistence (AOF for durability)
+appendonly yes
+appendfilename "appendonly.aof"
+dir /var/lib/redis
+
+# Logging
+loglevel notice
+logfile /var/log/redis/redis-server.log
+
+# Security
+rename-command FLUSHDB ""
+rename-command FLUSHALL ""
+rename-command DEBUG ""
+
+# Performance
+tcp-backlog 511
+timeout 0
+tcp-keepalive 300
+EOF
+
+    # Ensure directories exist
+    mkdir -p /var/lib/redis /var/log/redis
+    chown redis:redis /var/lib/redis /var/log/redis 2>/dev/null || true
+
+    # Create systemd override to use our config if the package unit exists
+    if [[ -f /lib/systemd/system/redis-server.service ]]; then
+        mkdir -p /etc/systemd/system/redis-server.service.d
+        cat > /etc/systemd/system/redis-server.service.d/packalares.conf <<EOF
+[Service]
+ExecStart=
+ExecStart=/usr/bin/redis-server /etc/redis/redis.conf
+EOF
+        systemctl daemon-reload
+        systemctl enable --now redis-server
+    else
+        # Create the service from scratch
+        cat > /etc/systemd/system/redis.service <<EOF
+[Unit]
+Description=Redis — Packalares host cache
+After=network.target
+
+[Service]
+Type=notify
+ExecStart=/usr/bin/redis-server /etc/redis/redis.conf
+ExecStop=/usr/bin/redis-cli -a ${password} shutdown
+Restart=always
+RestartSec=5
+User=redis
+Group=redis
+RuntimeDirectory=redis
+RuntimeDirectoryMode=0755
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+EOF
+        # Ensure redis user exists
+        id -u redis >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin redis
+        chown redis:redis /var/lib/redis /var/log/redis
+        systemctl daemon-reload
+        systemctl enable --now redis
+    fi
+
+    info "Redis installed — password stored at /etc/packalares/redis-password"
+}
+
+# ---------------------------------------------------------------------------
+# Step 8: KubeBlocks database operator
+# ---------------------------------------------------------------------------
+install_kubeblocks() {
+    if kubectl get deployment -n kb-system kubeblocks >/dev/null 2>&1; then
+        info "KubeBlocks already installed — skipping"
+        return 0
+    fi
+
+    info "Installing KubeBlocks $KUBEBLOCKS_VERSION..."
+
+    # Install Helm if not present (KubeBlocks is deployed via Helm)
+    if ! command -v helm >/dev/null 2>&1; then
+        info "Helm not found — installing..."
+        curl -sfL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    fi
+
+    # Add the KubeBlocks Helm repo
+    helm repo add kubeblocks https://apecloud.github.io/helm-charts 2>/dev/null || true
+    helm repo update kubeblocks
+
+    # Install KubeBlocks operator
+    helm upgrade --install kubeblocks kubeblocks/kubeblocks \
+        --namespace kb-system \
+        --create-namespace \
+        --version "$KUBEBLOCKS_VERSION" \
+        --set image.registry=docker.io \
+        --wait \
+        --timeout 600s
+
+    wait_for_pods "kb-system"
+
+    info "KubeBlocks $KUBEBLOCKS_VERSION installed — apps can create Postgres/MySQL/MongoDB instances"
+}
+
+# ---------------------------------------------------------------------------
+# Step 9: Monitoring stack (delegated to setup-monitoring.sh)
+# ---------------------------------------------------------------------------
+install_monitoring() {
+    if [[ "$MONITORING_ENABLED" != "true" ]]; then
+        info "Monitoring disabled (MONITORING_ENABLED=$MONITORING_ENABLED) — skipping"
+        return 0
+    fi
+
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    local monitoring_script="${script_dir}/setup-monitoring.sh"
+
+    if [[ ! -f "$monitoring_script" ]]; then
+        warn "Monitoring script not found at $monitoring_script — skipping"
+        return 0
+    fi
+
+    info "Deploying monitoring stack..."
+    bash "$monitoring_script"
+    info "Monitoring stack deployment complete"
+}
+
+# ---------------------------------------------------------------------------
+# Step 10: Post-install verification
 # ---------------------------------------------------------------------------
 verify() {
     info "Running post-install verification..."
@@ -441,6 +715,32 @@ verify() {
         errors=$(( errors + 1 ))
     fi
 
+    # Check sysctl tuning
+    if [[ ! -f /etc/sysctl.d/99-packalares.conf ]]; then
+        warn "Sysctl tuning file not found"
+        errors=$(( errors + 1 ))
+    fi
+
+    # Check kernel modules persistence
+    if [[ ! -f /etc/modules-load.d/packalares.conf ]]; then
+        warn "Kernel modules persistence file not found"
+        errors=$(( errors + 1 ))
+    fi
+
+    # Check Redis
+    if systemctl is-active --quiet redis-server 2>/dev/null || systemctl is-active --quiet redis 2>/dev/null; then
+        : # Redis OK
+    else
+        warn "Redis host service is not running"
+        errors=$(( errors + 1 ))
+    fi
+
+    # Check KubeBlocks
+    if ! kubectl get deployment -n kb-system kubeblocks >/dev/null 2>&1; then
+        warn "KubeBlocks operator not found"
+        errors=$(( errors + 1 ))
+    fi
+
     if [[ "$errors" -gt 0 ]]; then
         warn "$errors verification issue(s) found — cluster may still be settling"
     else
@@ -453,18 +753,23 @@ verify() {
     echo "  K3s Cluster Summary"
     echo "========================================"
     echo ""
-    echo "  K3s Version:   $K3S_VERSION"
-    echo "  Node:          $NODE_NAME ($NODE_IP)"
-    echo "  Proxy Mode:    $KUBE_PROXY_MODE"
-    echo "  Data Path:     $DATA_PATH"
-    echo "  Kubeconfig:    $KUBECONFIG_PATH"
-    echo "  StorageClass:  openebs-hostpath (default)"
-    echo "  Pod CIDR:      10.42.0.0/16"
-    echo "  Service CIDR:  10.43.0.0/16"
-    echo "  DNS:           10.43.0.10"
+    echo "  K3s Version:     $K3S_VERSION"
+    echo "  Node:            $NODE_NAME ($NODE_IP)"
+    echo "  Proxy Mode:      $KUBE_PROXY_MODE"
+    echo "  Data Path:       $DATA_PATH"
+    echo "  Kubeconfig:      $KUBECONFIG_PATH"
+    echo "  StorageClass:    openebs-hostpath (default)"
+    echo "  Pod CIDR:        10.42.0.0/16"
+    echo "  Service CIDR:    10.43.0.0/16"
+    echo "  DNS:             10.43.0.10"
+    echo "  KubeBlocks:      $KUBEBLOCKS_VERSION"
+    echo "  Redis:           host service (port 6379)"
+    echo "  Redis password:  /etc/packalares/redis-password"
+    echo "  Monitoring:      $MONITORING_ENABLED"
     echo ""
     echo "  Ports:"
     echo "    6443/tcp   — Kubernetes API server"
+    echo "    6379/tcp   — Redis (host service)"
     echo "    10250/tcp  — Kubelet"
     echo "    10251/tcp  — kube-scheduler"
     echo "    10252/tcp  — kube-controller-manager"
@@ -491,10 +796,15 @@ main() {
     echo ""
 
     preflight
+    setup_kernel_modules
     install_k3s
+    setup_sysctl
     wait_for_cluster
     install_calico
     install_openebs
+    install_redis
+    install_kubeblocks
+    install_monitoring
 
     local verify_errors=0
     verify || verify_errors=$?

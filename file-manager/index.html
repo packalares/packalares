@@ -1,0 +1,1585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Files - Packalares</title>
+<style>
+/* ================================================================
+   Theme variables — matches dashboard
+   ================================================================ */
+:root {
+  --bg:          #0a0a0a;
+  --bg-card:     #141414;
+  --bg-hover:    #1a1a1a;
+  --bg-active:   #222;
+  --border:      #222;
+  --text:        #e0e0e0;
+  --text-dim:    #888;
+  --text-bright: #fff;
+  --accent:      #3b82f6;
+  --accent-dim:  #1d4ed8;
+  --green:       #22c55e;
+  --yellow:      #eab308;
+  --red:         #ef4444;
+  --radius:      10px;
+  --font:        -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono:        'SF Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ================================================================
+   Layout
+   ================================================================ */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* ================================================================
+   Toolbar
+   ================================================================ */
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+
+.toolbar-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-bright);
+  margin-right: 12px;
+  white-space: nowrap;
+}
+
+.breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  font-size: 13px;
+}
+
+.breadcrumb-item {
+  color: var(--text-dim);
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 4px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+
+.breadcrumb-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-bright);
+  text-decoration: none;
+}
+
+.breadcrumb-item.active {
+  color: var(--text-bright);
+  font-weight: 600;
+}
+
+.breadcrumb-sep {
+  color: #444;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.toolbar-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* ================================================================
+   Buttons
+   ================================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: var(--font);
+  color: var(--text);
+  background: var(--bg-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  background: var(--bg-active);
+  border-color: #333;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--accent-dim);
+}
+
+.btn-danger {
+  color: var(--red);
+}
+
+.btn-danger:hover {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: var(--red);
+}
+
+.btn-icon {
+  padding: 7px 8px;
+}
+
+/* ================================================================
+   Main content
+   ================================================================ */
+.content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.file-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0;
+}
+
+.sidebar {
+  width: 260px;
+  border-left: 1px solid var(--border);
+  background: var(--bg-card);
+  overflow-y: auto;
+  flex-shrink: 0;
+  padding: 16px;
+}
+
+.sidebar h3 {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+/* ================================================================
+   File list (table view)
+   ================================================================ */
+.file-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.file-table th {
+  position: sticky;
+  top: 0;
+  background: var(--bg-card);
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  font-weight: 600;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  z-index: 1;
+}
+
+.file-table td {
+  padding: 8px 16px;
+  font-size: 13px;
+  border-bottom: 1px solid #1a1a1a;
+  cursor: default;
+}
+
+.file-row {
+  transition: background 0.1s;
+}
+
+.file-row:hover {
+  background: var(--bg-hover);
+}
+
+.file-row.selected {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.file-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.file-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.file-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name-text.dir {
+  color: var(--text-bright);
+  cursor: pointer;
+  font-weight: 500;
+}
+
+.file-name-text.dir:hover {
+  color: var(--accent);
+}
+
+.file-size, .file-modified {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* ================================================================
+   File grid view
+   ================================================================ */
+.file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+  padding: 16px;
+}
+
+.grid-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  border-radius: var(--radius);
+  cursor: default;
+  transition: background 0.1s;
+  text-align: center;
+}
+
+.grid-item:hover {
+  background: var(--bg-hover);
+}
+
+.grid-item.selected {
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.grid-icon {
+  font-size: 40px;
+  line-height: 1;
+}
+
+.grid-name {
+  font-size: 12px;
+  color: var(--text);
+  word-break: break-word;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.grid-item.dir-item {
+  cursor: pointer;
+}
+
+.grid-item.dir-item .grid-name {
+  color: var(--text-bright);
+  font-weight: 500;
+}
+
+/* ================================================================
+   Context menu
+   ================================================================ */
+.context-menu {
+  position: fixed;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 6px 0;
+  min-width: 180px;
+  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  display: none;
+}
+
+.context-menu.visible {
+  display: block;
+}
+
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.context-menu-item:hover {
+  background: var(--bg-hover);
+}
+
+.context-menu-item.danger {
+  color: var(--red);
+}
+
+.context-menu-sep {
+  height: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* ================================================================
+   Modal
+   ================================================================ */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+}
+
+.modal-overlay.hidden {
+  display: none;
+}
+
+.modal {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  min-width: 380px;
+  max-width: 500px;
+  width: 90%;
+}
+
+.modal h2 {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 16px;
+}
+
+.modal-field {
+  margin-bottom: 14px;
+}
+
+.modal-field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+.modal-field input,
+.modal-field select {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 14px;
+  font-family: var(--font);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.modal-field input:focus,
+.modal-field select:focus {
+  border-color: var(--accent);
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* ================================================================
+   Drop zone
+   ================================================================ */
+.drop-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(59, 130, 246, 0.15);
+  border: 3px dashed var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 3000;
+  pointer-events: none;
+}
+
+.drop-overlay.hidden {
+  display: none;
+}
+
+.drop-overlay-text {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--bg-card);
+  padding: 20px 40px;
+  border-radius: 12px;
+}
+
+/* ================================================================
+   Upload progress
+   ================================================================ */
+.upload-bar {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+  min-width: 280px;
+  z-index: 2500;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.upload-bar.hidden {
+  display: none;
+}
+
+.upload-bar-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 8px;
+}
+
+.upload-bar-track {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.upload-bar-fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.upload-bar-status {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+
+/* ================================================================
+   Mount list
+   ================================================================ */
+.mount-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.mount-item:last-child {
+  border-bottom: none;
+}
+
+.mount-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.mount-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mount-name {
+  color: var(--text-bright);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mount-source {
+  font-size: 11px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mount-eject {
+  cursor: pointer;
+  color: var(--text-dim);
+  font-size: 14px;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.mount-eject:hover {
+  color: var(--red);
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-dim);
+}
+
+.empty-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+
+.empty-state p {
+  font-size: 14px;
+}
+
+/* ================================================================
+   Toast
+   ================================================================ */
+.toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-bright);
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  z-index: 5000;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
+}
+
+.toast.visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.toast.error {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+/* ================================================================
+   Responsive
+   ================================================================ */
+@media (max-width: 768px) {
+  .sidebar { display: none; }
+  .toolbar-title { display: none; }
+  .file-table th:nth-child(3),
+  .file-table td:nth-child(3) { display: none; }
+  .file-grid { grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 4px; }
+}
+
+@media (max-width: 500px) {
+  .toolbar { padding: 10px 12px; gap: 8px; }
+  .toolbar-actions .btn span { display: none; }
+  .file-table th:nth-child(2),
+  .file-table td:nth-child(2) { display: none; }
+}
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <div class="toolbar-title">Files</div>
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div class="toolbar-actions">
+      <button class="btn btn-icon" id="btn-view-toggle" title="Toggle view">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+          <rect x="1" y="1" width="6" height="6" rx="1"/>
+          <rect x="9" y="1" width="6" height="6" rx="1"/>
+          <rect x="1" y="9" width="6" height="6" rx="1"/>
+          <rect x="9" y="9" width="6" height="6" rx="1"/>
+        </svg>
+      </button>
+      <button class="btn" id="btn-mkdir">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 3.5a.5.5 0 01.5.5v3.5H12a.5.5 0 010 1H8.5V12a.5.5 0 01-1 0V8.5H4a.5.5 0 010-1h3.5V4a.5.5 0 01.5-.5z"/>
+        </svg>
+        <span>New Folder</span>
+      </button>
+      <button class="btn btn-primary" id="btn-upload">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 2a.5.5 0 01.5.5v8.793l2.146-2.147a.5.5 0 01.708.708l-3 3a.5.5 0 01-.708 0l-3-3a.5.5 0 01.708-.708L7.5 11.293V2.5A.5.5 0 018 2z" transform="rotate(180 8 8)"/>
+          <path d="M2 13.5a.5.5 0 01.5-.5h11a.5.5 0 010 1h-11a.5.5 0 01-.5-.5z"/>
+        </svg>
+        <span>Upload</span>
+      </button>
+      <input type="file" id="file-input" multiple style="display:none">
+    </div>
+  </div>
+
+  <!-- Main content -->
+  <div class="content">
+    <div class="file-panel" id="file-panel">
+      <!-- File list (table) or grid rendered here -->
+    </div>
+
+    <!-- Sidebar: mounts -->
+    <div class="sidebar" id="sidebar">
+      <h3>Storage Mounts</h3>
+      <div id="mount-list">
+        <div style="color:var(--text-dim);font-size:13px;">No mounts</div>
+      </div>
+      <button class="btn" id="btn-mount" style="margin-top:12px;width:100%;justify-content:center;">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M8 3.5a.5.5 0 01.5.5v3.5H12a.5.5 0 010 1H8.5V12a.5.5 0 01-1 0V8.5H4a.5.5 0 010-1h3.5V4a.5.5 0 01.5-.5z"/>
+        </svg>
+        Mount Storage
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Context menu -->
+<div class="context-menu" id="context-menu">
+  <div class="context-menu-item" data-action="open">Open</div>
+  <div class="context-menu-item" data-action="download">Download</div>
+  <div class="context-menu-sep"></div>
+  <div class="context-menu-item" data-action="rename">Rename</div>
+  <div class="context-menu-item" data-action="copy">Copy</div>
+  <div class="context-menu-item" data-action="move">Move</div>
+  <div class="context-menu-sep"></div>
+  <div class="context-menu-item danger" data-action="delete">Delete</div>
+</div>
+
+<!-- Drop overlay -->
+<div class="drop-overlay hidden" id="drop-overlay">
+  <div class="drop-overlay-text">Drop files to upload</div>
+</div>
+
+<!-- Upload progress -->
+<div class="upload-bar hidden" id="upload-bar">
+  <div class="upload-bar-title">Uploading...</div>
+  <div class="upload-bar-track"><div class="upload-bar-fill" id="upload-fill"></div></div>
+  <div class="upload-bar-status" id="upload-status"></div>
+</div>
+
+<!-- Modal: New Folder -->
+<div class="modal-overlay hidden" id="modal-mkdir">
+  <div class="modal">
+    <h2>New Folder</h2>
+    <div class="modal-field">
+      <label>Folder Name</label>
+      <input type="text" id="mkdir-name" placeholder="untitled folder" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-mkdir')">Cancel</button>
+      <button class="btn btn-primary" id="mkdir-confirm">Create</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Rename -->
+<div class="modal-overlay hidden" id="modal-rename">
+  <div class="modal">
+    <h2>Rename</h2>
+    <div class="modal-field">
+      <label>New Name</label>
+      <input type="text" id="rename-input" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-rename')">Cancel</button>
+      <button class="btn btn-primary" id="rename-confirm">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Move -->
+<div class="modal-overlay hidden" id="modal-move">
+  <div class="modal">
+    <h2>Move To</h2>
+    <div class="modal-field">
+      <label>Destination Path</label>
+      <input type="text" id="move-input" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-move')">Cancel</button>
+      <button class="btn btn-primary" id="move-confirm">Move</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Mount Storage -->
+<div class="modal-overlay hidden" id="modal-mount">
+  <div class="modal">
+    <h2>Mount External Storage</h2>
+    <div class="modal-field">
+      <label>Type</label>
+      <select id="mount-type">
+        <option value="smb">SMB / CIFS (NAS)</option>
+        <option value="nfs">NFS</option>
+        <option value="rclone">Rclone (S3, GDrive, etc.)</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label>Source</label>
+      <input type="text" id="mount-source" placeholder="//192.168.1.100/share" autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label>Mount Name</label>
+      <input type="text" id="mount-target" placeholder="nas-share" autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label>Username (optional)</label>
+      <input type="text" id="mount-user" autocomplete="off">
+    </div>
+    <div class="modal-field">
+      <label>Password (optional)</label>
+      <input type="password" id="mount-pass" autocomplete="off">
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('modal-mount')">Cancel</button>
+      <button class="btn btn-primary" id="mount-confirm">Mount</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ----------------------------------------------------------
+  //  State
+  // ----------------------------------------------------------
+  var currentPath = '';
+  var dataRoot = '';
+  var files = [];
+  var selectedFile = null;
+  var viewMode = localStorage.getItem('fm-view') || 'list'; // 'list' or 'grid'
+
+  // ----------------------------------------------------------
+  //  Init
+  // ----------------------------------------------------------
+  function init() {
+    bindEvents();
+    loadFiles('');
+    loadMounts();
+  }
+
+  // ----------------------------------------------------------
+  //  API helpers
+  // ----------------------------------------------------------
+  function api(url, opts) {
+    return fetch(url, opts).then(function(res) {
+      if (!res.ok) {
+        return res.json().then(function(e) { throw new Error(e.error || 'Request failed'); });
+      }
+      return res.json();
+    });
+  }
+
+  // ----------------------------------------------------------
+  //  Load file listing
+  // ----------------------------------------------------------
+  function loadFiles(path) {
+    var url = '/api/files/list';
+    if (path) url += '?path=' + encodeURIComponent(path);
+    api(url).then(function(data) {
+      currentPath = data.path || '';
+      dataRoot = data.data_root || '';
+      files = data.files || [];
+      renderBreadcrumb(data.rel_path || '');
+      renderFiles();
+    }).catch(function(err) {
+      showToast('Failed to load files: ' + err.message, true);
+    });
+  }
+
+  // ----------------------------------------------------------
+  //  Breadcrumb
+  // ----------------------------------------------------------
+  function renderBreadcrumb(relPath) {
+    var bc = document.getElementById('breadcrumb');
+    bc.innerHTML = '';
+
+    // Root
+    var root = document.createElement('span');
+    root.className = 'breadcrumb-item' + (relPath === '' ? ' active' : '');
+    root.textContent = 'Home';
+    root.onclick = function() { loadFiles(''); };
+    bc.appendChild(root);
+
+    if (relPath === '') return;
+
+    var parts = relPath.split('/').filter(Boolean);
+    for (var i = 0; i < parts.length; i++) {
+      var sep = document.createElement('span');
+      sep.className = 'breadcrumb-sep';
+      sep.textContent = '/';
+      bc.appendChild(sep);
+
+      var crumb = document.createElement('span');
+      crumb.className = 'breadcrumb-item' + (i === parts.length - 1 ? ' active' : '');
+      crumb.textContent = parts[i];
+      (function(idx) {
+        var target = dataRoot + '/' + parts.slice(0, idx + 1).join('/');
+        crumb.onclick = function() { loadFiles(target); };
+      })(i);
+      bc.appendChild(crumb);
+    }
+  }
+
+  // ----------------------------------------------------------
+  //  Render files
+  // ----------------------------------------------------------
+  function renderFiles() {
+    var panel = document.getElementById('file-panel');
+
+    if (files.length === 0) {
+      panel.innerHTML =
+        '<div class="empty-state">' +
+          '<div class="empty-icon">&#128193;</div>' +
+          '<p>This folder is empty</p>' +
+        '</div>';
+      return;
+    }
+
+    // Sort: directories first, then alphabetical
+    files.sort(function(a, b) {
+      if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    if (viewMode === 'grid') {
+      renderGrid(panel);
+    } else {
+      renderTable(panel);
+    }
+  }
+
+  function renderTable(panel) {
+    var html = '<table class="file-table">';
+    html += '<thead><tr><th>Name</th><th>Size</th><th>Modified</th></tr></thead>';
+    html += '<tbody>';
+
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      var icon = f.is_dir ? '&#128193;' : fileIcon(f.name);
+      var nameClass = f.is_dir ? 'file-name-text dir' : 'file-name-text';
+      var size = f.is_dir ? '--' : formatSize(f.size);
+      var mod = formatDate(f.modified);
+
+      html += '<tr class="file-row" data-index="' + i + '">';
+      html += '<td><div class="file-name"><span class="file-icon">' + icon + '</span>';
+      html += '<span class="' + nameClass + '">' + escapeHtml(f.name) + '</span></div></td>';
+      html += '<td class="file-size">' + size + '</td>';
+      html += '<td class="file-modified">' + mod + '</td>';
+      html += '</tr>';
+    }
+
+    html += '</tbody></table>';
+    panel.innerHTML = html;
+
+    // Bind row events
+    var rows = panel.querySelectorAll('.file-row');
+    for (var r = 0; r < rows.length; r++) {
+      (function(row) {
+        var idx = parseInt(row.getAttribute('data-index'), 10);
+        row.addEventListener('click', function(e) {
+          selectFile(idx, row);
+        });
+        row.addEventListener('dblclick', function(e) {
+          openFile(files[idx]);
+        });
+        row.addEventListener('contextmenu', function(e) {
+          e.preventDefault();
+          selectFile(idx, row);
+          showContextMenu(e.clientX, e.clientY, files[idx]);
+        });
+      })(rows[r]);
+    }
+  }
+
+  function renderGrid(panel) {
+    var container = document.createElement('div');
+    container.className = 'file-grid';
+
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      var item = document.createElement('div');
+      item.className = 'grid-item' + (f.is_dir ? ' dir-item' : '');
+      item.setAttribute('data-index', i);
+
+      var icon = f.is_dir ? '&#128193;' : fileIcon(f.name);
+      item.innerHTML = '<div class="grid-icon">' + icon + '</div>' +
+        '<div class="grid-name">' + escapeHtml(f.name) + '</div>';
+
+      (function(idx, el) {
+        el.addEventListener('click', function(e) {
+          selectFile(idx, el);
+        });
+        el.addEventListener('dblclick', function(e) {
+          openFile(files[idx]);
+        });
+        el.addEventListener('contextmenu', function(e) {
+          e.preventDefault();
+          selectFile(idx, el);
+          showContextMenu(e.clientX, e.clientY, files[idx]);
+        });
+      })(i, item);
+
+      container.appendChild(item);
+    }
+
+    panel.innerHTML = '';
+    panel.appendChild(container);
+  }
+
+  // ----------------------------------------------------------
+  //  File selection and actions
+  // ----------------------------------------------------------
+  function selectFile(idx, el) {
+    // Deselect previous
+    var prev = document.querySelector('.file-row.selected, .grid-item.selected');
+    if (prev) prev.classList.remove('selected');
+    el.classList.add('selected');
+    selectedFile = files[idx];
+  }
+
+  function openFile(f) {
+    if (f.is_dir) {
+      loadFiles(f.path);
+    } else {
+      // Download
+      downloadFile(f.path);
+    }
+  }
+
+  function downloadFile(path) {
+    var a = document.createElement('a');
+    a.href = '/api/files/download?path=' + encodeURIComponent(path);
+    a.download = '';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  }
+
+  // ----------------------------------------------------------
+  //  Context menu
+  // ----------------------------------------------------------
+  var ctxMenu = document.getElementById('context-menu');
+  var ctxTarget = null;
+
+  function showContextMenu(x, y, file) {
+    ctxTarget = file;
+    ctxMenu.style.left = Math.min(x, window.innerWidth - 200) + 'px';
+    ctxMenu.style.top = Math.min(y, window.innerHeight - 250) + 'px';
+    ctxMenu.classList.add('visible');
+
+    // Toggle "Open" text
+    var openItem = ctxMenu.querySelector('[data-action="open"]');
+    openItem.textContent = file.is_dir ? 'Open Folder' : 'Open File';
+
+    // Hide download for directories
+    var dlItem = ctxMenu.querySelector('[data-action="download"]');
+    dlItem.style.display = file.is_dir ? 'none' : '';
+  }
+
+  function hideContextMenu() {
+    ctxMenu.classList.remove('visible');
+    ctxTarget = null;
+  }
+
+  document.addEventListener('click', hideContextMenu);
+
+  ctxMenu.addEventListener('click', function(e) {
+    var action = e.target.getAttribute('data-action');
+    if (!action || !ctxTarget) return;
+
+    switch (action) {
+      case 'open':
+        openFile(ctxTarget);
+        break;
+      case 'download':
+        downloadFile(ctxTarget.path);
+        break;
+      case 'rename':
+        showRenameModal(ctxTarget);
+        break;
+      case 'copy':
+        doCopy(ctxTarget);
+        break;
+      case 'move':
+        showMoveModal(ctxTarget);
+        break;
+      case 'delete':
+        doDelete(ctxTarget);
+        break;
+    }
+    hideContextMenu();
+  });
+
+  // ----------------------------------------------------------
+  //  File operations
+  // ----------------------------------------------------------
+  function doDelete(f) {
+    if (!confirm('Delete "' + f.name + '"? This cannot be undone.')) return;
+    api('/api/files/delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: f.path })
+    }).then(function() {
+      showToast('Deleted ' + f.name);
+      loadFiles(currentPath);
+    }).catch(function(err) {
+      showToast('Delete failed: ' + err.message, true);
+    });
+  }
+
+  function showRenameModal(f) {
+    var input = document.getElementById('rename-input');
+    input.value = f.name;
+    openModal('modal-rename');
+    input.focus();
+    input.select();
+
+    document.getElementById('rename-confirm').onclick = function() {
+      var newName = input.value.trim();
+      if (!newName || newName === f.name) {
+        closeModal('modal-rename');
+        return;
+      }
+      var dir = f.path.substring(0, f.path.lastIndexOf('/'));
+      api('/api/files/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: f.path, destination: dir + '/' + newName })
+      }).then(function() {
+        closeModal('modal-rename');
+        showToast('Renamed to ' + newName);
+        loadFiles(currentPath);
+      }).catch(function(err) {
+        showToast('Rename failed: ' + err.message, true);
+      });
+    };
+  }
+
+  function showMoveModal(f) {
+    var input = document.getElementById('move-input');
+    var dir = f.path.substring(0, f.path.lastIndexOf('/'));
+    input.value = dir;
+    openModal('modal-move');
+    input.focus();
+
+    document.getElementById('move-confirm').onclick = function() {
+      var dest = input.value.trim();
+      if (!dest) {
+        closeModal('modal-move');
+        return;
+      }
+      // Append the filename to destination if it looks like a directory
+      var destPath = dest.endsWith('/') ? dest + f.name : dest + '/' + f.name;
+      api('/api/files/move', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ source: f.path, destination: destPath })
+      }).then(function() {
+        closeModal('modal-move');
+        showToast('Moved ' + f.name);
+        loadFiles(currentPath);
+      }).catch(function(err) {
+        showToast('Move failed: ' + err.message, true);
+      });
+    };
+  }
+
+  function doCopy(f) {
+    var copyName = f.name;
+    var ext = '';
+    var base = copyName;
+    var dotIdx = copyName.lastIndexOf('.');
+    if (!f.is_dir && dotIdx > 0) {
+      ext = copyName.substring(dotIdx);
+      base = copyName.substring(0, dotIdx);
+    }
+    var destName = base + ' (copy)' + ext;
+    var dir = f.path.substring(0, f.path.lastIndexOf('/'));
+
+    api('/api/files/copy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: f.path, destination: dir + '/' + destName })
+    }).then(function() {
+      showToast('Copied ' + f.name);
+      loadFiles(currentPath);
+    }).catch(function(err) {
+      showToast('Copy failed: ' + err.message, true);
+    });
+  }
+
+  // ----------------------------------------------------------
+  //  New folder
+  // ----------------------------------------------------------
+  document.getElementById('btn-mkdir').addEventListener('click', function() {
+    var input = document.getElementById('mkdir-name');
+    input.value = '';
+    openModal('modal-mkdir');
+    input.focus();
+  });
+
+  document.getElementById('mkdir-confirm').addEventListener('click', function() {
+    var name = document.getElementById('mkdir-name').value.trim();
+    if (!name) return;
+    var path = currentPath + '/' + name;
+    api('/api/files/mkdir', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ path: path })
+    }).then(function() {
+      closeModal('modal-mkdir');
+      showToast('Created folder ' + name);
+      loadFiles(currentPath);
+    }).catch(function(err) {
+      showToast('Failed: ' + err.message, true);
+    });
+  });
+
+  // ----------------------------------------------------------
+  //  Upload
+  // ----------------------------------------------------------
+  var fileInput = document.getElementById('file-input');
+  document.getElementById('btn-upload').addEventListener('click', function() {
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', function() {
+    if (fileInput.files.length > 0) {
+      uploadFiles(fileInput.files);
+      fileInput.value = '';
+    }
+  });
+
+  function uploadFiles(fileList) {
+    var total = fileList.length;
+    var done = 0;
+    var uploadBar = document.getElementById('upload-bar');
+    var uploadFill = document.getElementById('upload-fill');
+    var uploadStatus = document.getElementById('upload-status');
+
+    uploadBar.classList.remove('hidden');
+    uploadFill.style.width = '0%';
+    uploadStatus.textContent = '0 / ' + total + ' files';
+
+    var queue = Array.prototype.slice.call(fileList);
+
+    function next() {
+      if (queue.length === 0) {
+        uploadFill.style.width = '100%';
+        uploadStatus.textContent = 'Done!';
+        setTimeout(function() {
+          uploadBar.classList.add('hidden');
+        }, 2000);
+        loadFiles(currentPath);
+        return;
+      }
+
+      var file = queue.shift();
+      var form = new FormData();
+      form.append('path', currentPath);
+      form.append('file', file);
+
+      var xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/files/upload', true);
+
+      xhr.upload.addEventListener('progress', function(e) {
+        if (e.lengthComputable) {
+          var filePct = (e.loaded / e.total) * 100;
+          var overallPct = ((done + (filePct / 100)) / total) * 100;
+          uploadFill.style.width = overallPct + '%';
+        }
+      });
+
+      xhr.onload = function() {
+        done++;
+        uploadStatus.textContent = done + ' / ' + total + ' files';
+        uploadFill.style.width = ((done / total) * 100) + '%';
+        if (xhr.status >= 200 && xhr.status < 300) {
+          next();
+        } else {
+          showToast('Upload failed for ' + file.name, true);
+          next();
+        }
+      };
+
+      xhr.onerror = function() {
+        done++;
+        showToast('Upload error for ' + file.name, true);
+        next();
+      };
+
+      xhr.send(form);
+    }
+
+    next();
+  }
+
+  // ----------------------------------------------------------
+  //  Drag & drop
+  // ----------------------------------------------------------
+  var dropOverlay = document.getElementById('drop-overlay');
+  var dragCounter = 0;
+
+  document.addEventListener('dragenter', function(e) {
+    e.preventDefault();
+    dragCounter++;
+    dropOverlay.classList.remove('hidden');
+  });
+
+  document.addEventListener('dragleave', function(e) {
+    e.preventDefault();
+    dragCounter--;
+    if (dragCounter <= 0) {
+      dragCounter = 0;
+      dropOverlay.classList.add('hidden');
+    }
+  });
+
+  document.addEventListener('dragover', function(e) {
+    e.preventDefault();
+  });
+
+  document.addEventListener('drop', function(e) {
+    e.preventDefault();
+    dragCounter = 0;
+    dropOverlay.classList.add('hidden');
+    if (e.dataTransfer.files.length > 0) {
+      uploadFiles(e.dataTransfer.files);
+    }
+  });
+
+  // ----------------------------------------------------------
+  //  View toggle
+  // ----------------------------------------------------------
+  document.getElementById('btn-view-toggle').addEventListener('click', function() {
+    viewMode = viewMode === 'list' ? 'grid' : 'list';
+    localStorage.setItem('fm-view', viewMode);
+    renderFiles();
+  });
+
+  // ----------------------------------------------------------
+  //  Mount operations
+  // ----------------------------------------------------------
+  document.getElementById('btn-mount').addEventListener('click', function() {
+    openModal('modal-mount');
+  });
+
+  document.getElementById('mount-confirm').addEventListener('click', function() {
+    var type = document.getElementById('mount-type').value;
+    var source = document.getElementById('mount-source').value.trim();
+    var target = document.getElementById('mount-target').value.trim();
+    var user = document.getElementById('mount-user').value.trim();
+    var pass = document.getElementById('mount-pass').value;
+
+    if (!source || !target) {
+      showToast('Source and mount name are required', true);
+      return;
+    }
+
+    api('/api/storage/mount', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: type,
+        source: source,
+        target: target,
+        username: user,
+        password: pass
+      })
+    }).then(function() {
+      closeModal('modal-mount');
+      showToast('Mounted ' + source);
+      loadMounts();
+      loadFiles(currentPath);
+    }).catch(function(err) {
+      showToast('Mount failed: ' + err.message, true);
+    });
+  });
+
+  function loadMounts() {
+    api('/api/storage/mounts').then(function(data) {
+      renderMounts(data.mounts || []);
+    }).catch(function() {});
+  }
+
+  function renderMounts(mounts) {
+    var container = document.getElementById('mount-list');
+    if (mounts.length === 0) {
+      container.innerHTML = '<div style="color:var(--text-dim);font-size:13px;">No mounts</div>';
+      return;
+    }
+
+    container.innerHTML = '';
+    for (var i = 0; i < mounts.length; i++) {
+      var m = mounts[i];
+      var div = document.createElement('div');
+      div.className = 'mount-item';
+
+      var typeIcon = '&#128190;';
+      if (m.type === 'smb' || m.type === 'cifs') typeIcon = '&#128421;';
+      else if (m.type === 'nfs') typeIcon = '&#127760;';
+      else if (m.type === 'rclone' || m.type === 's3') typeIcon = '&#9729;';
+
+      div.innerHTML =
+        '<span class="mount-icon">' + typeIcon + '</span>' +
+        '<div class="mount-info">' +
+          '<div class="mount-name">' + escapeHtml(m.mount_point.split('/').pop()) + '</div>' +
+          '<div class="mount-source">' + escapeHtml(m.source) + '</div>' +
+        '</div>' +
+        '<span class="mount-eject" data-id="' + escapeHtml(m.id) + '" title="Unmount">&#9167;</span>';
+
+      container.appendChild(div);
+    }
+
+    // Bind eject buttons
+    var ejectors = container.querySelectorAll('.mount-eject');
+    for (var e = 0; e < ejectors.length; e++) {
+      ejectors[e].addEventListener('click', function() {
+        var id = this.getAttribute('data-id');
+        if (!confirm('Unmount this storage?')) return;
+        api('/api/storage/unmount', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: id })
+        }).then(function() {
+          showToast('Unmounted');
+          loadMounts();
+          loadFiles(currentPath);
+        }).catch(function(err) {
+          showToast('Unmount failed: ' + err.message, true);
+        });
+      });
+    }
+  }
+
+  // ----------------------------------------------------------
+  //  Keyboard shortcuts
+  // ----------------------------------------------------------
+  document.addEventListener('keydown', function(e) {
+    // Escape closes modals and context menu
+    if (e.key === 'Escape') {
+      hideContextMenu();
+      document.querySelectorAll('.modal-overlay').forEach(function(m) {
+        m.classList.add('hidden');
+      });
+    }
+    // Delete key
+    if (e.key === 'Delete' && selectedFile && !isModalOpen()) {
+      doDelete(selectedFile);
+    }
+    // Backspace to go up
+    if (e.key === 'Backspace' && !isModalOpen() && document.activeElement.tagName !== 'INPUT') {
+      e.preventDefault();
+      goUp();
+    }
+  });
+
+  function goUp() {
+    if (!currentPath || currentPath === dataRoot) return;
+    var parent = currentPath.substring(0, currentPath.lastIndexOf('/'));
+    if (parent.length < dataRoot.length) parent = dataRoot;
+    loadFiles(parent);
+  }
+
+  // ----------------------------------------------------------
+  //  Modal helpers
+  // ----------------------------------------------------------
+  function openModal(id) {
+    document.getElementById(id).classList.remove('hidden');
+  }
+
+  window.closeModal = function(id) {
+    document.getElementById(id).classList.add('hidden');
+  };
+
+  function isModalOpen() {
+    var modals = document.querySelectorAll('.modal-overlay');
+    for (var i = 0; i < modals.length; i++) {
+      if (!modals[i].classList.contains('hidden')) return true;
+    }
+    return false;
+  }
+
+  // Close modals on overlay click
+  document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+    overlay.addEventListener('click', function(e) {
+      if (e.target === overlay) overlay.classList.add('hidden');
+    });
+  });
+
+  // Submit modals on Enter
+  document.querySelectorAll('.modal input').forEach(function(input) {
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        var modal = input.closest('.modal');
+        var confirmBtn = modal.querySelector('.btn-primary');
+        if (confirmBtn) confirmBtn.click();
+      }
+    });
+  });
+
+  // ----------------------------------------------------------
+  //  Toast
+  // ----------------------------------------------------------
+  var toastTimer = null;
+  function showToast(msg, isError) {
+    var toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = 'toast visible' + (isError ? ' error' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() {
+      toast.classList.remove('visible');
+    }, 3000);
+  }
+
+  // ----------------------------------------------------------
+  //  Helpers
+  // ----------------------------------------------------------
+  function escapeHtml(str) {
+    var div = document.createElement('div');
+    div.appendChild(document.createTextNode(str || ''));
+    return div.innerHTML;
+  }
+
+  function formatSize(bytes) {
+    if (!bytes || bytes <= 0) return '0 B';
+    var units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    var i = Math.floor(Math.log(bytes) / Math.log(1024));
+    if (i >= units.length) i = units.length - 1;
+    return (bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 1) + ' ' + units[i];
+  }
+
+  function formatDate(iso) {
+    if (!iso) return '--';
+    var d = new Date(iso);
+    var now = new Date();
+    var diff = now - d;
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+    if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+    if (diff < 604800000) return Math.floor(diff / 86400000) + 'd ago';
+    return d.toLocaleDateString();
+  }
+
+  function fileIcon(name) {
+    var ext = (name.split('.').pop() || '').toLowerCase();
+    var icons = {
+      'jpg': '&#128247;', 'jpeg': '&#128247;', 'png': '&#128247;',
+      'gif': '&#128247;', 'svg': '&#128247;', 'webp': '&#128247;',
+      'bmp': '&#128247;', 'ico': '&#128247;',
+      'mp4': '&#127916;', 'mkv': '&#127916;', 'avi': '&#127916;',
+      'mov': '&#127916;', 'webm': '&#127916;', 'flv': '&#127916;',
+      'mp3': '&#127925;', 'wav': '&#127925;', 'flac': '&#127925;',
+      'ogg': '&#127925;', 'aac': '&#127925;', 'm4a': '&#127925;',
+      'pdf': '&#128196;', 'doc': '&#128196;', 'docx': '&#128196;',
+      'xls': '&#128202;', 'xlsx': '&#128202;', 'csv': '&#128202;',
+      'ppt': '&#128202;', 'pptx': '&#128202;',
+      'zip': '&#128230;', 'tar': '&#128230;', 'gz': '&#128230;',
+      'rar': '&#128230;', '7z': '&#128230;', 'bz2': '&#128230;',
+      'xz': '&#128230;',
+      'py': '&#128221;', 'js': '&#128221;', 'ts': '&#128221;',
+      'go': '&#128221;', 'rs': '&#128221;', 'c': '&#128221;',
+      'cpp': '&#128221;', 'h': '&#128221;', 'java': '&#128221;',
+      'rb': '&#128221;', 'php': '&#128221;', 'sh': '&#128221;',
+      'html': '&#127760;', 'css': '&#127760;', 'xml': '&#127760;',
+      'json': '&#128221;', 'yaml': '&#128221;', 'yml': '&#128221;',
+      'toml': '&#128221;', 'ini': '&#128221;', 'conf': '&#128221;',
+      'txt': '&#128196;', 'md': '&#128196;', 'log': '&#128196;',
+      'iso': '&#128191;', 'img': '&#128191;',
+      'db': '&#128451;', 'sqlite': '&#128451;', 'sql': '&#128451;'
+    };
+    return icons[ext] || '&#128196;';
+  }
+
+  // ----------------------------------------------------------
+  //  Bind events
+  // ----------------------------------------------------------
+  function bindEvents() {
+    // Nothing extra needed; events are bound inline above
+  }
+
+  // ----------------------------------------------------------
+  //  Boot
+  // ----------------------------------------------------------
+  init();
+})();
+</script>
+</body>
+</html>

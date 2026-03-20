@@ -1,0 +1,61 @@
+project_name: olaresd
+builds:
+- env:
+  - CGO_ENABLED=1
+  # - CC=aarch64-linux-gnu-gcc
+  # - CXX=aarch64-linux-gnu-g++
+  main: ./cmd/terminusd/main.go
+  binary: olaresd
+  goarch:
+    - amd64
+    - arm64
+  goos:
+    - linux
+  overrides:
+    - goarch: amd64
+      goos: linux
+      goamd64: v1
+      env:
+        - CGO_ENABLED=1
+    - goarch: arm64
+      goos: linux
+      env:
+        - CGO_ENABLED=1
+        - CC=aarch64-linux-gnu-gcc
+        - CXX=aarch64-linux-gnu-g++
+  tags:
+    containers_image_openpgp
+  ldflags:
+    - -w
+    - -s
+    - -X 'github.com/beclab/Olares/daemon/cmd/terminusd/version.version=v{{ .Version }}'
+    - >-
+      {{- if index .Env "OLARES_VENDOR_TYPE" }}
+      -X github.com/beclab/Olares/daemon/cmd/terminusd/version.VENDOR={{ .Env.OLARES_VENDOR_TYPE }}
+      {{- end }}
+dist: output
+archives:
+- id: without-release-id
+  name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+- id: with-release-id
+  name_template: >-
+                 {{- if index .Env "OLARES_RELEASE_ID" }}
+                 {{- .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}.{{ .Env.OLARES_RELEASE_ID }}
+                 {{- else }}
+                 {{- .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}.no-release-id
+                 {{- end }}
+  files:
+    - none*
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Version }}-next-{{.ShortCommit}}"
+changelog:
+  skip: true
+  sort: asc
+  filters:
+    exclude:
+    - '^docs:'
+    - '^test:'
+release:
+  disable: true

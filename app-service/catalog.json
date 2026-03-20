@@ -1,88 +1,57 @@
-{
-  "catalog_version": "1",
-  "apps": [
-    {
-      "name": "jellyfin",
-      "title": "Jellyfin",
-      "icon_url": "https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/icon-transparent.svg",
-      "description": "Free software media system that puts you in control of your media. Stream movies, TV shows, music, and more to any device.",
-      "version": "1.9.0",
-      "chart_url": "https://jellyfin.github.io/jellyfin-helm/jellyfin",
-      "chart_repo": "https://jellyfin.github.io/jellyfin-helm",
-      "chart_name": "jellyfin/jellyfin",
-      "ports": [8096],
-      "storage_needed": "10Gi",
-      "gpu_optional": true,
-      "values_override": {
-        "service.type": "ClusterIP",
-        "persistence.config.enabled": "true",
-        "persistence.media.enabled": "true"
-      }
-    },
-    {
-      "name": "nextcloud",
-      "title": "Nextcloud",
-      "icon_url": "https://nextcloud.com/wp-content/uploads/2022/11/nextcloud-logo.svg",
-      "description": "Self-hosted productivity platform. File sync, calendars, contacts, email, collaborative editing, and more.",
-      "version": "29.0.0",
-      "chart_url": "https://nextcloud.github.io/helm/nextcloud",
-      "chart_repo": "https://nextcloud.github.io/helm",
-      "chart_name": "nextcloud/nextcloud",
-      "ports": [8080],
-      "storage_needed": "20Gi",
-      "gpu_optional": false,
-      "values_override": {
-        "service.type": "ClusterIP"
-      }
-    },
-    {
-      "name": "homeassistant",
-      "title": "Home Assistant",
-      "icon_url": "https://brands.home-assistant.io/homeassistant/icon.png",
-      "description": "Open-source home automation platform. Control and automate your smart home devices from a single, local interface.",
-      "version": "2024.12.0",
-      "chart_url": "https://pajikos.github.io/home-assistant-helm-chart/home-assistant",
-      "chart_repo": "https://pajikos.github.io/home-assistant-helm-chart",
-      "chart_name": "home-assistant/home-assistant",
-      "ports": [8123],
-      "storage_needed": "5Gi",
-      "gpu_optional": false,
-      "values_override": {
-        "service.type": "ClusterIP"
-      }
-    },
-    {
-      "name": "immich",
-      "title": "Immich",
-      "icon_url": "https://raw.githubusercontent.com/immich-app/immich/main/docs/static/img/favicon.png",
-      "description": "High-performance self-hosted photo and video management. ML-powered search, facial recognition, and automatic organization.",
-      "version": "1.120.0",
-      "chart_url": "https://immich-app.github.io/immich-charts/immich",
-      "chart_repo": "https://immich-app.github.io/immich-charts",
-      "chart_name": "immich/immich",
-      "ports": [2283],
-      "storage_needed": "50Gi",
-      "gpu_optional": true,
-      "values_override": {
-        "service.type": "ClusterIP"
-      }
-    },
-    {
-      "name": "gitea",
-      "title": "Gitea",
-      "icon_url": "https://about.gitea.com/gitea.png",
-      "description": "Lightweight, self-hosted Git service. Private repositories, issue tracking, code review, CI/CD, and package registry.",
-      "version": "1.22.0",
-      "chart_url": "https://dl.gitea.com/charts/gitea",
-      "chart_repo": "https://dl.gitea.com/charts",
-      "chart_name": "gitea/gitea",
-      "ports": [3000, 22],
-      "storage_needed": "10Gi",
-      "gpu_optional": false,
-      "values_override": {
-        "service.type": "ClusterIP",
-        "gitea.config.server.SSH_PORT": "2222"
-      }
-    }
-  ]
-}
+[
+  {
+    "name": "jellyfin",
+    "title": "Jellyfin",
+    "icon": "https://raw.githubusercontent.com/jellyfin/jellyfin-ux/master/branding/SVG/icon-transparent.svg",
+    "description": "Free software media system that puts you in control of your media. Stream movies, TV shows, music, and more to any device.",
+    "version": "1.9.0",
+    "chart_url": "https://jellyfin.github.io/jellyfin-helm/jellyfin",
+    "ports": [8096],
+    "storage": "10Gi",
+    "gpu_optional": true
+  },
+  {
+    "name": "nextcloud",
+    "title": "Nextcloud",
+    "icon": "https://nextcloud.com/wp-content/uploads/2022/11/nextcloud-logo.svg",
+    "description": "Self-hosted productivity platform. File sync, calendars, contacts, email, collaborative editing, and more.",
+    "version": "29.0.0",
+    "chart_url": "https://nextcloud.github.io/helm/nextcloud",
+    "ports": [8080],
+    "storage": "20Gi",
+    "gpu_optional": false
+  },
+  {
+    "name": "home-assistant",
+    "title": "Home Assistant",
+    "icon": "https://brands.home-assistant.io/homeassistant/icon.png",
+    "description": "Open-source home automation platform. Control and automate your smart home devices from a single, local interface.",
+    "version": "2024.12.0",
+    "chart_url": "https://pajikos.github.io/home-assistant-helm-chart/home-assistant",
+    "ports": [8123],
+    "storage": "5Gi",
+    "gpu_optional": false
+  },
+  {
+    "name": "immich",
+    "title": "Immich",
+    "icon": "https://raw.githubusercontent.com/immich-app/immich/main/docs/static/img/favicon.png",
+    "description": "High-performance self-hosted photo and video management. ML-powered search, facial recognition, and automatic organization.",
+    "version": "1.120.0",
+    "chart_url": "https://immich-app.github.io/immich-charts/immich",
+    "ports": [2283],
+    "storage": "50Gi",
+    "gpu_optional": true
+  },
+  {
+    "name": "gitea",
+    "title": "Gitea",
+    "icon": "https://about.gitea.com/gitea.png",
+    "description": "Lightweight, self-hosted Git service. Private repositories, issue tracking, code review, CI/CD, and package registry.",
+    "version": "1.22.0",
+    "chart_url": "https://dl.gitea.com/charts/gitea",
+    "ports": [3000, 22],
+    "storage": "10Gi",
+    "gpu_optional": false
+  }
+]

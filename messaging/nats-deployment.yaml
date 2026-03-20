@@ -1,0 +1,135 @@
+###############################################################
+# NATS — Messaging bus for marketplace apps
+# Deployed in namespace: packalares-platform
+###############################################################
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: packalares-platform
+  labels:
+    app.kubernetes.io/part-of: packalares
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nats-config
+  namespace: packalares-platform
+  labels:
+    app: nats
+data:
+  nats.conf: |
+    listen: 0.0.0.0:4222
+    http: 0.0.0.0:8222
+
+    max_payload: 8MB
+    max_connections: 1024
+
+    jetstream {
+      store_dir: /data/jetstream
+      max_mem: 256MB
+      max_file: 2GB
+    }
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nats-data
+  namespace: packalares-platform
+  labels:
+    app: nats
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nats
+  namespace: packalares-platform
+  labels:
+    app: nats
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/part-of: packalares
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: nats
+  template:
+    metadata:
+      labels:
+        app: nats
+        app.kubernetes.io/name: nats
+        app.kubernetes.io/part-of: packalares
+    spec:
+      containers:
+        - name: nats
+          image: nats:2.10-alpine
+          args:
+            - "--config"
+            - "/etc/nats/nats.conf"
+          ports:
+            - containerPort: 4222
+              name: client
+            - containerPort: 8222
+              name: monitoring
+          volumeMounts:
+            - name: config
+              mountPath: /etc/nats
+              readOnly: true
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: monitoring
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: monitoring
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+      volumes:
+        - name: config
+          configMap:
+            name: nats-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: nats-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nats-svc
+  namespace: packalares-platform
+  labels:
+    app: nats
+    app.kubernetes.io/name: nats
+    app.kubernetes.io/part-of: packalares
+spec:
+  selector:
+    app: nats
+  ports:
+    - name: client
+      port: 4222
+      targetPort: 4222
+    - name: monitoring
+      port: 8222
+      targetPort: 8222
+  type: ClusterIP

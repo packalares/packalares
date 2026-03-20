@@ -1,247 +1,200 @@
-# App Service — Packalares Marketplace Backend
+# App Service -- Packalares Marketplace Backend
 
-The app-service is a lightweight REST API that manages the Packalares app marketplace. It provides endpoints for browsing a catalog of self-hosted apps, installing/uninstalling them via Helm, and reporting system status and resource usage.
+The app-service is a Go REST API that manages the Packalares app marketplace. It provides endpoints for browsing a catalog of self-hosted apps, installing and uninstalling them via Helm, and reporting system status and resource metrics.
 
-Caddy routes `/api/*` to this service on port 5000. The dashboard frontend consumes these endpoints.
+The server listens on port 8080. Caddy reverse-proxies `/api/*` to this service.
 
 ## API Endpoints
 
-All endpoints are served under `/api/`.
-
 ### GET /api/status
 
-Returns cluster health: whether K3s is reachable, pod states, services, and whether the system has been activated (has at least one running pod in the apps namespace).
+Returns cluster health: pod states, services in the apps namespace, and activation state.
 
-Response:
 ```json
 {
-  "cluster_reachable": true,
   "activated": true,
+  "namespace": "packalares-apps",
   "pods": [
-    {"name": "pack-jellyfin-0", "namespace": "packalares-apps", "phase": "Running", "ready": true, "restarts": 0}
+    {"name": "packalares-jellyfin-xxx", "status": "Running", "ready": "true", "age": "2025-01-01T00:00:00Z"}
   ],
-  "services": [
-    {"name": "pack-jellyfin", "type": "ClusterIP", "cluster_ip": "10.43.x.x", "ports": [{"port": 8096, "target": 8096}]}
-  ]
+  "services": ["packalares-jellyfin"]
 }
 ```
 
 ### GET /api/metrics
 
-Returns CPU, memory, disk, and GPU usage for the node. CPU and memory come from `kubectl top node` (requires metrics-server). GPU data comes from `nvidia-smi` when available.
+Returns CPU, memory, disk, and GPU usage read from `/proc` and system commands.
 
-Response:
 ```json
 {
-  "cpu": {"usage": "450m", "percent": "11%"},
-  "memory": {"usage": "3.2Gi", "percent": "40%"},
-  "disk": {"total": "500G", "used": "120G", "available": "380G", "percent": "24%"},
-  "gpu": [{"name": "NVIDIA GeForce RTX 4090", "memory_used_mib": "2048", "memory_total_mib": "24576", "utilization_percent": "15"}]
+  "cpu": {"usage_percent": 12.5, "cores": 4},
+  "memory": {"total_mb": 16384, "used_mb": 6400, "used_percent": 39.1},
+  "disk": {"total_gb": 500, "used_gb": 120, "used_percent": 24},
+  "gpu": {"name": "NVIDIA GeForce RTX 4090", "memory_mb": 24576, "used_mb": 2048, "temp_c": 45, "available": true}
 }
 ```
 
-Fields will be `null` when the data source is unavailable (e.g., no GPU present, metrics-server not installed).
+The `gpu` field is `null` when no NVIDIA GPU is detected.
 
 ### GET /api/apps/available
 
-Returns the marketplace catalog. Each app entry includes an `installed` boolean indicating whether a corresponding Helm release exists.
+Returns the marketplace catalog loaded from `catalog.json`.
 
-Response:
 ```json
-{
-  "apps": [
-    {
-      "name": "jellyfin",
-      "title": "Jellyfin",
-      "icon_url": "https://...",
-      "description": "Free software media system...",
-      "version": "1.9.0",
-      "chart_url": "https://...",
-      "ports": [8096],
-      "storage_needed": "10Gi",
-      "gpu_optional": true,
-      "installed": false
-    }
-  ]
-}
+[
+  {
+    "name": "jellyfin",
+    "title": "Jellyfin",
+    "icon": "https://...",
+    "description": "Free software media system...",
+    "version": "1.9.0",
+    "chart_url": "https://...",
+    "ports": [8096],
+    "storage": "10Gi",
+    "gpu_optional": true
+  }
+]
 ```
 
 ### GET /api/apps/installed
 
-Returns all installed apps with their Helm release status and pod states.
+Returns all Helm releases in the apps namespace.
 
-Response:
 ```json
-{
-  "apps": [
-    {
-      "name": "jellyfin",
-      "title": "Jellyfin",
-      "icon_url": "https://...",
-      "version": "1.9.0",
-      "status": "deployed",
-      "updated": "2026-03-21 12:00:00",
-      "pods": [
-        {"name": "pack-jellyfin-0", "phase": "Running", "ready": true}
-      ]
-    }
-  ]
-}
+[
+  {
+    "name": "packalares-jellyfin",
+    "namespace": "packalares-apps",
+    "revision": "1",
+    "status": "deployed",
+    "chart": "jellyfin-1.9.0",
+    "app_version": "1.9.0"
+  }
+]
 ```
 
 ### POST /api/apps/install
 
-Installs an app from the catalog via Helm.
+Installs an app from the catalog.
 
-Request body:
+Request:
 ```json
 {"name": "jellyfin", "version": "1.9.0"}
 ```
 
-`version` is optional; defaults to the version specified in the catalog.
+The `version` field is optional; defaults to the version in the catalog.
 
-The service will:
-1. Look up the app in `catalog.json`
-2. Add the Helm repo if a `chart_repo` is specified
-3. Create the `packalares-apps` namespace if it does not exist
-4. Run `helm upgrade --install` with the catalog's `values_override`
-5. Wait for the release to become ready (up to 5 minutes)
-
-Response (success):
+Response:
 ```json
-{"ok": true, "app": "jellyfin", "version": "1.9.0", "release": "pack-jellyfin"}
+{"status": "installed", "name": "jellyfin", "release": "packalares-jellyfin", "version": "1.9.0", "output": "..."}
 ```
 
 ### POST /api/apps/uninstall
 
 Uninstalls an app by removing its Helm release.
 
-Request body:
+Request:
 ```json
 {"name": "jellyfin"}
 ```
 
-Response (success):
+Response:
 ```json
-{"ok": true, "app": "jellyfin", "release": "pack-jellyfin"}
+{"status": "uninstalled", "name": "jellyfin", "release": "packalares-jellyfin", "output": "..."}
 ```
-
-### GET /healthz
-
-Health check endpoint. Returns `{"ok": true}`.
 
 ## How to Add Apps to the Catalog
 
-Edit `catalog.json` and add an entry to the `apps` array:
+Edit `catalog.json` (a JSON array at the top level). Each entry has these fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | string | Machine-readable identifier (lowercase, hyphens ok) |
+| `title` | string | Human-readable display name |
+| `icon` | string | URL to the app icon |
+| `description` | string | Short description for the marketplace |
+| `version` | string | Default Helm chart version to install |
+| `chart_url` | string | Helm chart URL passed to `helm upgrade --install` |
+| `ports` | []int | Ports the app exposes |
+| `storage` | string | Recommended PVC size |
+| `gpu_optional` | bool | Whether the app can use GPU acceleration |
+
+Example entry:
 
 ```json
 {
   "name": "myapp",
   "title": "My App",
-  "icon_url": "https://example.com/icon.png",
+  "icon": "https://example.com/icon.png",
   "description": "What this app does.",
   "version": "1.0.0",
   "chart_url": "https://charts.example.com/myapp",
-  "chart_repo": "https://charts.example.com",
-  "chart_name": "myrepo/myapp",
   "ports": [8080],
-  "storage_needed": "5Gi",
-  "gpu_optional": false,
-  "values_override": {
-    "service.type": "ClusterIP"
-  }
+  "storage": "5Gi",
+  "gpu_optional": false
 }
 ```
 
-Field reference:
-
-| Field | Required | Description |
-|-------|----------|-------------|
-| `name` | yes | Machine-readable identifier (lowercase, no spaces) |
-| `title` | yes | Human-readable display name |
-| `icon_url` | yes | URL to the app icon (SVG or PNG) |
-| `description` | yes | Short description shown in the marketplace |
-| `version` | yes | Default chart version to install |
-| `chart_url` | yes | Direct URL to the chart (informational) |
-| `chart_repo` | yes | Helm repository URL to `helm repo add` |
-| `chart_name` | yes | Chart reference as `repo/chart` for `helm install` |
-| `ports` | yes | List of ports the app exposes |
-| `storage_needed` | yes | Recommended PVC size |
-| `gpu_optional` | yes | Whether the app can use a GPU for acceleration |
-| `values_override` | no | Helm values to set via `--set` during install |
-
-After editing, update the ConfigMap:
+After editing, update the ConfigMap and restart:
 
 ```bash
 kubectl create configmap app-catalog \
   --from-file=catalog.json=catalog.json \
   -n packalares-system \
   --dry-run=client -o yaml | kubectl apply -f -
-```
 
-Then restart the app-service pod to pick up changes:
-
-```bash
 kubectl rollout restart deployment/app-service -n packalares-system
 ```
 
 ## How App Installation Works
 
-1. The user selects an app in the dashboard and clicks Install.
-2. The dashboard POSTs `{"name": "appname"}` to `/api/apps/install`.
-3. The app-service looks up the app in `catalog.json`.
-4. It runs `helm repo add` and `helm repo update` for the chart repository.
-5. It creates the `packalares-apps` namespace if needed.
-6. It runs `helm upgrade --install pack-<name> <chart> -n packalares-apps` with any `values_override` from the catalog.
-7. Helm deploys the chart and waits up to 5 minutes for pods to become ready.
-8. The API returns success or failure with the Helm output.
+1. The user sends `POST /api/apps/install` with `{"name": "appname"}`.
+2. The service looks up the app in the in-memory catalog (loaded from `catalog.json`).
+3. It runs `helm upgrade --install packalares-<name> <chart_url> -n packalares-apps --create-namespace --version <version> --wait --timeout 5m`.
+4. Helm deploys the chart and waits for pods to become ready.
+5. The API returns the Helm output on success, or an error message on failure.
 
-All apps are installed as Helm releases with the prefix `pack-` in the `packalares-apps` namespace. This keeps marketplace apps isolated from system components in `packalares-system`.
+All apps are installed as Helm releases with the prefix `packalares-` in the `packalares-apps` namespace.
 
-## How Status Reporting Works
-
-**System status** (`/api/status`) queries the Kubernetes API via `kubectl` to list pods and services in the apps namespace. The `activated` field is true when the cluster is reachable and at least one pod exists.
-
-**Metrics** (`/api/metrics`) combines three data sources:
-- `kubectl top node` for CPU and memory (requires metrics-server, installed by default with K3s)
-- `df -h` for disk usage on the data partition
-- `nvidia-smi` for GPU utilization (only present when an NVIDIA GPU is detected)
-
-**Installed apps** (`/api/apps/installed`) uses `helm list -n packalares-apps -o json` to enumerate releases, then queries pod status for each release using label selectors.
+Uninstalling runs `helm uninstall packalares-<name> -n packalares-apps`.
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `NAMESPACE` | `packalares-apps` | Kubernetes namespace for installed apps |
-| `KUBECONFIG` | (empty, uses in-cluster) | Path to kubeconfig file |
-| `CATALOG_PATH` | `./catalog.json` | Path to the marketplace catalog JSON |
+| `KUBECONFIG` | (in-cluster) | Path to kubeconfig file |
+| `CATALOG_PATH` | `/etc/packalares/catalog.json` | Path to the catalog JSON file |
 | `MARKETPLACE_URL` | (empty) | Remote catalog URL (reserved for future use) |
-| `APP_SERVICE_PORT` | `5000` | Port the API server listens on |
 
-## Running Locally (Development)
+## Build and Deploy
+
+### Build the container image
 
 ```bash
-pip install -r requirements.txt
-export NAMESPACE=packalares-apps
-python server.py
+cd app-service
+docker build -t packalares/app-service:latest .
 ```
 
-The server starts on `http://localhost:5000`. It needs `kubectl` and `helm` in PATH to interact with a cluster.
+### Run locally (development)
 
-## Deployment
+```bash
+export CATALOG_PATH=./catalog.json
+export NAMESPACE=packalares-apps
+go run .
+```
 
-Apply the Kubernetes manifest:
+The server starts on `http://localhost:8080`. Requires `kubectl` and `helm` in PATH.
+
+### Deploy to Kubernetes
 
 ```bash
 kubectl apply -f app-service-deployment.yaml
 ```
 
 This creates:
-- `packalares-system` namespace (for system components)
-- `packalares-apps` namespace (for user-installed apps)
+- `packalares-system` namespace (system components)
+- `packalares-apps` namespace (user-installed apps)
 - ServiceAccount and RBAC for the app-service
-- Deployment running the API server
-- ClusterIP Service on port 5000
-
-Caddy (managed by a separate agent) reverse-proxies `/api/*` to `app-service.packalares-system.svc.cluster.local:5000`.
+- Deployment running the Go binary
+- ClusterIP Service on port 8080
