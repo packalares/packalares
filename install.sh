@@ -66,7 +66,7 @@ echo "  All tools ready"
 echo ""
 echo "[2/5] Precheck and download..."
 olares-cli precheck 2>&1 || true
-olares-cli download component --version "$VERSION" 2>&1 || echo "  Components will be pulled on demand"
+olares-cli download component --version "$VERSION" --cdn-service https://cdn.olares.com 2>&1 || echo "  Some components will be pulled on demand"
 
 # Step 3: Prepare (containerd, redis, olaresd)
 echo ""
