@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: system-server
-  namespace: user-system-${USERNAME}
+  namespace: packalares-framework
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -22,7 +22,7 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: system-server-${USERNAME}
+  name: system-server-laurs
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
@@ -30,14 +30,14 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: system-server
-  namespace: user-system-${USERNAME}
+  namespace: packalares-framework
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: system-server
-  namespace: user-system-${USERNAME}
+  namespace: packalares-framework
   labels:
     app: packalares-system-server
 spec:
@@ -61,13 +61,13 @@ spec:
           name: auth-proxy
         env:
         - name: USER_ZONE
-          value: "${USER_ZONE}"
+          value: "laurs.olares.local"
         - name: USERNAME
-          value: "${USERNAME}"
+          value: "laurs"
         - name: USER_NAMESPACE
-          value: "user-space-${USERNAME}"
+          value: "user-space-laurs"
         - name: WATCH_NAMESPACE
-          value: "user-space-${USERNAME}"
+          value: "user-space-laurs"
         - name: NGINX_CONFIG_PATH
           value: "/etc/nginx/conf.d"
         - name: NGINX_RELOAD_CMD
@@ -105,7 +105,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: system-server
-  namespace: user-system-${USERNAME}
+  namespace: packalares-framework
 spec:
   selector:
     app: packalares-system-server
