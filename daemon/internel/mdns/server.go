@@ -13,9 +13,15 @@ import (
 )
 
 const (
-	SERVICE_NAME  = "_terminus._tcp"
 	INSTANCE_NAME = "olaresd"
 )
+
+func getServiceName() string {
+	if v := os.Getenv("MDNS_SERVICE_NAME"); v != "" {
+		return v
+	}
+	return "_packalares._tcp"
+}
 
 type server struct {
 	server       *zeroconf.Server
@@ -28,7 +34,7 @@ type server struct {
 func NewServer(apiPort int) (*server, error) {
 	s := &server{
 		port:        apiPort,
-		serviceName: SERVICE_NAME,
+		serviceName: getServiceName(),
 		name:        INSTANCE_NAME + "-" + tools.RandomString(6),
 	}
 	return s, s.Restart()

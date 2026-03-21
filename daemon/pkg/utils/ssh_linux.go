@@ -6,6 +6,7 @@ package utils
 import (
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/beclab/Olares/daemon/cmd/terminusd/version"
@@ -31,10 +32,15 @@ func tryToLoginSSH(user, password string) bool {
 }
 
 func checkDefaultSSHPassword() bool {
+	sshUser := os.Getenv("PACKALARES_SSH_USER")
+	sshPassword := os.Getenv("PACKALARES_SSH_PASSWORD")
+	if sshUser == "" || sshPassword == "" {
+		klog.Info("PACKALARES_SSH_USER or PACKALARES_SSH_PASSWORD not set, skipping default SSH password check")
+		return false
+	}
+
 	defaultPasswords := map[string][]string{
-		"olares": []string{
-			"olares",
-		},
+		sshUser: {sshPassword},
 	}
 
 	for user, passwords := range defaultPasswords {
