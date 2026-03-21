@@ -514,9 +514,10 @@ body {
 
   async function loadUserInfo() {
     try {
-      const res = await fetch(BASE_URL + '/bfl/info/v1/olares-info');
+      const res = await fetch(BASE_URL + '/bfl/backend/v1/user-info');
       if (!res.ok) throw new Error('Failed to load user info');
-      const data = await res.json();
+      const json = await res.json();
+      const data = json.data || json;
       state.user = data;
       renderUser(data);
     } catch (err) {
@@ -528,8 +529,7 @@ body {
   }
 
   function renderUser(user) {
-    const olaresId = user.olaresId || user.terminusName || '';
-    const username = olaresId.includes('@') ? olaresId.split('@')[0] : olaresId;
+    const username = user.name || (() => { const id = user.olaresId || user.terminusName || ''; return id.includes('@') ? id.split('@')[0] : id; })();
     loginName.textContent = username || 'User';
     avatarInitials.textContent = (username || 'U').charAt(0).toUpperCase();
 
@@ -568,15 +568,11 @@ body {
     setLoading(true);
 
     try {
-      const olaresId = state.user?.olaresId || state.user?.terminusName || '';
-      const username = olaresId.includes('@') ? olaresId.split('@')[0] : olaresId;
+      const username = state.user?.name || state.user?.wizardStatus?.username ||
+        (() => { const id = state.user?.olaresId || state.user?.terminusName || ''; return id.includes('@') ? id.split('@')[0] : id; })();
 
       const redirectParam = new URLSearchParams(window.location.search).get('redirect') ||
                             new URLSearchParams(window.location.search).get('rd') || '';
-
-      const targetURL = redirectParam
-        ? decodeURIComponent(redirectParam)
-        : window.location.origin.replace(/\/\/[^.]+\./, '//desktop.');
 
       const res = await fetch(BASE_URL + '/api/firstfactor', {
         method: 'POST',
@@ -584,9 +580,7 @@ body {
         body: JSON.stringify({
           username: username,
           password: preparePassword(password),
-          keepMeLoggedIn: false,
-          targetURL: targetURL,
-          requestTermiPass: false
+          keep_me_logged_in: true
         })
       });
 
@@ -598,13 +592,14 @@ body {
 
       const data = await res.json();
 
-      if (data.fa2 || data.secondFactor) {
+      const result = data.data || data;
+      if (result.fa2 || result.secondFactor) {
         // Show TOTP view
-        state.passwordToken = data.token || data;
+        state.passwordToken = result.token || result;
         showSecondFactor();
       } else {
-        // Success — redirect
-        const redirect = data.redirect || '/';
+        // Success — redirect to where user was going, or desktop
+        const redirect = redirectParam ? decodeURIComponent(redirectParam) : (result.redirect || '/desktop/');
         window.location.href = redirect;
       }
     } catch (err) {

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"strings"
 	"time"
@@ -37,6 +38,9 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/api/logout", s.handleLogout)
 	s.mux.HandleFunc("/api/state", s.handleState)
 	s.mux.HandleFunc("/api/health", s.handleHealth)
+	s.mux.HandleFunc("/api/auth/password", s.handlePasswordChange)
+	s.mux.HandleFunc("/api/auth/totp/setup", s.handleTOTPRegister)
+	s.mux.HandleFunc("/api/auth/totp/validate", s.handleSecondFactorTOTP)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -165,12 +169,13 @@ func (s *Server) handleFirstFactor(w http.ResponseWriter, r *http.Request) {
 	// Sign session ID for cookie tamper protection
 	signedID := SignSessionID(sessionID, s.cfg.SessionSecret)
 
-	// Set cookie
+	// Set cookie — use request Host to determine domain scoping
 	maxAge := s.cfg.SessionMaxAgeSec
 	if !req.KeepMe {
 		maxAge = 0 // session cookie
 	}
-	SetSessionCookie(w, s.cfg.SessionName, signedID, s.cfg.UserZone, maxAge, s.cfg.CookieSameSite)
+	cookieDomain := s.cookieDomainForRequest(r)
+	SetSessionCookie(w, s.cfg.SessionName, signedID, cookieDomain, maxAge, s.cfg.CookieSameSite)
 
 	// Also issue a JWT token for API usage
 	jwt, err := SignJWT(&JWTClaims{
@@ -185,11 +190,17 @@ func (s *Server) handleFirstFactor(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("user %q authenticated successfully (first factor)", req.Username)
 
+	// Redirect to wherever the user was trying to go, or desktop
+	redirect := "/desktop/"
+	if rd := r.URL.Query().Get("rd"); rd != "" {
+		redirect = rd
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status": "OK",
 		"data": map[string]interface{}{
-			"token":     jwt,
-			"redirect":  fmt.Sprintf("https://%s/", s.cfg.UserZone),
+			"token":    jwt,
+			"redirect": redirect,
 		},
 	})
 }
@@ -337,7 +348,7 @@ func (s *Server) handleLogout(w http.ResponseWriter, r *http.Request) {
 	if sessionID != "" {
 		_ = s.sessions.Delete(r.Context(), sessionID)
 	}
-	ClearSessionCookie(w, s.cfg.SessionName, s.cfg.UserZone)
+	ClearSessionCookie(w, s.cfg.SessionName, s.cookieDomainForRequest(r))
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status": "OK",
@@ -409,10 +420,24 @@ func (s *Server) isDomainPublic(domain string) bool {
 	return false
 }
 
+// cookieDomainForRequest returns the appropriate cookie domain.
+// If accessed via IP, returns "" (no domain = origin-only cookie).
+// If accessed via hostname, returns the UserZone for subdomain sharing.
+func (s *Server) cookieDomainForRequest(r *http.Request) string {
+	host := r.Host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	// If the request comes via IP, don't set cookie domain
+	if net.ParseIP(host) != nil {
+		return ""
+	}
+	// For hostname access, scope cookie to the user zone
+	return s.cfg.UserZone
+}
+
 func (s *Server) sendUnauthorizedRedirect(w http.ResponseWriter, r *http.Request) {
-	authURL := fmt.Sprintf("https://auth.%s/", s.cfg.UserZone)
-	// For nginx auth_request, return 401 with redirect header
-	w.Header().Set("X-Redirect-URL", authURL)
+	// For nginx auth_request, return 401. The proxy handles the redirect to /login/.
 	w.WriteHeader(http.StatusUnauthorized)
 }
 
@@ -451,6 +476,45 @@ func (s *Server) hasTOTPConfigured(ctx context.Context, username string) (bool, 
 		return false, err
 	}
 	return secret != "", nil
+}
+
+// handlePasswordChange lets the authenticated user change their password.
+func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]interface{}{"status": "error", "message": "method not allowed"})
+		return
+	}
+
+	session, err := s.getSession(r)
+	if err != nil || session == nil || session.AuthLevel < 1 {
+		writeJSON(w, http.StatusUnauthorized, map[string]interface{}{"status": "error", "message": "authentication required"})
+		return
+	}
+
+	var req struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"status": "error", "message": "invalid request"})
+		return
+	}
+
+	// Verify current password
+	if err := s.lldap.Authenticate(session.Username, req.CurrentPassword); err != nil {
+		writeJSON(w, http.StatusUnauthorized, map[string]interface{}{"status": "error", "message": "current password is incorrect"})
+		return
+	}
+
+	// Change password in LLDAP
+	if err := s.lldap.ChangePassword(s.cfg.LLDAPUser, s.cfg.LLDAPPassword, session.Username, req.NewPassword); err != nil {
+		log.Printf("password change failed for %s: %v", session.Username, err)
+		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"status": "error", "message": "failed to change password"})
+		return
+	}
+
+	log.Printf("password changed for user %s", session.Username)
+	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "OK"})
 }
 
 func writeJSON(w http.ResponseWriter, code int, data interface{}) {

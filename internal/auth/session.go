@@ -120,48 +120,57 @@ func generateSessionID() (string, error) {
 
 // SetSessionCookie writes the session cookie on the response.
 func SetSessionCookie(w http.ResponseWriter, name, sessionID, domain string, maxAge int, sameSite string) {
-	ss := http.SameSiteNoneMode
+	ss := http.SameSiteLaxMode
 	switch strings.ToLower(sameSite) {
-	case "lax":
-		ss = http.SameSiteLaxMode
+	case "none":
+		ss = http.SameSiteNoneMode
 	case "strict":
 		ss = http.SameSiteStrictMode
 	}
 
-	// Scope cookie to the USER_ZONE so all *.USER_ZONE subdomains can use it
-	cookieDomain := domain
-	if !strings.HasPrefix(cookieDomain, ".") {
-		cookieDomain = "." + cookieDomain
-	}
-
-	http.SetCookie(w, &http.Cookie{
+	cookie := &http.Cookie{
 		Name:     name,
 		Value:    sessionID,
 		Path:     "/",
-		Domain:   cookieDomain,
 		MaxAge:   maxAge,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: ss,
-	})
+	}
+
+	// Only set Domain for hostname-based access, not IP addresses.
+	// Browsers reject Domain attribute on IP-addressed cookies.
+	if domain != "" && net.ParseIP(domain) == nil {
+		cookieDomain := domain
+		if !strings.HasPrefix(cookieDomain, ".") {
+			cookieDomain = "." + cookieDomain
+		}
+		cookie.Domain = cookieDomain
+	}
+
+	http.SetCookie(w, cookie)
 }
 
 // ClearSessionCookie clears the session cookie.
 func ClearSessionCookie(w http.ResponseWriter, name, domain string) {
-	cookieDomain := domain
-	if !strings.HasPrefix(cookieDomain, ".") {
-		cookieDomain = "." + cookieDomain
-	}
-
-	http.SetCookie(w, &http.Cookie{
+	cookie := &http.Cookie{
 		Name:     name,
 		Value:    "",
 		Path:     "/",
-		Domain:   cookieDomain,
 		MaxAge:   -1,
 		HttpOnly: true,
 		Secure:   true,
-	})
+	}
+
+	if domain != "" && net.ParseIP(domain) == nil {
+		cookieDomain := domain
+		if !strings.HasPrefix(cookieDomain, ".") {
+			cookieDomain = "." + cookieDomain
+		}
+		cookie.Domain = cookieDomain
+	}
+
+	http.SetCookie(w, cookie)
 }
 
 // SignSessionID creates an HMAC signature for tamper detection.

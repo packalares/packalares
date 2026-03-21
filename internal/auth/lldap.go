@@ -121,6 +121,36 @@ func (l *LLDAPClient) GetUserGroups(adminUser, adminPassword, username string) (
 	return groups, nil
 }
 
+// ChangePassword changes a user's password via LLDAP GraphQL API.
+func (l *LLDAPClient) ChangePassword(adminUser, adminPassword, username, newPassword string) error {
+	adminToken, err := l.getToken(adminUser, adminPassword)
+	if err != nil {
+		return fmt.Errorf("get admin token: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/api/graphql", l.host, l.port)
+	query := fmt.Sprintf(`{"query":"mutation { updateUser(user: {id: \"%s\", password: \"%s\"}) { ok } }"}`, username, newPassword)
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader([]byte(query)))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+
+	resp, err := l.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		return fmt.Errorf("change password failed (status %d): %s", resp.StatusCode, string(body))
+	}
+	return nil
+}
+
 func (l *LLDAPClient) getToken(username, password string) (string, error) {
 	url := fmt.Sprintf("http://%s:%d/auth/simple/login", l.host, l.port)
 
