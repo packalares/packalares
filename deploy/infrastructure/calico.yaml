@@ -1,0 +1,29 @@
+---
+# Calico CNI deployment for Packalares
+# This manifest deploys the Tigera Calico operator and creates an Installation
+# resource configured for the Packalares cluster CIDR.
+#
+# During installation, the CLI downloads and applies the upstream operator
+# manifest from:
+#   https://raw.githubusercontent.com/projectcalico/calico/v3.27.2/manifests/tigera-operator.yaml
+#
+# Then applies this custom resource:
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  calicoNetwork:
+    ipPools:
+    - blockSize: 24
+      cidr: 10.233.64.0/18
+      encapsulation: VXLANCrossSubnet
+      natOutgoing: Enabled
+      nodeSelector: all()
+  registry: ${REGISTRY:-docker.io}
+---
+apiVersion: operator.tigera.io/v1
+kind: APIServer
+metadata:
+  name: default
+spec: {}

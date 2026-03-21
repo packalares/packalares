@@ -1,0 +1,74 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kubeblocks-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubeblocks
+  namespace: kubeblocks-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubeblocks-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: kubeblocks
+  namespace: kubeblocks-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubeblocks
+  namespace: kubeblocks-system
+  labels:
+    app: kubeblocks
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubeblocks
+  template:
+    metadata:
+      labels:
+        app: kubeblocks
+    spec:
+      serviceAccountName: kubeblocks
+      containers:
+      - name: kubeblocks
+        image: ${REGISTRY:-docker.io}/apecloud/kubeblocks:0.8.2
+        ports:
+        - containerPort: 8080
+          name: http
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubeblocks-svc
+  namespace: kubeblocks-system
+spec:
+  selector:
+    app: kubeblocks
+  ports:
+  - port: 8080
+    targetPort: 8080

@@ -1,0 +1,79 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mounts-server
+  namespace: packalares-system
+  labels:
+    app: mounts-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mounts-server
+  template:
+    metadata:
+      labels:
+        app: mounts-server
+    spec:
+      containers:
+      - name: mounts-server
+        image: packalares/mounts-server:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8081
+          name: http
+        env:
+        - name: MOUNT_BASE_PATH
+          value: /packalares/mounts
+        - name: PORT
+          value: "8081"
+        securityContext:
+          privileged: true
+          capabilities:
+            add:
+            - SYS_ADMIN
+        volumeMounts:
+        - name: mounts
+          mountPath: /packalares/mounts
+          mountPropagation: Bidirectional
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 25m
+            memory: 32Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+      volumes:
+      - name: mounts
+        hostPath:
+          path: /packalares/mounts
+          type: DirectoryOrCreate
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mounts-server
+  namespace: packalares-system
+spec:
+  selector:
+    app: mounts-server
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    name: http
+    port: 80
+    targetPort: 8081

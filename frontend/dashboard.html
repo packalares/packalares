@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Packalares - Dashboard</title>
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-surface: #111;
+  --bg-card: #141414;
+  --bg-hover: #1a1a1a;
+  --border: #222;
+  --border-light: #2a2a2a;
+  --text: #e0e0e0;
+  --text-muted: #888;
+  --text-dim: #555;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --transition: 0.2s ease;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 24px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.back-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius);
+  display: flex;
+  transition: background var(--transition), color var(--transition);
+}
+.back-btn:hover { background: var(--bg-hover); color: var(--text); }
+.back-btn svg { width: 20px; height: 20px; }
+.header h1 { font-size: 18px; font-weight: 600; }
+.header-status {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+}
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.metric-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+}
+.metric-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.metric-label {
+  font-size: 13px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.metric-label svg { width: 16px; height: 16px; }
+.metric-value {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -1px;
+  margin-bottom: 8px;
+}
+.metric-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.chart-container {
+  height: 60px;
+  margin-top: 12px;
+  position: relative;
+}
+.chart-canvas {
+  width: 100%;
+  height: 100%;
+}
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 24px;
+  overflow: hidden;
+}
+.panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.panel-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.panel-badge {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(59,130,246,0.1);
+  color: var(--accent);
+}
+.panel-body { padding: 0; }
+.table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  padding: 10px 18px;
+  font-size: 13px;
+  border-bottom: 1px solid var(--border);
+  align-items: center;
+}
+.table-row:last-child { border-bottom: none; }
+.table-row.header-row {
+  color: var(--text-dim);
+  font-size: 12px;
+  background: rgba(0,0,0,0.2);
+}
+.pod-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+.pod-status.running { background: rgba(34,197,94,0.1); color: var(--success); }
+.pod-status.pending { background: rgba(245,158,11,0.1); color: var(--warning); }
+.pod-status.failed { background: rgba(239,68,68,0.1); color: var(--danger); }
+.pod-status.unknown { background: rgba(136,136,136,0.1); color: var(--text-muted); }
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.status-dot.running { background: var(--success); }
+.status-dot.pending { background: var(--warning); }
+.status-dot.failed { background: var(--danger); }
+.log-viewer {
+  background: #0d0d0d;
+  font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 16px;
+  max-height: 400px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+  color: var(--text-muted);
+}
+.log-line {
+  padding: 1px 0;
+}
+.log-line .timestamp { color: var(--text-dim); }
+.log-line .level-info { color: var(--accent); }
+.log-line .level-warn { color: var(--warning); }
+.log-line .level-error { color: var(--danger); }
+.two-col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.net-stat {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.net-stat:last-child { border-bottom: none; }
+.net-stat-label { color: var(--text-muted); }
+.net-stat-value { font-weight: 500; }
+.btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 12px;
+  cursor: pointer;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  transition: all var(--transition);
+}
+.btn:hover { border-color: var(--border-light); color: var(--text); }
+.empty-row {
+  padding: 30px 18px;
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .content { padding: 16px; }
+  .header { padding: 0 16px; }
+  .metrics-grid { grid-template-columns: 1fr 1fr; }
+  .two-col { grid-template-columns: 1fr; }
+  .table-row { grid-template-columns: 1fr 1fr; }
+  .table-row > :nth-child(3), .table-row > :nth-child(4) { display: none; }
+}
+@media (max-width: 480px) {
+  .metrics-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <button class="back-btn" onclick="window.location.href='/index.html'">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  </button>
+  <h1>Dashboard</h1>
+  <div class="header-status" id="lastUpdate">--</div>
+</div>
+
+<div class="content">
+  <!-- Metrics Cards -->
+  <div class="metrics-grid">
+    <div class="metric-card">
+      <div class="metric-header">
+        <div class="metric-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>
+          CPU
+        </div>
+      </div>
+      <div class="metric-value" id="cpuValue">--%</div>
+      <div class="metric-sub" id="cpuSub">-- cores</div>
+      <div class="chart-container">
+        <canvas class="chart-canvas" id="cpuChart"></canvas>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <div class="metric-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><line x1="6" y1="10" x2="6" y2="14"/><line x1="10" y1="10" x2="10" y2="14"/><line x1="14" y1="10" x2="14" y2="14"/><line x1="18" y1="10" x2="18" y2="14"/></svg>
+          Memory
+        </div>
+      </div>
+      <div class="metric-value" id="memValue">--%</div>
+      <div class="metric-sub" id="memSub">-- / --</div>
+      <div class="chart-container">
+        <canvas class="chart-canvas" id="memChart"></canvas>
+      </div>
+    </div>
+
+    <div class="metric-card">
+      <div class="metric-header">
+        <div class="metric-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+          Disk
+        </div>
+      </div>
+      <div class="metric-value" id="diskValue">--%</div>
+      <div class="metric-sub" id="diskSub">-- / --</div>
+      <div class="chart-container">
+        <canvas class="chart-canvas" id="diskChart"></canvas>
+      </div>
+    </div>
+
+    <div class="metric-card" id="gpuCard" style="display:none">
+      <div class="metric-header">
+        <div class="metric-label">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          GPU
+        </div>
+      </div>
+      <div class="metric-value" id="gpuValue">--%</div>
+      <div class="metric-sub" id="gpuSub">--</div>
+      <div class="chart-container">
+        <canvas class="chart-canvas" id="gpuChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <!-- Pods -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Pods</div>
+        <div class="panel-badge" id="podCount">0</div>
+      </div>
+      <div class="panel-body">
+        <div class="table-row header-row">
+          <span>Name</span>
+          <span>Status</span>
+          <span>Restarts</span>
+          <span>Age</span>
+        </div>
+        <div id="podList">
+          <div class="empty-row">Loading...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Network -->
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title">Network</div>
+      </div>
+      <div class="panel-body" id="networkStats">
+        <div class="net-stat">
+          <span class="net-stat-label">Active Connections</span>
+          <span class="net-stat-value" id="netConnections">--</span>
+        </div>
+        <div class="net-stat">
+          <span class="net-stat-label">Bytes In</span>
+          <span class="net-stat-value" id="netBytesIn">--</span>
+        </div>
+        <div class="net-stat">
+          <span class="net-stat-label">Bytes Out</span>
+          <span class="net-stat-value" id="netBytesOut">--</span>
+        </div>
+        <div class="net-stat">
+          <span class="net-stat-label">Packets In</span>
+          <span class="net-stat-value" id="netPacketsIn">--</span>
+        </div>
+        <div class="net-stat">
+          <span class="net-stat-label">Packets Out</span>
+          <span class="net-stat-value" id="netPacketsOut">--</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logs -->
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title">System Logs</div>
+      <button class="btn" id="refreshLogsBtn">Refresh</button>
+    </div>
+    <div class="panel-body">
+      <div class="log-viewer" id="logViewer">Loading logs...</div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  let token = localStorage.getItem('pk_token');
+  if (!token) { window.location.href = '/login.html'; return; }
+
+  function authHeaders() {
+    return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+  }
+
+  async function apiFetch(path, opts = {}) {
+    opts.headers = { ...authHeaders(), ...(opts.headers || {}) };
+    const res = await fetch(path, opts);
+    if (res.status === 401) {
+      localStorage.removeItem('pk_token');
+      window.location.href = '/login.html';
+      throw new Error('Unauthorized');
+    }
+    return res;
+  }
+
+  function formatBytes(b) {
+    if (!b && b !== 0) return '--';
+    const u = ['B','KB','MB','GB','TB'];
+    let i = 0, s = b;
+    while (s >= 1024 && i < u.length - 1) { s /= 1024; i++; }
+    return s.toFixed(1) + ' ' + u[i];
+  }
+
+  function formatAge(ts) {
+    if (!ts) return '--';
+    const now = Date.now();
+    const created = new Date(ts).getTime();
+    const diff = Math.floor((now - created) / 1000);
+    if (diff < 60) return diff + 's';
+    if (diff < 3600) return Math.floor(diff / 60) + 'm';
+    if (diff < 86400) return Math.floor(diff / 3600) + 'h';
+    return Math.floor(diff / 86400) + 'd';
+  }
+
+  // Mini chart renderer using canvas
+  class MiniChart {
+    constructor(canvasId, color) {
+      this.canvas = document.getElementById(canvasId);
+      this.ctx = this.canvas.getContext('2d');
+      this.color = color;
+      this.data = [];
+      this.maxPoints = 60;
+      this.resize();
+      window.addEventListener('resize', () => this.resize());
+    }
+
+    resize() {
+      const rect = this.canvas.parentElement.getBoundingClientRect();
+      this.canvas.width = rect.width * (window.devicePixelRatio || 1);
+      this.canvas.height = rect.height * (window.devicePixelRatio || 1);
+      this.canvas.style.width = rect.width + 'px';
+      this.canvas.style.height = rect.height + 'px';
+      this.ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+      this.w = rect.width;
+      this.h = rect.height;
+      this.draw();
+    }
+
+    push(value) {
+      this.data.push(Math.max(0, Math.min(100, value)));
+      if (this.data.length > this.maxPoints) this.data.shift();
+      this.draw();
+    }
+
+    draw() {
+      const ctx = this.ctx;
+      const w = this.w;
+      const h = this.h;
+      if (!w || !h) return;
+
+      ctx.clearRect(0, 0, w, h);
+
+      if (this.data.length < 2) return;
+
+      const step = w / (this.maxPoints - 1);
+
+      // Fill
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      for (let i = 0; i < this.data.length; i++) {
+        const x = i * step;
+        const y = h - (this.data[i] / 100) * h;
+        if (i === 0) ctx.lineTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.lineTo((this.data.length - 1) * step, h);
+      ctx.closePath();
+      ctx.fillStyle = this.color + '15';
+      ctx.fill();
+
+      // Line
+      ctx.beginPath();
+      for (let i = 0; i < this.data.length; i++) {
+        const x = i * step;
+        const y = h - (this.data[i] / 100) * h;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = this.color;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+
+  const cpuChart = new MiniChart('cpuChart', '#3b82f6');
+  const memChart = new MiniChart('memChart', '#22c55e');
+  const diskChart = new MiniChart('diskChart', '#f59e0b');
+  let gpuChart = null;
+
+  async function fetchMetrics() {
+    try {
+      const res = await apiFetch('/api/metrics');
+      if (!res.ok) return;
+      const m = await res.json();
+
+      const cpu = Math.round(m.cpu_percent || 0);
+      const mem = Math.round(m.memory_percent || 0);
+      const disk = Math.round(m.disk_percent || 0);
+
+      document.getElementById('cpuValue').textContent = cpu + '%';
+      document.getElementById('cpuSub').textContent = (m.cpu_cores || '--') + ' cores';
+      document.getElementById('memValue').textContent = mem + '%';
+      document.getElementById('memSub').textContent = formatBytes(m.memory_used) + ' / ' + formatBytes(m.memory_total);
+      document.getElementById('diskValue').textContent = disk + '%';
+      document.getElementById('diskSub').textContent = formatBytes(m.disk_used) + ' / ' + formatBytes(m.disk_total);
+
+      cpuChart.push(cpu);
+      memChart.push(mem);
+      diskChart.push(disk);
+
+      // GPU
+      if (m.gpu_model || m.gpu) {
+        const gpu = m.gpu || {};
+        const gpuPct = m.gpu_utilization || gpu.utilization || 0;
+        document.getElementById('gpuCard').style.display = '';
+        document.getElementById('gpuValue').textContent = gpuPct + '%';
+        document.getElementById('gpuSub').textContent = (m.gpu_model || gpu.model || '--') + ' - ' + formatBytes(m.gpu_memory_used || gpu.memory_used) + ' / ' + formatBytes(m.gpu_memory_total || gpu.memory_total);
+        if (!gpuChart) gpuChart = new MiniChart('gpuChart', '#8b5cf6');
+        gpuChart.push(gpuPct);
+      }
+
+      // Network
+      if (m.network) {
+        document.getElementById('netConnections').textContent = m.network.connections || '--';
+        document.getElementById('netBytesIn').textContent = formatBytes(m.network.bytes_recv || m.network.bytes_in);
+        document.getElementById('netBytesOut').textContent = formatBytes(m.network.bytes_sent || m.network.bytes_out);
+        document.getElementById('netPacketsIn').textContent = (m.network.packets_recv || m.network.packets_in || '--').toLocaleString();
+        document.getElementById('netPacketsOut').textContent = (m.network.packets_sent || m.network.packets_out || '--').toLocaleString();
+      }
+
+      document.getElementById('lastUpdate').textContent = 'Updated ' + new Date().toLocaleTimeString();
+    } catch(e) {}
+  }
+
+  async function fetchPods() {
+    try {
+      const res = await apiFetch('/api/pods');
+      if (!res.ok) return;
+      const data = await res.json();
+      const pods = data.pods || data || [];
+      document.getElementById('podCount').textContent = pods.length;
+
+      const list = document.getElementById('podList');
+      if (pods.length === 0) {
+        list.innerHTML = '<div class="empty-row">No pods found</div>';
+        return;
+      }
+
+      list.innerHTML = pods.map(p => {
+        const status = (p.status || 'unknown').toLowerCase();
+        const statusClass = status === 'running' ? 'running' : status === 'pending' ? 'pending' : status === 'failed' || status === 'error' ? 'failed' : 'unknown';
+        return '<div class="table-row">' +
+          '<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + p.name + '">' + p.name + '</span>' +
+          '<span><span class="pod-status ' + statusClass + '"><span class="status-dot ' + statusClass + '"></span>' + (p.status || 'Unknown') + '</span></span>' +
+          '<span>' + (p.restarts || 0) + '</span>' +
+          '<span>' + formatAge(p.created_at || p.start_time) + '</span>' +
+        '</div>';
+      }).join('');
+    } catch(e) {}
+  }
+
+  async function fetchLogs() {
+    try {
+      const res = await apiFetch('/api/logs?lines=100');
+      if (!res.ok) return;
+      const data = await res.json();
+      const lines = data.lines || data.logs || [];
+      const viewer = document.getElementById('logViewer');
+
+      if (lines.length === 0) {
+        viewer.textContent = 'No logs available.';
+        return;
+      }
+
+      viewer.innerHTML = lines.map(line => {
+        let levelClass = '';
+        if (/\berror\b/i.test(line)) levelClass = 'level-error';
+        else if (/\bwarn/i.test(line)) levelClass = 'level-warn';
+        else if (/\binfo\b/i.test(line)) levelClass = 'level-info';
+
+        const escaped = line.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return '<div class="log-line' + (levelClass ? ' ' + levelClass : '') + '">' + escaped + '</div>';
+      }).join('');
+
+      viewer.scrollTop = viewer.scrollHeight;
+    } catch(e) {
+      document.getElementById('logViewer').textContent = 'Failed to load logs.';
+    }
+  }
+
+  document.getElementById('refreshLogsBtn').addEventListener('click', fetchLogs);
+
+  fetchMetrics();
+  fetchPods();
+  fetchLogs();
+
+  setInterval(fetchMetrics, 5000);
+  setInterval(fetchPods, 15000);
+  setInterval(fetchLogs, 30000);
+})();
+</script>
+</body>
+</html>

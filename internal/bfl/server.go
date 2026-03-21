@@ -1,0 +1,751 @@
+package bfl
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"strconv"
+	"strings"
+	"time"
+
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/klog/v2"
+)
+
+// Server is the BFL API gateway server.
+type Server struct {
+	K8s        *K8sClient
+	ListenAddr string
+	mux        *http.ServeMux
+}
+
+// NewServer creates a new BFL server.
+func NewServer(listenAddr string) (*Server, error) {
+	k8s, err := NewK8sClient()
+	if err != nil {
+		return nil, fmt.Errorf("init k8s client: %w", err)
+	}
+
+	s := &Server{
+		K8s:        k8s,
+		ListenAddr: listenAddr,
+		mux:        http.NewServeMux(),
+	}
+	s.registerRoutes()
+	return s, nil
+}
+
+// Run starts the HTTP server.
+func (s *Server) Run(ctx context.Context) error {
+	srv := &http.Server{
+		Addr:    s.ListenAddr,
+		Handler: s.mux,
+		BaseContext: func(_ net.Listener) context.Context {
+			return ctx
+		},
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 60 * time.Second,
+	}
+	klog.Infof("BFL server listening on %s", s.ListenAddr)
+
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- srv.ListenAndServe()
+	}()
+
+	select {
+	case <-ctx.Done():
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		return srv.Shutdown(shutdownCtx)
+	case err := <-errCh:
+		return err
+	}
+}
+
+// ---------------------------------------------------------------------------
+// Route registration
+// ---------------------------------------------------------------------------
+
+func (s *Server) registerRoutes() {
+	// Backend v1
+	s.mux.HandleFunc("/bfl/backend/v1/user-info", s.handleUserInfo)
+	s.mux.HandleFunc("/bfl/backend/v1/terminus-info", s.handleTerminusInfo)
+	s.mux.HandleFunc("/bfl/backend/v1/olares-info", s.handleOlaresInfo)
+	s.mux.HandleFunc("/bfl/backend/v1/re-download-cert", s.handleReDownloadCert)
+	s.mux.HandleFunc("/bfl/backend/v1/myapps", s.handleMyApps)
+	s.mux.HandleFunc("/bfl/backend/v1/cluster", s.handleClusterMetrics)
+	s.mux.HandleFunc("/bfl/backend/v1/config-system", s.handleGetSysConfig)
+
+	// Info v1 (wizard info endpoint)
+	s.mux.HandleFunc("/bfl/info/v1/olares-info", s.handleOlaresInfo)
+
+	// Settings v1alpha1
+	s.mux.HandleFunc("/bfl/settings/v1alpha1/activate", s.handleActivate)
+	s.mux.HandleFunc("/bfl/settings/v1alpha1/binding-zone", s.handleBindingZone)
+	s.mux.HandleFunc("/bfl/settings/v1alpha1/unbind-zone", s.handleUnbindZone)
+	s.mux.HandleFunc("/bfl/settings/v1alpha1/config-system", s.handleConfigSystem)
+
+	// IAM v1alpha1
+	s.mux.HandleFunc("/bfl/iam/v1alpha1/users", s.handleListUsers)
+	s.mux.HandleFunc("/bfl/iam/v1alpha1/users/", s.handleUserRoutes)
+	s.mux.HandleFunc("/bfl/iam/v1alpha1/roles", s.handleListRoles)
+
+	// Health check
+	s.mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+}
+
+// ---------------------------------------------------------------------------
+// JSON helpers
+// ---------------------------------------------------------------------------
+
+func respondJSON(w http.ResponseWriter, code int, data any) {
+	resp := APIResponse{
+		Code:    0,
+		Message: "success",
+		Data:    data,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	json.NewEncoder(w).Encode(resp)
+}
+
+func respondError(w http.ResponseWriter, msg string) {
+	resp := APIResponse{
+		Code:    1,
+		Message: msg,
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK) // BFL always returns 200 with code=1 for errors
+	json.NewEncoder(w).Encode(resp)
+}
+
+func respondSuccess(w http.ResponseWriter) {
+	resp := APIResponse{
+		Code:    0,
+		Message: "success",
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(resp)
+}
+
+// ---------------------------------------------------------------------------
+// Backend v1 handlers
+// ---------------------------------------------------------------------------
+
+func (s *Server) handleUserInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+
+	user, err := s.K8s.GetUser(ctx, "")
+	if err != nil {
+		respondError(w, fmt.Sprintf("get user: %v", err))
+		return
+	}
+
+	terminusName := GetTerminusName(user)
+	zone := GetUserZone(user)
+	role := GetUserAnnotation(user, AnnoOwnerRole)
+	createdUser := GetUserAnnotation(user, AnnoCreator)
+
+	isEphemeral := false
+	if v := GetUserAnnotation(user, AnnoIsEphemeral); v != "" {
+		isEphemeral, _ = strconv.ParseBool(v)
+	}
+
+	// If creator is "cli", resolve to owner user
+	if createdUser == "cli" {
+		ownerUser, _ := s.findOwnerUser(ctx)
+		if ownerUser != nil {
+			createdUser = ownerUser.GetName()
+		}
+	}
+
+	var accessLevel *int
+	if level := GetUserAnnotation(user, AnnoAccessLevel); level != "" {
+		if l, err := strconv.Atoi(level); err == nil {
+			accessLevel = &l
+		}
+	}
+
+	info := UserInfo{
+		Name:           s.K8s.Username,
+		OwnerRole:      role,
+		TerminusName:   terminusName,
+		IsEphemeral:    isEphemeral,
+		Zone:           zone,
+		CreatedUser:    createdUser,
+		WizardComplete: IsWizardComplete(user),
+		AccessLevel:    accessLevel,
+	}
+
+	respondJSON(w, http.StatusOK, info)
+}
+
+func (s *Server) handleTerminusInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+
+	user, err := s.K8s.GetUser(ctx, "")
+	if err != nil {
+		respondError(w, fmt.Sprintf("get user: %v", err))
+		return
+	}
+
+	status := GetWizardStatus(user)
+	denyAllAnno := GetUserAnnotation(user, AnnoDenyAll)
+	denyAll, _ := strconv.Atoi(denyAllAnno)
+
+	info := TerminusInfo{
+		TerminusName:    GetTerminusName(user),
+		WizardStatus:    status,
+		Selfhosted:      true, // always true in Packalares
+		TailScaleEnable: denyAll == 1,
+		OsVersion:       s.K8s.GetOSVersion(ctx),
+		LoginBackground: GetUserAnnotation(user, AnnoLoginBackground),
+		Avatar:          GetUserAnnotation(user, AnnoAvatar),
+		TerminusID:      "", // no cloud ID in Packalares
+		UserDID:         GetUserAnnotation(user, AnnoUserDID),
+		ReverseProxy:    GetUserAnnotation(user, AnnoReverseProxyType),
+		Terminusd:       "0",
+		Style:           GetUserAnnotation(user, AnnoLoginBGStyle),
+	}
+
+	respondJSON(w, http.StatusOK, info)
+}
+
+func (s *Server) handleOlaresInfo(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+
+	user, err := s.K8s.GetUser(ctx, "")
+	if err != nil {
+		respondError(w, fmt.Sprintf("get user: %v", err))
+		return
+	}
+
+	status := GetWizardStatus(user)
+	denyAllAnno := GetUserAnnotation(user, AnnoDenyAll)
+	denyAll, _ := strconv.Atoi(denyAllAnno)
+
+	info := OlaresInfo{
+		OlaresID:           GetTerminusName(user),
+		WizardStatus:       status,
+		EnableReverseProxy: true, // always selfhosted
+		TailScaleEnable:    denyAll == 1,
+		OsVersion:          s.K8s.GetOSVersion(ctx),
+		LoginBackground:    GetUserAnnotation(user, AnnoLoginBackground),
+		Avatar:             GetUserAnnotation(user, AnnoAvatar),
+		ID:                 "", // no cloud terminus ID
+		UserDID:            GetUserAnnotation(user, AnnoUserDID),
+		Olaresd:            "0",
+		Style:              GetUserAnnotation(user, AnnoLoginBGStyle),
+	}
+
+	respondJSON(w, http.StatusOK, info)
+}
+
+func (s *Server) handleReDownloadCert(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+
+	force := r.URL.Query().Get("force")
+	from := r.Header.Get("X-FROM-CRONJOB")
+
+	if from == "" && force != "true" {
+		respondError(w, "re-download certificate: not allowed")
+		return
+	}
+
+	user, err := s.K8s.GetUser(ctx, s.K8s.Username)
+	if err != nil {
+		respondError(w, fmt.Sprintf("re-download cert: get user: %v", err))
+		return
+	}
+
+	terminusName := GetTerminusName(user)
+	if terminusName == "" {
+		respondError(w, "no olares name bound")
+		return
+	}
+
+	tn := TerminusName(terminusName)
+	zone := tn.UserZone()
+
+	certPEM, keyPEM, err := GenerateSelfSignedCert(zone, tn)
+	if err != nil {
+		respondError(w, fmt.Sprintf("generate cert: %v", err))
+		return
+	}
+
+	if err := s.K8s.EnsureSSLConfigMap(ctx, zone, certPEM, keyPEM); err != nil {
+		respondError(w, fmt.Sprintf("update ssl configmap: %v", err))
+		return
+	}
+
+	klog.Info("re-download (regenerate) cert successfully")
+	respondSuccess(w)
+}
+
+func (s *Server) handleMyApps(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+
+	apps, err := s.K8s.ListUserApps(ctx)
+	if err != nil {
+		respondError(w, fmt.Sprintf("list apps: %v", err))
+		return
+	}
+	if apps == nil {
+		apps = []AppInfo{}
+	}
+	respondJSON(w, http.StatusOK, NewListResult(apps, len(apps)))
+}
+
+func (s *Server) handleClusterMetrics(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, "method not allowed")
+		return
+	}
+	metrics := s.K8s.GetClusterMetrics(r.Context())
+	respondJSON(w, http.StatusOK, metrics)
+}
+
+func (s *Server) handleGetSysConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+
+	user, err := s.K8s.GetUser(ctx, s.K8s.Username)
+	if err != nil {
+		respondError(w, fmt.Sprintf("get sys config: %v", err))
+		return
+	}
+
+	cfg := GetSysConfig(user)
+	respondJSON(w, http.StatusOK, cfg)
+}
+
+// ---------------------------------------------------------------------------
+// Settings v1alpha1 handlers
+// ---------------------------------------------------------------------------
+
+func (s *Server) handleBindingZone(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+
+	var post PostTerminusName
+	if err := json.NewDecoder(r.Body).Decode(&post); err != nil {
+		respondError(w, fmt.Sprintf("binding zone: %v", err))
+		return
+	}
+
+	user, err := s.K8s.GetUser(ctx, s.K8s.Username)
+	if err != nil {
+		respondError(w, fmt.Sprintf("binding zone: get user: %v", err))
+		return
+	}
+
+	// Check wizard status
+	status := GetWizardStatus(user)
+	if status != WaitActivateVault && status != "" {
+		respondError(w, fmt.Sprintf("user wizard status invalid: %s", status))
+		return
+	}
+
+	domain, err := s.K8s.GetDomain(ctx)
+	if err != nil {
+		respondError(w, fmt.Sprintf("get domain: %v", err))
+		return
+	}
+
+	tn := NewTerminusName(s.K8s.Username, domain)
+	SetUserAnnotation(user, AnnoTerminusName, string(tn))
+
+	if post.JWSSignature != "" {
+		SetUserAnnotation(user, AnnoJWSToken, post.JWSSignature)
+	}
+	if post.DID != "" {
+		SetUserAnnotation(user, AnnoCertManagerDID, post.DID)
+	}
+
+	SetUserAnnotation(user, AnnoWizardStatus, string(WaitActivateSystem))
+
+	if err := s.K8s.UpdateUser(ctx, user); err != nil {
+		respondError(w, fmt.Sprintf("binding zone: update user: %v", err))
+		return
+	}
+
+	respondSuccess(w)
+}
+
+func (s *Server) handleUnbindZone(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+
+	user, err := s.K8s.GetUser(ctx, "")
+	if err != nil {
+		respondError(w, fmt.Sprintf("unbind zone: get user: %v", err))
+		return
+	}
+
+	// Remove annotations
+	DeleteUserAnnotation(user, AnnoTerminusName)
+	DeleteUserAnnotation(user, AnnoZone)
+	DeleteUserAnnotation(user, AnnoTaskEnableSSL)
+
+	if err := s.K8s.UpdateUser(ctx, user); err != nil {
+		respondError(w, fmt.Sprintf("unbind zone: update user: %v", err))
+		return
+	}
+
+	// Delete SSL configmap (best effort)
+	_ = s.K8s.Clientset.CoreV1().ConfigMaps(s.K8s.Namespace).Delete(ctx, SSLConfigMapName, deleteOpts())
+
+	respondSuccess(w)
+}
+
+func (s *Server) handleActivate(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+
+	user, err := s.K8s.GetUser(ctx, "")
+	if err != nil {
+		respondError(w, fmt.Sprintf("activate: get user: %v", err))
+		return
+	}
+
+	terminusName := GetTerminusName(user)
+	if terminusName == "" {
+		respondError(w, "activate: no olares name bound")
+		return
+	}
+
+	// If already activated or activating, return success (idempotent)
+	zone := GetUserAnnotation(user, AnnoZone)
+	status := GetWizardStatus(user)
+	if zone != "" || status == NetworkActivating {
+		respondSuccess(w)
+		return
+	}
+
+	// If previously failed, retry
+	if status == NetworkActivateFailed {
+		SetUserAnnotation(user, AnnoWizardStatus, string(NetworkActivating))
+		if err := s.K8s.UpdateUser(ctx, user); err != nil {
+			respondError(w, fmt.Sprintf("activate: update status: %v", err))
+			return
+		}
+		respondSuccess(w)
+		return
+	}
+
+	// Parse request
+	var payload ActivateRequest
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		respondError(w, fmt.Sprintf("activate: parse request: %v", err))
+		return
+	}
+
+	// Save locale settings
+	if payload.Language != "" {
+		SetUserAnnotation(user, AnnoLanguage, payload.Language)
+	}
+	if payload.Location != "" {
+		SetUserAnnotation(user, AnnoLocation, payload.Location)
+	}
+	if payload.Theme == "" {
+		payload.Theme = "light"
+	}
+	SetUserAnnotation(user, AnnoTheme, payload.Theme)
+
+	// Generate self-signed cert
+	tn := TerminusName(terminusName)
+	userZone := tn.UserZone()
+
+	certPEM, keyPEM, err := GenerateSelfSignedCert(userZone, tn)
+	if err != nil {
+		respondError(w, fmt.Sprintf("activate: generate cert: %v", err))
+		return
+	}
+
+	// Store cert in ConfigMap
+	if err := s.K8s.EnsureSSLConfigMap(ctx, userZone, certPEM, keyPEM); err != nil {
+		respondError(w, fmt.Sprintf("activate: store cert: %v", err))
+		return
+	}
+
+	// Set zone annotation
+	SetUserAnnotation(user, AnnoZone, userZone)
+
+	// Set access level defaults
+	if GetUserAnnotation(user, AnnoAccessLevel) == "" {
+		SetUserAnnotation(user, AnnoAccessLevel, "1") // WorldWide by default
+		SetUserAnnotation(user, AnnoAllowCIDR, "0.0.0.0/0")
+		SetUserAnnotation(user, AnnoAuthPolicy, DefaultAuthPolicy)
+	}
+
+	// Mark as activating -> then completed (since we do local cert, no async needed)
+	SetUserAnnotation(user, AnnoWizardStatus, string(WaitResetPassword))
+
+	if err := s.K8s.UpdateUser(ctx, user); err != nil {
+		respondError(w, fmt.Sprintf("activate: update user: %v", err))
+		return
+	}
+
+	klog.Infof("system activated for user %s, zone=%s", s.K8s.Username, userZone)
+	respondSuccess(w)
+}
+
+func (s *Server) handleConfigSystem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	switch r.Method {
+	case http.MethodGet:
+		s.handleGetSysConfig(w, r)
+	case http.MethodPost:
+		var cfg SysConfig
+		if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {
+			respondError(w, fmt.Sprintf("config system: %v", err))
+			return
+		}
+		user, err := s.K8s.GetUser(ctx, s.K8s.Username)
+		if err != nil {
+			respondError(w, fmt.Sprintf("config system: get user: %v", err))
+			return
+		}
+		SaveSysConfig(user, cfg)
+		if err := s.K8s.UpdateUser(ctx, user); err != nil {
+			respondError(w, fmt.Sprintf("config system: update user: %v", err))
+			return
+		}
+		respondSuccess(w)
+	default:
+		respondError(w, "method not allowed")
+	}
+}
+
+// ---------------------------------------------------------------------------
+// IAM v1alpha1 handlers
+// ---------------------------------------------------------------------------
+
+func (s *Server) handleListUsers(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+
+	userList, err := s.K8s.ListUsers(ctx)
+	if err != nil {
+		respondError(w, fmt.Sprintf("list users: %v", err))
+		return
+	}
+
+	users := make([]IAMUserInfo, 0)
+
+	for _, item := range userList.Items {
+		name := item.GetName()
+		displayName, description, email, state := extractUserSpec(&item)
+
+		roles, err := s.K8s.GetUserRoles(ctx, name)
+		if err != nil {
+			klog.Warningf("get roles for %s: %v", name, err)
+			roles = []string{}
+		}
+
+		u := IAMUserInfo{
+			UID:               string(item.GetUID()),
+			Name:              name,
+			DisplayName:       displayName,
+			Description:       description,
+			Email:             email,
+			State:             state,
+			CreationTimestamp: item.GetCreationTimestamp().Unix(),
+			Roles:             roles,
+			TerminusName:      GetUserAnnotation(&item, AnnoTerminusName),
+			WizardComplete:    IsWizardComplete(&item),
+			Avatar:            GetUserAnnotation(&item, AnnoAvatar),
+			MemoryLimit:       GetUserAnnotation(&item, AnnoMemoryLimit),
+			CpuLimit:          GetUserAnnotation(&item, AnnoCPULimit),
+			LastLoginTime:     extractLastLoginTime(&item),
+		}
+
+		users = append(users, u)
+	}
+
+	respondJSON(w, http.StatusOK, NewListResult(users, len(users)))
+}
+
+func (s *Server) handleListRoles(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, "method not allowed")
+		return
+	}
+	roles := []string{RoleOwner, RoleAdmin, RoleOwner}
+	respondJSON(w, http.StatusOK, NewListResult(roles, len(roles)))
+}
+
+// handleUserRoutes dispatches /bfl/iam/v1alpha1/users/{user}/...
+func (s *Server) handleUserRoutes(w http.ResponseWriter, r *http.Request) {
+	// Parse: /bfl/iam/v1alpha1/users/{user}/password  (PUT)
+	// Parse: /bfl/iam/v1alpha1/users/{user}/metrics   (GET)
+	// Parse: /bfl/iam/v1alpha1/users/{user}/login-records (GET)
+	path := strings.TrimPrefix(r.URL.Path, "/bfl/iam/v1alpha1/users/")
+	parts := strings.SplitN(path, "/", 2)
+	if len(parts) < 2 {
+		respondError(w, "invalid user route")
+		return
+	}
+
+	userName := parts[0]
+	subPath := parts[1]
+
+	switch {
+	case subPath == "password" && r.Method == http.MethodPut:
+		s.handleResetPassword(w, r, userName)
+	case subPath == "login-records" && r.Method == http.MethodGet:
+		// Simplified: return empty list (lldap integration not needed for Packalares)
+		respondJSON(w, http.StatusOK, NewListResult([]interface{}{}, 0))
+	case subPath == "metrics" && r.Method == http.MethodGet:
+		// Return empty metrics
+		respondJSON(w, http.StatusOK, map[string]interface{}{})
+	default:
+		respondError(w, "not found")
+	}
+}
+
+func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request, userName string) {
+	ctx := r.Context()
+
+	var pr PasswordReset
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		respondError(w, fmt.Sprintf("reset password: read body: %v", err))
+		return
+	}
+	if err := json.Unmarshal(body, &pr); err != nil {
+		respondError(w, fmt.Sprintf("reset password: %v", err))
+		return
+	}
+
+	if pr.Password == "" {
+		respondError(w, "reset password: new password is empty")
+		return
+	}
+	if pr.Password == pr.CurrentPassword {
+		respondError(w, "reset password: passwords must be different")
+		return
+	}
+
+	token := r.Header.Get("X-Authorization")
+
+	// Update wizard status if not completed
+	user, err := s.K8s.GetUser(ctx, userName)
+	if err != nil {
+		respondError(w, fmt.Sprintf("reset password: get user: %v", err))
+		return
+	}
+
+	if !IsWizardComplete(user) {
+		SetUserAnnotation(user, AnnoWizardStatus, string(Completed))
+		if err := s.K8s.UpdateUser(ctx, user); err != nil {
+			respondError(w, fmt.Sprintf("reset password: update user: %v", err))
+			return
+		}
+	}
+
+	// Call authelia to actually reset the password
+	autheliaURL := fmt.Sprintf("http://authelia-backend-provider.user-system-%s:28080/api/reset/%s/password", userName, userName)
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, autheliaURL, bytes.NewReader(body))
+	if err != nil {
+		respondError(w, fmt.Sprintf("reset password: create request: %v", err))
+		return
+	}
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("X-Authorization", token)
+	httpReq.Header.Set("X-BFL-USER", userName)
+
+	httpClient := &http.Client{Timeout: 30 * time.Second}
+	resp, err := httpClient.Do(httpReq)
+	if err != nil {
+		respondError(w, fmt.Sprintf("reset password: authelia request: %v", err))
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		respBody, _ := io.ReadAll(resp.Body)
+		respondError(w, fmt.Sprintf("reset password: authelia: %s", string(respBody)))
+		return
+	}
+
+	klog.Infof("password reset for user %s", userName)
+	respondSuccess(w)
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+func (s *Server) findOwnerUser(ctx context.Context) (*unstructured.Unstructured, error) {
+	list, err := s.K8s.ListUsers(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, item := range list.Items {
+		if GetUserAnnotation(&item, AnnoOwnerRole) == RoleOwner {
+			return &item, nil
+		}
+	}
+	return nil, fmt.Errorf("no owner user found")
+}
+
+func deleteOpts() metav1.DeleteOptions {
+	return metav1.DeleteOptions{}
+}
+
+// envOrDefault returns an env var value or a default.
+func envOrDefault(key, defaultVal string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
+	}
+	return defaultVal
+}

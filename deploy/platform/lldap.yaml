@@ -1,0 +1,85 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: lldap
+  namespace: os-system
+  labels:
+    app: lldap
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: lldap
+  template:
+    metadata:
+      labels:
+        app: lldap
+    spec:
+      containers:
+      - name: lldap
+        image: ${REGISTRY:-docker.io}/lldap/lldap:v0.5
+        ports:
+        - containerPort: 3890
+          name: ldap
+        - containerPort: 17170
+          name: http
+        env:
+        - name: LLDAP_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: lldap-secret
+              key: jwt-secret
+        - name: LLDAP_LDAP_USER_PASS
+          valueFrom:
+            secretKeyRef:
+              name: lldap-secret
+              key: admin-password
+        - name: LLDAP_LDAP_BASE_DN
+          value: "dc=olares,dc=local"
+        - name: LLDAP_DATABASE_URL
+          value: "sqlite:///data/lldap.db"
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        readinessProbe:
+          tcpSocket:
+            port: 3890
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: data
+        emptyDir: {}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: lldap-secret
+  namespace: os-system
+type: Opaque
+stringData:
+  jwt-secret: "${LLDAP_JWT_SECRET}"
+  admin-password: "${LLDAP_ADMIN_PASSWORD}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lldap-svc
+  namespace: os-system
+spec:
+  selector:
+    app: lldap
+  ports:
+  - name: ldap
+    port: 3890
+    targetPort: 3890
+  - name: http
+    port: 17170
+    targetPort: 17170

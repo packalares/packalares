@@ -1,9 +1,0 @@
-apiVersion: v1
-target: prebuilt
-output:
-  containers:
-    - 
-      name: bytetrade/envoy:v1.25.11.1
-
-
-      

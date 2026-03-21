@@ -1,0 +1,65 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: monitoring-server
+  namespace: packalares-system
+  labels:
+    app: monitoring-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: monitoring-server
+  template:
+    metadata:
+      labels:
+        app: monitoring-server
+    spec:
+      containers:
+      - name: monitoring-server
+        image: packalares/monitoring-server:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+        env:
+        - name: PROMETHEUS_URL
+          value: http://prometheus.kubesphere-monitoring-system.svc:9090
+        - name: PORT
+          value: "8000"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 25m
+            memory: 32Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: monitoring-server
+  namespace: packalares-system
+spec:
+  selector:
+    app: monitoring-server
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    name: http
+    port: 80
+    targetPort: 8000
