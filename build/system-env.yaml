@@ -1,0 +1,62 @@
+apiVersion: v1
+systemEnvs:
+  # docker hub mirror endpoint for docker.io registry
+  - envName: OLARES_SYSTEM_DOCKERHUB_SERVICE
+    type: url
+    editable: true
+    required: false
+  # root directory for olares data
+  - envName: OLARES_SYSTEM_ROOT_PATH
+    default: /olares
+    editable: false
+    required: true
+  # filesystem type
+  - envName: OLARES_SYSTEM_ROOTFS_TYPE
+    default: fs
+    editable: false
+    required: true
+  # the local/intranet domain suffix used for LAN access
+  # e.g., apps are accessed as {app}.{user}.{LOCAL_DOMAIN}
+  - envName: OLARES_LOCAL_DOMAIN
+    default: "olares.local"
+    type: string
+    editable: true
+    required: true
+  # the local mDNS TLD (without .local suffix)
+  # used for mDNS service discovery on LAN
+  - envName: OLARES_MDNS_DOMAIN
+    default: "olares"
+    type: string
+    editable: true
+    required: true
+  # certificate mode:
+  #   "local" — self-signed certs (for Tailscale/LAN, trust CA once on devices)
+  #   "acme"  — Let's Encrypt via certbot/lego (real trusted certs, needs own domain)
+  - envName: OLARES_CERT_MODE
+    default: "local"
+    type: string
+    editable: true
+    required: false
+  # email for Let's Encrypt registration (only needed when OLARES_CERT_MODE=acme)
+  - envName: OLARES_ACME_EMAIL
+    type: string
+    editable: true
+    required: false
+  # DNS provider for ACME DNS-01 challenge (e.g., cloudflare, route53, duckdns)
+  # only needed when OLARES_CERT_MODE=acme
+  # provider-specific env vars must also be set (e.g., CF_DNS_API_TOKEN)
+  - envName: OLARES_ACME_DNS_PROVIDER
+    type: string
+    editable: true
+    required: false
+  # app marketplace API URL
+  # the market backend syncs the app catalog from this URL
+  - envName: OLARES_MARKETPLACE_URL
+    default: "https://appstore-server-prod.bttcdn.com"
+    type: url
+    editable: true
+    required: false
+  # CUDA version for GPU support
+  - envName: OLARES_SYSTEM_CUDA_VERSION
+    editable: false
+    required: false
