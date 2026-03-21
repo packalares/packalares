@@ -15,58 +15,56 @@ import (
 )
 
 // Catalog fetches, caches, and serves app catalog data.
-// It can pull from the Olares marketplace (market.olares.com) or a local file.
+// It pulls from the Olares app repository on GitHub (beclab/apps),
+// falls back to a local catalog file, and finally uses a built-in
+// default catalog so the market always has apps to show.
 type Catalog struct {
-	mu        sync.RWMutex
-	apps      []MarketApp
+	mu         sync.RWMutex
+	apps       []MarketApp
 	appsByName map[string]*MarketApp
 	categories []Category
-	lastFetch time.Time
-	cacheTTL  time.Duration
+	lastFetch  time.Time
+	cacheTTL   time.Duration
 
-	marketURL  string // upstream marketplace URL
-	localPath  string // path to local catalog JSON file
+	marketURL string // upstream marketplace URL (unused now, kept for config compat)
+	localPath string // path to local catalog JSON file
+	githubURL string // GitHub API URL for the apps repo
 }
 
 // NewCatalog creates a new catalog with the given upstream URL.
 func NewCatalog(marketURL, localPath string) *Catalog {
 	c := &Catalog{
 		appsByName: make(map[string]*MarketApp),
-		cacheTTL:   10 * time.Minute,
+		cacheTTL:   30 * time.Minute,
 		marketURL:  marketURL,
 		localPath:  localPath,
+		githubURL:  "https://api.github.com/repos/beclab/apps/contents",
 	}
 	return c
 }
 
-// Load fetches the catalog from remote or local sources.
+// Load fetches the catalog from all available sources in priority order:
+// 1. Local catalog JSON file (fastest, user-controlled)
+// 2. GitHub beclab/apps repo (authoritative, all apps)
+// 3. Built-in default catalog (always works, curated subset)
 func (c *Catalog) Load() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Try remote marketplace first
-	if c.marketURL != "" {
-		apps, err := c.fetchRemote(c.marketURL)
-		if err == nil {
-			c.setApps(apps)
-			klog.Infof("loaded %d apps from remote marketplace %s", len(apps), c.marketURL)
-			return nil
-		}
-		klog.Warningf("fetch remote catalog: %v, trying local", err)
-	}
-
-	// Try local catalog file
+	// Try local catalog file first (user override)
 	if c.localPath != "" {
 		apps, err := c.loadLocal(c.localPath)
-		if err == nil {
+		if err == nil && len(apps) > 0 {
 			c.setApps(apps)
 			klog.Infof("loaded %d apps from local file %s", len(apps), c.localPath)
 			return nil
 		}
-		klog.Warningf("load local catalog %s: %v", c.localPath, err)
+		if err != nil {
+			klog.V(2).Infof("local catalog %s: %v", c.localPath, err)
+		}
 	}
 
-	// Try default paths
+	// Try default local paths
 	defaultPaths := []string{
 		"/etc/packalares/catalog.json",
 		"/app/catalog.json",
@@ -74,16 +72,30 @@ func (c *Catalog) Load() error {
 	}
 	for _, p := range defaultPaths {
 		apps, err := c.loadLocal(p)
-		if err == nil {
+		if err == nil && len(apps) > 0 {
 			c.setApps(apps)
 			klog.Infof("loaded %d apps from default path %s", len(apps), p)
 			return nil
 		}
 	}
 
-	// Empty catalog is ok -- will be populated when marketplace becomes available
-	klog.Info("starting with empty catalog")
-	c.setApps(nil)
+	// Try fetching from GitHub beclab/apps repo
+	apps, err := c.fetchFromGitHub()
+	if err == nil && len(apps) > 0 {
+		c.setApps(apps)
+		klog.Infof("loaded %d apps from GitHub beclab/apps", len(apps))
+		// Save to local cache for faster subsequent loads
+		c.saveCacheFile(apps)
+		return nil
+	}
+	if err != nil {
+		klog.Warningf("fetch from GitHub: %v", err)
+	}
+
+	// Fall back to built-in catalog
+	apps = builtinCatalog()
+	c.setApps(apps)
+	klog.Infof("loaded %d apps from built-in catalog", len(apps))
 	return nil
 }
 
@@ -110,50 +122,163 @@ func (c *Catalog) setApps(apps []MarketApp) {
 	c.lastFetch = time.Now()
 }
 
-func (c *Catalog) fetchRemote(baseURL string) ([]MarketApp, error) {
-	// The Olares marketplace serves a list of apps at /api/v1/apps or similar.
-	// We try multiple known endpoints.
-	urls := []string{
-		baseURL + "/api/v1/apps",
-		baseURL + "/apps",
-		baseURL,
+// fetchFromGitHub fetches app metadata from the beclab/apps GitHub repository.
+// It lists all directories via the GitHub contents API, then fetches the
+// OlaresManifest.yaml from each app directory.
+func (c *Catalog) fetchFromGitHub() ([]MarketApp, error) {
+	client := &http.Client{Timeout: 60 * time.Second}
+
+	// List repo contents to get app directories
+	req, err := http.NewRequest("GET", c.githubURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("User-Agent", "packalares-market/1.0")
+
+	// Use GITHUB_TOKEN if available to avoid rate limits
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "token "+token)
 	}
 
-	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("list repo contents: %w", err)
+	}
+	defer resp.Body.Close()
 
-	for _, u := range urls {
-		resp, err := client.Get(u)
-		if err != nil {
-			continue
-		}
-		defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return nil, fmt.Errorf("github API returned %d: %s", resp.StatusCode, string(body))
+	}
 
-		if resp.StatusCode != http.StatusOK {
-			continue
-		}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 5<<20))
+	if err != nil {
+		return nil, fmt.Errorf("read response: %w", err)
+	}
 
-		body, err := io.ReadAll(io.LimitReader(resp.Body, 50<<20))
-		if err != nil {
-			continue
-		}
+	var entries []githubEntry
+	if err := json.Unmarshal(body, &entries); err != nil {
+		return nil, fmt.Errorf("parse directory listing: %w", err)
+	}
 
-		// Try parsing as direct array
-		var apps []MarketApp
-		if err := json.Unmarshal(body, &apps); err == nil && len(apps) > 0 {
-			return apps, nil
-		}
-
-		// Try parsing as wrapped response {"code":200,"data":[...]}
-		var wrapped struct {
-			Code int         `json:"code"`
-			Data []MarketApp `json:"data"`
-		}
-		if err := json.Unmarshal(body, &wrapped); err == nil && len(wrapped.Data) > 0 {
-			return wrapped.Data, nil
+	// Filter to directories only (each directory is an app)
+	var appDirs []string
+	for _, e := range entries {
+		if e.Type == "dir" && !strings.HasPrefix(e.Name, ".") {
+			appDirs = append(appDirs, e.Name)
 		}
 	}
 
-	return nil, fmt.Errorf("no apps found at marketplace %s", baseURL)
+	if len(appDirs) == 0 {
+		return nil, fmt.Errorf("no app directories found in beclab/apps")
+	}
+
+	klog.Infof("found %d app directories in beclab/apps, fetching manifests...", len(appDirs))
+
+	// Fetch manifests concurrently with bounded parallelism
+	type result struct {
+		app MarketApp
+		ok  bool
+	}
+
+	results := make(chan result, len(appDirs))
+	sem := make(chan struct{}, 10) // max 10 concurrent requests
+	var wg sync.WaitGroup
+
+	for _, dir := range appDirs {
+		wg.Add(1)
+		go func(appName string) {
+			defer wg.Done()
+			sem <- struct{}{}
+			defer func() { <-sem }()
+
+			app, err := c.fetchManifest(client, appName)
+			if err != nil {
+				klog.V(4).Infof("skip %s: %v", appName, err)
+				results <- result{ok: false}
+				return
+			}
+			results <- result{app: app, ok: true}
+		}(dir)
+	}
+
+	go func() {
+		wg.Wait()
+		close(results)
+	}()
+
+	var apps []MarketApp
+	for r := range results {
+		if r.ok {
+			apps = append(apps, r.app)
+		}
+	}
+
+	sort.Slice(apps, func(i, j int) bool {
+		return apps[i].Name < apps[j].Name
+	})
+
+	if len(apps) == 0 {
+		return nil, fmt.Errorf("no valid manifests found in beclab/apps")
+	}
+
+	return apps, nil
+}
+
+// githubEntry represents a file/directory entry from the GitHub contents API.
+type githubEntry struct {
+	Name string `json:"name"`
+	Type string `json:"type"` // "file" or "dir"
+	Path string `json:"path"`
+}
+
+// githubFileResponse represents the response when fetching a single file.
+type githubFileResponse struct {
+	Content  string `json:"content"`
+	Encoding string `json:"encoding"`
+}
+
+// fetchManifest fetches and parses an OlaresManifest.yaml for a single app.
+func (c *Catalog) fetchManifest(client *http.Client, appName string) (MarketApp, error) {
+	url := c.githubURL + "/" + appName + "/OlaresManifest.yaml"
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return MarketApp{}, err
+	}
+	req.Header.Set("Accept", "application/vnd.github.v3+json")
+	req.Header.Set("User-Agent", "packalares-market/1.0")
+
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "token "+token)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return MarketApp{}, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return MarketApp{}, fmt.Errorf("HTTP %d for %s", resp.StatusCode, appName)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		return MarketApp{}, err
+	}
+
+	var fileResp githubFileResponse
+	if err := json.Unmarshal(body, &fileResp); err != nil {
+		return MarketApp{}, fmt.Errorf("parse github response: %w", err)
+	}
+
+	yamlData, err := decodeBase64Content(fileResp.Content)
+	if err != nil {
+		return MarketApp{}, fmt.Errorf("decode base64: %w", err)
+	}
+
+	return parseOlaresManifest(yamlData, appName)
 }
 
 func (c *Catalog) loadLocal(path string) ([]MarketApp, error) {
@@ -175,6 +300,27 @@ func (c *Catalog) loadLocal(path string) ([]MarketApp, error) {
 	}
 
 	return apps, nil
+}
+
+// saveCacheFile writes the fetched apps to a local cache file so subsequent
+// starts are faster even if GitHub is unreachable.
+func (c *Catalog) saveCacheFile(apps []MarketApp) {
+	paths := []string{c.localPath, "/etc/packalares/catalog.json", "/tmp/packalares-catalog.json"}
+	for _, p := range paths {
+		if p == "" {
+			continue
+		}
+		data, err := json.MarshalIndent(apps, "", "  ")
+		if err != nil {
+			continue
+		}
+		if err := os.WriteFile(p, data, 0644); err != nil {
+			klog.V(4).Infof("could not cache catalog to %s: %v", p, err)
+			continue
+		}
+		klog.Infof("cached catalog (%d apps) to %s", len(apps), p)
+		return
+	}
 }
 
 // Refresh re-fetches the catalog if cache has expired.
