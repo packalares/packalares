@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -15,6 +16,24 @@ import (
 	"github.com/labstack/echo/v4/middleware"
 	"k8s.io/klog/v2"
 )
+
+func getIntranetHTTPPort() int {
+	if v := os.Getenv("INTRANET_HTTP_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			return p
+		}
+	}
+	return 80
+}
+
+func getIntranetHTTPSPort() int {
+	if v := os.Getenv("INTRANET_HTTPS_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			return p
+		}
+	}
+	return 444
+}
 
 func getLocalDomain() string {
 	if v := os.Getenv("OLARES_LOCAL_DOMAIN"); v != "" {
@@ -36,8 +55,12 @@ type proxyServer struct {
 }
 
 func NewProxyServer() (*proxyServer, error) {
+	dnsIP := os.Getenv("KUBE_DNS_IP")
+	if dnsIP == "" {
+		dnsIP = "10.233.0.3:53"
+	}
 	p := &proxyServer{
-		dnsServer: "10.233.0.3:53", // default k8s dns service
+		dnsServer: dnsIP,
 	}
 	return p, nil
 }
@@ -123,7 +146,7 @@ func (p *proxyServer) Start() error {
 	go func() {
 		for !p.stopped {
 			p.proxy.ListenerNetwork = "tcp4"
-			err := p.proxy.Start("0.0.0.0:80")
+			err := p.proxy.Start(fmt.Sprintf("0.0.0.0:%d", getIntranetHTTPPort()))
 			if err != nil {
 				klog.Error(err)
 			}
@@ -174,9 +197,9 @@ func (p *proxyServer) Next(c echo.Context) *middleware.ProxyTarget {
 		}
 		requestHost = strings.Join(tokens, ".")
 		c.Request().Host = requestHost
-		proxyPass, err = url.Parse(scheme + requestHost + ":444")
+		proxyPass, err = url.Parse(fmt.Sprintf("%s%s:%d", scheme, requestHost, getIntranetHTTPSPort()))
 	} else {
-		proxyPass, err = url.Parse(scheme + c.Request().Host + ":444")
+		proxyPass, err = url.Parse(fmt.Sprintf("%s%s:%d", scheme, c.Request().Host, getIntranetHTTPSPort()))
 	}
 	if err != nil {
 		klog.Error("parse proxy target error, ", err)
@@ -222,7 +245,7 @@ func (p *proxyServer) customDialContext(d *net.Dialer) func(ctx context.Context,
 		// Force proxying to localhost
 		klog.Info("addr: ", addr, " port: ", port, " network: ", network)
 		if port == "" {
-			port = "444"
+			port = strconv.Itoa(getIntranetHTTPSPort())
 		}
 		hostname, err := os.Hostname()
 		if err != nil {

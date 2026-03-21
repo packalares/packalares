@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -34,6 +35,11 @@ func main() {
 	state.CurrentState.TerminusdState = state.Initialize
 
 	port := 18088
+	if v := os.Getenv("OLARESD_PORT"); v != "" {
+		if p, err := strconv.Atoi(v); err == nil {
+			port = p
+		}
+	}
 	var showVersion bool
 	var showVendor bool
 
