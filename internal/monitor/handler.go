@@ -3,6 +3,7 @@ package monitor
 import (
 	"encoding/json"
 	"log"
+	"math"
 	"net/http"
 	"regexp"
 	"strconv"
@@ -25,6 +26,8 @@ func NewHandler(prometheusURL string) *Handler {
 // RegisterRoutes wires up monitoring API routes.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Packalares native endpoints
+	mux.HandleFunc("/api/metrics", h.handleMetrics)
+	mux.HandleFunc("/api/status", h.handleStatus)
 	mux.HandleFunc("/api/monitoring/cluster", h.handleCluster)
 	mux.HandleFunc("/api/monitoring/nodes", h.handleNodes)
 	mux.HandleFunc("/api/monitoring/pods", h.handlePods)
@@ -42,6 +45,29 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 // ---------------------------------------------------------------------------
 // Packalares native monitoring endpoints
 // ---------------------------------------------------------------------------
+
+func (h *Handler) handleMetrics(w http.ResponseWriter, r *http.Request) {
+	metrics, err := collectSystemMetrics()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	// Round CPU usage to one decimal place
+	metrics.CPUUsage = math.Round(metrics.CPUUsage*10) / 10
+	// Round uptime to whole seconds
+	metrics.Uptime = math.Round(metrics.Uptime)
+	writeJSON(w, metrics)
+}
+
+func (h *Handler) handleStatus(w http.ResponseWriter, r *http.Request) {
+	status, err := collectPodStatus()
+	if err != nil {
+		log.Printf("status: kubernetes query failed: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, status)
+}
 
 func (h *Handler) handleCluster(w http.ResponseWriter, r *http.Request) {
 	params := parseMonitoringParams(r)

@@ -64,13 +64,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 // safePath validates and resolves a request path to a real filesystem path,
 // ensuring it stays within DataPath. Returns ("", error) on traversal attempt.
 func (h *Handler) safePath(reqPath string) (string, error) {
-	// Strip leading /data or /Home prefix variants
+	// Strip leading /data prefix if present (legacy path variant)
 	cleaned := reqPath
-	for _, prefix := range []string{"/data", "/Home"} {
-		if strings.HasPrefix(cleaned, prefix) {
-			cleaned = strings.TrimPrefix(cleaned, prefix)
-			break
-		}
+	if strings.HasPrefix(cleaned, "/data") {
+		cleaned = strings.TrimPrefix(cleaned, "/data")
 	}
 	if cleaned == "" {
 		cleaned = "/"
