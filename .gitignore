@@ -5,17 +5,17 @@ dist/
 .DS_Store
 /tmp/
 
-# compiled binaries
-bfl
-l4proxy
-auth
-middleware
-systemserver
-appservice
-market
-files
-mounts
-monitor
-kubesphere
-cli
-packalares-linux-*
+# compiled binaries (root level only)
+/bfl
+/l4proxy
+/auth
+/middleware
+/systemserver
+/appservice
+/market
+/files
+/mounts
+/monitor
+/kubesphere
+/cli
+/packalares-linux-*
