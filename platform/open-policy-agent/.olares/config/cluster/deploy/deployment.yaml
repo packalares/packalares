@@ -1,0 +1,275 @@
+{{- $caCertEnc := "" }}
+{{- $certCrtEnc := "" }}
+{{- $certKeyEnc := "" }}
+{{- $prevSecret := (lookup "v1" "Secret" .Release.Namespace "opa-cert" ) }}
+{{- if $prevSecret }}
+{{- $certCrtEnc = index $prevSecret "data" "tls.crt" }}
+{{- $certKeyEnc = index $prevSecret "data" "tls.key" }}
+{{- $caCertEnc = index $prevSecret "data" "ca.crt" }}
+{{- else }}
+{{- $altNames := list ( printf "opa.%s" .Release.Namespace ) ( printf "opa.%s.svc" .Release.Namespace ) -}}
+{{- $tmpperioddays := 36500 }}
+{{- $ca := genCA "opa-ca" $tmpperioddays }}
+{{- $cert := genSignedCert "opa" nil $altNames $tmpperioddays $ca }}
+{{- $certCrtEnc = b64enc $cert.Cert }}
+{{- $certKeyEnc = b64enc $cert.Key }}
+{{- $caCertEnc = b64enc $ca.Cert }}
+{{- end }}
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: opa-sa
+  namespace: {{ .Release.Namespace }}
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: opa-rolebinding
+subjects:
+- kind: ServiceAccount
+  name: opa-sa
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: cluster-admin
+  apiGroup: rbac.authorization.k8s.io
+
+---
+kind: Service
+apiVersion: v1
+metadata:
+  name: opa
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    app: opa
+  ports:
+  - name: https
+    protocol: TCP
+    port: 443
+    targetPort: 8443
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: opa
+    applications.app.bytetrade.io/author: bytetrade.io
+  name: opa
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: opa
+  template:
+    metadata:
+      labels:
+        app: opa
+      name: opa
+    spec:
+      serviceAccountName: opa-sa
+      priorityClassName: "system-cluster-critical"
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: node-role.kubernetes.io/control-plane
+                    operator: Exists
+      containers:
+        - name: opa
+          image: openpolicyagent/opa:1.11.0
+          args:
+            - "run"
+            - "--server"
+            - "--log-level=debug"
+            - "--tls-cert-file=/etc/certs/tls.crt"
+            - "--tls-private-key-file=/etc/certs/tls.key"
+            - "--addr=0.0.0.0:8443"
+          volumeMounts:
+            - readOnly: true
+              mountPath: /etc/certs
+              name: certs
+        - name: kube-mgmt
+          image: openpolicyagent/kube-mgmt:9.3.0
+          args:
+            - --enable-policies=true
+            - --namespaces={{ .Release.Namespace }}
+            - --log-level=debug
+            - --opa-url=https://127.0.0.1:8443/v1
+            - --opa-allow-insecure
+      volumes:
+        - name: certs
+          secret:
+            defaultMode: 420
+            secretName: opa-cert
+---
+kind: ValidatingWebhookConfiguration
+apiVersion: admissionregistration.k8s.io/v1
+metadata:
+  name: opa-validating-webhook
+webhooks:
+  - name: validating-webhook.openpolicyagent.org
+    admissionReviewVersions: ["v1", "v1beta1"]
+    namespaceSelector: 
+      matchExpressions:
+        - key: kubernetes.io/metadata.name 
+          operator: NotIn
+          values: 
+          - kube-system
+          - kubesphere-monitoring-system
+          - kubesphere-system
+          - os-framework
+          - os-gpu
+          - os-network
+          - os-platform
+          - os-protected
+          - kubesphere-controls-system
+        - key: bytetrade.io/ns-type
+          operator: NotIn
+          values:
+          - user-space
+          - user-internal
+    rules:
+      - operations: ["CREATE", "UPDATE"]
+        apiGroups: ["*"]
+        apiVersions: ["v1"]
+        resources: ["pods"]
+    clientConfig:
+      caBundle: {{ $caCertEnc }}
+      service:
+        namespace: {{ .Release.Namespace }}
+        name: opa
+    sideEffects: None
+
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: opa-cert
+  namespace: {{ .Release.Namespace }}
+data:
+  tls.crt: {{ $certCrtEnc }}
+  tls.key: {{ $certKeyEnc }}
+  ca.crt: {{ $caCertEnc }}
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: default-decision
+  namespace: {{ .Release.Namespace }}
+  labels:
+    openpolicyagent.org/policy: rego
+data:
+  main: |
+    package system
+
+    import data.kubernetes.admission
+
+    main := {
+      "apiVersion": "admission.k8s.io/v1",
+      "kind": "AdmissionReview",
+      "response": response,
+    }
+
+    default uid := ""
+
+    uid := input.request.uid
+
+    response := {
+      "allowed": false,
+      "uid": uid,
+      "status": {"message": reason},
+    } if {
+      reason := concat(", ", admission.deny)
+      reason != ""
+    }
+    else := {"allowed": true, "uid": uid}
+
+---
+kind: ConfigMap
+apiVersion: v1
+metadata:
+  name: untrusted-pod-check
+  namespace: {{ .Release.Namespace }}
+  labels:
+    openpolicyagent.org/policy: rego
+data:
+  main: |
+    package kubernetes.admission
+    
+    deny contains msg if {
+        some container
+        input_containers[container]
+        is_untrusted_image(trimmed_image(container))
+
+        is_root_user(container.securityContext)
+    
+        msg := sprintf("Container '%s' uses an untrusted image registry and is configured to run as root user (UID 0) or privileged. This is not allowed.", [container.name])
+    }
+
+    deny contains msg if {
+        some container
+        input_containers[container]
+        is_untrusted_image(trimmed_image(container))
+
+        is_root_user(input.request.object.spec.securityContext)
+    
+        msg := sprintf("Pod '%s' uses an untrusted image registry and is configured to run as root user (UID 0) or privileged. This is not allowed.", [input.request.object.metadata.name])
+    }
+
+    input_containers contains container if {
+      container := input.request.object.spec.containers[_]
+    }    
+        
+    input_containers contains container if {
+      container := input.request.object.spec.initContainers[_]
+    }    
+
+    is_untrusted_image(image) if {
+        not startswith(image, "beclab/")
+        not startswith(image, "aboveos/")
+        not startswith(image, "harveyff/")
+        not startswith(image, "dataelement/")
+        not startswith(image, "milvusdb/")
+        not startswith(image, "minio/")
+        not startswith(image, "mintplexlabs/")
+        not startswith(image, "onlyoffice/")
+        not startswith(image, "netdata/")
+        not startswith(image, "openservicemesh/")
+        not startswith(image, "owncloudci/")
+        not startswith(image, "redroid/")
+        not startswith(image, "busybox:")
+        not startswith(image, "docker:dind")
+        not startswith(image, "redis:")
+        not startswith(image, "ghcr.io/coder/coder:v2.19.0")
+        not startswith(image, "apecloud/")
+        not startswith(image, "kldtks/")
+        not startswith(image, "alpine:")
+        not startswith(image, "mariadb:")
+    }
+        
+    is_root_user(ctx) if {
+        ctx.runAsNonRoot == false
+    }
+    
+    is_root_user(ctx) if {
+        ctx.runAsUser == 0
+    }    
+
+    is_root_user(ctx) if {
+        ctx.privileged == true
+    }    
+
+    trimmed_image(container) := image if {
+        startswith(container.image, "docker.io/")
+        image := split(container.image, "docker.io/")[1]
+    } else := container.image
+
+  

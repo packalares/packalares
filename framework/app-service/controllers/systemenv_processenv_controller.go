@@ -1,0 +1,191 @@
+package controllers
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"strings"
+	"sync"
+
+	sysv1alpha1 "github.com/beclab/Olares/framework/app-service/api/sys.bytetrade.io/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
+	utilerrors "k8s.io/apimachinery/pkg/util/errors"
+	"k8s.io/klog/v2"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+// SystemEnvProcessEnvController only handles syncing SystemEnv values into the
+// current process environment, supporting legacy aliases for compatibility.
+type SystemEnvProcessEnvController struct {
+	client.Client
+	Scheme *runtime.Scheme
+}
+
+// legacyEnvAliases maintains backward-compatible aliases for system environment variables
+// during the migration period. Keys are new env names, values are a single legacy name
+// that should mirror the same value in the process environment.
+var legacyEnvAliases = map[string]string{
+	"OLARES_SYSTEM_ROOT_PATH":    "OLARES_ROOT_DIR",
+	"OLARES_SYSTEM_ROOTFS_TYPE":  "OLARES_FS_TYPE",
+	"OLARES_SYSTEM_CUDA_VERSION": "CUDA_VERSION",
+}
+
+const migrationAnnotationKey = "sys.bytetrade.io/systemenv-migrated"
+
+//+kubebuilder:rbac:groups=sys.bytetrade.io,resources=systemenvs,verbs=get;list;watch
+
+func (r *SystemEnvProcessEnvController) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		Named("systemenv-processenv").
+		For(&sysv1alpha1.SystemEnv{}).
+		Complete(r)
+}
+
+func (r *SystemEnvProcessEnvController) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	klog.Infof("Reconciling SystemEnv for process env: %s", req.NamespacedName)
+
+	var systemEnv sysv1alpha1.SystemEnv
+	if err := r.Get(ctx, req.NamespacedName, &systemEnv); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
+	}
+
+	value := systemEnv.GetEffectiveValue()
+	if err := setEnvAndAlias(systemEnv.EnvName, value); err != nil {
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
+}
+
+// setEnvAndAlias sets the given env name and all of its legacy aliases
+// in the current process environment. Returns an error if any setenv fails.
+func setEnvAndAlias(envName, value string) error {
+	if value == "" {
+		klog.V(4).Infof("Skip setting env %s: empty effective value", envName)
+		return nil
+	}
+	if err := os.Setenv(envName, value); err != nil {
+		return fmt.Errorf("setenv %s failed: %w", envName, err)
+	}
+	klog.V(4).Infof("Set env %s", envName)
+	if alias, ok := legacyEnvAliases[envName]; ok && alias != "" {
+		if err := os.Setenv(alias, value); err != nil {
+			return fmt.Errorf("setenv legacy alias %s for %s failed: %w", alias, envName, err)
+		}
+		klog.V(4).Infof("Set legacy env %s (alias of %s)", alias, envName)
+	}
+	return nil
+}
+
+func InitializeSystemEnvProcessEnv(ctx context.Context, c client.Client) error {
+	var list sysv1alpha1.SystemEnvList
+	if err := c.List(ctx, &list); err != nil {
+		return fmt.Errorf("failed to list SystemEnvs: %v", err)
+	}
+
+	var errs []error
+	var getSysCRerr error
+	var isCNDomain bool
+	var once sync.Once
+	checkDomainRegion := func() {
+		sysCR := &sysv1alpha1.Terminus{}
+		getSysCRerr = c.Get(ctx, client.ObjectKey{Name: "terminus"}, sysCR)
+		if getSysCRerr != nil {
+			klog.Errorf("get sysinfo failed: %v", getSysCRerr)
+			return
+		}
+		domainName := sysCR.Spec.Settings["domainName"]
+		if strings.HasSuffix(domainName, ".cn") {
+			isCNDomain = true
+		}
+	}
+	for i := range list.Items {
+		se := &list.Items[i]
+
+		migrated := se.Annotations != nil && se.Annotations[migrationAnnotationKey] == "true"
+		if !migrated {
+			if alias, ok := legacyEnvAliases[se.EnvName]; ok && alias != "" {
+				if legacyVal, ok := os.LookupEnv(alias); ok && legacyVal != "" {
+					if err := se.ValidateValue(legacyVal); err != nil {
+						klog.Warningf("Skip migrating SystemEnv %s: legacy alias %s value invalid for type %s: %v", se.EnvName, alias, se.Type, err)
+					} else if se.Default != legacyVal {
+						original := se.DeepCopy()
+						se.Default = legacyVal
+						if se.Annotations == nil {
+							se.Annotations = make(map[string]string)
+						}
+						se.Annotations[migrationAnnotationKey] = "true"
+						if err := c.Patch(ctx, se, client.MergeFrom(original)); err != nil {
+							errs = append(errs, fmt.Errorf("patch SystemEnv %s default from legacy alias failed: %w", se.EnvName, err))
+						}
+					}
+				}
+			} else {
+				once.Do(checkDomainRegion)
+				if getSysCRerr != nil {
+					return fmt.Errorf("get sysinfo failed: %w", getSysCRerr)
+				}
+
+				var newDefaultVal string
+				switch se.EnvName {
+				case "OLARES_SYSTEM_DOCKERHUB_SERVICE":
+					newDefaultVal = "https://mirror.gcr.io"
+				// OLARES_SYSTEM_REMOTE_SERVICE and OLARES_SYSTEM_CDN_SERVICE
+				// removed — this fork does not use cloud services
+				}
+				if newDefaultVal != "" && se.Default != newDefaultVal {
+					original := se.DeepCopy()
+					se.Default = newDefaultVal
+					if se.Annotations == nil {
+						se.Annotations = make(map[string]string)
+					}
+					se.Annotations[migrationAnnotationKey] = "true"
+					if err := c.Patch(ctx, se, client.MergeFrom(original)); err != nil {
+						errs = append(errs, fmt.Errorf("patch SystemEnv %s default failed: %w", se.EnvName, err))
+					}
+				}
+			}
+
+			if err := setEnvAndAlias(se.EnvName, se.GetEffectiveValue()); err != nil {
+				errs = append(errs, fmt.Errorf("set process env for %s failed: %w", se.EnvName, err))
+			}
+		}
+	}
+
+	var userEnvList sysv1alpha1.UserEnvList
+	if err := c.List(ctx, &userEnvList); err != nil {
+		return fmt.Errorf("failed to list UserEnvs: %v", err)
+	}
+	for i := range userEnvList.Items {
+		userEnv := &userEnvList.Items[i]
+		if userEnv.Annotations != nil && userEnv.Annotations[migrationAnnotationKey] == "true" {
+			continue
+		}
+		once.Do(checkDomainRegion)
+		if getSysCRerr != nil {
+			return fmt.Errorf("get sysinfo failed: %w", getSysCRerr)
+		}
+		var newDefaultVal string
+		switch userEnv.EnvName {
+		case "OLARES_USER_HUGGINGFACE_SERVICE":
+			newDefaultVal = "https://huggingface.co/"
+			if isCNDomain {
+				newDefaultVal = "https://hf-mirror.com"
+			}
+		}
+		if newDefaultVal != "" && userEnv.Default != newDefaultVal {
+			original := userEnv.DeepCopy()
+			userEnv.Default = newDefaultVal
+			if userEnv.Annotations == nil {
+				userEnv.Annotations = make(map[string]string)
+			}
+			userEnv.Annotations[migrationAnnotationKey] = "true"
+			if err := c.Patch(ctx, userEnv, client.MergeFrom(original)); err != nil {
+				errs = append(errs, fmt.Errorf("patch UserEnv %s default failed: %w", userEnv.EnvName, err))
+			}
+		}
+	}
+
+	return utilerrors.NewAggregate(errs)
+}

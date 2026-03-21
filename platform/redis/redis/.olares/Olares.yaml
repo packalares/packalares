@@ -1,0 +1,16 @@
+apiVersion: v1
+target: prebuilt
+output:
+  binaries:
+    - 
+      id: redis
+      name: redis-5.0.14.tar.gz 
+      amd64: https://cdn.olares.com/redis-5.0.14_linux_amd64.tar.gz
+      arm64: https://cdn.olares.com/redis-5.0.14_linux_arm64.tar.gz
+    - 
+      id: redis-231
+      name: redis-5.0.14-glibc-231.tar.gz
+      amd64: https://cdn.olares.com/redis-5.0.14_linux_amd64-glibc-231.tar.gz
+      arm64: https://cdn.olares.com/redis-5.0.14_linux_arm64.tar.gz
+
+

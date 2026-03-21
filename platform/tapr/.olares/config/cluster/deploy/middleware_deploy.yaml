@@ -1,0 +1,78 @@
+
+{{ $dbdata_pv_rootpath := printf "%s%s" .Values.rootPath "/userdata/dbdata" }}
+{{ $dbbackup_rootpath := printf "%s%s" .Values.rootPath "/rootfs/middleware-backup" }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: middleware-service
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+  - port: 80
+    targetPort: 9080
+    protocol: TCP
+  selector:
+    app: tapr-middleware
+  type: ClusterIP
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tapr-middleware
+  namespace: {{ .Release.Namespace }}
+  labels:
+    applications.app.bytetrade.io/author: bytetrade.io
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tapr-middleware
+
+  template:
+    metadata:
+      labels:
+        app: tapr-middleware
+    spec:
+      securityContext:
+        runAsUser: 0
+      # terminationGracePeriodSeconds: 0
+      serviceAccountName: os-internal
+      serviceAccount: os-internal
+      priorityClassName: "system-cluster-critical"
+      volumes:
+      - name: dbdata-dir
+        hostPath:
+          type: DirectoryOrCreate
+          path: '{{ $dbdata_pv_rootpath }}'
+      - name: dbbackup-dir
+        hostPath:
+          type: DirectoryOrCreate
+          path: '{{ $dbbackup_rootpath }}'
+      - name: pgbackup-dir
+        hostPath:
+          type: DirectoryOrCreate
+          path: '{{ $dbbackup_rootpath }}/pg_backup'
+      containers:
+      - name: operator-api
+        image: beclab/middleware-operator:0.2.32
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 9080
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 500m
+            memory: 512Mi
+          requests:
+            cpu: 20m
+            memory: 100Mi
+        volumeMounts:
+        - name: dbbackup-dir
+          mountPath: /olares/rootfs/middleware-backup
+        - name: pgbackup-dir
+          mountPath: /backup
+        - name: dbdata-dir
+          mountPath: /dbdata
