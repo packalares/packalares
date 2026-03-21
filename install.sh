@@ -42,6 +42,63 @@ log_ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
+# --- Cleanup previous installations ---
+cleanup_previous() {
+    log_info "Checking for previous installations..."
+
+    # Stop services
+    systemctl stop k3s etcd olaresd redis-server containerd docker 2>/dev/null || true
+    systemctl disable k3s etcd olaresd redis-server containerd docker 2>/dev/null || true
+
+    # K3s uninstall
+    if [ -f /usr/local/bin/k3s-killall.sh ]; then
+        /usr/local/bin/k3s-killall.sh 2>/dev/null || true
+    fi
+    if [ -f /usr/local/bin/k3s-uninstall.sh ]; then
+        /usr/local/bin/k3s-uninstall.sh 2>/dev/null || true
+    fi
+
+    # Kill remaining processes
+    pkill -9 -f 'k3s|etcd|containerd|kubelet|kube|calico|bird|runc|shim|node_exporter' 2>/dev/null || true
+    sleep 1
+
+    # Unmount containerd overlays
+    for m in $(mount | grep -E 'containerd|kubelet|overlay' | awk '{print $3}' | sort -r); do
+        umount -l "$m" 2>/dev/null || true
+    done
+
+    # Remove old Docker
+    if command -v docker &>/dev/null; then
+        apt-get remove -y docker.io docker-ce containerd.io 2>/dev/null || true
+    fi
+
+    # Remove binaries
+    rm -f /usr/local/bin/{k3s,k3s-killall.sh,k3s-uninstall.sh,helm,kubectl,kubelet,kubeadm,etcd,etcdctl,ctr,crictl,olares-cli}
+    rm -f /usr/local/sbin/runc
+    rm -f /usr/bin/{containerd,ctr,runc,crictl}
+
+    # Remove data
+    rm -rf /var/lib/rancher /var/lib/etcd /var/lib/kubelet /var/lib/cni /var/lib/calico /var/lib/containerd /var/lib/openebs
+    rm -rf /etc/rancher /etc/cni /etc/etcd.env /etc/ssl/etcd /etc/calico /etc/containerd
+    rm -rf /run/containerd /run/flannel /run/calico /var/run/calico
+    rm -rf /root/.kube /root/.olares /olares
+
+    # Remove systemd units
+    rm -f /etc/systemd/system/{k3s,etcd,olaresd,redis-server,containerd}.service
+    rm -f /etc/systemd/system/etcd-backup*
+    rm -f /lib/systemd/system/containerd.service
+    systemctl daemon-reload 2>/dev/null || true
+
+    # Clean network
+    ip link delete cni0 2>/dev/null || true
+    ip link delete kube-ipvs0 2>/dev/null || true
+    ip link delete vxlan.calico 2>/dev/null || true
+    ip link delete flannel.1 2>/dev/null || true
+    nft flush ruleset 2>/dev/null || true
+
+    log_ok "Cleanup complete"
+}
+
 # --- Pre-flight checks ---
 check_root() {
     if [ "$(id -u)" -ne 0 ]; then
@@ -318,6 +375,7 @@ main() {
     check_os
     detect_arch
     check_commands
+    cleanup_previous
     download_cli
     run_install "$@"
     run_activation
