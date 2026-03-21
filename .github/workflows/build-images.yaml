@@ -1,0 +1,114 @@
+name: Build All Images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'internal/**'
+      - 'cmd/**'
+      - 'pkg/**'
+      - 'frontend/**'
+      - 'build/**'
+      - 'go.mod'
+      - 'go.sum'
+      - '.github/workflows/build-images.yaml'
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  ORG: packalares
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - name: bfl
+            dockerfile: build/Dockerfile.bfl
+            context: .
+          - name: l4proxy
+            dockerfile: build/Dockerfile.l4proxy
+            context: .
+          - name: auth
+            dockerfile: build/Dockerfile.auth
+            context: .
+          - name: middleware
+            dockerfile: build/Dockerfile.middleware
+            context: .
+          - name: systemserver
+            dockerfile: build/Dockerfile.systemserver
+            context: .
+          - name: appservice
+            dockerfile: build/appservice/Dockerfile
+            context: .
+          - name: market
+            dockerfile: build/market/Dockerfile
+            context: .
+          - name: files
+            dockerfile: build/files/Dockerfile
+            context: .
+          - name: mounts
+            dockerfile: build/mounts/Dockerfile
+            context: .
+          - name: monitor
+            dockerfile: build/monitor/Dockerfile
+            context: .
+          - name: kubesphere
+            dockerfile: build/Dockerfile.kubesphere
+            context: .
+          - name: samba
+            dockerfile: build/samba/Dockerfile
+            context: build/samba
+          - name: desktop
+            dockerfile: build/Dockerfile.desktop
+            context: .
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.name }}:latest
+            ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.name }}:${{ github.sha }}
+
+  build-cli:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build CLI
+        run: |
+          cd cmd/cli
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../../packalares-linux-amd64 .
+          chmod +x ../../packalares-linux-amd64
+
+      - name: Upload CLI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: packalares-linux-amd64
+          path: packalares-linux-amd64
