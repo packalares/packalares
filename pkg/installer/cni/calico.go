@@ -17,7 +17,7 @@ func DeployCalico(registry string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "kubectl", "apply", "-f", operatorURL)
+	cmd := exec.CommandContext(ctx, "kubectl", "apply", "--server-side", "--force-conflicts", "-f", operatorURL)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("apply calico operator: %s\n%w", string(out), err)
 	}
