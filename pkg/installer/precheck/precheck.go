@@ -18,7 +18,7 @@ import (
 const (
 	MinCPUCores    = 4
 	MinRAMMB       = 7500 // ~8 GB with some tolerance
-	MinDiskGB      = 60
+	MinDiskGB      = 30
 	MinKernelMajor = 5
 	MinKernelMinor = 4
 )
