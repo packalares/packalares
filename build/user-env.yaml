@@ -1,0 +1,81 @@
+apiVersion: v1
+userEnvs:
+  - envName: OLARES_USER_EMAIL
+    type: string
+    editable: true
+  - envName: OLARES_USER_USERNAME
+    type: string
+    editable: true
+  - envName: OLARES_USER_PASSWORD
+    type: password
+    editable: true
+  - envName: OLARES_USER_TIMEZONE
+    type: string
+    editable: true
+  - envName: OLARES_USER_SMTP_ENABLED
+    type: bool
+    editable: true
+  - envName: OLARES_USER_SMTP_SERVER
+    type: domain
+    editable: true
+  - envName: OLARES_USER_SMTP_PORT
+    type: number
+    editable: true
+  - envName: OLARES_USER_SMTP_USERNAME
+    type: string
+    editable: true
+  - envName: OLARES_USER_SMTP_PASSWORD
+    type: password
+    editable: true
+  - envName: OLARES_USER_SMTP_FROM_ADDRESS
+    type: email
+    editable: true
+  - envName: OLARES_USER_SMTP_SECURE
+    type: bool
+    editable: true
+    default: "true"
+  - envName: OLARES_USER_SMTP_USE_TLS
+    type: bool
+    editable: true
+  - envName: OLARES_USER_SMTP_USE_SSL
+    type: bool
+    editable: true
+  - envName: OLARES_USER_SMTP_SECURITY_PROTOCOLS
+    type: string
+    editable: true        
+    options:
+    - title: "TLS"
+      value: "tls"
+    - title: "SSL"
+      value: "ssl"
+    - title: "StartTLS"
+      value: "starttls"
+    - title: "None"
+      value: "none"
+  - envName: OLARES_USER_OPENAI_APIKEY
+    type: password
+    editable: true
+  - envName: OLARES_USER_CUSTOM_OPENAI_SERVICE
+    type: url
+    editable: true    
+  - envName: OLARES_USER_CUSTOM_OPENAI_APIKEY
+    type: password
+    editable: true
+  - envName: OLARES_USER_HUGGINGFACE_SERVICE
+    type: url
+    editable: true
+    default: "https://huggingface.co/"
+  - envName: OLARES_USER_HUGGINGFACE_TOKEN
+    type: password
+    editable: true
+  - envName: OLARES_USER_PYPI_SERVICE
+    type: url
+    editable: true
+    default: "https://pypi.org/simple/"
+  - envName: OLARES_USER_GITHUB_SERVICE
+    type: url
+    editable: true
+    default: "https://github.com/"
+  - envName: OLARES_USER_GITHUB_TOKEN
+    type: password
+    editable: true
