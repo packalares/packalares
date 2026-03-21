@@ -41,4 +41,4 @@ if [ -n "${LLDAP_URL}" ]; then
 fi
 
 echo "Starting Samba server..."
-exec smbd --foreground --no-process-group --log-stdout
+exec smbd --foreground --no-process-group --debug-stdout
