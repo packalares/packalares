@@ -1,0 +1,79 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: files-server
+  namespace: packalares-system
+  labels:
+    app: files-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: files-server
+  template:
+    metadata:
+      labels:
+        app: files-server
+    spec:
+      containers:
+      - name: files-server
+        image: packalares/files-server:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: DATA_PATH
+          value: /packalares/data
+        - name: PORT
+          value: "8080"
+        - name: MAX_UPLOAD_SIZE
+          value: "10737418240"
+        volumeMounts:
+        - name: data
+          mountPath: /packalares/data
+        livenessProbe:
+          httpGet:
+            path: /api/nodes/
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/nodes/
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: "1"
+            memory: 512Mi
+      volumes:
+      - name: data
+        hostPath:
+          path: /packalares/data
+          type: DirectoryOrCreate
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: files-server
+  namespace: packalares-system
+spec:
+  selector:
+    app: files-server
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    name: http
+    port: 80
+    targetPort: 8080
+  - protocol: TCP
+    name: webdav
+    port: 8080
+    targetPort: 8080

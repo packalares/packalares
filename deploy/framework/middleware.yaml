@@ -1,0 +1,193 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: middleware-operator
+  namespace: os-platform
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: middleware-operator
+rules:
+- apiGroups: ["apr.bytetrade.io"]
+  resources: ["middlewarerequests"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "create", "update", "delete"]
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: middleware-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: middleware-operator
+subjects:
+- kind: ServiceAccount
+  name: middleware-operator
+  namespace: os-platform
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: middleware-operator
+  namespace: os-platform
+  labels:
+    app: packalares-middleware
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: packalares-middleware
+  template:
+    metadata:
+      labels:
+        app: packalares-middleware
+    spec:
+      serviceAccountName: middleware-operator
+      containers:
+      - name: middleware
+        image: packalares/middleware:latest
+        env:
+        - name: PG_HOST
+          value: "citus-headless.os-platform"
+        - name: PG_PORT
+          value: "5432"
+        - name: PG_ADMIN_USER
+          value: "postgres"
+        - name: PG_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: pg-admin-secrets
+              key: password
+        - name: REDIS_HOST
+          value: "redis-cluster-proxy.os-platform"
+        - name: REDIS_PORT
+          value: "6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secrets
+              key: password
+        - name: NATS_HOST
+          value: "nats.os-platform"
+        - name: NATS_PORT
+          value: "4222"
+        - name: PLATFORM_NAMESPACE
+          value: "os-platform"
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+
+---
+# CRD for MiddlewareRequest
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: middlewarerequests.apr.bytetrade.io
+spec:
+  group: apr.bytetrade.io
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              app:
+                type: string
+              appNamespace:
+                type: string
+              middleware:
+                type: string
+                enum: ["postgres", "redis", "nats", "mongodb", "minio", "rabbitmq", "elasticsearch", "mariadb", "mysql", "clickhouse"]
+              postgreSQL:
+                type: object
+                properties:
+                  user:
+                    type: string
+                  password:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  databases:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        distributed:
+                          type: boolean
+                        extensions:
+                          type: array
+                          items:
+                            type: string
+              redis:
+                type: object
+                properties:
+                  password:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  namespace:
+                    type: string
+              nats:
+                type: object
+                properties:
+                  user:
+                    type: string
+                  password:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
+                  subjects:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        permission:
+                          type: object
+                          properties:
+                            pub:
+                              type: string
+                            sub:
+                              type: string
+          status:
+            type: object
+            properties:
+              state:
+                type: string
+    additionalPrinterColumns:
+    - name: Middleware
+      type: string
+      jsonPath: .spec.middleware
+    - name: App
+      type: string
+      jsonPath: .spec.app
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: middlewarerequests
+    singular: middlewarerequest
+    kind: MiddlewareRequest
+    shortNames:
+    - mr

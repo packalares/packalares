@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: market-backend
+  namespace: os-framework
+  labels:
+    app: market-backend
+    tier: framework
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: market-backend
+  template:
+    metadata:
+      labels:
+        app: market-backend
+        tier: framework
+    spec:
+      containers:
+        - name: market-backend
+          image: packalares/market-backend:latest
+          ports:
+            - containerPort: 6756
+              name: http
+              protocol: TCP
+          env:
+            - name: MARKET_URL
+              value: "https://market.olares.com"
+            - name: CATALOG_PATH
+              value: "/etc/packalares/catalog.json"
+            - name: MARKET_LISTEN_ADDR
+              value: ":6756"
+          volumeMounts:
+            - name: catalog
+              mountPath: /etc/packalares
+              readOnly: true
+          livenessProbe:
+            httpGet:
+              path: /market/healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /market/healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: catalog
+          configMap:
+            name: market-catalog
+            optional: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: market-backend
+  namespace: os-framework
+  labels:
+    app: market-backend
+spec:
+  selector:
+    app: market-backend
+  ports:
+    - port: 6756
+      targetPort: http
+      protocol: TCP
+      name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: market-catalog
+  namespace: os-framework
+data:
+  catalog.json: "[]"

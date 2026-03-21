@@ -1,0 +1,66 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: kvrocks
+  namespace: os-system
+  labels:
+    app: kvrocks
+spec:
+  serviceName: kvrocks
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kvrocks
+  template:
+    metadata:
+      labels:
+        app: kvrocks
+    spec:
+      containers:
+      - name: kvrocks
+        image: ${REGISTRY:-docker.io}/apache/kvrocks:2.8
+        ports:
+        - containerPort: 6666
+          name: kvrocks
+        volumeMounts:
+        - name: data
+          mountPath: /kvrocks/data
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: "1"
+            memory: 1Gi
+        readinessProbe:
+          tcpSocket:
+            port: 6666
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: 6666
+          initialDelaySeconds: 15
+          periodSeconds: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: data
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kvrocks-svc
+  namespace: os-system
+spec:
+  selector:
+    app: kvrocks
+  ports:
+  - port: 6666
+    targetPort: 6666
+  clusterIP: None

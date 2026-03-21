@@ -1,0 +1,119 @@
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auth-secrets
+  namespace: user-system-${USERNAME}
+type: Opaque
+stringData:
+  jwt_secret: "${JWT_SECRET}"
+  session_secret: "${SESSION_SECRET}"
+  redis_password: "${REDIS_PASSWORD}"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  namespace: user-system-${USERNAME}
+  labels:
+    app: packalares-auth
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: packalares-auth
+  template:
+    metadata:
+      labels:
+        app: packalares-auth
+    spec:
+      containers:
+      - name: auth
+        image: packalares/auth:latest
+        ports:
+        - containerPort: 9091
+          name: http
+        env:
+        - name: USER_ZONE
+          value: "${USER_ZONE}"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: auth-secrets
+              key: jwt_secret
+        - name: SESSION_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: auth-secrets
+              key: session_secret
+        - name: REDIS_ADDR
+          value: "redis-cluster-proxy.os-platform:6379"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: auth-secrets
+              key: redis_password
+        - name: LLDAP_HOST
+          value: "lldap-service.os-platform"
+        - name: LLDAP_PORT
+          value: "17170"
+        - name: LLDAP_USER
+          value: "admin"
+        - name: LLDAP_PASSWORD
+          value: "${LLDAP_ADMIN_PASSWORD}"
+        - name: TOTP_ISSUER
+          value: "packalares"
+        - name: AUTH_LISTEN_ADDR
+          value: ":9091"
+        livenessProbe:
+          httpGet:
+            path: /api/health
+            port: 9091
+          initialDelaySeconds: 5
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /api/health
+            port: 9091
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-backend
+  namespace: user-system-${USERNAME}
+spec:
+  selector:
+    app: packalares-auth
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    name: http
+    port: 9091
+    targetPort: 9091
+
+---
+# ExternalName service for cross-namespace access
+apiVersion: v1
+kind: Service
+metadata:
+  name: authelia-backend-svc
+  namespace: user-space-${USERNAME}
+spec:
+  type: ExternalName
+  externalName: auth-backend.user-system-${USERNAME}.svc.cluster.local
+  ports:
+  - protocol: TCP
+    name: http
+    port: 9091
+    targetPort: 9091

@@ -1,0 +1,210 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: system-server
+  namespace: user-system-${USERNAME}
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: system-server
+rules:
+- apiGroups: ["app.bytetrade.io"]
+  resources: ["applications"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: [""]
+  resources: ["services", "configmaps", "secrets"]
+  verbs: ["get", "list", "create", "update", "delete"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: system-server-${USERNAME}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: system-server
+subjects:
+- kind: ServiceAccount
+  name: system-server
+  namespace: user-system-${USERNAME}
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: system-server
+  namespace: user-system-${USERNAME}
+  labels:
+    app: packalares-system-server
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: packalares-system-server
+  template:
+    metadata:
+      labels:
+        app: packalares-system-server
+    spec:
+      serviceAccountName: system-server
+      containers:
+      - name: system-server
+        image: packalares/systemserver:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        - containerPort: 9091
+          name: auth-proxy
+        env:
+        - name: USER_ZONE
+          value: "${USER_ZONE}"
+        - name: USERNAME
+          value: "${USERNAME}"
+        - name: USER_NAMESPACE
+          value: "user-space-${USERNAME}"
+        - name: WATCH_NAMESPACE
+          value: "user-space-${USERNAME}"
+        - name: NGINX_CONFIG_PATH
+          value: "/etc/nginx/conf.d"
+        - name: NGINX_RELOAD_CMD
+          value: "nginx -s reload"
+        - name: LISTEN_ADDR
+          value: ":8080"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 3
+          periodSeconds: 10
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+      volumes:
+      - name: nginx-config
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: system-server
+  namespace: user-system-${USERNAME}
+spec:
+  selector:
+    app: packalares-system-server
+  type: ClusterIP
+  ports:
+  - protocol: TCP
+    name: http
+    port: 8080
+    targetPort: 8080
+
+---
+# Application CRD
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: applications.app.bytetrade.io
+spec:
+  group: app.bytetrade.io
+  versions:
+  - name: v1alpha1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              name:
+                type: string
+              namespace:
+                type: string
+              owner:
+                type: string
+              entrances:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    name:
+                      type: string
+                    host:
+                      type: string
+                    port:
+                      type: integer
+                    title:
+                      type: string
+                    icon:
+                      type: string
+                    authLevel:
+                      type: string
+                      enum: ["public", "one_factor", "two_factor"]
+                    invisible:
+                      type: boolean
+              permissions:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    group:
+                      type: string
+                    dataType:
+                      type: string
+                    version:
+                      type: string
+                    ops:
+                      type: array
+                      items:
+                        type: string
+              settings:
+                type: object
+                properties:
+                  analytics:
+                    type: boolean
+                  clusterscoped:
+                    type: boolean
+          status:
+            type: object
+            properties:
+              state:
+                type: string
+    additionalPrinterColumns:
+    - name: App
+      type: string
+      jsonPath: .spec.name
+    - name: Owner
+      type: string
+      jsonPath: .spec.owner
+    - name: State
+      type: string
+      jsonPath: .status.state
+    - name: Age
+      type: date
+      jsonPath: .metadata.creationTimestamp
+  scope: Namespaced
+  names:
+    plural: applications
+    singular: application
+    kind: Application
+    shortNames:
+    - app

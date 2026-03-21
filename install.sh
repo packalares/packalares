@@ -1,177 +1,327 @@
 #!/bin/bash
+# Packalares installer wrapper script
+# Downloads the pre-built CLI from GitHub Release and runs the full installation.
+#
+# Usage:
+#   curl -fsSL https://raw.githubusercontent.com/packalares/packalares/main/install.sh | bash
+#
+#   Or with options:
+#   curl -fsSL ... | bash -s -- --username admin --domain mydomain.com
+#
+# Environment variables:
+#   PACKALARES_VERSION     - Version to install (default: latest)
+#   PACKALARES_REGISTRY    - Container image registry override
+#   PACKALARES_BASE_DIR    - Base directory (default: /opt/packalares)
+#   PACKALARES_USERNAME    - Admin username (default: admin)
+#   PACKALARES_PASSWORD    - Admin password (auto-generated if empty)
+#   PACKALARES_DOMAIN      - Domain name (default: olares.local)
+#   OLARES_CERT_MODE       - Certificate mode: local or acme
+#   OLARES_ACME_EMAIL      - Email for Let's Encrypt
+#   OLARES_ACME_DNS_PROVIDER - DNS provider for ACME
+#   OLARES_TAILSCALE_AUTH_KEY - Tailscale auth key
+#   OLARES_TAILSCALE_CONTROL_URL - Tailscale/Headscale control URL
+
 set -euo pipefail
 
-echo ""
-echo "=========================================="
-echo "  Packalares Installer"
-echo "=========================================="
-echo ""
+# --- Configuration ---
+PACKALARES_VERSION="${PACKALARES_VERSION:-1.0.0}"
+PACKALARES_BASE_DIR="${PACKALARES_BASE_DIR:-/opt/packalares}"
+PACKALARES_USERNAME="${PACKALARES_USERNAME:-admin}"
+PACKALARES_DOMAIN="${PACKALARES_DOMAIN:-olares.local}"
+RELEASE_BASE_URL="${RELEASE_BASE_URL:-https://github.com/packalares/packalares/releases/download}"
 
-# Config — all from env vars
-USERNAME="${PACKALARES_USER:-}"
-PASSWORD="${PACKALARES_PASSWORD:-}"
-DOMAIN="${PACKALARES_DOMAIN:-olares.local}"
+# --- Colors ---
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
 
-if [ -z "$USERNAME" ]; then read -rp "Username: " USERNAME; fi
-if [ -z "$PASSWORD" ]; then read -rs -p "Password: " PASSWORD; echo; fi
-[ -z "$USERNAME" ] && { echo "Username required"; exit 1; }
-[ -z "$PASSWORD" ] && { echo "Password required"; exit 1; }
+log_info()  { echo -e "${BLUE}[INFO]${NC}  $*"; }
+log_ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
+log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
+log_error() { echo -e "${RED}[ERROR]${NC} $*"; }
 
-NODE_IP=$(hostname -I | awk '{print $1}')
-USER_ZONE="${USERNAME}.${DOMAIN}"
-VERSION=$(cat VERSION 2>/dev/null || echo "1.12.6-20260317")
+# --- Pre-flight checks ---
+check_root() {
+    if [ "$(id -u)" -ne 0 ]; then
+        log_error "This script must be run as root"
+        echo "  Try: sudo bash install.sh"
+        exit 1
+    fi
+}
 
-echo "  Server:  $NODE_IP"
-echo "  User:    $USERNAME"
-echo "  Domain:  $USER_ZONE"
-echo "  Version: $VERSION"
-echo ""
+check_os() {
+    if [ "$(uname)" != "Linux" ]; then
+        log_error "Packalares requires Linux"
+        exit 1
+    fi
+}
 
-# Step 1: Build CLI if not already built
-echo "[1/5] Building CLI..."
-RELEASE_URL="https://github.com/packalares/packalares/releases/latest/download"
+detect_arch() {
+    local arch
+    arch="$(uname -m)"
+    case "$arch" in
+        x86_64)  ARCH="amd64" ;;
+        aarch64) ARCH="arm64" ;;
+        armv7l)  ARCH="arm" ;;
+        *)
+            log_error "Unsupported architecture: $arch"
+            exit 1
+            ;;
+    esac
+    log_info "Architecture: $ARCH"
+}
 
-# Download CLI
-if [ ! -f /usr/local/bin/olares-cli ]; then
-    curl -sfL "$RELEASE_URL/olares-cli-linux-amd64" -o /usr/local/bin/olares-cli
-    chmod +x /usr/local/bin/olares-cli
-    echo "  CLI downloaded"
-else
-    echo "  CLI already installed"
-fi
+check_commands() {
+    local missing=()
+    for cmd in curl tar systemctl; do
+        if ! command -v "$cmd" &>/dev/null; then
+            missing+=("$cmd")
+        fi
+    done
+    if [ ${#missing[@]} -gt 0 ]; then
+        log_error "Missing required commands: ${missing[*]}"
+        exit 1
+    fi
+}
 
-# Download daemon
-curl -sfL "$RELEASE_URL/olaresd-linux-amd64" -o /tmp/olaresd-linux-amd64
-echo "  Daemon downloaded"
+# --- Download CLI ---
+download_cli() {
+    local cli_url="${RELEASE_BASE_URL}/v${PACKALARES_VERSION}/packalares-${ARCH}"
+    local cli_path="/usr/local/bin/packalares"
 
-# Download and extract wizard tarball
-curl -sfL "$RELEASE_URL/install-wizard.tar.gz" -o /tmp/install-wizard.tar.gz
-mkdir -p /tmp/wizard-extract
-tar -xzf /tmp/install-wizard.tar.gz -C /tmp/wizard-extract/
-VERSION=$(cat /tmp/wizard-extract/version.hint 2>/dev/null || echo "$VERSION")
-mkdir -p "$HOME/.olares/versions/v$VERSION"
-cp -a /tmp/wizard-extract/* "$HOME/.olares/versions/v$VERSION/"
-rm -rf /tmp/wizard-extract /tmp/install-wizard.tar.gz
-echo "  Wizard extracted (version: $VERSION)"
+    if [ -f "$cli_path" ]; then
+        local current_version
+        current_version=$("$cli_path" --version 2>/dev/null || echo "unknown")
+        log_info "Existing CLI found (version: $current_version)"
+        if [ "$current_version" = "$PACKALARES_VERSION" ]; then
+            log_ok "CLI is already up to date"
+            return 0
+        fi
+    fi
 
-# Create olaresd tarball for prepare step
-mkdir -p /tmp/olaresd-pkg "$HOME/.olares/versions/v$VERSION/pkg"
-cp /tmp/olaresd-linux-amd64 /tmp/olaresd-pkg/olaresd
-chmod +x /tmp/olaresd-pkg/olaresd
-tar -czf "$HOME/.olares/versions/v$VERSION/pkg/olaresd-v$VERSION.tar.gz" -C /tmp/olaresd-pkg olaresd
-rm -rf /tmp/olaresd-pkg /tmp/olaresd-linux-amd64
-echo "  All tools ready"
+    log_info "Downloading Packalares CLI v${PACKALARES_VERSION} ..."
+    if curl -fsSL -o "$cli_path" "$cli_url" 2>/dev/null; then
+        chmod +x "$cli_path"
+        log_ok "CLI downloaded to $cli_path"
+    else
+        log_warn "Could not download pre-built CLI from $cli_url"
+        log_info "Attempting to build from source ..."
+        build_cli_from_source
+    fi
+}
 
-# Step 2: Precheck + Download
-echo ""
-echo "[2/5] Precheck and download..."
-olares-cli precheck 2>&1 || true
-olares-cli download component --version "$VERSION" --cdn-service https://cdn.olares.com 2>&1 || echo "  Some components will be pulled on demand"
+build_cli_from_source() {
+    if ! command -v go &>/dev/null; then
+        log_error "Go is required to build from source. Install Go 1.22+ first."
+        exit 1
+    fi
 
-# Step 3: Prepare (containerd, redis, olaresd)
-echo ""
-echo "[3/5] Preparing system..."
-olares-cli prepare --version "$VERSION"
+    local src_dir="${PACKALARES_BASE_DIR}/src"
+    if [ -d "${src_dir}/packalares" ]; then
+        log_info "Using existing source at ${src_dir}/packalares"
+    else
+        log_info "Cloning Packalares source ..."
+        mkdir -p "$src_dir"
+        git clone https://github.com/packalares/packalares.git "${src_dir}/packalares"
+    fi
 
-# Step 4: Install (K3s, Helm charts, all services)
-echo ""
-echo "[4/5] Installing system..."
-olares-cli install --version "$VERSION" --os-domainname "$DOMAIN" --os-username "$USERNAME" --os-password "$PASSWORD"
+    log_info "Building CLI ..."
+    cd "${src_dir}/packalares"
+    go build -o /usr/local/bin/packalares ./cmd/cli/
+    chmod +x /usr/local/bin/packalares
+    log_ok "CLI built successfully"
+}
 
-# Step 5: Activate
-echo ""
-echo "[5/5] Activating..."
-export KUBECONFIG=/root/.kube/config
+# --- Run installation ---
+run_install() {
+    log_info "Starting Packalares installation ..."
+    echo ""
 
-# Set LLDAP password
-LLDAP_IP=$(kubectl get svc lldap-service -n os-platform -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-LLDAP_PASS=$(kubectl get secret lldap-credentials -n os-platform -o jsonpath='{.data.lldap-ldap-user-pass}' 2>/dev/null | base64 -d)
-ADMIN_TOKEN=$(curl -s -X POST "http://$LLDAP_IP:17170/auth/simple/login" \
-    -H 'Content-Type: application/json' \
-    -d "{\"username\":\"admin\",\"password\":\"$LLDAP_PASS\"}" 2>/dev/null | \
-    python3 -c 'import sys,json; print(json.load(sys.stdin).get("token",""))' 2>/dev/null || true)
-if [ -n "$ADMIN_TOKEN" ]; then
-    curl -s -X POST "http://$LLDAP_IP:17170/api/graphql" \
-        -H 'Content-Type: application/json' \
-        -H "Authorization: Bearer $ADMIN_TOKEN" \
-        -d "{\"query\":\"mutation { modifyUser(user: {id: \\\"$USERNAME\\\", password: \\\"$PASSWORD\\\"}) { ok } }\"}" >/dev/null 2>&1
-    echo "  Password set"
-fi
+    local args=()
 
-# Generate TLS cert
-openssl req -x509 -nodes -days 3650 \
-    -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
-    -keyout /tmp/tls.key -out /tmp/tls.crt \
-    -subj "/CN=*.$USER_ZONE" \
-    -addext "subjectAltName=DNS:*.$USER_ZONE,DNS:$USER_ZONE" 2>/dev/null
-CERT_DATA=$(cat /tmp/tls.crt)
-KEY_DATA=$(cat /tmp/tls.key)
-rm -f /tmp/tls.key /tmp/tls.crt
+    # Pass through any script arguments
+    args+=("$@")
 
-cat <<EOCM | kubectl apply -f - 2>/dev/null
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: zone-ssl-config
-  namespace: user-space-$USERNAME
-data:
-  zone: $USER_ZONE
-  cert: |
-$(echo "$CERT_DATA" | sed 's/^/    /')
-  key: |
-$(echo "$KEY_DATA" | sed 's/^/    /')
-EOCM
-echo "  TLS certificate generated"
+    # Add defaults if not overridden by arguments
+    local has_username=false
+    local has_domain=false
+    local has_basedir=false
+    for arg in "${args[@]:-}"; do
+        case "$arg" in
+            --username*) has_username=true ;;
+            --domain*)   has_domain=true ;;
+            --base-dir*) has_basedir=true ;;
+        esac
+    done
 
-# Set annotations
-kubectl annotate user "$USERNAME" \
-    "bytetrade.io/zone=$USER_ZONE" \
-    "bytetrade.io/creator=$USERNAME" \
-    "bytetrade.io/owner-role=owner" \
-    "bytetrade.io/language=en-US" \
-    "bytetrade.io/location=Europe/Amsterdam" \
-    "bytetrade.io/theme=light" \
-    "bytetrade.io/launcher-access-level=1" \
-    "bytetrade.io/launcher-auth-policy=one_factor" \
-    "bytetrade.io/is-ephemeral=false" \
-    "bytetrade.io/local-domain-ip=$NODE_IP" \
-    "bytetrade.io/local-domain-dns-record=$NODE_IP" \
-    --overwrite 2>/dev/null
-echo "  User configured"
+    if [ "$has_username" = false ] && [ -n "${PACKALARES_USERNAME:-}" ]; then
+        args+=("--username" "$PACKALARES_USERNAME")
+    fi
+    if [ "$has_domain" = false ] && [ -n "${PACKALARES_DOMAIN:-}" ]; then
+        args+=("--domain" "$PACKALARES_DOMAIN")
+    fi
+    if [ "$has_basedir" = false ] && [ -n "${PACKALARES_BASE_DIR:-}" ]; then
+        args+=("--base-dir" "$PACKALARES_BASE_DIR")
+    fi
+    if [ -n "${PACKALARES_REGISTRY:-}" ]; then
+        args+=("--registry" "$PACKALARES_REGISTRY")
+    fi
+    if [ -n "${PACKALARES_PASSWORD:-}" ]; then
+        args+=("--password" "$PACKALARES_PASSWORD")
+    fi
+    if [ -n "${OLARES_CERT_MODE:-}" ]; then
+        args+=("--cert-mode" "$OLARES_CERT_MODE")
+    fi
+    if [ -n "${OLARES_ACME_EMAIL:-}" ]; then
+        args+=("--acme-email" "$OLARES_ACME_EMAIL")
+    fi
+    if [ -n "${OLARES_ACME_DNS_PROVIDER:-}" ]; then
+        args+=("--acme-dns-provider" "$OLARES_ACME_DNS_PROVIDER")
+    fi
+    if [ -n "${OLARES_TAILSCALE_AUTH_KEY:-}" ]; then
+        args+=("--tailscale-auth-key" "$OLARES_TAILSCALE_AUTH_KEY")
+    fi
+    if [ -n "${OLARES_TAILSCALE_CONTROL_URL:-}" ]; then
+        args+=("--tailscale-control-url" "$OLARES_TAILSCALE_CONTROL_URL")
+    fi
 
-# Patch authelia config
-kubectl get configmap authelia-configs -n os-framework -o yaml > /tmp/authelia-patch.yaml 2>/dev/null
-sed -i "s/example\.myterminus\.com/$USER_ZONE/g" /tmp/authelia-patch.yaml
-sed -i "s/files\.example\.myterminus\.com/files.$USER_ZONE/g" /tmp/authelia-patch.yaml
-sed -i "s/'example\.com'/$USER_ZONE/g" /tmp/authelia-patch.yaml
-sed -i "s/authelia-svc\.example\.com/auth.$USER_ZONE/g" /tmp/authelia-patch.yaml
-sed -i "s/www\.example\.com/desktop.$USER_ZONE/g" /tmp/authelia-patch.yaml
-kubectl apply -f /tmp/authelia-patch.yaml 2>/dev/null
-rm -f /tmp/authelia-patch.yaml
-echo "  Auth configured"
+    packalares install "${args[@]}"
+}
 
-# Restart services + trigger L4 proxy
-kubectl delete pod -l app=authelia-backend -n os-framework --force 2>/dev/null
-kubectl delete pod bfl-0 -n "user-space-$USERNAME" 2>/dev/null
-sleep 15
-kubectl annotate user "$USERNAME" "bytetrade.io/wizard-status=network_activating" --overwrite 2>/dev/null
-for i in $(seq 1 60); do
-    kubectl get pods -n os-network -l app=l4-bfl-proxy --no-headers 2>/dev/null | grep -q Running && break
-    sleep 5
-done
-kubectl annotate user "$USERNAME" "bytetrade.io/wizard-status=completed" --overwrite 2>/dev/null
-kubectl delete pod bfl-0 -n "user-space-$USERNAME" 2>/dev/null
-sleep 15
-echo "  Activation complete"
+# --- Activation ---
+run_activation() {
+    log_info "Running activation ..."
 
-echo ""
-echo "=========================================="
-echo "  Packalares is ready!"
-echo "=========================================="
-echo ""
-echo "  Hosts file:"
-echo "  $NODE_IP  desktop.$USER_ZONE  auth.$USER_ZONE  settings.$USER_ZONE  market.$USER_ZONE  files.$USER_ZONE  $USER_ZONE"
-echo ""
-echo "  Open: https://desktop.$USER_ZONE"
-echo "  Login: $USERNAME"
-echo ""
+    # Read generated password if available
+    local password_file="${PACKALARES_BASE_DIR}/state/generated_password"
+    local password="${PACKALARES_PASSWORD:-}"
+
+    if [ -z "$password" ] && [ -f "$password_file" ]; then
+        password=$(cat "$password_file")
+    fi
+
+    # Generate self-signed cert if using local mode
+    local cert_mode="${OLARES_CERT_MODE:-local}"
+    if [ "$cert_mode" = "local" ]; then
+        log_info "Generating self-signed TLS certificate ..."
+        generate_self_signed_cert
+    fi
+
+    log_ok "Activation complete"
+}
+
+generate_self_signed_cert() {
+    local cert_dir="/etc/packalares/ssl"
+    mkdir -p "$cert_dir"
+
+    local domain="${PACKALARES_DOMAIN:-olares.local}"
+    local username="${PACKALARES_USERNAME:-admin}"
+    local zone="${username}.${domain}"
+
+    if [ -f "$cert_dir/tls.crt" ] && [ -f "$cert_dir/tls.key" ]; then
+        log_info "TLS certificate already exists at $cert_dir"
+        return 0
+    fi
+
+    # Generate using openssl
+    openssl req -x509 -nodes -days 3650 \
+        -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
+        -keyout "$cert_dir/tls.key" \
+        -out "$cert_dir/tls.crt" \
+        -subj "/CN=*.${zone}/O=Packalares" \
+        -addext "subjectAltName=DNS:${zone},DNS:*.${zone},DNS:localhost,IP:127.0.0.1,IP:::1" \
+        2>/dev/null
+
+    chmod 600 "$cert_dir/tls.key"
+    chmod 644 "$cert_dir/tls.crt"
+
+    # Create Kubernetes TLS secret
+    if command -v kubectl &>/dev/null; then
+        kubectl create secret tls zone-ssl-secret \
+            --cert="$cert_dir/tls.crt" \
+            --key="$cert_dir/tls.key" \
+            -n os-system \
+            --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
+    fi
+
+    log_ok "Self-signed TLS certificate generated for *.${zone}"
+}
+
+# --- Print access info ---
+print_access_info() {
+    echo ""
+    echo "=============================================="
+    echo "  Packalares Installation Complete"
+    echo "=============================================="
+    echo ""
+
+    local domain="${PACKALARES_DOMAIN:-olares.local}"
+    local username="${PACKALARES_USERNAME:-admin}"
+    local zone="${username}.${domain}"
+
+    # Get host IP
+    local host_ip
+    host_ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+    if [ -z "$host_ip" ]; then
+        host_ip="<your-server-ip>"
+    fi
+
+    echo "  Access URL:     https://${zone}"
+    echo "  Host IP:        ${host_ip}"
+    echo "  Username:       ${username}"
+
+    # Show password if we have it
+    local password_file="${PACKALARES_BASE_DIR}/state/generated_password"
+    if [ -n "${PACKALARES_PASSWORD:-}" ]; then
+        echo "  Password:       (as specified)"
+    elif [ -f "$password_file" ]; then
+        echo "  Password:       $(cat "$password_file")"
+    else
+        echo "  Password:       (check installation output above)"
+    fi
+
+    echo ""
+    echo "  kubectl:        export KUBECONFIG=/etc/rancher/k3s/k3s.yaml"
+    echo "  Status:         packalares status"
+    echo "  Uninstall:      packalares uninstall"
+    echo ""
+
+    if [ "$domain" = "olares.local" ]; then
+        echo "  NOTE: Add to /etc/hosts on your devices:"
+        echo "    ${host_ip}  ${zone} desktop.${zone} wizard.${zone}"
+        echo ""
+    fi
+
+    if [ -n "${OLARES_TAILSCALE_AUTH_KEY:-}" ]; then
+        echo "  Tailscale:      enabled (check 'tailscale status')"
+        echo ""
+    fi
+
+    echo "=============================================="
+}
+
+# --- Main ---
+main() {
+    echo ""
+    echo "  ____            _         _"
+    echo " |  _ \\ __ _  ___| | ____ _| | __ _ _ __ ___  ___"
+    echo " | |_) / _\` |/ __| |/ / _\` | |/ _\` | '__/ _ \\/ __|"
+    echo " |  __/ (_| | (__|   < (_| | | (_| | | |  __/\\__ \\"
+    echo " |_|   \\__,_|\\___|_|\\_\\__,_|_|\\__,_|_|  \\___||___/"
+    echo ""
+    echo "  Self-hosted Olares installer — v${PACKALARES_VERSION}"
+    echo ""
+
+    check_root
+    check_os
+    detect_arch
+    check_commands
+    download_cli
+    run_install "$@"
+    run_activation
+    print_access_info
+}
+
+main "$@"

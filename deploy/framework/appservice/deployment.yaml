@@ -1,0 +1,156 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-service
+  namespace: os-framework
+  labels:
+    app: app-service
+    tier: framework
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: app-service
+  template:
+    metadata:
+      labels:
+        app: app-service
+        tier: framework
+    spec:
+      serviceAccountName: app-service
+      containers:
+        - name: app-service
+          image: packalares/app-service:latest
+          ports:
+            - containerPort: 6755
+              name: http
+              protocol: TCP
+          env:
+            - name: APP_DATA_DIR
+              value: /var/lib/packalares/appservice
+            - name: LISTEN_ADDR
+              value: ":6755"
+            - name: APP_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: APP_OWNER
+              value: admin
+            - name: CHART_REPO_URL
+              value: "http://chart-repo-service.os-framework:82/"
+            - name: LLDAP_HOST
+              value: "http://lldap-service.os-platform:17170"
+            - name: LLDAP_BIND_DN
+              valueFrom:
+                secretKeyRef:
+                  name: lldap-credentials
+                  key: lldap-ldap-user-dn
+                  optional: true
+            - name: LLDAP_BIND_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: lldap-credentials
+                  key: lldap-ldap-user-pass
+                  optional: true
+            - name: SYS_APPS
+              value: ""
+            - name: GENERATED_APPS
+              value: ""
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/packalares/appservice
+          livenessProbe:
+            httpGet:
+              path: /app-service/healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /app-service/healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: app-service-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app-service
+  namespace: os-framework
+  labels:
+    app: app-service
+spec:
+  selector:
+    app: app-service
+  ports:
+    - port: 6755
+      targetPort: http
+      protocol: TCP
+      name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: app-service-data
+  namespace: os-framework
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app-service
+  namespace: os-framework
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: app-service
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "namespaces", "configmaps", "secrets", "serviceaccounts"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "replicasets"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["app.bytetrade.io"]
+    resources: ["applications", "applicationmanagers"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["sys.bytetrade.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["clusterroles", "clusterrolebindings", "roles", "rolebindings"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: app-service
+subjects:
+  - kind: ServiceAccount
+    name: app-service
+    namespace: os-framework
+roleRef:
+  kind: ClusterRole
+  name: app-service
+  apiGroup: rbac.authorization.k8s.io

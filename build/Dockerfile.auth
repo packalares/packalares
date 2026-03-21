@@ -1,0 +1,17 @@
+FROM golang:1.22-alpine AS builder
+
+RUN apk add --no-cache git ca-certificates
+
+WORKDIR /build
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /auth ./cmd/auth
+
+FROM alpine:3.19
+RUN apk add --no-cache ca-certificates tzdata
+COPY --from=builder /auth /usr/local/bin/auth
+
+EXPOSE 9091
+ENTRYPOINT ["/usr/local/bin/auth"]

@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Packalares - Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #0a0a0a;
+}
+
+/* Background */
+.bg-container {
+  width: 100%;
+  height: 100%;
+  position: fixed;
+  left: 0; right: 0; top: 0; bottom: 0;
+  z-index: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+}
+
+.bg-container .desktop-bg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.7);
+}
+
+/* Login box */
+.login-box {
+  width: 100%;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.login-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10vh;
+  animation: fadeIn 0.6s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Avatar */
+.avatar {
+  width: 124px;
+  height: 124px;
+  border-radius: 62px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(20px);
+  border: 3px solid rgba(255,255,255,0.2);
+}
+
+.avatar-initials {
+  font-size: 48px;
+  font-weight: 700;
+  color: #fff;
+  text-transform: uppercase;
+  user-select: none;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Name and hint */
+.login-name {
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-top: 16px;
+  margin-bottom: 4px;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.login-hint {
+  font-size: 14px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 20px;
+  text-shadow: 0 1px 4px rgba(0,0,0,0.3);
+}
+
+/* Password input */
+.input-container {
+  width: 220px;
+  height: 32px;
+  background: rgba(255,255,255,0.4);
+  border-radius: 8px;
+  backdrop-filter: blur(20px);
+  padding: 0 10px 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  transition: background 0.2s ease;
+}
+
+.input-container:focus-within {
+  background: rgba(255,255,255,0.5);
+}
+
+.input-container.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+  20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+.input-wrap {
+  width: 100%;
+  height: 18px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+}
+
+.input-wrap input {
+  width: 180px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  caret-color: #ffffff;
+  letter-spacing: 2px;
+  height: 28px;
+  line-height: 28px;
+  font-weight: 700;
+  font-size: 18px;
+  color: #ffffff;
+}
+
+.input-wrap input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.input-wrap input::placeholder {
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: rgba(255,255,255,0.5);
+}
+
+.placeholder-label {
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255,255,255,0.5);
+  pointer-events: none;
+  font-size: 12px;
+  transition: opacity 0.2s ease;
+}
+
+.submit-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #ffffff;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  border-radius: 50%;
+}
+
+.submit-btn.visible {
+  opacity: 1;
+}
+
+.submit-btn:hover {
+  background: rgba(255,255,255,0.15);
+}
+
+.submit-btn svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* Loading spinner */
+.loading-spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 16px;
+  background: rgba(31,24,20,0.3);
+  animation: spin 1s linear infinite;
+  margin: 12px auto 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+
+.loading-spinner.visible {
+  display: flex;
+}
+
+.loading-spinner svg {
+  width: 18px;
+  height: 18px;
+  color: #fff;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* TOTP section */
+.totp-section {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  animation: fadeIn 0.4s ease-out;
+}
+
+.totp-section.visible {
+  display: flex;
+}
+
+.totp-icon {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 4px solid rgba(255,255,255,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24px;
+  position: relative;
+}
+
+.totp-progress {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+}
+
+.totp-progress svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.totp-progress circle {
+  fill: none;
+  stroke: rgba(255,255,255,0.5);
+  stroke-width: 4;
+  stroke-dasharray: 251.3;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 1s linear;
+}
+
+.totp-title {
+  font-weight: 600;
+  font-size: 24px;
+  color: #ffffff;
+  margin-bottom: 8px;
+}
+
+.totp-desc {
+  font-size: 14px;
+  color: rgba(255,255,255,0.85);
+  margin-bottom: 20px;
+}
+
+.otp-inputs {
+  display: flex;
+  gap: 8px;
+}
+
+.otp-inputs input {
+  width: 32px;
+  height: 40px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.4);
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  caret-color: #ffffff;
+  line-height: 40px;
+}
+
+.otp-inputs input:focus {
+  outline: none;
+  background: rgba(255,255,255,0.5);
+}
+
+.otp-inputs input.shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Error toast */
+.toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-100px);
+  background: rgba(239,68,68,0.95);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  transition: transform 0.3s ease;
+  white-space: nowrap;
+}
+
+.toast.visible {
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .avatar {
+    width: 100px;
+    height: 100px;
+    border-radius: 50px;
+  }
+  .avatar-initials {
+    font-size: 36px;
+  }
+  .login-name {
+    font-size: 20px;
+  }
+}
+</style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-container">
+  <img class="desktop-bg" id="loginBg" src="" alt="" onerror="this.style.display='none'" />
+</div>
+
+<!-- Error Toast -->
+<div class="toast" id="errorToast"></div>
+
+<!-- Login Box -->
+<div class="login-box" id="firstFactorView">
+  <div class="login-card">
+    <!-- Avatar -->
+    <div class="avatar" id="avatarContainer">
+      <span class="avatar-initials" id="avatarInitials"></span>
+    </div>
+
+    <!-- Username -->
+    <p class="login-name" id="loginName">User</p>
+    <p class="login-hint">Enter your password to log in</p>
+
+    <!-- Password Input -->
+    <div class="input-container" id="passwordContainer">
+      <div class="input-wrap">
+        <input
+          type="password"
+          id="passwordInput"
+          autocomplete="current-password"
+          placeholder="Password"
+        />
+      </div>
+      <button class="submit-btn" id="submitBtn" title="Login">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 16 16 12 12 8"/>
+          <line x1="8" y1="12" x2="16" y2="12"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-spinner" id="loadingSpinner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+      </svg>
+    </div>
+  </div>
+</div>
+
+<!-- TOTP / Second Factor -->
+<div class="login-box" style="display:none" id="secondFactorView">
+  <div class="login-card">
+    <div class="totp-section visible">
+      <!-- Timer circle -->
+      <div class="totp-icon">
+        <div class="totp-progress">
+          <svg viewBox="0 0 88 88">
+            <circle id="totpCircle" cx="44" cy="44" r="40"/>
+          </svg>
+        </div>
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0110 0v4"/>
+        </svg>
+      </div>
+
+      <p class="totp-title">Two-Factor Authentication</p>
+      <p class="totp-desc">Enter the code from your authenticator app</p>
+
+      <!-- OTP Inputs -->
+      <div class="otp-inputs" id="otpInputs">
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="0" />
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="1" />
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="2" />
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="3" />
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="4" />
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" data-index="5" />
+      </div>
+
+      <div class="loading-spinner" id="totpSpinner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // --- State ---
+  const state = {
+    user: null,
+    loading: false,
+    totpPeriod: 30,
+    totpDigits: 6,
+    passwordToken: null
+  };
+
+  // --- DOM refs ---
+  const $ = id => document.getElementById(id);
+  const passwordInput = $('passwordInput');
+  const passwordContainer = $('passwordContainer');
+  const submitBtn = $('submitBtn');
+  const loadingSpinner = $('loadingSpinner');
+  const errorToast = $('errorToast');
+  const loginBg = $('loginBg');
+  const avatarContainer = $('avatarContainer');
+  const avatarInitials = $('avatarInitials');
+  const loginName = $('loginName');
+  const firstFactorView = $('firstFactorView');
+  const secondFactorView = $('secondFactorView');
+  const otpInputs = $('otpInputs');
+  const totpSpinner = $('totpSpinner');
+  const totpCircle = $('totpCircle');
+
+  // --- Utils ---
+  function showToast(msg, duration = 3000) {
+    errorToast.textContent = msg;
+    errorToast.classList.add('visible');
+    setTimeout(() => errorToast.classList.remove('visible'), duration);
+  }
+
+  function shakeEl(el) {
+    el.classList.add('shake');
+    setTimeout(() => el.classList.remove('shake'), 600);
+  }
+
+  function setLoading(isLoading) {
+    state.loading = isLoading;
+    passwordInput.disabled = isLoading;
+    loadingSpinner.classList.toggle('visible', isLoading);
+    if (isLoading) {
+      passwordInput.classList.add('disable');
+    } else {
+      passwordInput.classList.remove('disable');
+    }
+  }
+
+  // --- MD5 salted password (simplified — Olares uses salted MD5) ---
+  // In production this would use the same salting as Olares.
+  // For now we send password as-is and let the backend handle it.
+  function preparePassword(password) {
+    return password;
+  }
+
+  // --- API ---
+  const BASE_URL = window.location.origin;
+
+  async function loadUserInfo() {
+    try {
+      const res = await fetch(BASE_URL + '/bfl/info/v1/olares-info');
+      if (!res.ok) throw new Error('Failed to load user info');
+      const data = await res.json();
+      state.user = data;
+      renderUser(data);
+    } catch (err) {
+      console.error('loadUserInfo error:', err);
+      // Fallback — show generic login
+      loginName.textContent = 'Packalares';
+      avatarInitials.textContent = 'P';
+    }
+  }
+
+  function renderUser(user) {
+    const olaresId = user.olaresId || user.terminusName || '';
+    const username = olaresId.includes('@') ? olaresId.split('@')[0] : olaresId;
+    loginName.textContent = username || 'User';
+    avatarInitials.textContent = (username || 'U').charAt(0).toUpperCase();
+
+    // Avatar image
+    if (user.avatar) {
+      const img = document.createElement('img');
+      img.src = user.avatar;
+      img.onerror = () => img.remove();
+      img.onload = () => { avatarInitials.style.display = 'none'; };
+      avatarContainer.appendChild(img);
+    }
+
+    // Background
+    if (user.loginBackground) {
+      if (user.loginBackground.startsWith('http')) {
+        loginBg.src = user.loginBackground;
+      } else {
+        loginBg.src = '/auth/' + user.loginBackground;
+      }
+    } else {
+      // Default gradient background
+      loginBg.style.display = 'none';
+      document.querySelector('.bg-container').style.background =
+        'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)';
+    }
+  }
+
+  async function doLogin() {
+    const password = passwordInput.value;
+    if (!password) {
+      shakeEl(passwordContainer);
+      passwordInput.focus();
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const olaresId = state.user?.olaresId || state.user?.terminusName || '';
+      const username = olaresId.includes('@') ? olaresId.split('@')[0] : olaresId;
+
+      const redirectParam = new URLSearchParams(window.location.search).get('redirect') ||
+                            new URLSearchParams(window.location.search).get('rd') || '';
+
+      const targetURL = redirectParam
+        ? decodeURIComponent(redirectParam)
+        : window.location.origin.replace(/\/\/[^.]+\./, '//desktop.');
+
+      const res = await fetch(BASE_URL + '/api/firstfactor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: username,
+          password: preparePassword(password),
+          keepMeLoggedIn: false,
+          targetURL: targetURL,
+          requestTermiPass: false
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        const msg = errData?.message || errData || 'Login failed';
+        throw new Error(typeof msg === 'string' ? msg : 'Login failed');
+      }
+
+      const data = await res.json();
+
+      if (data.fa2 || data.secondFactor) {
+        // Show TOTP view
+        state.passwordToken = data.token || data;
+        showSecondFactor();
+      } else {
+        // Success — redirect
+        const redirect = data.redirect || '/';
+        window.location.href = redirect;
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      showToast(err.message || 'Login failed');
+      shakeEl(passwordContainer);
+      passwordInput.select();
+      passwordInput.focus();
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // --- Second Factor (TOTP) ---
+  function showSecondFactor() {
+    firstFactorView.style.display = 'none';
+    secondFactorView.style.display = 'flex';
+    const firstOtp = otpInputs.querySelector('input');
+    if (firstOtp) firstOtp.focus();
+    startTotpTimer();
+  }
+
+  function startTotpTimer() {
+    function updateProgress() {
+      const now = Date.now() / 1000;
+      const progress = (now % state.totpPeriod) / state.totpPeriod;
+      const circumference = 2 * Math.PI * 40; // r=40
+      totpCircle.style.strokeDashoffset = circumference * progress;
+    }
+    updateProgress();
+    setInterval(updateProgress, 1000);
+  }
+
+  async function submitTOTP(code) {
+    totpSpinner.classList.add('visible');
+
+    try {
+      const res = await fetch(BASE_URL + '/api/secondfactor/totp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: code,
+          targetURL: window.location.origin.replace(/\/\/[^.]+\./, '//desktop.')
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error('Invalid code');
+      }
+
+      const data = await res.json();
+      const redirect = data.redirect || '/';
+      window.location.href = redirect;
+    } catch (err) {
+      showToast(err.message || 'Invalid code');
+      // Clear inputs and shake
+      const inputs = otpInputs.querySelectorAll('input');
+      inputs.forEach(inp => {
+        inp.value = '';
+        inp.classList.add('shake');
+        setTimeout(() => inp.classList.remove('shake'), 600);
+      });
+      inputs[0].focus();
+    } finally {
+      totpSpinner.classList.remove('visible');
+    }
+  }
+
+  // --- OTP Input Handling ---
+  function setupOTPInputs() {
+    const inputs = otpInputs.querySelectorAll('input');
+
+    inputs.forEach((input, idx) => {
+      input.addEventListener('input', (e) => {
+        const val = e.target.value.replace(/[^0-9]/g, '');
+        e.target.value = val;
+
+        if (val && idx < inputs.length - 1) {
+          inputs[idx + 1].focus();
+        }
+
+        // Check if complete
+        const code = Array.from(inputs).map(i => i.value).join('');
+        if (code.length === state.totpDigits) {
+          submitTOTP(code);
+        }
+      });
+
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Backspace' && !e.target.value && idx > 0) {
+          inputs[idx - 1].focus();
+          inputs[idx - 1].select();
+        }
+      });
+
+      input.addEventListener('paste', (e) => {
+        e.preventDefault();
+        const paste = (e.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+        for (let i = 0; i < Math.min(paste.length, inputs.length); i++) {
+          inputs[i].value = paste[i];
+        }
+        if (paste.length >= state.totpDigits) {
+          submitTOTP(paste.substring(0, state.totpDigits));
+        } else if (paste.length < inputs.length) {
+          inputs[paste.length].focus();
+        }
+      });
+    });
+  }
+
+  // --- Event Listeners ---
+  passwordInput.addEventListener('input', () => {
+    submitBtn.classList.toggle('visible', !!passwordInput.value);
+  });
+
+  passwordInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      doLogin();
+    }
+  });
+
+  submitBtn.addEventListener('click', doLogin);
+
+  // --- Init ---
+  async function init() {
+    setupOTPInputs();
+    await loadUserInfo();
+    passwordInput.focus();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
