@@ -29,21 +29,38 @@ echo ""
 
 # Step 1: Build CLI if not already built
 echo "[1/5] Building CLI..."
+RELEASE_URL="https://github.com/packalares/packalares/releases/latest/download"
+
+# Download CLI
 if [ ! -f /usr/local/bin/olares-cli ]; then
-    if command -v go &>/dev/null; then
-        cd cli && go build -ldflags="-X github.com/beclab/Olares/cli/pkg/core/common.DefaultOlaresDomain=${DOMAIN}" -o /usr/local/bin/olares-cli ./cmd/main.go && cd ..
-        chmod +x /usr/local/bin/olares-cli
-        echo "  CLI built"
-    else
-        echo "  Go not installed — downloading pre-built CLI..."
-        RELEASE_URL="https://github.com/packalares/packalares/releases/latest/download"
-        curl -sfL "$RELEASE_URL/olares-cli-linux-amd64" -o /usr/local/bin/olares-cli
-        chmod +x /usr/local/bin/olares-cli
-        echo "  CLI downloaded"
-    fi
+    curl -sfL "$RELEASE_URL/olares-cli-linux-amd64" -o /usr/local/bin/olares-cli
+    chmod +x /usr/local/bin/olares-cli
+    echo "  CLI downloaded"
 else
-    echo "  CLI already installed — skipping"
+    echo "  CLI already installed"
 fi
+
+# Download daemon
+curl -sfL "$RELEASE_URL/olaresd-linux-amd64" -o /tmp/olaresd-linux-amd64
+echo "  Daemon downloaded"
+
+# Download and extract wizard tarball
+curl -sfL "$RELEASE_URL/install-wizard.tar.gz" -o /tmp/install-wizard.tar.gz
+mkdir -p /tmp/wizard-extract
+tar -xzf /tmp/install-wizard.tar.gz -C /tmp/wizard-extract/
+VERSION=$(cat /tmp/wizard-extract/version.hint 2>/dev/null || echo "$VERSION")
+mkdir -p "$HOME/.olares/versions/v$VERSION"
+cp -a /tmp/wizard-extract/* "$HOME/.olares/versions/v$VERSION/"
+rm -rf /tmp/wizard-extract /tmp/install-wizard.tar.gz
+echo "  Wizard extracted (version: $VERSION)"
+
+# Create olaresd tarball for prepare step
+mkdir -p /tmp/olaresd-pkg "$HOME/.olares/versions/v$VERSION/pkg"
+cp /tmp/olaresd-linux-amd64 /tmp/olaresd-pkg/olaresd
+chmod +x /tmp/olaresd-pkg/olaresd
+tar -czf "$HOME/.olares/versions/v$VERSION/pkg/olaresd-v$VERSION.tar.gz" -C /tmp/olaresd-pkg olaresd
+rm -rf /tmp/olaresd-pkg /tmp/olaresd-linux-amd64
+echo "  All tools ready"
 
 # Step 2: Precheck + Download
 echo ""
