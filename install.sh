@@ -102,7 +102,7 @@ download_cli() {
     fi
 
     log_info "Downloading Packalares CLI v${PACKALARES_VERSION} ..."
-    if curl -fsSL -o "$cli_path" "$cli_url" 2>/dev/null; then
+    if curl -sSL -o "$cli_path" "$cli_url" 2>&1; then
         chmod +x "$cli_path"
         log_ok "CLI downloaded to $cli_path"
     else
