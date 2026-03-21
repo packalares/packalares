@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: proxy-config
+  namespace: packalares-framework
+data:
+  nginx.conf: |
+    # Generated at deploy time with actual service IPs
+    # See install.sh for the template
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: proxy
+  namespace: packalares-framework
+spec:
+  selector:
+    matchLabels:
+      app: proxy
+  template:
+    metadata:
+      labels:
+        app: proxy
+    spec:
+      hostNetwork: true
+      serviceAccountName: packalares-admin
+      tolerations:
+      - key: node-role.kubernetes.io/control-plane
+        effect: NoSchedule
+      containers:
+      - name: nginx
+        image: nginx:stable-alpine
+        ports:
+        - containerPort: 443
+          hostPort: 443
+        - containerPort: 80
+          hostPort: 80
+        volumeMounts:
+        - name: config
+          mountPath: /etc/nginx/nginx.conf
+          subPath: nginx.conf
+        - name: tls
+          mountPath: /etc/tls
+          readOnly: true
+      volumes:
+      - name: config
+        configMap:
+          name: proxy-config
+      - name: tls
+        secret:
+          secretName: zone-tls
