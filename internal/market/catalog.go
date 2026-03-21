@@ -68,6 +68,7 @@ func (c *Catalog) Load() error {
 	defaultPaths := []string{
 		"/etc/packalares/catalog.json",
 		"/app/catalog.json",
+		"/tmp/packalares-catalog.json",
 		"catalog.json",
 	}
 	for _, p := range defaultPaths {
