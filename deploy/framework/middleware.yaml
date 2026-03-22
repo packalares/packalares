@@ -56,7 +56,7 @@ spec:
       serviceAccountName: middleware-operator
       containers:
       - name: middleware
-        image: packalares/middleware:latest
+        image: ghcr.io/packalares/middleware:latest
         env:
         - name: PG_HOST
           value: "citus-svc.os-system"

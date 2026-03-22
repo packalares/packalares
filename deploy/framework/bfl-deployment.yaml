@@ -65,7 +65,7 @@ spec:
       priorityClassName: system-cluster-critical
       containers:
         - name: bfl
-          image: packalares/bfl:latest
+          image: ghcr.io/packalares/bfl:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080

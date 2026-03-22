@@ -3,11 +3,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wizard
-  namespace: user-space-${USERNAME}
+  namespace: user-space-{{USERNAME}}
   labels:
     app: wizard
     tier: user-app
-    bytetrade.io/owner: "${USERNAME}"
+    bytetrade.io/owner: "{{USERNAME}}"
 spec:
   replicas: 1
   selector:
@@ -20,17 +20,17 @@ spec:
     spec:
       containers:
       - name: wizard
-        image: ${REGISTRY:-docker.io}/beclab/wizard:latest
+        image: ghcr.io/packalares/desktop:latest
         ports:
         - containerPort: 80
           name: http
         env:
         - name: USER_ZONE
-          value: "${USER_ZONE}"
+          value: "{{USER_ZONE}}"
         - name: DOMAIN
-          value: "${DOMAIN}"
+          value: "{{DOMAIN}}"
         - name: ADMIN_USER
-          value: "${USERNAME}"
+          value: "{{USERNAME}}"
         resources:
           requests:
             cpu: 50m
@@ -43,7 +43,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: wizard-svc
-  namespace: user-space-${USERNAME}
+  namespace: user-space-{{USERNAME}}
 spec:
   selector:
     app: wizard
