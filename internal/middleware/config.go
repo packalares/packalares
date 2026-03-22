@@ -32,16 +32,16 @@ type Config struct {
 
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
-		PGHost:            "citus-headless",
+		PGHost:            "postgres-svc.packalares-platform",
 		PGPort:            5432,
 		PGAdminUser:       "postgres",
 		PGAdminPassword:   "",
 		RedisHost:         "redis-cluster-proxy",
 		RedisPort:         6379,
 		RedisPassword:     "",
-		NATSHost:          "nats",
+		NATSHost:          "nats-svc.packalares-platform",
 		NATSPort:          4222,
-		PlatformNamespace: "os-platform",
+		PlatformNamespace: "packalares-platform",
 		WatchNamespace:    "",
 	}
 
@@ -85,8 +85,15 @@ func LoadConfig() (*Config, error) {
 		cfg.WatchNamespace = v
 	}
 
+	// Also accept PG_PASSWORD as a fallback
 	if cfg.PGAdminPassword == "" {
-		return nil, fmt.Errorf("PG_ADMIN_PASSWORD is required")
+		if v := os.Getenv("PG_PASSWORD"); v != "" {
+			cfg.PGAdminPassword = v
+		}
+	}
+
+	if cfg.PGAdminPassword == "" {
+		return nil, fmt.Errorf("PG_ADMIN_PASSWORD (or PG_PASSWORD) is required")
 	}
 
 	return cfg, nil

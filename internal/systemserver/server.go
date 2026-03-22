@@ -21,17 +21,16 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-// Server is the system server that manages apps, nginx configs, and permissions.
+// Server is the system server that manages apps, permissions, and reverse proxying.
 type Server struct {
-	cfg         *Config
-	nginx       *NginxGenerator
-	perms       *PermissionManager
-	kubeClient  kubernetes.Interface
-	dynClient   dynamic.Interface
-	apps        map[string]*Application // keyed by namespace/name
-	appsMu      sync.RWMutex
-	ctx         context.Context
-	cancel      context.CancelFunc
+	cfg        *Config
+	perms      *PermissionManager
+	kubeClient kubernetes.Interface
+	dynClient  dynamic.Interface
+	apps       map[string]*Application // keyed by namespace/name
+	appsMu     sync.RWMutex
+	ctx        context.Context
+	cancel     context.CancelFunc
 }
 
 func NewServer(cfg *Config) (*Server, error) {
@@ -54,7 +53,6 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	return &Server{
 		cfg:        cfg,
-		nginx:      NewNginxGenerator(cfg.NginxConfigPath, cfg.NginxReloadCmd, cfg.UserZone),
 		perms:      NewPermissionManager(),
 		kubeClient: kubeClient,
 		dynClient:  dynClient,
@@ -87,7 +85,6 @@ func (s *Server) Run() error {
 	mux.HandleFunc("/api/v1/permissions", s.handleListPermissions)
 	mux.HandleFunc("/api/v1/permissions/check", s.handleCheckPermission)
 	mux.HandleFunc("/api/v1/settings", s.handleSettings)
-	mux.HandleFunc("/api/v1/nginx/reload", s.handleNginxReload)
 	mux.HandleFunc("/healthz", s.handleHealth)
 	// Default handler: reverse proxy to installed apps based on Host header
 	mux.HandleFunc("/", s.handleAppProxy)
@@ -103,7 +100,7 @@ func (s *Server) Run() error {
 	return srv.ListenAndServe()
 }
 
-// watchApplications watches Application CRDs and generates nginx configs.
+// watchApplications watches Application CRDs and updates the in-memory app registry.
 func (s *Server) watchApplications() error {
 	resource := s.dynClient.Resource(ApplicationGVR)
 
@@ -208,27 +205,14 @@ func (s *Server) handleAppCreateOrUpdate(app *Application) {
 	s.apps[key] = app
 	s.appsMu.Unlock()
 
-	// Generate nginx configs
-	if err := s.nginx.GenerateForApp(app); err != nil {
-		log.Printf("generate nginx for %s: %v", key, err)
-		return
-	}
-
-	// Inject Envoy sidecar for per-app auth (if not already injected)
-	if err := s.injectEnvoySidecar(app); err != nil {
-		log.Printf("inject envoy sidecar for %s: %v", key, err)
-		// Non-fatal — app still works via proxy auth
-	}
-
 	// Register permissions
 	if len(app.Spec.Permissions) > 0 {
 		s.perms.Register(app.Spec.Name, app.Spec.Permissions)
 	}
 
-	// Reload nginx
-	if err := s.nginx.Reload(); err != nil {
-		log.Printf("nginx reload after %s: %v", key, err)
-	}
+	// Note: No nginx config generation needed. The Go reverse proxy
+	// (handleAppProxy) routes requests based on Host header, which
+	// replaces the per-app nginx server blocks entirely.
 }
 
 func (s *Server) handleAppDelete(app *Application) {
@@ -239,18 +223,8 @@ func (s *Server) handleAppDelete(app *Application) {
 	delete(s.apps, key)
 	s.appsMu.Unlock()
 
-	// Remove nginx configs
-	if err := s.nginx.RemoveForApp(app.Spec.Name); err != nil {
-		log.Printf("remove nginx for %s: %v", key, err)
-	}
-
 	// Unregister permissions
 	s.perms.Unregister(app.Spec.Name)
-
-	// Reload nginx
-	if err := s.nginx.Reload(); err != nil {
-		log.Printf("nginx reload after delete %s: %v", key, err)
-	}
 }
 
 // HTTP API handlers
@@ -386,25 +360,6 @@ func (s *Server) handleSettings(w http.ResponseWriter, r *http.Request) {
 	default:
 		writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]interface{}{"error": "method not allowed"})
 	}
-}
-
-func (s *Server) handleNginxReload(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]interface{}{"error": "method not allowed"})
-		return
-	}
-
-	if err := s.nginx.Reload(); err != nil {
-		writeJSONResponse(w, http.StatusInternalServerError, map[string]interface{}{
-			"error": err.Error(),
-		})
-		return
-	}
-
-	writeJSONResponse(w, http.StatusOK, map[string]interface{}{
-		"code":    0,
-		"message": "nginx reloaded",
-	})
 }
 
 func (s *Server) handleHealth(w http.ResponseWriter, r *http.Request) {
