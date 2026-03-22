@@ -491,6 +491,7 @@ function selectCategory(name: string) {
 
 function appUrl(name: string): string {
   const host = window.location.hostname;
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return '/' + name + '/';
   const parts = host.split('.');
   if (parts.length >= 3) {
     return 'https://' + name + '.' + parts.slice(1).join('.');

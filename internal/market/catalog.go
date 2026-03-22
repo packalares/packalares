@@ -33,6 +33,10 @@ type Catalog struct {
 	latest          []string            // latest app IDs
 	pages           map[string][]string // category name -> app IDs
 
+	// Detail cache: enriched app data fetched from GitHub
+	detailMu    sync.RWMutex
+	detailCache map[string]*MarketApp // name -> enriched app
+
 	marketURL    string // upstream marketplace URL (unused now, kept for config compat)
 	localPath    string // path to local catalog JSON file
 	githubURL    string // GitHub API URL for the apps repo
@@ -46,6 +50,7 @@ func NewCatalog(marketURL, localPath string) *Catalog {
 		recommendations: make(map[string][]string),
 		topics:          make(map[string][]string),
 		pages:           make(map[string][]string),
+		detailCache:     make(map[string]*MarketApp),
 		cacheTTL:        30 * time.Minute,
 		marketURL:       marketURL,
 		localPath:       localPath,
@@ -130,6 +135,8 @@ func (c *Catalog) setApps(apps []MarketApp) {
 	catCount := make(map[string]int)
 
 	for i := range apps {
+		// Ensure categories are clean (no version suffixes)
+		apps[i].Categories = cleanCategories(apps[i].Categories)
 		c.appsByName[apps[i].Name] = &apps[i]
 		for _, cat := range apps[i].Categories {
 			catCount[cat]++
@@ -259,10 +266,14 @@ func (c *Catalog) fetchFromAppstore() ([]MarketApp, error) {
 		return apps[i].Name < apps[j].Name
 	})
 
-	// Extract category names from pages (each page is a complex object, we just need the keys)
+	// Extract category names from pages, stripping version suffixes
 	c.pages = make(map[string][]string)
 	for catName := range storeResp.Data.Pages {
-		c.pages[catName] = []string{} // category exists, apps are already in the main list
+		clean := catName
+		if idx := strings.LastIndex(catName, "_v"); idx > 0 {
+			clean = catName[:idx]
+		}
+		c.pages[clean] = []string{} // category exists, apps are already in the main list
 	}
 
 	// Extract recommendation group names
@@ -341,6 +352,9 @@ func convertAppstoreApp(sa appstoreApp) MarketApp {
 	if len(app.Categories) == 0 && sa.Category != "" {
 		app.Categories = []string{sa.Category}
 	}
+
+	// Strip version suffixes like "_v112" and deduplicate categories
+	app.Categories = cleanCategories(app.Categories)
 
 	// Default type
 	if app.CfgType == "" {
@@ -589,25 +603,14 @@ func (c *Catalog) GetApp(name string) (*MarketApp, bool) {
 }
 
 // ListCategories returns all known categories.
-// When the appstore API was used, categories come from the pre-computed
-// pages map which preserves the upstream ordering and app groupings.
+// Categories are always derived from actual app data to ensure correct counts.
+// The version suffixes (e.g. "_v112") are stripped during app ingestion so
+// categories like "Productivity_v112" merge into "Productivity".
 func (c *Catalog) ListCategories() []Category {
 	_ = c.Refresh()
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-
-	// If we have pages data from the appstore, build categories from it
-	if len(c.pages) > 0 {
-		cats := make([]Category, 0, len(c.pages))
-		for name, ids := range c.pages {
-			cats = append(cats, Category{Name: name, Count: len(ids)})
-		}
-		sort.Slice(cats, func(i, j int) bool {
-			return cats[i].Name < cats[j].Name
-		})
-		return cats
-	}
 
 	result := make([]Category, len(c.categories))
 	copy(result, c.categories)
@@ -636,6 +639,97 @@ func (c *Catalog) ListRecommendations() map[string][]MarketApp {
 		}
 	}
 	return result
+}
+
+// GetAppDetail returns an app enriched with description data.
+// If the app has no description or fullDescription, it fetches from GitHub.
+// Results are cached so subsequent requests are fast.
+func (c *Catalog) GetAppDetail(name string) (*MarketApp, bool) {
+	// Check detail cache first
+	c.detailMu.RLock()
+	cached, hasCached := c.detailCache[name]
+	c.detailMu.RUnlock()
+	if hasCached {
+		return cached, true
+	}
+
+	// Get the base app
+	app, ok := c.GetApp(name)
+	if !ok {
+		return nil, false
+	}
+
+	// Copy to avoid mutating the catalog entry
+	detail := *app
+
+	// If description is missing, try to fetch from GitHub
+	if detail.Description == "" || detail.FullDescription == "" {
+		c.enrichFromGitHub(&detail)
+	}
+
+	// Cache the result
+	c.detailMu.Lock()
+	c.detailCache[name] = &detail
+	c.detailMu.Unlock()
+
+	return &detail, true
+}
+
+// enrichFromGitHub fetches OlaresManifest.yaml from GitHub and fills in missing fields.
+func (c *Catalog) enrichFromGitHub(app *MarketApp) {
+	rawURL := "https://raw.githubusercontent.com/beclab/apps/main/" + app.Name + "/OlaresManifest.yaml"
+
+	client := &http.Client{Timeout: 15 * time.Second}
+	req, err := http.NewRequest("GET", rawURL, nil)
+	if err != nil {
+		klog.V(4).Infof("enrich %s: create request: %v", app.Name, err)
+		return
+	}
+	req.Header.Set("User-Agent", "packalares-market/1.0")
+
+	if token := os.Getenv("GITHUB_TOKEN"); token != "" {
+		req.Header.Set("Authorization", "token "+token)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		klog.V(4).Infof("enrich %s: fetch: %v", app.Name, err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		klog.V(4).Infof("enrich %s: HTTP %d", app.Name, resp.StatusCode)
+		return
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if err != nil {
+		klog.V(4).Infof("enrich %s: read: %v", app.Name, err)
+		return
+	}
+
+	manifest, err := parseOlaresManifest(body, app.Name)
+	if err != nil {
+		klog.V(4).Infof("enrich %s: parse: %v", app.Name, err)
+		return
+	}
+
+	// Fill in missing fields only
+	if app.Description == "" && manifest.Description != "" {
+		app.Description = manifest.Description
+	}
+	if app.FullDescription == "" && manifest.FullDescription != "" {
+		app.FullDescription = manifest.FullDescription
+	}
+	if len(app.PromoteImage) == 0 && len(manifest.PromoteImage) > 0 {
+		app.PromoteImage = manifest.PromoteImage
+	}
+	if app.Developer == "" && manifest.Developer != "" {
+		app.Developer = manifest.Developer
+	}
+
+	klog.V(4).Infof("enriched %s from GitHub manifest", app.Name)
 }
 
 // Search searches apps by query string (matches name, title, description).

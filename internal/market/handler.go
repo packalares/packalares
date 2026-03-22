@@ -22,6 +22,7 @@ func NewHandler(catalog *Catalog) *Handler {
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/market/v1/apps", h.handleListApps)
 	mux.HandleFunc("/market/v1/apps/", h.handleGetApp)
+	mux.HandleFunc("/market/v1/app/", h.handleGetAppDetail)
 	mux.HandleFunc("/market/v1/categories", h.handleCategories)
 	mux.HandleFunc("/market/v1/search", h.handleSearch)
 	mux.HandleFunc("/market/v1/recommendations", h.handleRecommendations)
@@ -35,6 +36,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Compatibility: Olares market frontend expects these paths
 	mux.HandleFunc("/api/v1/apps", h.handleListApps)
 	mux.HandleFunc("/api/v1/apps/", h.handleGetApp)
+	mux.HandleFunc("/api/v1/app/", h.handleGetAppDetail)
 	mux.HandleFunc("/api/v1/categories", h.handleCategories)
 	mux.HandleFunc("/api/v1/search", h.handleSearch)
 	mux.HandleFunc("/api/v1/recommendations", h.handleRecommendations)
@@ -95,6 +97,41 @@ func (h *Handler) handleGetApp(w http.ResponseWriter, r *http.Request) {
 	}
 
 	app, ok := h.catalog.GetApp(name)
+	if !ok {
+		writeError(w, http.StatusNotFound, "app not found: "+name)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, AppDetailResponse{
+		Response: Response{Code: 200},
+		Data:     app,
+	})
+}
+
+// handleGetAppDetail handles GET /market/v1/app/{name}
+// Returns the app enriched with description/screenshots from GitHub if needed.
+func (h *Handler) handleGetAppDetail(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	// Extract name from path — handles both /market/v1/app/{name} and /api/v1/app/{name}
+	name := r.URL.Path
+	for _, prefix := range []string{"/market/v1/app/", "/api/v1/app/"} {
+		if strings.HasPrefix(name, prefix) {
+			name = strings.TrimPrefix(name, prefix)
+			break
+		}
+	}
+	name = strings.TrimSuffix(name, "/")
+
+	if name == "" {
+		writeError(w, http.StatusBadRequest, "app name required")
+		return
+	}
+
+	app, ok := h.catalog.GetAppDetail(name)
 	if !ok {
 		writeError(w, http.StatusNotFound, "app not found: "+name)
 		return
