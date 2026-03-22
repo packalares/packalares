@@ -50,7 +50,11 @@ const routes: RouteRecordRaw[] = [
       { path: '', component: () => import('pages/Files/FilesPage.vue') },
     ],
   },
-  { path: '/', redirect: '/desktop' },
+  // Root path — renders correct page based on subdomain or defaults to desktop
+  {
+    path: '/',
+    component: () => import('layouts/SubdomainRouter.vue'),
+  },
   { path: '/:catchAll(.*)*', component: () => import('pages/Desktop/DesktopPage.vue') },
 ];
 
