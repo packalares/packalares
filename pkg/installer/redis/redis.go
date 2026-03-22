@@ -36,7 +36,7 @@ spec:
     spec:
       containers:
       - name: kvrocks
-        image: apache/kvrocks:nightly
+        image: apache/kvrocks:2.15.0
         ports:
         - containerPort: 6666
         command: ["kvrocks"]
