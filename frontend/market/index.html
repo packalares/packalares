@@ -1,4 +1,1449 @@
-<!doctype html><html class=theme--light style="--reading-editable-font-family: 'Source Serif VF', serif;
-		--reading-editable-font-size: 16;
-		--reading-editable-line-height: 1.7;
-		--reading-editable-line-length: 648px;"><head><base href=/market/ ><title>Market</title><meta charset=utf-8><meta name=description content=Market><meta name=format-detection content="telephone=no"><meta name=referrer content=no-referrer><meta name=msapplication-tap-highlight content=no><meta name=viewport content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width"><link rel=icon type=image/png sizes=128x128 href=icons/market-128*128.png><link rel=icon type=image/png sizes=96x96 href=icons/market-96*96.png><link rel=icon type=image/png sizes=32x32 href=icons/market-32*32.png><link rel=icon type=image/png sizes=16x16 href=icons/market-16*16.png><link rel=icon type=image/ico href=wise.ico><script defer src=/market/js/211.f4cb1412.js></script><script defer src=/market/js/app.23148be4.js></script><link href=/market/css/211.f5a73dd0.css rel=stylesheet><link href=/market/css/app.7c5da91e.css rel=stylesheet><link as="font" crossorigin="anonymous" href="/market/fonts/MaterialSymbolsRounded.7cd5f1da.woff2" rel="preload"></head><body><div id=q-app></div></body></html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Packalares - App Market</title>
+<link rel="icon" type="image/png" sizes="32x32" href="icons/market-32*32.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<style>
+:root {
+  --bg: #0a0a0a;
+  --bg-surface: #111;
+  --bg-card: #141414;
+  --bg-card-hover: #1a1a1a;
+  --bg-sidebar: #0e0e0e;
+  --bg-input: #1a1a1a;
+  --border: #222;
+  --border-light: #2a2a2a;
+  --text: #e0e0e0;
+  --text-secondary: #aaa;
+  --text-muted: #888;
+  --text-dim: #555;
+  --accent: #3b82f6;
+  --accent-hover: #2563eb;
+  --accent-soft: rgba(59, 130, 246, 0.1);
+  --accent-soft-hover: rgba(59, 130, 246, 0.18);
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.1);
+  --danger-hover: rgba(239, 68, 68, 0.18);
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-lg: 0 16px 48px rgba(0,0,0,0.5);
+  --transition: 0.2s ease;
+  --sidebar-width: 240px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+#app {
+  display: flex;
+  height: 100vh;
+}
+
+/* ---- Sidebar ---- */
+.sidebar {
+  width: var(--sidebar-width);
+  min-width: var(--sidebar-width);
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 20px 20px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.sidebar-logo {
+  width: 32px;
+  height: 32px;
+  background: var(--accent);
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+}
+
+.sidebar-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.sidebar-nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 8px;
+}
+
+.sidebar-nav::-webkit-scrollbar { width: 4px; }
+.sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+.sidebar-nav::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.sidebar-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-dim);
+  padding: 16px 12px 8px;
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-muted);
+  transition: all var(--transition);
+  user-select: none;
+}
+
+.sidebar-item:hover {
+  background: var(--bg-card-hover);
+  color: var(--text);
+}
+
+.sidebar-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.sidebar-item-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-item-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.sidebar-item-count {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: rgba(255,255,255,0.05);
+  padding: 1px 7px;
+  border-radius: 10px;
+  min-width: 22px;
+  text-align: center;
+}
+
+/* ---- Main Content ---- */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+}
+
+/* ---- Top Bar ---- */
+.topbar {
+  height: 56px;
+  min-height: 56px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.topbar-back {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition);
+}
+
+.topbar-back:hover { background: var(--bg-card-hover); color: var(--text); }
+.topbar-back svg { width: 20px; height: 20px; }
+
+.topbar-title {
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.search-wrapper {
+  flex: 1;
+  max-width: 420px;
+  margin-left: auto;
+  position: relative;
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 8px 12px 8px 36px;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color var(--transition);
+}
+
+.search-input:focus { border-color: var(--accent); }
+
+.search-input::placeholder { color: var(--text-dim); }
+
+.search-clear {
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  border-radius: 50%;
+}
+
+.search-clear:hover { color: var(--text-muted); }
+.search-clear svg { width: 14px; height: 14px; }
+
+.topbar-tab-group {
+  display: flex;
+  gap: 2px;
+  background: var(--bg-input);
+  border-radius: var(--radius);
+  padding: 3px;
+}
+
+.topbar-tab {
+  padding: 5px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-muted);
+  border: none;
+  background: none;
+  font-family: inherit;
+  transition: all var(--transition);
+}
+
+.topbar-tab:hover { color: var(--text); }
+
+.topbar-tab.active {
+  background: var(--bg-card);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+}
+
+/* ---- Content Area ---- */
+.content-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.content-area::-webkit-scrollbar { width: 6px; }
+.content-area::-webkit-scrollbar-track { background: transparent; }
+.content-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+.content-area::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.section-count {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* ---- App Grid ---- */
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-bottom: 32px;
+}
+
+/* ---- App Card ---- */
+.app-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  cursor: pointer;
+  transition: all var(--transition);
+  display: flex;
+  flex-direction: column;
+}
+
+.app-card:hover {
+  border-color: var(--border-light);
+  background: var(--bg-card-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+.app-card-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.app-icon {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--bg-input);
+}
+
+.app-icon-placeholder {
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent-soft) 0%, rgba(59,130,246,0.2) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--accent);
+}
+
+.app-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-developer {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-description {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 12px;
+  flex: 1;
+}
+
+.app-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.app-version {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.app-categories {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-category-tag {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+/* ---- Buttons ---- */
+.btn {
+  padding: 6px 16px;
+  border-radius: var(--radius);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--transition);
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+  min-height: 30px;
+}
+
+.btn-install {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.btn-install:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-open {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: transparent;
+}
+
+.btn-open:hover {
+  background: var(--accent-soft-hover);
+}
+
+.btn-uninstall {
+  background: transparent;
+  color: var(--danger);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.btn-uninstall:hover {
+  background: var(--danger-soft);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+.btn-secondary {
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  background: var(--bg-card-hover);
+  color: var(--text);
+  border-color: var(--border-light);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-sm { padding: 4px 12px; font-size: 11px; min-height: 26px; }
+
+/* ---- Spinner ---- */
+.spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- App Detail Panel ---- */
+.detail-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 500;
+  display: flex;
+  justify-content: flex-end;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.detail-panel {
+  width: 600px;
+  max-width: 100%;
+  height: 100vh;
+  background: var(--bg-surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.25s ease;
+  box-shadow: var(--shadow-lg);
+}
+
+@keyframes slideIn { from { transform: translateX(100%); } to { transform: translateX(0); } }
+
+.detail-header {
+  padding: 20px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.detail-icon {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  border-radius: 16px;
+  object-fit: cover;
+  background: var(--bg-input);
+}
+
+.detail-icon-placeholder {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent-soft) 0%, rgba(59,130,246,0.2) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 24px;
+  color: var(--accent);
+}
+
+.detail-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-title {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.detail-developer {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.detail-meta {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.detail-meta-item {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.detail-meta-item span {
+  color: var(--text-secondary);
+}
+
+.detail-close {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: var(--radius);
+  display: flex;
+  transition: all var(--transition);
+  flex-shrink: 0;
+}
+
+.detail-close:hover { background: var(--bg-card-hover); color: var(--text); }
+.detail-close svg { width: 20px; height: 20px; }
+
+.detail-actions {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.detail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.detail-body::-webkit-scrollbar { width: 4px; }
+.detail-body::-webkit-scrollbar-track { background: transparent; }
+.detail-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.detail-section {
+  margin-bottom: 24px;
+}
+
+.detail-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text);
+}
+
+.detail-description {
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
+.detail-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.detail-tag {
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  background: rgba(255,255,255,0.06);
+  color: var(--text-muted);
+}
+
+.detail-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.detail-info-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px;
+}
+
+.detail-info-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.detail-info-value {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+/* ---- Empty / Loading States ---- */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: var(--text-dim);
+}
+
+.empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.4; }
+.empty-state-title { font-size: 15px; font-weight: 500; margin-bottom: 6px; color: var(--text-muted); }
+.empty-state-text { font-size: 13px; }
+
+.loading-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.skeleton-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.skeleton-row { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.skeleton-icon { width: 48px; height: 48px; border-radius: 12px; background: var(--bg-input); }
+.skeleton-lines { flex: 1; }
+.skeleton-line { height: 12px; background: var(--bg-input); border-radius: 4px; margin-bottom: 6px; }
+.skeleton-line:last-child { margin-bottom: 0; width: 60%; }
+.skeleton-desc { height: 10px; background: var(--bg-input); border-radius: 4px; margin-bottom: 6px; }
+.skeleton-btn { width: 70px; height: 28px; background: var(--bg-input); border-radius: var(--radius); margin-left: auto; }
+
+/* ---- Toast ---- */
+.toast-container {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 16px;
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: toastIn 0.3s ease;
+  max-width: 340px;
+}
+
+.toast.success { border-left: 3px solid var(--success); }
+.toast.error { border-left: 3px solid var(--danger); }
+.toast.info { border-left: 3px solid var(--accent); }
+
+@keyframes toastIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+/* ---- Installed Badge ---- */
+.installed-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--success);
+  background: rgba(34, 197, 94, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.installed-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--success);
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .topbar { padding: 0 16px; }
+  .content-area { padding: 16px; }
+  .app-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .detail-panel { width: 100%; }
+}
+
+@media (max-width: 600px) {
+  .app-grid { grid-template-columns: 1fr; }
+  .search-wrapper { max-width: none; margin-left: 0; }
+  .topbar-tab-group { display: none; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-logo">P</div>
+      <div class="sidebar-title">App Market</div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-section-label">Browse</div>
+      <div class="sidebar-item" :class="{ active: activeView === 'discover' }" @click="setView('discover')">
+        <span class="sidebar-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+        </span>
+        Discover
+      </div>
+      <div class="sidebar-item" :class="{ active: activeView === 'installed' }" @click="setView('installed')">
+        <span class="sidebar-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </span>
+        Installed
+        <span class="sidebar-item-count" v-if="installedApps.length">{{ installedApps.length }}</span>
+      </div>
+
+      <div class="sidebar-section-label">Categories</div>
+      <div
+        class="sidebar-item"
+        :class="{ active: activeView === 'discover' && activeCategory === null }"
+        @click="setCategory(null)"
+      >
+        <span class="sidebar-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+        </span>
+        All Apps
+        <span class="sidebar-item-count">{{ allApps.length }}</span>
+      </div>
+      <div
+        v-for="cat in categories"
+        :key="cat.name"
+        class="sidebar-item"
+        :class="{ active: activeView === 'discover' && activeCategory === cat.name }"
+        @click="setCategory(cat.name)"
+      >
+        <span class="sidebar-item-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+        </span>
+        {{ cat.name }}
+        <span class="sidebar-item-count">{{ cat.count }}</span>
+      </div>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <button class="topbar-back" @click="goBack" title="Back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="topbar-title">{{ viewTitle }}</div>
+
+      <div class="topbar-tab-group">
+        <button class="topbar-tab" :class="{ active: activeView === 'discover' }" @click="setView('discover')">Discover</button>
+        <button class="topbar-tab" :class="{ active: activeView === 'installed' }" @click="setView('installed')">Installed</button>
+      </div>
+
+      <div class="search-wrapper">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input
+          class="search-input"
+          type="text"
+          v-model="searchQuery"
+          placeholder="Search apps..."
+          @input="onSearch"
+        >
+        <button class="search-clear" v-if="searchQuery" @click="searchQuery = ''">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content -->
+    <div class="content-area">
+      <!-- Loading State -->
+      <div v-if="loading" class="loading-grid">
+        <div class="skeleton-card" v-for="n in 8" :key="n">
+          <div class="skeleton-row">
+            <div class="skeleton-icon"></div>
+            <div class="skeleton-lines">
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line"></div>
+            </div>
+          </div>
+          <div class="skeleton-desc"></div>
+          <div class="skeleton-desc" style="width: 80%"></div>
+          <div style="display:flex; margin-top:8px">
+            <div class="skeleton-btn"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Discover View -->
+      <template v-else-if="activeView === 'discover'">
+        <!-- Installed apps quick row (if any, shown when no category filter) -->
+        <template v-if="!activeCategory && !searchQuery && installedApps.length > 0">
+          <div class="section-header">
+            <div class="section-title">Installed</div>
+            <span class="section-count">{{ installedApps.length }} apps</span>
+          </div>
+          <div class="app-grid" style="margin-bottom: 40px">
+            <div
+              v-for="app in installedApps.slice(0, 6)"
+              :key="'inst-' + app.name"
+              class="app-card"
+              @click="openDetail(app)"
+            >
+              <div class="app-card-top">
+                <img v-if="app.icon" :src="app.icon" class="app-icon" @error="e => e.target.style.display='none'" :alt="app.title">
+                <div v-else class="app-icon-placeholder">{{ (app.title || app.name || '?')[0].toUpperCase() }}</div>
+                <div class="app-info">
+                  <div class="app-title">{{ app.title || app.name }}</div>
+                  <div class="app-developer">{{ app.developer || 'Unknown' }}</div>
+                </div>
+              </div>
+              <div class="app-description">{{ app.description || 'No description available.' }}</div>
+              <div class="app-card-footer">
+                <span class="installed-badge"><span class="installed-dot"></span> Installed</span>
+                <button class="btn btn-open btn-sm" @click.stop="openApp(app)">Open</button>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- All / Category / Search Results -->
+        <div class="section-header">
+          <div class="section-title">{{ sectionTitle }}</div>
+          <span class="section-count">{{ filteredApps.length }} apps</span>
+        </div>
+
+        <div v-if="filteredApps.length === 0" class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <div class="empty-state-title">No apps found</div>
+          <div class="empty-state-text">Try a different search term or category</div>
+        </div>
+
+        <div v-else class="app-grid">
+          <div
+            v-for="app in filteredApps"
+            :key="app.name"
+            class="app-card"
+            @click="openDetail(app)"
+          >
+            <div class="app-card-top">
+              <img v-if="app.icon" :src="app.icon" class="app-icon" @error="e => e.target.style.display='none'" :alt="app.title">
+              <div v-else class="app-icon-placeholder">{{ (app.title || app.name || '?')[0].toUpperCase() }}</div>
+              <div class="app-info">
+                <div class="app-title">{{ app.title || app.name }}</div>
+                <div class="app-developer">{{ app.developer || 'Unknown' }}</div>
+              </div>
+            </div>
+            <div class="app-description">{{ app.description || 'No description available.' }}</div>
+            <div class="app-card-footer">
+              <div class="app-categories">
+                <span v-for="c in (app.categories || []).slice(0, 2)" :key="c" class="app-category-tag">{{ c }}</span>
+              </div>
+              <span v-if="isInstalled(app.name)" class="installed-badge"><span class="installed-dot"></span> Installed</span>
+              <button
+                v-else
+                class="btn btn-install btn-sm"
+                :disabled="installing[app.name]"
+                @click.stop="installApp(app)"
+              >
+                <span v-if="installing[app.name]" class="spinner"></span>
+                <span v-else>Install</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </template>
+
+      <!-- Installed View -->
+      <template v-else-if="activeView === 'installed'">
+        <div class="section-header">
+          <div class="section-title">Installed Apps</div>
+          <span class="section-count">{{ filteredInstalledApps.length }} apps</span>
+        </div>
+
+        <div v-if="filteredInstalledApps.length === 0" class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <div class="empty-state-title" v-if="searchQuery">No matching installed apps</div>
+          <div class="empty-state-title" v-else>No apps installed yet</div>
+          <div class="empty-state-text">
+            <span v-if="!searchQuery">Browse the market to find and install apps</span>
+          </div>
+        </div>
+
+        <div v-else class="app-grid">
+          <div
+            v-for="app in filteredInstalledApps"
+            :key="app.name"
+            class="app-card"
+            @click="openDetail(app)"
+          >
+            <div class="app-card-top">
+              <img v-if="app.icon" :src="app.icon" class="app-icon" @error="e => e.target.style.display='none'" :alt="app.title">
+              <div v-else class="app-icon-placeholder">{{ (app.title || app.name || '?')[0].toUpperCase() }}</div>
+              <div class="app-info">
+                <div class="app-title">{{ app.title || app.name }}</div>
+                <div class="app-developer">{{ app.developer || 'Unknown' }}</div>
+              </div>
+            </div>
+            <div class="app-description">{{ app.description || 'No description available.' }}</div>
+            <div class="app-card-footer">
+              <div class="app-version" v-if="app.version">v{{ app.version }}</div>
+              <div style="margin-left: auto; display: flex; gap: 6px;">
+                <button class="btn btn-open btn-sm" @click.stop="openApp(app)">Open</button>
+                <button
+                  class="btn btn-uninstall btn-sm"
+                  :disabled="uninstalling[app.name]"
+                  @click.stop="uninstallApp(app)"
+                >
+                  <span v-if="uninstalling[app.name]" class="spinner"></span>
+                  <span v-else>Uninstall</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
+
+  <!-- Detail Panel -->
+  <teleport to="body">
+    <div v-if="detailApp" class="detail-overlay" @click.self="closeDetail">
+      <div class="detail-panel" @click.stop>
+        <div class="detail-header">
+          <img v-if="detailApp.icon" :src="detailApp.icon" class="detail-icon" @error="e => e.target.style.display='none'" :alt="detailApp.title">
+          <div v-else class="detail-icon-placeholder">{{ (detailApp.title || detailApp.name || '?')[0].toUpperCase() }}</div>
+          <div class="detail-info">
+            <div class="detail-title">{{ detailApp.title || detailApp.name }}</div>
+            <div class="detail-developer">{{ detailApp.developer || 'Unknown developer' }}</div>
+            <div class="detail-meta">
+              <div class="detail-meta-item" v-if="detailApp.version">Version <span>{{ detailApp.version }}</span></div>
+              <div class="detail-meta-item" v-if="detailApp.arch">Arch <span>{{ detailApp.arch }}</span></div>
+              <div class="detail-meta-item" v-if="detailApp.size">Size <span>{{ detailApp.size }}</span></div>
+            </div>
+          </div>
+          <button class="detail-close" @click="closeDetail">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+
+        <div class="detail-actions">
+          <template v-if="isInstalled(detailApp.name)">
+            <button class="btn btn-open" @click="openApp(detailApp)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px" stroke-linecap="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+              Open App
+            </button>
+            <button
+              class="btn btn-uninstall"
+              :disabled="uninstalling[detailApp.name]"
+              @click="uninstallApp(detailApp)"
+            >
+              <span v-if="uninstalling[detailApp.name]" class="spinner"></span>
+              <template v-else>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px" stroke-linecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Uninstall
+              </template>
+            </button>
+          </template>
+          <template v-else>
+            <button
+              class="btn btn-install"
+              :disabled="installing[detailApp.name]"
+              @click="installApp(detailApp)"
+            >
+              <span v-if="installing[detailApp.name]" class="spinner"></span>
+              <template v-else>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Install
+              </template>
+            </button>
+          </template>
+        </div>
+
+        <div class="detail-body">
+          <!-- Description -->
+          <div class="detail-section">
+            <div class="detail-section-title">Description</div>
+            <div class="detail-description">{{ detailApp.description || 'No description available.' }}</div>
+          </div>
+
+          <!-- Categories -->
+          <div class="detail-section" v-if="detailApp.categories && detailApp.categories.length">
+            <div class="detail-section-title">Categories</div>
+            <div class="detail-tags">
+              <span v-for="c in detailApp.categories" :key="c" class="detail-tag" @click="setCategory(c); closeDetail();" style="cursor:pointer;">{{ c }}</span>
+            </div>
+          </div>
+
+          <!-- Info Grid -->
+          <div class="detail-section">
+            <div class="detail-section-title">Information</div>
+            <div class="detail-info-grid">
+              <div class="detail-info-card" v-if="detailApp.version">
+                <div class="detail-info-label">Version</div>
+                <div class="detail-info-value">{{ detailApp.version }}</div>
+              </div>
+              <div class="detail-info-card" v-if="detailApp.developer">
+                <div class="detail-info-label">Developer</div>
+                <div class="detail-info-value">{{ detailApp.developer }}</div>
+              </div>
+              <div class="detail-info-card" v-if="detailApp.name">
+                <div class="detail-info-label">Package</div>
+                <div class="detail-info-value" style="font-size:12px; word-break:break-all;">{{ detailApp.name }}</div>
+              </div>
+              <div class="detail-info-card" v-if="detailApp.chart">
+                <div class="detail-info-label">Chart</div>
+                <div class="detail-info-value" style="font-size:12px; word-break:break-all;">{{ detailApp.chart }}</div>
+              </div>
+              <div class="detail-info-card" v-if="detailApp.license">
+                <div class="detail-info-label">License</div>
+                <div class="detail-info-value">{{ detailApp.license }}</div>
+              </div>
+              <div class="detail-info-card" v-if="detailApp.homepage">
+                <div class="detail-info-label">Homepage</div>
+                <div class="detail-info-value"><a :href="detailApp.homepage" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; font-size: 12px;">{{ detailApp.homepage }}</a></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Requirements -->
+          <div class="detail-section" v-if="detailApp.requirements">
+            <div class="detail-section-title">Requirements</div>
+            <div class="detail-description">{{ typeof detailApp.requirements === 'object' ? JSON.stringify(detailApp.requirements, null, 2) : detailApp.requirements }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </teleport>
+
+  <!-- Toast Container -->
+  <teleport to="body">
+    <div class="toast-container">
+      <transition-group name="toast">
+        <div v-for="t in toasts" :key="t.id" :class="['toast', t.type]">{{ t.msg }}</div>
+      </transition-group>
+    </div>
+  </teleport>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, nextTick } = Vue;
+
+createApp({
+  setup() {
+    const token = localStorage.getItem('pk_token');
+    if (!token) {
+      window.location.href = '/login.html';
+      return {};
+    }
+
+    // State
+    const loading = ref(true);
+    const allApps = ref([]);
+    const installedApps = ref([]);
+    const categories = ref([]);
+    const activeView = ref('discover');
+    const activeCategory = ref(null);
+    const searchQuery = ref('');
+    const detailApp = ref(null);
+    const installing = ref({});
+    const uninstalling = ref({});
+    const toasts = ref([]);
+    let toastId = 0;
+
+    // Auth
+    function authHeaders() {
+      return { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' };
+    }
+
+    async function apiFetch(path, opts = {}) {
+      opts.headers = { ...authHeaders(), ...(opts.headers || {}) };
+      const res = await fetch(path, opts);
+      if (res.status === 401) {
+        localStorage.removeItem('pk_token');
+        window.location.href = '/login.html';
+        throw new Error('Unauthorized');
+      }
+      return res;
+    }
+
+    // Toast
+    function toast(msg, type = 'info') {
+      const id = ++toastId;
+      toasts.value.push({ id, msg, type });
+      setTimeout(() => {
+        toasts.value = toasts.value.filter(t => t.id !== id);
+      }, 4000);
+    }
+
+    // Data fetching
+    async function fetchApps() {
+      try {
+        const res = await apiFetch('/market/v1/apps');
+        if (res.ok) {
+          const data = await res.json();
+          allApps.value = data.data || data || [];
+        }
+      } catch (e) {
+        console.error('Failed to fetch apps:', e);
+      }
+    }
+
+    async function fetchCategories() {
+      try {
+        const res = await apiFetch('/market/v1/categories');
+        if (res.ok) {
+          const data = await res.json();
+          categories.value = data.data || data || [];
+        }
+      } catch (e) {
+        console.error('Failed to fetch categories:', e);
+      }
+    }
+
+    async function fetchInstalled() {
+      try {
+        const res = await apiFetch('/app-service/v1/apps');
+        if (res.ok) {
+          const data = await res.json();
+          installedApps.value = data.data || data || [];
+        }
+      } catch (e) {
+        console.error('Failed to fetch installed apps:', e);
+      }
+    }
+
+    async function loadAll() {
+      loading.value = true;
+      await Promise.all([fetchApps(), fetchCategories(), fetchInstalled()]);
+      loading.value = false;
+    }
+
+    // Computed
+    const installedNames = computed(() => {
+      return new Set(installedApps.value.map(a => a.name));
+    });
+
+    const filteredApps = computed(() => {
+      let apps = allApps.value;
+
+      if (activeCategory.value) {
+        apps = apps.filter(a =>
+          a.categories && a.categories.some(c =>
+            c.toLowerCase() === activeCategory.value.toLowerCase()
+          )
+        );
+      }
+
+      if (searchQuery.value) {
+        const q = searchQuery.value.toLowerCase();
+        apps = apps.filter(a =>
+          (a.title || a.name || '').toLowerCase().includes(q) ||
+          (a.description || '').toLowerCase().includes(q) ||
+          (a.developer || '').toLowerCase().includes(q)
+        );
+      }
+
+      return apps;
+    });
+
+    const filteredInstalledApps = computed(() => {
+      if (!searchQuery.value) return installedApps.value;
+      const q = searchQuery.value.toLowerCase();
+      return installedApps.value.filter(a =>
+        (a.title || a.name || '').toLowerCase().includes(q) ||
+        (a.description || '').toLowerCase().includes(q)
+      );
+    });
+
+    const viewTitle = computed(() => {
+      if (activeView.value === 'installed') return 'Installed Apps';
+      if (activeCategory.value) return activeCategory.value;
+      return 'App Market';
+    });
+
+    const sectionTitle = computed(() => {
+      if (searchQuery.value) return 'Search Results';
+      if (activeCategory.value) return activeCategory.value;
+      return 'All Apps';
+    });
+
+    // Actions
+    function isInstalled(name) {
+      return installedNames.value.has(name);
+    }
+
+    function setView(view) {
+      activeView.value = view;
+      if (view === 'installed') {
+        activeCategory.value = null;
+      }
+    }
+
+    function setCategory(cat) {
+      activeCategory.value = cat;
+      activeView.value = 'discover';
+    }
+
+    function openDetail(app) {
+      detailApp.value = app;
+    }
+
+    function closeDetail() {
+      detailApp.value = null;
+    }
+
+    function openApp(app) {
+      // Try common URL patterns for installed apps
+      const appUrl = app.url || app.entrance || ('/' + app.name + '/');
+      window.open(appUrl, '_blank');
+    }
+
+    function goBack() {
+      if (detailApp.value) {
+        closeDetail();
+      } else if (activeCategory.value) {
+        activeCategory.value = null;
+      } else {
+        window.location.href = '/index.html';
+      }
+    }
+
+    async function installApp(app) {
+      installing.value[app.name] = true;
+      try {
+        const res = await apiFetch('/app-service/v1/install', {
+          method: 'POST',
+          body: JSON.stringify({ name: app.name, chart: app.chart || app.name })
+        });
+        if (res.ok) {
+          toast('"' + (app.title || app.name) + '" is being installed', 'success');
+          await fetchInstalled();
+        } else {
+          const d = await res.json().catch(() => ({}));
+          toast(d.error || d.message || 'Installation failed', 'error');
+        }
+      } catch (e) {
+        toast('Installation failed: ' + e.message, 'error');
+      } finally {
+        installing.value[app.name] = false;
+      }
+    }
+
+    async function uninstallApp(app) {
+      if (!confirm('Uninstall "' + (app.title || app.name) + '"? This will remove the app and its data.')) return;
+      uninstalling.value[app.name] = true;
+      try {
+        const res = await apiFetch('/app-service/v1/uninstall', {
+          method: 'POST',
+          body: JSON.stringify({ name: app.name })
+        });
+        if (res.ok) {
+          toast('"' + (app.title || app.name) + '" has been uninstalled', 'success');
+          await fetchInstalled();
+          if (detailApp.value && detailApp.value.name === app.name) {
+            // Refresh detail to show install button
+          }
+        } else {
+          const d = await res.json().catch(() => ({}));
+          toast(d.error || d.message || 'Uninstall failed', 'error');
+        }
+      } catch (e) {
+        toast('Uninstall failed: ' + e.message, 'error');
+      } finally {
+        uninstalling.value[app.name] = false;
+      }
+    }
+
+    function onSearch() {
+      // Reactive via v-model, no action needed
+    }
+
+    // Keyboard shortcuts
+    function onKeydown(e) {
+      if (e.key === 'Escape') {
+        if (detailApp.value) closeDetail();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        document.querySelector('.search-input')?.focus();
+      }
+    }
+
+    onMounted(() => {
+      loadAll();
+      document.addEventListener('keydown', onKeydown);
+
+      // Poll installed apps every 30s
+      setInterval(fetchInstalled, 30000);
+    });
+
+    return {
+      loading,
+      allApps,
+      installedApps,
+      categories,
+      activeView,
+      activeCategory,
+      searchQuery,
+      detailApp,
+      installing,
+      uninstalling,
+      toasts,
+      filteredApps,
+      filteredInstalledApps,
+      viewTitle,
+      sectionTitle,
+      isInstalled,
+      setView,
+      setCategory,
+      openDetail,
+      closeDetail,
+      openApp,
+      goBack,
+      installApp,
+      uninstallApp,
+      onSearch,
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
