@@ -142,6 +142,7 @@ func deployFrameworkCharts(opts *InstallOptions) error {
 		"deploy/framework/kubesphere.yaml",
 		"deploy/framework/samba/samba-server.yaml",
 		"deploy/framework/tailscale.yaml",
+		"deploy/framework/mdns.yaml",
 		"deploy/framework/l4proxy-deployment.yaml",
 		"deploy/proxy/proxy-deployment.yaml",
 	}
