@@ -1,0 +1,91 @@
+# Tailscale VPN — always deployed, user configures auth key via Settings UI
+# Runs with hostNetwork so it creates the tailscale0 interface on the host
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tailscale
+  namespace: {{FRAMEWORK_NAMESPACE}}
+  labels:
+    app: tailscale
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tailscale
+  template:
+    metadata:
+      labels:
+        app: tailscale
+    spec:
+      hostNetwork: true
+      serviceAccountName: packalares-admin
+      containers:
+      - name: tailscale
+        image: tailscale/tailscale:stable
+        securityContext:
+          capabilities:
+            add: ["NET_ADMIN", "NET_RAW"]
+        env:
+        - name: TS_KUBE_SECRET
+          value: tailscale-state
+        - name: TS_USERSPACE
+          value: "false"
+        - name: TS_AUTH_KEY
+          valueFrom:
+            secretKeyRef:
+              name: tailscale-config
+              key: auth-key
+              optional: true
+        - name: TS_HOSTNAME
+          valueFrom:
+            secretKeyRef:
+              name: tailscale-config
+              key: hostname
+              optional: true
+        - name: TS_EXTRA_ARGS
+          valueFrom:
+            secretKeyRef:
+              name: tailscale-config
+              key: extra-args
+              optional: true
+        volumeMounts:
+        - name: dev-tun
+          mountPath: /dev/net/tun
+        - name: state
+          mountPath: /var/lib/tailscale
+        resources:
+          requests:
+            cpu: 10m
+            memory: 32Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+      volumes:
+      - name: dev-tun
+        hostPath:
+          path: /dev/net/tun
+      - name: state
+        hostPath:
+          path: /var/lib/packalares/tailscale-state
+          type: DirectoryOrCreate
+---
+# Config secret — user populates via Settings UI
+# Empty by default — Tailscale starts but doesn't connect until auth key is set
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tailscale-config
+  namespace: {{FRAMEWORK_NAMESPACE}}
+type: Opaque
+stringData:
+  auth-key: ""
+  hostname: "packalares"
+  extra-args: ""
+---
+# State secret — Tailscale stores its state here
+apiVersion: v1
+kind: Secret
+metadata:
+  name: tailscale-state
+  namespace: {{FRAMEWORK_NAMESPACE}}
+type: Opaque
