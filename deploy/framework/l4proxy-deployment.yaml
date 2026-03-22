@@ -79,7 +79,7 @@ spec:
             - name: USER_NAMESPACE_PREFIX
               value: "user-space"
             - name: OLARES_LOCAL_DOMAIN
-              value: "olares.local"
+              value: "{{DOMAIN}}"
             - name: NODE_IP
               valueFrom:
                 fieldRef:
