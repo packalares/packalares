@@ -318,15 +318,22 @@ const weekDay = ref('');
 const dateStr = ref('');
 
 // Build subdomain URLs dynamically from current hostname
+function isIP(host: string): boolean {
+  return /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+}
+
 function appUrl(name: string, path = '/'): string {
   const host = window.location.hostname;
+  // IP access: use path-based routing
+  if (isIP(host)) {
+    return `/${name}${path}`;
+  }
+  // Subdomain access: use sibling subdomains
   const parts = host.split('.');
-  // If on a subdomain (e.g. desktop.laurs.olares.local), use sibling subdomains
   if (parts.length >= 3) {
     const zone = parts.slice(1).join('.');
     return `https://${name}.${zone}${path}`;
   }
-  // IP access: use path-based routing
   return `/${name}${path}`;
 }
 

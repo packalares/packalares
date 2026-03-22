@@ -13,7 +13,7 @@
           :active="activeTab === 'discover'"
           active-class="sidebar-item-active"
           class="sidebar-nav-item"
-          @click="activeTab = 'discover'"
+          @click="activeTab = 'discover'; activeCategory = 'all'"
         >
           <q-item-section avatar style="min-width: 36px">
             <q-icon
@@ -166,17 +166,35 @@
             </div>
             <div class="app-card-desc">{{ app.description }}</div>
             <div class="app-card-footer">
+              <div class="app-card-tags">
+                <q-badge
+                  v-for="cat in (app.categories || []).slice(0, 2)"
+                  :key="cat"
+                  :label="cat"
+                  class="app-tag"
+                />
+              </div>
               <q-btn
-                v-if="isInstalled(app.name)"
+                v-if="isInstalled(app.name) && appStates[app.name] !== 'installing' && appStates[app.name] !== 'downloading'"
                 flat
                 dense
                 no-caps
-                label="Installed"
-                class="app-btn-installed"
+                label="Open"
+                class="app-btn-open"
+                @click.stop="openApp(app.name)"
+              />
+              <q-btn
+                v-else-if="appStates[app.name] === 'downloading'"
+                flat
+                dense
+                no-caps
+                label="Downloading..."
+                class="app-btn-installing"
+                loading
                 disable
               />
               <q-btn
-                v-else-if="installingSet.has(app.name)"
+                v-else-if="appStates[app.name] === 'installing' || installingSet.has(app.name)"
                 flat
                 dense
                 no-caps
@@ -233,14 +251,24 @@
                 :label="installedStatusMap[app.name] || 'running'"
                 :class="'status-badge status-' + (installedStatusMap[app.name] || 'running')"
               />
-              <q-btn
-                flat
-                dense
-                no-caps
-                label="Uninstall"
-                class="app-btn-uninstall"
-                @click.stop="uninstallApp(app)"
-              />
+              <div class="app-card-footer-actions">
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  label="Open"
+                  class="app-btn-open"
+                  @click.stop="openApp(app.name)"
+                />
+                <q-btn
+                  flat
+                  dense
+                  no-caps
+                  label="Uninstall"
+                  class="app-btn-uninstall"
+                  @click.stop="confirmUninstall(app)"
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -249,8 +277,8 @@
 
     <!-- Detail Panel -->
     <transition name="slide-panel">
-      <div v-if="detailApp" class="detail-panel" @click.self="detailApp = null">
-        <div class="detail-panel-inner card">
+      <div v-if="detailApp" class="detail-overlay" @click.self="detailApp = null">
+        <div class="detail-panel card">
           <div class="detail-close">
             <q-btn flat round dense icon="close" @click="detailApp = null" />
           </div>
@@ -269,11 +297,76 @@
             </div>
           </div>
 
+          <div class="detail-actions">
+            <template v-if="isInstalled(detailApp.name)">
+              <q-btn
+                no-caps
+                label="Open"
+                class="detail-btn-open"
+                @click="openApp(detailApp.name)"
+              />
+              <q-btn
+                flat
+                no-caps
+                label="Uninstall"
+                class="detail-btn-uninstall"
+                @click="confirmUninstall(detailApp)"
+              />
+            </template>
+            <template v-else-if="appStates[detailApp.name] === 'downloading'">
+              <q-btn
+                no-caps
+                label="Downloading..."
+                class="detail-btn-install"
+                loading
+                disable
+              />
+            </template>
+            <template v-else-if="appStates[detailApp.name] === 'installing' || installingSet.has(detailApp.name)">
+              <q-btn
+                no-caps
+                label="Installing..."
+                class="detail-btn-install"
+                loading
+                disable
+              />
+            </template>
+            <template v-else>
+              <q-btn
+                no-caps
+                label="Install"
+                class="detail-btn-install"
+                @click="installApp(detailApp)"
+              />
+            </template>
+          </div>
+
           <q-separator class="detail-sep" />
+
+          <!-- Screenshots -->
+          <div class="detail-section" v-if="detailData?.promoteImage?.length">
+            <div class="detail-section-title">Screenshots</div>
+            <div class="detail-screenshots">
+              <img
+                v-for="(img, idx) in detailData.promoteImage"
+                :key="idx"
+                :src="img"
+                class="detail-screenshot"
+                @error="(e: Event) => ((e.target as HTMLImageElement).style.display = 'none')"
+              />
+            </div>
+          </div>
 
           <div class="detail-section">
             <div class="detail-section-title">Description</div>
-            <div class="detail-description">{{ detailApp.description }}</div>
+            <div class="detail-description" v-if="detailLoading">
+              <q-skeleton type="text" width="100%" />
+              <q-skeleton type="text" width="90%" />
+              <q-skeleton type="text" width="80%" />
+            </div>
+            <div class="detail-description" v-else>
+              {{ detailData?.fullDescription || detailData?.description || detailApp.description || 'No description available.' }}
+            </div>
           </div>
 
           <div class="detail-section" v-if="detailApp.categories?.length">
@@ -288,31 +381,14 @@
             </div>
           </div>
 
-          <q-separator class="detail-sep" />
-
-          <div class="detail-actions">
-            <q-btn
-              v-if="isInstalled(detailApp.name)"
-              no-caps
-              label="Uninstall"
-              class="detail-btn-uninstall"
-              @click="uninstallApp(detailApp)"
-            />
-            <q-btn
-              v-else-if="installingSet.has(detailApp.name)"
-              no-caps
-              label="Installing..."
-              class="detail-btn-install"
-              loading
-              disable
-            />
-            <q-btn
-              v-else
-              no-caps
-              label="Install"
-              class="detail-btn-install"
-              @click="installApp(detailApp)"
-            />
+          <div class="detail-section" v-if="detailData?.requiredMemory || detailData?.requiredCpu">
+            <div class="detail-section-title">Requirements</div>
+            <div class="detail-requirements">
+              <span v-if="detailData?.requiredMemory">Memory: {{ detailData.requiredMemory }}</span>
+              <span v-if="detailData?.requiredCpu">CPU: {{ detailData.requiredCpu }}</span>
+              <span v-if="detailData?.requiredDisk">Disk: {{ detailData.requiredDisk }}</span>
+              <span v-if="detailData?.requiredGpu">GPU: {{ detailData.requiredGpu }}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -321,7 +397,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, reactive } from 'vue';
+import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
 import { api } from 'boot/axios';
 import { useQuasar } from 'quasar';
 const $q = useQuasar();
@@ -329,11 +405,18 @@ const $q = useQuasar();
 interface MarketApp {
   name: string;
   title: string;
+  chartName?: string;
   description: string;
+  fullDescription?: string;
   icon: string;
   version: string;
   categories: string[];
   developer: string;
+  promoteImage?: string[];
+  requiredMemory?: string;
+  requiredCpu?: string;
+  requiredDisk?: string;
+  requiredGpu?: string;
 }
 
 interface Category {
@@ -354,7 +437,12 @@ const apps = ref<MarketApp[]>([]);
 const categories = ref<Category[]>([]);
 const installedApps = ref<InstalledApp[]>([]);
 const detailApp = ref<MarketApp | null>(null);
+const detailData = ref<MarketApp | null>(null);
+const detailLoading = ref(false);
 const installingSet = reactive(new Set<string>());
+const appStates = reactive<Record<string, string>>({});
+
+let ws: WebSocket | null = null;
 
 const installedStatusMap = computed(() => {
   const map: Record<string, string> = {};
@@ -401,6 +489,19 @@ function selectCategory(name: string) {
   activeCategory.value = name;
 }
 
+function appUrl(name: string): string {
+  const host = window.location.hostname;
+  const parts = host.split('.');
+  if (parts.length >= 3) {
+    return 'https://' + name + '.' + parts.slice(1).join('.');
+  }
+  return '/' + name + '/';
+}
+
+function openApp(name: string) {
+  window.open(appUrl(name), '_blank');
+}
+
 const categoryIcons: Record<string, string> = {
   Productivity: 'sym_r_work',
   Utilities: 'sym_r_build',
@@ -410,16 +511,30 @@ const categoryIcons: Record<string, string> = {
   AI: 'sym_r_smart_toy',
   Media: 'sym_r_movie',
   Development: 'sym_r_code',
+  'Developer Tools': 'sym_r_code',
   Communication: 'sym_r_chat',
   Security: 'sym_r_shield',
+  Creativity: 'sym_r_palette',
+  Fun: 'sym_r_celebration',
+  Lifestyle: 'sym_r_favorite',
 };
 
 function categoryIcon(name: string): string {
   return categoryIcons[name] || 'sym_r_category';
 }
 
-function openDetail(app: MarketApp) {
+async function openDetail(app: MarketApp) {
   detailApp.value = app;
+  detailData.value = null;
+  detailLoading.value = true;
+  try {
+    const res: any = await api.get('/market/v1/app/' + app.name);
+    detailData.value = res.data || null;
+  } catch {
+    detailData.value = app;
+  } finally {
+    detailLoading.value = false;
+  }
 }
 
 async function fetchApps() {
@@ -451,23 +566,44 @@ async function fetchInstalled() {
 
 async function installApp(app: MarketApp) {
   installingSet.add(app.name);
+  appStates[app.name] = 'downloading';
   try {
     await api.post('/app-service/v1/install', { name: app.name, chart: app.chartName || app.name });
-    // Poll for installed status (Helm install takes time)
+    // WebSocket will update the state; fall back to polling
     let attempts = 0;
     const poll = setInterval(async () => {
       attempts++;
       await fetchInstalled();
-      if (isInstalled(app.name) || attempts >= 30) {
+      if (isInstalled(app.name) || attempts >= 60) {
         clearInterval(poll);
         installingSet.delete(app.name);
+        delete appStates[app.name];
       }
     }, 3000);
   } catch (e: any) {
     console.error('Install failed:', e);
     installingSet.delete(app.name);
+    delete appStates[app.name];
     $q.notify({ type: 'negative', message: `Install failed: ${e.message || 'unknown error'}` });
   }
+}
+
+function confirmUninstall(app: MarketApp) {
+  $q.dialog({
+    title: 'Uninstall ' + app.title,
+    message: 'Are you sure you want to uninstall ' + app.title + '? This will remove all app data.',
+    cancel: true,
+    persistent: true,
+    dark: true,
+    color: 'negative',
+    ok: {
+      label: 'Uninstall',
+      flat: true,
+      color: 'negative',
+    },
+  }).onOk(() => {
+    uninstallApp(app);
+  });
 }
 
 async function uninstallApp(app: MarketApp) {
@@ -475,15 +611,79 @@ async function uninstallApp(app: MarketApp) {
     await api.post('/app-service/v1/uninstall', { name: app.name });
     detailApp.value = null;
     await fetchInstalled();
-  } catch (e) {
+    $q.notify({ type: 'positive', message: app.title + ' uninstalled.' });
+  } catch (e: any) {
     console.error('Uninstall failed:', e);
+    $q.notify({ type: 'negative', message: `Uninstall failed: ${e.message || 'unknown error'}` });
   }
 }
+
+function connectWebSocket() {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsUrl = proto + '//' + window.location.host + '/ws';
+  try {
+    ws = new WebSocket(wsUrl);
+
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === 'app_state' && msg.data) {
+          const { name, state } = msg.data as { name: string; state: string };
+          if (state === 'running') {
+            // App is ready
+            installingSet.delete(name);
+            delete appStates[name];
+            fetchInstalled();
+          } else if (state === 'failed') {
+            installingSet.delete(name);
+            delete appStates[name];
+            $q.notify({ type: 'negative', message: `${name} installation failed.` });
+          } else {
+            appStates[name] = state;
+          }
+        }
+      } catch {
+        // ignore non-JSON messages
+      }
+    };
+
+    ws.onclose = () => {
+      // Reconnect after 5s
+      setTimeout(() => {
+        if (!ws || ws.readyState === WebSocket.CLOSED) {
+          connectWebSocket();
+        }
+      }, 5000);
+    };
+
+    ws.onerror = () => {
+      ws?.close();
+    };
+  } catch {
+    // WebSocket not available
+  }
+}
+
+// Watch for detail panel close to clean up
+watch(detailApp, (val) => {
+  if (!val) {
+    detailData.value = null;
+    detailLoading.value = false;
+  }
+});
 
 onMounted(async () => {
   loading.value = true;
   await Promise.all([fetchApps(), fetchCategories(), fetchInstalled()]);
   loading.value = false;
+  connectWebSocket();
+});
+
+onUnmounted(() => {
+  if (ws) {
+    ws.close();
+    ws = null;
+  }
 });
 </script>
 
@@ -497,7 +697,7 @@ onMounted(async () => {
   overflow: hidden;
 }
 
-/* ── Sidebar ── */
+/* -- Sidebar -- */
 .market-sidebar {
   width: 240px;
   min-width: 240px;
@@ -573,7 +773,7 @@ onMounted(async () => {
   border-radius: 10px;
 }
 
-/* ── Main Content ── */
+/* -- Main Content -- */
 .market-content {
   flex: 1;
   height: 100%;
@@ -652,11 +852,13 @@ onMounted(async () => {
   }
 }
 
-/* ── App Card ── */
+/* -- App Card -- */
 .app-card {
   padding: 16px;
   cursor: pointer;
   transition: border-color 0.15s, transform 0.15s;
+  display: flex;
+  flex-direction: column;
 
   &:hover {
     border-color: var(--accent);
@@ -714,11 +916,10 @@ onMounted(async () => {
   font-size: 12px;
   line-height: 1.4;
   color: var(--ink-2);
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
-  min-height: 34px;
+  text-overflow: ellipsis;
+  min-height: 17px;
   margin-bottom: 12px;
 }
 
@@ -726,6 +927,29 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  margin-top: auto;
+}
+
+.app-card-footer-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.app-card-tags {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.app-tag {
+  background: var(--bg-3) !important;
+  color: var(--ink-3) !important;
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 1px 6px;
+  white-space: nowrap;
 }
 
 .app-btn-install {
@@ -735,6 +959,7 @@ onMounted(async () => {
   font-size: 12px;
   font-weight: 500;
   padding: 2px 14px;
+  flex-shrink: 0;
 }
 
 .app-btn-installing {
@@ -743,20 +968,24 @@ onMounted(async () => {
   border-radius: 6px;
   font-size: 12px;
   padding: 2px 14px;
+  flex-shrink: 0;
 }
 
-.app-btn-installed {
-  background: var(--bg-3) !important;
-  color: var(--positive) !important;
+.app-btn-open {
+  background: var(--positive) !important;
+  color: #fff !important;
   border-radius: 6px;
   font-size: 12px;
+  font-weight: 500;
   padding: 2px 14px;
+  flex-shrink: 0;
 }
 
 .app-btn-uninstall {
   color: var(--negative) !important;
   font-size: 12px;
   padding: 2px 10px;
+  flex-shrink: 0;
 }
 
 .status-badge {
@@ -781,19 +1010,22 @@ onMounted(async () => {
   color: var(--warning) !important;
 }
 
-/* ── Detail Panel ── */
-.detail-panel {
+/* -- Detail Panel -- */
+.detail-overlay {
   position: absolute;
   top: 0;
   right: 0;
   bottom: 0;
-  width: 600px;
+  left: 240px;
   z-index: 100;
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
+  justify-content: flex-end;
 }
 
-.detail-panel-inner {
-  width: 100%;
+.detail-panel {
+  width: 500px;
+  max-width: 100%;
   height: 100%;
   overflow-y: auto;
   padding: 24px;
@@ -859,6 +1091,12 @@ onMounted(async () => {
   font-weight: 500;
 }
 
+.detail-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
 .detail-sep {
   background-color: var(--separator);
   margin: 16px 0;
@@ -881,6 +1119,29 @@ onMounted(async () => {
   font-size: 14px;
   line-height: 1.6;
   color: var(--ink-1);
+  white-space: pre-wrap;
+}
+
+.detail-screenshots {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+
+  &::-webkit-scrollbar {
+    height: 4px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: var(--bg-3);
+    border-radius: 2px;
+  }
+}
+
+.detail-screenshot {
+  height: 200px;
+  border-radius: 8px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .detail-tags {
@@ -897,12 +1158,24 @@ onMounted(async () => {
   padding: 2px 8px;
 }
 
-.detail-actions {
-  padding-top: 8px;
+.detail-requirements {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--ink-2);
 }
 
 .detail-btn-install {
   background: var(--accent) !important;
+  color: #fff !important;
+  border-radius: 8px;
+  padding: 6px 32px;
+  font-weight: 500;
+}
+
+.detail-btn-open {
+  background: var(--positive) !important;
   color: #fff !important;
   border-radius: 8px;
   padding: 6px 32px;
@@ -917,7 +1190,7 @@ onMounted(async () => {
   font-weight: 500;
 }
 
-/* ── Transitions ── */
+/* -- Transitions -- */
 .slide-panel-enter-active,
 .slide-panel-leave-active {
   transition: transform 0.25s ease;
@@ -928,22 +1201,22 @@ onMounted(async () => {
   transform: translateX(100%);
 }
 
-/* ── Scrollbar ── */
+/* -- Scrollbar -- */
 .market-content::-webkit-scrollbar,
 .market-sidebar::-webkit-scrollbar,
-.detail-panel-inner::-webkit-scrollbar {
+.detail-panel::-webkit-scrollbar {
   width: 6px;
 }
 
 .market-content::-webkit-scrollbar-track,
 .market-sidebar::-webkit-scrollbar-track,
-.detail-panel-inner::-webkit-scrollbar-track {
+.detail-panel::-webkit-scrollbar-track {
   background: transparent;
 }
 
 .market-content::-webkit-scrollbar-thumb,
 .market-sidebar::-webkit-scrollbar-thumb,
-.detail-panel-inner::-webkit-scrollbar-thumb {
+.detail-panel::-webkit-scrollbar-thumb {
   background: var(--bg-3);
   border-radius: 3px;
 }

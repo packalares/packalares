@@ -14,7 +14,8 @@ const subdomainRoutes: Record<string, string> = {
 
 function getSubdomain(): string | null {
   const host = window.location.hostname;
-  // Match: {app}.laurs.olares.local or {app}.{user}.{zone}
+  // Skip IP addresses (188.241.210.104 has 4 dots but is not a subdomain)
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return null;
   const parts = host.split('.');
   if (parts.length >= 3) {
     const sub = parts[0];
