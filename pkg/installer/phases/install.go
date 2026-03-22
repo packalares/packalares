@@ -109,8 +109,8 @@ func RunInstall(opts *InstallOptions) error {
 			return storage.DeployOpenEBS(opts.Registry)
 		}},
 
-		// Phase 9: Install Redis host service
-		{"Install Redis", func() error {
+		// Phase 9: Deploy KVRocks (Redis-compatible) in K8s
+		{"Deploy KVRocks", func() error {
 			return redis.Install(opts.BaseDir)
 		}},
 
