@@ -318,12 +318,35 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 	helmValues["userspace.userData"] = "/userdata"
 	helmValues["os.appKey"] = rec.AppID
 	helmValues["dep.namespace"] = s.namespace
-	helmValues["dep.middleware.redis.host"] = os.Getenv("REDIS_HOST")
+
+	// Middleware values — inject BOTH naming patterns (old and new charts)
+	pgHost := os.Getenv("PG_HOST")
+	if pgHost == "" {
+		pgHost = "postgres-svc.packalares-platform"
+	}
+	pgPass := os.Getenv("PG_PASSWORD")
+	redisHost := os.Getenv("REDIS_HOST")
+	if redisHost == "" {
+		redisHost = "redis-svc.packalares-platform"
+	}
+	redisPass := os.Getenv("REDIS_PASSWORD")
+
+	// New pattern (dep.middleware.*)
+	helmValues["dep.middleware.redis.host"] = redisHost
 	helmValues["dep.middleware.redis.port"] = "6379"
-	helmValues["dep.middleware.redis.password"] = os.Getenv("REDIS_PASSWORD")
-	helmValues["dep.middleware.postgres.host"] = "postgres-svc.packalares-platform"
+	helmValues["dep.middleware.redis.password"] = redisPass
+	helmValues["dep.middleware.postgres.host"] = pgHost
 	helmValues["dep.middleware.postgres.port"] = "5432"
-	helmValues["dep.middleware.postgres.password"] = os.Getenv("PG_PASSWORD")
+	helmValues["dep.middleware.postgres.password"] = pgPass
+
+	// Old pattern (postgres.* / redis.* directly)
+	helmValues["postgres.host"] = pgHost
+	helmValues["postgres.port"] = "5432"
+	helmValues["postgres.password"] = pgPass
+	helmValues["postgres.username"] = "packalares"
+	helmValues["redis.host"] = redisHost
+	helmValues["redis.port"] = "6379"
+	helmValues["redis.password"] = redisPass
 
 	// Middleware-provisioned values
 	for k, v := range middlewareValues {
