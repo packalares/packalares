@@ -65,7 +65,9 @@ func stopContainerd() error {
 }
 
 func stopRedis() error {
-	return stopService("redis-server")
+	// KVRocks runs in K8s — deleted when K3s is removed.
+	// No host service to stop.
+	return nil
 }
 
 func removeK3s() error {
@@ -129,12 +131,9 @@ func removeContainerd() error {
 }
 
 func removeRedis() error {
-	disableService("redis-server")
-	os.Remove(filepath.Join(SystemdDir, "redis-server.service"))
-	os.RemoveAll("/var/lib/redis")
-	os.Remove("/etc/redis/redis.conf")
-
-	exec.Command("systemctl", "daemon-reload").Run()
+	// KVRocks runs in K8s — cleaned up when K3s is removed.
+	// Clean up data directory.
+	os.RemoveAll("/var/lib/packalares/kvrocks-data")
 	return nil
 }
 
