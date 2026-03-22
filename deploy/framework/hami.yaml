@@ -1,0 +1,120 @@
+# HAMi — Heterogeneous AI Management Infrastructure
+# GPU sharing: allows multiple apps to share one GPU
+# Modes: exclusive, time-slicing, memory-slicing
+# Only deployed if NVIDIA GPU detected
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hami-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hami-scheduler
+  namespace: hami-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: hami-scheduler
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- kind: ServiceAccount
+  name: hami-scheduler
+  namespace: hami-system
+---
+# HAMi device plugin — runs on every GPU node
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: hami-device-plugin
+  namespace: hami-system
+  labels:
+    app: hami-device-plugin
+spec:
+  selector:
+    matchLabels:
+      app: hami-device-plugin
+  template:
+    metadata:
+      labels:
+        app: hami-device-plugin
+    spec:
+      serviceAccountName: hami-scheduler
+      tolerations:
+      - operator: Exists
+      priorityClassName: system-node-critical
+      containers:
+      - name: device-plugin
+        image: projecthami/hami:v2.4.1
+        command: ["hami-device-plugin"]
+        args:
+        - --mig-strategy=none
+        - --device-split-count=10
+        - --device-memory-scaling=1.0
+        securityContext:
+          privileged: true
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        volumeMounts:
+        - name: device-plugin
+          mountPath: /var/lib/kubelet/device-plugins
+        - name: dev
+          mountPath: /dev
+        resources:
+          requests:
+            cpu: 25m
+            memory: 32Mi
+          limits:
+            cpu: 200m
+            memory: 128Mi
+      volumes:
+      - name: device-plugin
+        hostPath:
+          path: /var/lib/kubelet/device-plugins
+      - name: dev
+        hostPath:
+          path: /dev
+---
+# HAMi scheduler — extends K8s scheduler for GPU-aware scheduling
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hami-scheduler
+  namespace: hami-system
+  labels:
+    app: hami-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hami-scheduler
+  template:
+    metadata:
+      labels:
+        app: hami-scheduler
+    spec:
+      serviceAccountName: hami-scheduler
+      containers:
+      - name: scheduler
+        image: projecthami/hami:v2.4.1
+        command: ["hami-scheduler"]
+        args:
+        - --http-bind=:443
+        - --scheduler-name=hami-scheduler
+        ports:
+        - containerPort: 443
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi

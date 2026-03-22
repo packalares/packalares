@@ -144,14 +144,14 @@ func RunInstall(opts *InstallOptions) error {
 			return deployAppCharts(opts)
 		}},
 
-		// Phase 14: Deploy monitoring
+		// Phase 15: Deploy monitoring
 		{"Deploy monitoring", func() error {
 			return deployMonitoring(opts)
 		}},
 
-		// Phase 15: Deploy KubeBlocks
-		{"Deploy KubeBlocks", func() error {
-			return deployKubeBlocks(opts)
+		// Phase 16: GPU setup (if detected)
+		{"Setup GPU", func() error {
+			return InstallGPU(opts)
 		}},
 
 		// Phase 16: Wait for pods
