@@ -58,7 +58,7 @@ spec:
       serviceAccountName: openebs-localpv-provisioner
       containers:
       - name: provisioner
-        image: ${REGISTRY:-docker.io}/openebs/provisioner-localpv:3.5.0
+        image: openebs/provisioner-localpv:3.5.0
         env:
         - name: NODE_NAME
           valueFrom:
@@ -71,7 +71,7 @@ spec:
         - name: OPENEBS_IO_BASE_PATH
           value: "/var/openebs/local"
         - name: OPENEBS_IO_HELPER_IMAGE
-          value: "${REGISTRY:-docker.io}/openebs/linux-utils:3.5.0"
+          value: "openebs/linux-utils:3.5.0"
         resources:
           requests:
             cpu: 50m

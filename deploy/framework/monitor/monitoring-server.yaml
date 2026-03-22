@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: monitoring-server
-        image: packalares/monitoring-server:latest
+        image: ghcr.io/packalares/monitor:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8000

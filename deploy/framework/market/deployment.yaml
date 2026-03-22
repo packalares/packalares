@@ -19,7 +19,7 @@ spec:
     spec:
       containers:
         - name: market-backend
-          image: packalares/market-backend:latest
+          image: ghcr.io/packalares/market:latest
           ports:
             - containerPort: 6756
               name: http

@@ -53,7 +53,7 @@ spec:
       serviceAccountName: system-server
       containers:
       - name: system-server
-        image: packalares/systemserver:latest
+        image: ghcr.io/packalares/systemserver:latest
         ports:
         - containerPort: 8080
           name: http

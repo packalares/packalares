@@ -20,7 +20,7 @@ metadata:
   namespace: os-system
 type: Opaque
 stringData:
-  POSTGRES_PASSWORD: "${CITUS_PASSWORD}"
+  POSTGRES_PASSWORD: "{{PG_PASSWORD}}"
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -45,7 +45,7 @@ spec:
     spec:
       containers:
       - name: citus
-        image: ${REGISTRY:-docker.io}/citusdata/citus:12.1
+        image: citusdata/citus:12.1
         ports:
         - containerPort: 5432
           name: postgres

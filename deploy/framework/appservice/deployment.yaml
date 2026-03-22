@@ -20,7 +20,7 @@ spec:
       serviceAccountName: app-service
       containers:
         - name: app-service
-          image: packalares/app-service:latest
+          image: ghcr.io/packalares/appservice:latest
           ports:
             - containerPort: 6755
               name: http

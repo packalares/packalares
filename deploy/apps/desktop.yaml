@@ -3,11 +3,11 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: desktop
-  namespace: user-space-${USERNAME}
+  namespace: user-space-{{USERNAME}}
   labels:
     app: desktop
     tier: user-app
-    bytetrade.io/owner: "${USERNAME}"
+    bytetrade.io/owner: "{{USERNAME}}"
 spec:
   replicas: 1
   selector:
@@ -20,15 +20,15 @@ spec:
     spec:
       containers:
       - name: desktop
-        image: ${REGISTRY:-docker.io}/beclab/desktop:latest
+        image: ghcr.io/packalares/desktop:latest
         ports:
         - containerPort: 80
           name: http
         env:
         - name: USER_ZONE
-          value: "${USER_ZONE}"
+          value: "{{USER_ZONE}}"
         - name: DOMAIN
-          value: "${DOMAIN}"
+          value: "{{DOMAIN}}"
         resources:
           requests:
             cpu: 50m
@@ -47,7 +47,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: desktop-svc
-  namespace: user-space-${USERNAME}
+  namespace: user-space-{{USERNAME}}
 spec:
   selector:
     app: desktop

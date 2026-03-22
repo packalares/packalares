@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
       - name: mounts-server
-        image: packalares/mounts-server:latest
+        image: ghcr.io/packalares/mounts:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8081

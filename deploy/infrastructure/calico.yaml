@@ -20,7 +20,7 @@ spec:
       encapsulation: VXLANCrossSubnet
       natOutgoing: Enabled
       nodeSelector: all()
-  registry: ${REGISTRY:-docker.io}
+  registry: 
 ---
 apiVersion: operator.tigera.io/v1
 kind: APIServer

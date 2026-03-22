@@ -3,19 +3,19 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: auth-secrets
-  namespace: user-system-${USERNAME}
+  namespace: user-system-{{USERNAME}}
 type: Opaque
 stringData:
-  jwt_secret: "${JWT_SECRET}"
-  session_secret: "${SESSION_SECRET}"
-  redis_password: "${REDIS_PASSWORD}"
+  jwt_secret: "{{JWT_SECRET}}"
+  session_secret: "{{SESSION_SECRET}}"
+  redis_password: "{{REDIS_PASSWORD}}"
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: auth
-  namespace: user-system-${USERNAME}
+  namespace: user-system-{{USERNAME}}
   labels:
     app: packalares-auth
 spec:
@@ -30,13 +30,13 @@ spec:
     spec:
       containers:
       - name: auth
-        image: packalares/auth:latest
+        image: ghcr.io/packalares/auth:latest
         ports:
         - containerPort: 9091
           name: http
         env:
         - name: USER_ZONE
-          value: "${USER_ZONE}"
+          value: "{{USER_ZONE}}"
         - name: JWT_SECRET
           valueFrom:
             secretKeyRef:
@@ -61,7 +61,7 @@ spec:
         - name: LLDAP_USER
           value: "admin"
         - name: LLDAP_PASSWORD
-          value: "${LLDAP_ADMIN_PASSWORD}"
+          value: "{{LLDAP_ADMIN_PASSWORD}}"
         - name: TOTP_ISSUER
           value: "packalares"
         - name: AUTH_LISTEN_ADDR
@@ -91,7 +91,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: auth-backend
-  namespace: user-system-${USERNAME}
+  namespace: user-system-{{USERNAME}}
 spec:
   selector:
     app: packalares-auth
@@ -108,10 +108,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: authelia-backend-svc
-  namespace: user-space-${USERNAME}
+  namespace: user-space-{{USERNAME}}
 spec:
   type: ExternalName
-  externalName: auth-backend.user-system-${USERNAME}.svc.cluster.local
+  externalName: auth-backend.user-system-{{USERNAME}}.svc.cluster.local
   ports:
   - protocol: TCP
     name: http
