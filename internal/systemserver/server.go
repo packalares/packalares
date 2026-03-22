@@ -439,9 +439,17 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 	}
 	appName := parts[0]
 
-	// Look up the app in our registry
+	// Look up the app in our registry (apps are stored with namespace/name key)
 	s.appsMu.RLock()
-	app, exists := s.apps[appName]
+	var app *Application
+	var exists bool
+	for _, a := range s.apps {
+		if a.Spec.Name == appName {
+			app = a
+			exists = true
+			break
+		}
+	}
 	s.appsMu.RUnlock()
 
 	if !exists {
