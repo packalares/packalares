@@ -1,0 +1,33 @@
+import { defineStore } from 'pinia';
+import { api } from 'boot/axios';
+
+export const useUserStore = defineStore('user', {
+  state: () => ({
+    username: '',
+    terminusName: '',
+    avatar: '',
+    zone: '',
+    role: '',
+    authenticated: false,
+  }),
+  actions: {
+    async loadUserInfo() {
+      try {
+        const data: any = await api.get('/bfl/backend/v1/user-info');
+        const u = data.data || data;
+        this.username = u.name || '';
+        this.terminusName = u.terminusName || '';
+        this.avatar = u.avatar || '';
+        this.zone = u.zone || '';
+        this.role = u.owner_role || '';
+        this.authenticated = true;
+      } catch (e) {
+        console.warn('Failed to load user info:', e);
+      }
+    },
+    async logout() {
+      try { await api.post('/api/logout'); } catch {}
+      window.location.href = '/login/';
+    },
+  },
+});

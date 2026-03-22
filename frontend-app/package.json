@@ -1,0 +1,29 @@
+{
+  "name": "packalares-frontend",
+  "version": "1.0.0",
+  "description": "Packalares Desktop OS Frontend",
+  "private": true,
+  "scripts": {
+    "dev": "quasar dev",
+    "build": "quasar build",
+    "lint": "eslint --ext .js,.ts,.vue src"
+  },
+  "dependencies": {
+    "@quasar/extras": "^1.16.12",
+    "axios": "^1.7.7",
+    "pinia": "^2.2.6",
+    "quasar": "^2.17.4",
+    "vue": "^3.5.13",
+    "vue-router": "^4.4.5"
+  },
+  "devDependencies": {
+    "@quasar/app-webpack": "^3.13.4",
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.2",
+    "@typescript-eslint/parser": "^8.18.2",
+    "eslint": "^8.56.0",
+    "sass": "^1.77.8",
+    "sass-loader": "^13.2.0",
+    "typescript": "^5.3.3"
+  }
+}

@@ -1,1 +1,0 @@
-(()=>{"use strict";function t(t){const e=document.cookie,n=e.split("; ");for(let e=0;e<n.length;e++){const o=n[e].split("=");if(o[0]==t)return o[1]}return""}const e=t("theme_name");e&&2==Number(e)&&(document.body.style.background="#1f1f1f")})();
