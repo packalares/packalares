@@ -284,26 +284,37 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		klog.V(2).Infof("ensure namespace %s: %v (may already exist)", s.namespace, err)
 	}
 
-	// --- Step 4: Run helm install from the local chart directory ---
+	// --- Step 4: Provision middleware (databases, redis) and build helm values ---
+	rec.State = StateInitializing
+	_ = s.store.Put(bgCtx, rec)
+	GetWSHub().BroadcastAppState(rec.Name, StateInitializing)
+
+	provisioner := NewMiddlewareProvisioner(s.owner)
+	middlewareValues, err := provisioner.ProvisionAndBuildValues(bgCtx, chartDir, req.Name)
+	if err != nil {
+		klog.Errorf("provision middleware for %s: %v", req.Name, err)
+		rec.State = StateInstallFailed
+		_ = s.store.Put(bgCtx, rec)
+		GetWSHub().BroadcastAppState(rec.Name, StateInstallFailed)
+		return
+	}
+
+	// Merge helm values: middleware values first, then user-provided values
+	// (user overrides take precedence)
+	helmValues := make(map[string]string)
+	for k, v := range middlewareValues {
+		helmValues[k] = v
+	}
+	if req.Values != nil {
+		for k, v := range req.Values {
+			helmValues[k] = v
+		}
+	}
+
+	// --- Step 5: Run helm install from the local chart directory ---
 	rec.State = StateInstalling
 	_ = s.store.Put(bgCtx, rec)
 	GetWSHub().BroadcastAppState(rec.Name, StateInstalling)
-
-	helmValues := req.Values
-	if helmValues == nil {
-		helmValues = make(map[string]string)
-	}
-	// Inject standard Olares values that charts expect
-	if _, ok := helmValues["bfl.username"]; !ok {
-		helmValues["bfl.username"] = s.owner
-	}
-	if _, ok := helmValues["user.zone"]; !ok {
-		zone := os.Getenv("USER_ZONE")
-		if zone == "" {
-			zone = s.owner + ".olares.local"
-		}
-		helmValues["user.zone"] = zone
-	}
 
 	if err := s.helm.Install(bgCtx, rec.ReleaseName, chartDir, helmValues, ""); err != nil {
 		klog.Errorf("helm install %s: %v", req.Name, err)
@@ -313,7 +324,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		return
 	}
 
-	// --- Step 5: Create Application CRD ---
+	// --- Step 6: Create Application CRD ---
 	rec.State = StateRunning
 	_ = s.store.Put(bgCtx, rec)
 
@@ -322,7 +333,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		klog.V(2).Infof("apply Application CRD for %s: %v", req.Name, err)
 	}
 
-	// --- Step 6: Done ---
+	// --- Step 7: Done ---
 	GetWSHub().BroadcastAppState(rec.Name, StateRunning)
 	klog.Infof("app %s installed successfully (release=%s, namespace=%s)", req.Name, rec.ReleaseName, s.namespace)
 }
