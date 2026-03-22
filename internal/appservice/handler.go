@@ -2,7 +2,12 @@ package appservice
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"net/url"
+	"os"
+	"strconv"
 	"strings"
 
 	"k8s.io/klog/v2"
@@ -182,23 +187,58 @@ func (h *Handler) handleResume(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleServerInit returns desktop initialization data.
-// Called by the Olares Vue.js desktop at startup.
+// Reads from User CRD and environment for real values.
 func (h *Handler) handleServerInit(w http.ResponseWriter, r *http.Request) {
 	username := r.Header.Get("Remote-User")
 	if username == "" {
+		username = os.Getenv("USERNAME")
+	}
+	if username == "" {
 		username = "laurs"
 	}
+	zone := os.Getenv("USER_ZONE")
+	if zone == "" {
+		zone = username + ".olares.local"
+	}
 
-	// Return the data the desktop expects
+	terminusName := username + "@" + strings.TrimPrefix(zone, username+".")
+	avatar := ""
+	wizardStatus := "completed"
+
+	// Try reading user info from BFL service
+	bflURL := os.Getenv("BFL_URL")
+	if bflURL == "" {
+		bflURL = "http://bfl-svc.packalares-framework.svc.cluster.local:8080"
+	}
+	resp2, err := http.Get(bflURL + "/bfl/backend/v1/user-info")
+	if err == nil {
+		defer resp2.Body.Close()
+		body, _ := io.ReadAll(io.LimitReader(resp2.Body, 65536))
+		var bflResp struct {
+			Data struct {
+				Name         string `json:"name"`
+				TerminusName string `json:"terminusName"`
+				Zone         string `json:"zone"`
+				WizardComplete bool `json:"wizard_complete"`
+			} `json:"data"`
+		}
+		if json.Unmarshal(body, &bflResp) == nil && bflResp.Data.Name != "" {
+			terminusName = bflResp.Data.TerminusName
+			if bflResp.Data.WizardComplete {
+				wizardStatus = "completed"
+			}
+		}
+	}
+
 	resp := map[string]interface{}{
 		"terminus": map[string]interface{}{
-			"terminusName": username + "@olares.local",
-			"wizardStatus": "completed",
-			"selfhosted":   true,
-			"osVersion":    "1.0.0",
+			"terminusName":    terminusName,
+			"wizardStatus":    wizardStatus,
+			"selfhosted":      true,
+			"osVersion":       "1.0.0",
 			"loginBackground": "",
-			"avatar":       "",
-			"did":          "",
+			"avatar":          avatar,
+			"did":             "",
 		},
 		"config": map[string]interface{}{
 			"apps":    []interface{}{},
@@ -224,12 +264,59 @@ func (h *Handler) handleDevice(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "ok"})
 }
 
-// handleMonitorCluster returns basic cluster monitoring data.
+// handleMonitorCluster returns cluster monitoring data from Prometheus.
 func (h *Handler) handleMonitorCluster(w http.ResponseWriter, r *http.Request) {
+	promURL := os.Getenv("PROMETHEUS_URL")
+	if promURL == "" {
+		promURL = "http://prometheus-svc.monitoring.svc.cluster.local:9090"
+	}
+
+	query := func(q string) float64 {
+		resp, err := http.Get(promURL + "/api/v1/query?query=" + url.QueryEscape(q))
+		if err != nil {
+			return 0
+		}
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 65536))
+		var result struct {
+			Data struct {
+				Result []struct {
+					Value []interface{} `json:"value"`
+				} `json:"result"`
+			} `json:"data"`
+		}
+		if json.Unmarshal(body, &result) != nil || len(result.Data.Result) == 0 {
+			return 0
+		}
+		if len(result.Data.Result[0].Value) < 2 {
+			return 0
+		}
+		val, _ := strconv.ParseFloat(fmt.Sprintf("%v", result.Data.Result[0].Value[1]), 64)
+		return val
+	}
+
+	cpuRatio := query(`1 - avg(rate(node_cpu_seconds_total{mode="idle"}[5m]))`)
+	cpuCores := query(`count(node_cpu_seconds_total{mode="idle"})`)
+	memTotal := query(`node_memory_MemTotal_bytes`)
+	memAvail := query(`node_memory_MemAvailable_bytes`)
+	diskTotal := query(`node_filesystem_size_bytes{mountpoint="/",fstype!="rootfs"}`)
+	diskAvail := query(`node_filesystem_avail_bytes{mountpoint="/",fstype!="rootfs"}`)
+
+	memUsed := memTotal - memAvail
+	diskUsed := diskTotal - diskAvail
+	memRatio := 0.0
+	diskRatio := 0.0
+	if memTotal > 0 {
+		memRatio = memUsed / memTotal
+	}
+	if diskTotal > 0 {
+		diskRatio = diskUsed / diskTotal
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"cpu":    map[string]interface{}{"ratio": 0.025, "total": 8, "usage": 0.2},
-		"memory": map[string]interface{}{"ratio": 0.25, "total": 8589934592, "usage": 2147483648},
-		"disk":   map[string]interface{}{"ratio": 0.22, "total": 65498251264, "usage": 14109589504},
+		"cpu":    map[string]interface{}{"ratio": cpuRatio, "total": cpuCores, "usage": cpuRatio * cpuCores},
+		"memory": map[string]interface{}{"ratio": memRatio, "total": memTotal, "usage": memUsed},
+		"disk":   map[string]interface{}{"ratio": diskRatio, "total": diskTotal, "usage": diskUsed},
 		"gpu":    map[string]interface{}{"ratio": 0, "total": 0, "usage": 0},
 		"net":    map[string]interface{}{"received": 0, "transmitted": 0},
 	})
