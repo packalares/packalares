@@ -1,11 +1,4 @@
-node_modules/
-dist/
-.dist/
-*.log
-.DS_Store
-/tmp/
-
-# compiled binaries (root level only)
+# Compiled binaries
 /bfl
 /l4proxy
 /auth
@@ -18,8 +11,23 @@ dist/
 /monitor
 /kubesphere
 /cli
+/daemon
 /packalares-linux-*
+
+# Node
+node_modules/
+dist/
+.quasar/
+
+# Build artifacts
+*.log
+.DS_Store
+/tmp/
+
+# Frontend source repos (cloned for reference)
 frontend-src/
+
+# Frontend app build output (rebuilt from source)
 frontend-app/node_modules/
 frontend-app/dist/
 frontend-app/.quasar/

@@ -1,3 +1,4 @@
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -7,6 +8,8 @@ metadata:
     app: redis
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: redis
@@ -23,7 +26,7 @@ spec:
         args:
         - redis-server
         - --requirepass
-        - "$(REDIS_PASSWORD)"
+        - "57663c0bf6836c0d3429465bd3f65144"
         - --maxmemory-policy
         - noeviction
         - --appendonly
@@ -31,6 +34,31 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /data
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        readinessProbe:
+          exec:
+            command:
+            - redis-cli
+            - -a
+            - "57663c0bf6836c0d3429465bd3f65144"
+            - ping
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          exec:
+            command:
+            - redis-cli
+            - -a
+            - "57663c0bf6836c0d3429465bd3f65144"
+            - ping
+          initialDelaySeconds: 15
+          periodSeconds: 10
       volumes:
       - name: data
         hostPath:
