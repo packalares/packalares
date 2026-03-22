@@ -32,7 +32,7 @@ func showStatus() error {
 	fmt.Println()
 
 	// Check systemd services
-	services := []string{"k3s", "etcd", "containerd", "redis-server"}
+	services := []string{"k3s", "etcd", "containerd"}
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(w, "SERVICE\tSTATUS")
 	fmt.Fprintln(w, "-------\t------")

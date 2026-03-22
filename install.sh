@@ -47,8 +47,8 @@ cleanup_previous() {
     log_info "Checking for previous installations..."
 
     # Stop services
-    systemctl stop k3s etcd olaresd redis-server containerd docker 2>/dev/null || true
-    systemctl disable k3s etcd olaresd redis-server containerd docker 2>/dev/null || true
+    systemctl stop k3s etcd olaresd containerd docker 2>/dev/null || true
+    systemctl disable k3s etcd olaresd containerd docker 2>/dev/null || true
 
     # K3s uninstall
     if [ -f /usr/local/bin/k3s-killall.sh ]; then
@@ -84,7 +84,7 @@ cleanup_previous() {
     rm -rf /root/.kube /root/.olares /olares
 
     # Remove systemd units
-    rm -f /etc/systemd/system/{k3s,etcd,olaresd,redis-server,containerd}.service
+    rm -f /etc/systemd/system/{k3s,etcd,olaresd,containerd}.service
     rm -f /etc/systemd/system/etcd-backup*
     rm -f /lib/systemd/system/containerd.service
     systemctl daemon-reload 2>/dev/null || true
