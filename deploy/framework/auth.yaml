@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: auth-secrets
-  namespace: user-system-{{USERNAME}}
+  namespace: os-framework
 type: Opaque
 stringData:
   jwt_secret: "{{JWT_SECRET}}"
@@ -15,7 +15,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: auth
-  namespace: user-system-{{USERNAME}}
+  namespace: os-framework
   labels:
     app: packalares-auth
 spec:
@@ -91,7 +91,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: auth-backend
-  namespace: user-system-{{USERNAME}}
+  namespace: os-framework
 spec:
   selector:
     app: packalares-auth
@@ -111,7 +111,7 @@ metadata:
   namespace: user-space-{{USERNAME}}
 spec:
   type: ExternalName
-  externalName: auth-backend.user-system-{{USERNAME}}.svc.cluster.local
+  externalName: auth-backend.os-framework.svc.cluster.local
   ports:
   - protocol: TCP
     name: http

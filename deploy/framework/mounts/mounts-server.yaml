@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mounts-server
-  namespace: packalares-system
+  namespace: os-framework
   labels:
     app: mounts-server
 spec:
@@ -67,7 +67,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mounts-server
-  namespace: packalares-system
+  namespace: os-framework
 spec:
   selector:
     app: mounts-server
