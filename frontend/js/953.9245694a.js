@@ -1,1 +1,0 @@
-"use strict";(self["webpackChunkpackalares_frontend"]=self["webpackChunkpackalares_frontend"]||[]).push([[953],{5953(e,r,n){n.r(r),n.d(r,{default:()=>f});var a=n(1758);function t(e,r){const n=(0,a.g2)("router-view");return(0,a.uX)(),(0,a.Wv)(n)}var s=n(2807);const u={},c=(0,s.A)(u,[["render",t]]),f=c}}]);
