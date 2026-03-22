@@ -269,8 +269,9 @@ function updateTimerProgress() {
 function getRedirectUrl(responseRedirect?: string): string {
   const params = new URLSearchParams(window.location.search);
   const rd = params.get('rd');
-  if (responseRedirect) return responseRedirect;
+  // ?rd= parameter takes priority (set by auth redirect from protected page)
   if (rd) return decodeURIComponent(rd);
+  if (responseRedirect) return responseRedirect;
   return '/desktop/';
 }
 
