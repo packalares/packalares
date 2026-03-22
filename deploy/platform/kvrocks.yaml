@@ -1,14 +1,13 @@
 ---
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: kvrocks
-  namespace: os-system
-  labels:
-    app: kvrocks
+  namespace: packalares-platform
 spec:
-  serviceName: kvrocks
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: kvrocks
@@ -17,12 +16,26 @@ spec:
       labels:
         app: kvrocks
     spec:
+      initContainers:
+      - name: fix-permissions
+        image: busybox:1.36
+        command: ["sh", "-c", "chown -R 999:999 /kvrocks/data"]
+        volumeMounts:
+        - name: data
+          mountPath: /kvrocks/data
       containers:
       - name: kvrocks
-        image: ${REGISTRY:-docker.io}/apache/kvrocks:2.8
+        image: apache/kvrocks:2.15.0
         ports:
         - containerPort: 6666
           name: kvrocks
+        args:
+        - --bind
+        - "0.0.0.0"
+        - --dir
+        - /kvrocks/data
+        - --requirepass
+        - "57663c0bf6836c0d3429465bd3f65144"
         volumeMounts:
         - name: data
           mountPath: /kvrocks/data
@@ -43,24 +56,20 @@ spec:
             port: 6666
           initialDelaySeconds: 15
           periodSeconds: 10
-  volumeClaimTemplates:
-  - metadata:
-      name: data
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      resources:
-        requests:
-          storage: 5Gi
+      volumes:
+      - name: data
+        hostPath:
+          path: /var/lib/packalares/kvrocks-data
+          type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: kvrocks-svc
-  namespace: os-system
+  namespace: packalares-platform
 spec:
   selector:
     app: kvrocks
   ports:
-  - port: 6666
+  - port: 6379
     targetPort: 6666
-  clusterIP: None

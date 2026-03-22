@@ -80,6 +80,7 @@ type MiddlewareSpec struct {
 
 type MiddlewareStatus struct {
 	State      string       `json:"state"`
+	Message    string       `json:"message,omitempty"`
 	UpdateTime *metav1.Time `json:"updateTime,omitempty"`
 }
 

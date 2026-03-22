@@ -20,25 +20,17 @@ type Config struct {
 	// Namespace is the user's Kubernetes namespace.
 	UserNamespace string
 
-	// NginxConfigPath is where generated nginx configs are written.
-	NginxConfigPath string
-
-	// NginxReloadCmd is the command to reload nginx.
-	NginxReloadCmd string
-
 	// WatchNamespace for Application CRDs.
 	WatchNamespace string
 }
 
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
-		ListenAddr:      ":8080",
-		UserZone:        "",
-		Username:        "",
-		UserNamespace:   "",
-		NginxConfigPath: "/etc/nginx/conf.d",
-		NginxReloadCmd:  "nginx -s reload",
-		WatchNamespace:  "",
+		ListenAddr:     ":8080",
+		UserZone:       "",
+		Username:       "",
+		UserNamespace:  "",
+		WatchNamespace: "",
 	}
 
 	if v := os.Getenv("LISTEN_ADDR"); v != "" {
@@ -52,12 +44,6 @@ func LoadConfig() (*Config, error) {
 	}
 	if v := os.Getenv("USER_NAMESPACE"); v != "" {
 		cfg.UserNamespace = v
-	}
-	if v := os.Getenv("NGINX_CONFIG_PATH"); v != "" {
-		cfg.NginxConfigPath = v
-	}
-	if v := os.Getenv("NGINX_RELOAD_CMD"); v != "" {
-		cfg.NginxReloadCmd = v
 	}
 	if v := os.Getenv("WATCH_NAMESPACE"); v != "" {
 		cfg.WatchNamespace = v

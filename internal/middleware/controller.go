@@ -79,23 +79,33 @@ func (c *Controller) Run() error {
 func (c *Controller) watchLoop() error {
 	resource := c.dynamicClient.Resource(MiddlewareRequestGVR)
 
+	// First, list all existing resources and reconcile them.
+	// Capture the resourceVersion so the subsequent watch picks up only
+	// events that happen after the list.
+	resourceVersion, err := c.reconcileExisting()
+	if err != nil {
+		log.Printf("reconcile existing resources: %v", err)
+		// Fall back to watching from the beginning
+		resourceVersion = ""
+	}
+
+	watchOpts := metav1.ListOptions{
+		ResourceVersion: resourceVersion,
+	}
+
 	var watcher watch.Interface
-	var err error
 
 	if c.cfg.WatchNamespace != "" {
-		watcher, err = resource.Namespace(c.cfg.WatchNamespace).Watch(c.ctx, metav1.ListOptions{})
+		watcher, err = resource.Namespace(c.cfg.WatchNamespace).Watch(c.ctx, watchOpts)
 	} else {
-		watcher, err = resource.Watch(c.ctx, metav1.ListOptions{})
+		watcher, err = resource.Watch(c.ctx, watchOpts)
 	}
 	if err != nil {
 		return fmt.Errorf("watch middleware requests: %w", err)
 	}
 	defer watcher.Stop()
 
-	// Also process existing resources on startup
-	if err := c.reconcileExisting(); err != nil {
-		log.Printf("reconcile existing resources: %v", err)
-	}
+	log.Printf("watching MiddlewareRequests from resourceVersion=%s", resourceVersion)
 
 	for {
 		select {
@@ -104,6 +114,11 @@ func (c *Controller) watchLoop() error {
 		case event, ok := <-watcher.ResultChan():
 			if !ok {
 				return fmt.Errorf("watch channel closed")
+			}
+
+			if event.Type == watch.Error {
+				log.Printf("watch error event: %v", event.Object)
+				return fmt.Errorf("watch error event received")
 			}
 
 			if event.Object == nil {
@@ -135,7 +150,7 @@ func (c *Controller) watchLoop() error {
 	}
 }
 
-func (c *Controller) reconcileExisting() error {
+func (c *Controller) reconcileExisting() (string, error) {
 	resource := c.dynamicClient.Resource(MiddlewareRequestGVR)
 
 	var list *unstructured.UnstructuredList
@@ -147,8 +162,10 @@ func (c *Controller) reconcileExisting() error {
 		list, err = resource.List(c.ctx, metav1.ListOptions{})
 	}
 	if err != nil {
-		return fmt.Errorf("list middleware requests: %w", err)
+		return "", fmt.Errorf("list middleware requests: %w", err)
 	}
+
+	log.Printf("reconciling %d existing MiddlewareRequest resources", len(list.Items))
 
 	for i := range list.Items {
 		req, err := c.parseMiddlewareRequest(&list.Items[i])
@@ -161,7 +178,7 @@ func (c *Controller) reconcileExisting() error {
 		}
 	}
 
-	return nil
+	return list.GetResourceVersion(), nil
 }
 
 func (c *Controller) parseMiddlewareRequest(obj *unstructured.Unstructured) (*MiddlewareRequest, error) {
@@ -179,19 +196,42 @@ func (c *Controller) parseMiddlewareRequest(obj *unstructured.Unstructured) (*Mi
 }
 
 func (c *Controller) handleCreateOrUpdate(req *MiddlewareRequest) error {
-	log.Printf("handling create/update for %s/%s (middleware=%s)", req.Namespace, req.Name, req.Spec.Middleware)
+	// Skip resources that are already provisioned
+	if req.Status.State == "ready" {
+		log.Printf("skipping %s/%s: already in ready state", req.Namespace, req.Name)
+		return nil
+	}
 
+	log.Printf("handling create/update for %s/%s (middleware=%s, state=%s)",
+		req.Namespace, req.Name, req.Spec.Middleware, req.Status.State)
+
+	var provisionErr error
 	switch req.Spec.Middleware {
 	case TypePostgreSQL:
-		return c.handlePostgreSQL(req)
+		provisionErr = c.handlePostgreSQL(req)
 	case TypeRedis:
-		return c.handleRedis(req)
+		provisionErr = c.handleRedis(req)
 	case TypeNats:
-		return c.handleNATS(req)
+		provisionErr = c.handleNATS(req)
 	default:
 		log.Printf("unsupported middleware type %q for %s/%s, skipping", req.Spec.Middleware, req.Namespace, req.Name)
 		return nil
 	}
+
+	if provisionErr != nil {
+		if statusErr := c.updateStatus(req, "failed", provisionErr.Error()); statusErr != nil {
+			log.Printf("failed to update status for %s/%s: %v", req.Namespace, req.Name, statusErr)
+		}
+		return provisionErr
+	}
+
+	if err := c.updateStatus(req, "ready", ""); err != nil {
+		log.Printf("provisioned %s/%s but failed to update status: %v", req.Namespace, req.Name, err)
+		return err
+	}
+
+	log.Printf("successfully provisioned %s/%s (middleware=%s)", req.Namespace, req.Name, req.Spec.Middleware)
+	return nil
 }
 
 func (c *Controller) handleDelete(req *MiddlewareRequest) error {
@@ -207,6 +247,45 @@ func (c *Controller) handleDelete(req *MiddlewareRequest) error {
 	default:
 		return nil
 	}
+}
+
+// updateStatus updates the MiddlewareRequest status subresource.
+func (c *Controller) updateStatus(req *MiddlewareRequest, state, message string) error {
+	resource := c.dynamicClient.Resource(MiddlewareRequestGVR).Namespace(req.Namespace)
+
+	// Get the latest version of the object to avoid conflicts
+	obj, err := resource.Get(c.ctx, req.Name, metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("get resource for status update: %w", err)
+	}
+
+	now := metav1.Now()
+	status := map[string]interface{}{
+		"state":      state,
+		"updateTime": now.Format(time.RFC3339),
+	}
+	if message != "" {
+		status["message"] = message
+	}
+
+	if err := unstructured.SetNestedField(obj.Object, status, "status"); err != nil {
+		return fmt.Errorf("set status field: %w", err)
+	}
+
+	// Try status subresource first; fall back to regular update if the CRD
+	// doesn't have a status subresource defined.
+	_, err = resource.UpdateStatus(c.ctx, obj, metav1.UpdateOptions{})
+	if err != nil {
+		// Fall back to a regular update (some CRD definitions may not have the
+		// /status subresource enabled)
+		_, err = resource.Update(c.ctx, obj, metav1.UpdateOptions{})
+		if err != nil {
+			return fmt.Errorf("update status: %w", err)
+		}
+	}
+
+	log.Printf("updated status for %s/%s to %q", req.Namespace, req.Name, state)
+	return nil
 }
 
 // PostgreSQL handling
