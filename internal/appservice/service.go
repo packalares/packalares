@@ -293,11 +293,9 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 	provisioner := NewMiddlewareProvisioner(s.owner)
 	middlewareValues, err := provisioner.ProvisionAndBuildValues(bgCtx, chartDir, req.Name)
 	if err != nil {
-		klog.Errorf("provision middleware for %s: %v", req.Name, err)
-		rec.State = StateInstallFailed
-		_ = s.store.Put(bgCtx, rec)
-		GetWSHub().BroadcastAppState(rec.Name, StateInstallFailed)
-		return
+		// Non-fatal: many apps don't need middleware. Log and continue.
+		klog.V(2).Infof("middleware provision for %s: %v (continuing without middleware)", req.Name, err)
+		middlewareValues = make(map[string]string)
 	}
 
 	// Merge helm values: standard Olares values + middleware + user overrides
