@@ -582,7 +582,7 @@ function onDockContextMenu(e: MouseEvent, app: AppInfo) {
 }
 
 function onAvatarClick() {
-  // Could open profile; for now do nothing
+  openApp({ id: 'settings', name: 'settings', title: 'Settings', icon: '', url: '/settings/account' });
 }
 
 function toggleLaunchPad() {
