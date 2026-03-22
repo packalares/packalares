@@ -177,8 +177,13 @@ func (s *Service) Install(ctx context.Context, req *InstallRequest) (*Installati
 		return nil, fmt.Errorf("app name is required")
 	}
 
-	if _, exists := s.store.Get(ctx, req.Name); exists {
-		return nil, fmt.Errorf("app %q is already installed", req.Name)
+	if existing, exists := s.store.Get(ctx, req.Name); exists {
+		// Allow reinstall if previous attempt failed or was uninstalled
+		if existing.State == StateRunning || existing.State == StateInstalling || existing.State == StateDownloading {
+			return nil, fmt.Errorf("app %q is already installed (state: %s)", req.Name, existing.State)
+		}
+		// Clean up the old record for retry
+		_ = s.store.Delete(ctx, req.Name)
 	}
 
 	source := req.Source
