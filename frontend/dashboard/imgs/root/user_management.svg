@@ -1,0 +1,18 @@
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Group 205">
+<rect id="Rectangle 753" width="20" height="20" rx="5.33333" fill="url(#paint0_linear_1_351)"/>
+<path id="Vector 243" d="M15 9.16667L16 9.33325L15 10V9.16667Z" fill="#FFFFFD"/>
+<path id="Vector 242" d="M5.49992 9.16663L4.33325 9.33329L5.49992 9.99996V9.16663Z" fill="#FFFFFD"/>
+<path id="Subtract" fill-rule="evenodd" clip-rule="evenodd" d="M6.15015 4.66667H14.2C14.6418 4.66667 15 5.02484 15 5.46667V11.5166C15.2019 11.3713 15.3333 11.1344 15.3333 10.8667V5.13337C15.3333 4.69155 14.9751 4.33337 14.5333 4.33337H6.79998C6.53233 4.33337 6.29537 4.46481 6.15015 4.66667Z" fill="#FFFFFD"/>
+<rect id="Rectangle 755" x="5.33325" y="5" width="9.33333" height="7.33333" rx="0.8" fill="#FFFFFD"/>
+<circle id="Ellipse 1" cx="10" cy="7.66663" r="1" fill="#FE7362"/>
+<ellipse id="Ellipse 2" cx="9.99984" cy="11" rx="2.33333" ry="1.66667" fill="#FE7362"/>
+<path id="Rectangle 754" d="M4.33325 9.33337L9.82064 11.2148C10.0449 11.2916 10.2883 11.2916 10.5125 11.2148L15.9999 9.33337V14.2667C15.9999 14.8558 15.5224 15.3334 14.9333 15.3334H5.39992C4.81082 15.3334 4.33325 14.8558 4.33325 14.2667V9.33337Z" fill="#FFFFFD"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_1_351" x1="10" y1="0" x2="10" y2="20" gradientUnits="userSpaceOnUse">
+<stop stop-color="#FF8C85"/>
+<stop offset="1" stop-color="#FA5032"/>
+</linearGradient>
+</defs>
+</svg>
