@@ -156,10 +156,10 @@ type appstoreResponse struct {
 // appstoreData holds the nested data fields from the appstore API.
 type appstoreData struct {
 	Apps       map[string]appstoreApp    `json:"apps"`
-	Pages      map[string][]string       `json:"pages"`
-	Tags       map[string][]string       `json:"tags"`
-	Recommends map[string][]string       `json:"recommends"`
-	Topics     map[string][]string       `json:"topics"`
+	Pages      map[string]json.RawMessage `json:"pages"`
+	Tags       map[string]json.RawMessage `json:"tags"`
+	Recommends map[string]json.RawMessage `json:"recommends"`
+	Topics     map[string]json.RawMessage `json:"topics"`
 	Tops       []TopApp                  `json:"tops"`
 	Latest     []string                  `json:"latest"`
 }
@@ -259,10 +259,22 @@ func (c *Catalog) fetchFromAppstore() ([]MarketApp, error) {
 		return apps[i].Name < apps[j].Name
 	})
 
-	// Store the curated data from the appstore
-	c.pages = storeResp.Data.Pages
-	c.recommendations = storeResp.Data.Recommends
-	c.topics = storeResp.Data.Topics
+	// Extract category names from pages (each page is a complex object, we just need the keys)
+	c.pages = make(map[string][]string)
+	for catName := range storeResp.Data.Pages {
+		c.pages[catName] = []string{} // category exists, apps are already in the main list
+	}
+
+	// Extract recommendation group names
+	c.recommendations = make(map[string][]string)
+	for groupName := range storeResp.Data.Recommends {
+		c.recommendations[groupName] = []string{}
+	}
+
+	c.topics = make(map[string][]string)
+	for topicName := range storeResp.Data.Topics {
+		c.topics[topicName] = []string{}
+	}
 	c.tops = storeResp.Data.Tops
 	c.latest = storeResp.Data.Latest
 
