@@ -3,7 +3,7 @@ import axios, { AxiosInstance } from 'axios';
 
 // Returns the API base URL depending on how the user accesses the system:
 //   IP access (188.241.210.104): returns '' → calls /api/* on same origin
-//   Subdomain (market.laurs.olares.local): returns 'https://api.laurs.olares.local'
+//   Subdomain (market.user.zone): returns 'https://api.user.zone'
 export function getApiBase(): string {
   const host = window.location.hostname;
   if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
@@ -18,7 +18,7 @@ export function getApiBase(): string {
 
 // Returns the main domain for redirects:
 //   IP: '' (same origin)
-//   Subdomain: 'https://laurs.olares.local'
+//   Subdomain: 'https://user.zone'
 export function getMainDomain(): string {
   const host = window.location.hostname;
   if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
@@ -33,7 +33,7 @@ export function getMainDomain(): string {
 
 // Returns the WebSocket URL:
 //   IP: wss://188.241.210.104/ws
-//   Subdomain: wss://api.laurs.olares.local/ws
+//   Subdomain: wss://api.user.zone/ws
 export function getWsUrl(): string {
   const base = getApiBase();
   if (base) {
