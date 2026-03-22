@@ -3,7 +3,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: auth-secrets
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 type: Opaque
 stringData:
   jwt_secret: "{{JWT_SECRET}}"
@@ -15,7 +15,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: auth
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
   labels:
     app: packalares-auth
 spec:
@@ -48,14 +48,14 @@ spec:
               name: auth-secrets
               key: session_secret
         - name: REDIS_ADDR
-          value: "kvrocks-svc.os-system:6379"
+          value: "kvrocks-svc.{{PLATFORM_NAMESPACE}}:6379"
         - name: REDIS_PASSWORD
           valueFrom:
             secretKeyRef:
               name: auth-secrets
               key: redis_password
         - name: LLDAP_HOST
-          value: "lldap-svc.os-system"
+          value: "lldap-svc.{{PLATFORM_NAMESPACE}}"
         - name: LLDAP_PORT
           value: "17170"
         - name: LLDAP_USER
@@ -91,7 +91,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: auth-backend
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 spec:
   selector:
     app: packalares-auth
@@ -108,10 +108,10 @@ apiVersion: v1
 kind: Service
 metadata:
   name: authelia-backend-svc
-  namespace: user-space-{{USERNAME}}
+  namespace: {{USER_NAMESPACE}}
 spec:
   type: ExternalName
-  externalName: auth-backend.os-framework.svc.cluster.local
+  externalName: auth-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local
   ports:
   - protocol: TCP
     name: http

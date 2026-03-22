@@ -16,7 +16,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: envoy-sidecar-config
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 data:
   envoy.yaml: |
     static_resources:
@@ -48,7 +48,7 @@ data:
                   "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
                   http_service:
                     server_uri:
-                      uri: auth-svc.os-framework.svc.cluster.local:9091
+                      uri: auth-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local:9091
                       cluster: auth_service
                       timeout: 5s
                     path_prefix: /api/verify
@@ -93,7 +93,7 @@ data:
             - endpoint:
                 address:
                   socket_address:
-                    address: auth-svc.os-framework.svc.cluster.local
+                    address: auth-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local
                     port_value: 9091
     admin:
       address:

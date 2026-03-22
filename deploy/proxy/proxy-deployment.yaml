@@ -2,7 +2,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: proxy-config
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 data:
   nginx.conf: |
     # Generated at deploy time with actual service IPs
@@ -12,7 +12,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: proxy
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 spec:
   selector:
     matchLabels:

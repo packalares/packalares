@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: lldap
-  namespace: os-system
+  namespace: {{PLATFORM_NAMESPACE}}
   labels:
     app: lldap
 spec:
@@ -62,7 +62,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: lldap-secret
-  namespace: os-system
+  namespace: {{PLATFORM_NAMESPACE}}
 type: Opaque
 stringData:
   jwt-secret: "{{LLDAP_JWT_SECRET}}"
@@ -72,7 +72,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: lldap-svc
-  namespace: os-system
+  namespace: {{PLATFORM_NAMESPACE}}
 spec:
   selector:
     app: lldap
