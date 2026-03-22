@@ -136,6 +136,7 @@ func deployFrameworkCharts(opts *InstallOptions) error {
 		"deploy/framework/market/deployment.yaml",
 		"deploy/framework/monitor/monitoring-server.yaml",
 		"deploy/framework/mounts/mounts-server.yaml",
+		"deploy/framework/kubesphere.yaml",
 		"deploy/framework/samba/samba-server.yaml",
 		"deploy/framework/l4proxy-deployment.yaml",
 		"deploy/proxy/proxy-deployment.yaml",

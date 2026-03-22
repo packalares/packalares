@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kubesphere
+  namespace: {{FRAMEWORK_NAMESPACE}}
+  labels:
+    app: kubesphere
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kubesphere
+  template:
+    metadata:
+      labels:
+        app: kubesphere
+    spec:
+      serviceAccountName: packalares-admin
+      containers:
+      - name: kubesphere
+        image: ghcr.io/packalares/kubesphere:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 9090
+        env:
+        - name: LISTEN_ADDR
+          value: ":9090"
+        resources:
+          requests:
+            cpu: 25m
+            memory: 32Mi
+          limits:
+            cpu: 250m
+            memory: 128Mi
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 9090
+          initialDelaySeconds: 5
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kubesphere-svc
+  namespace: {{FRAMEWORK_NAMESPACE}}
+spec:
+  selector:
+    app: kubesphere
+  ports:
+  - port: 9090
+    targetPort: 9090
