@@ -378,7 +378,7 @@ func writeJSONResponse(w http.ResponseWriter, code int, data interface{}) {
 }
 
 // handleAppProxy reverse-proxies requests to installed apps based on the Host header.
-// The main nginx proxy sends *.laurs.olares.local traffic here.
+// The main nginx proxy sends *.{user.zone} traffic here.
 // We extract the app name from the subdomain and proxy to the app's K8s service.
 func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 	host := r.Host
@@ -386,7 +386,7 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 		host = h
 	}
 
-	// Extract app name from subdomain: {appname}.laurs.olares.local
+	// Extract app name from subdomain: {appname}.{user.zone}
 	parts := strings.SplitN(host, ".", 2)
 	if len(parts) < 2 {
 		http.Error(w, "unknown host", http.StatusNotFound)

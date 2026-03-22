@@ -626,7 +626,7 @@ function connectWebSocket() {
   const hostname = window.location.hostname;
   const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname);
   if (!isIP && hostname.split('.').length >= 3) {
-    // On subdomain: market.laurs.olares.local → laurs.olares.local
+    // On subdomain: strip first part to get main domain
     wsHost = hostname.split('.').slice(1).join('.');
   }
   const wsUrl = proto + '//' + wsHost + '/ws';

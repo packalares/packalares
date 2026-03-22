@@ -92,7 +92,7 @@ func MonitoringNamespace() string {
 // ─── Domain ─────────────────────────────────────────────
 
 func Domain() string  { return configOr("system.domain", "SYSTEM_DOMAIN", "olares.local") }
-func Username() string { return configOr("user.name", "USERNAME", "laurs") }
+func Username() string { return configOr("user.name", "USERNAME", "") }
 func Hostname() string { return configOr("system.hostname", "HOSTNAME", "packalares") }
 func Timezone() string { return configOr("system.timezone", "TZ", "UTC") }
 
