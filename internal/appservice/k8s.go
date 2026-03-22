@@ -181,6 +181,7 @@ func ApplicationCRDManifest(rec *AppRecord) string {
 kind: Application
 metadata:
   name: %s
+  namespace: %s
   labels:
     applications.app.bytetrade.io/name: %s
     applications.app.bytetrade.io/owner: %s
@@ -203,6 +204,7 @@ status:
   state: %s
 `,
 		rec.ReleaseName,
+		rec.Namespace,
 		rec.Name,
 		rec.Owner,
 		string(entrancesJSON),
