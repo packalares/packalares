@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: samba-server
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
   labels:
     app: samba-server
 spec:
@@ -41,7 +41,7 @@ spec:
         - name: DATA_PATH
           value: /packalares/data
         - name: LLDAP_URL
-          value: http://lldap-svc.os-system:17170
+          value: http://lldap-svc.{{PLATFORM_NAMESPACE}}:17170
         volumeMounts:
         - name: data
           mountPath: /packalares/data
@@ -63,7 +63,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: samba-server
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 spec:
   selector:
     app: samba-server
@@ -85,7 +85,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: samba-credentials
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 type: Opaque
 stringData:
   username: packalares

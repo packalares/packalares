@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: wizard
-  namespace: user-space-{{USERNAME}}
+  namespace: {{USER_NAMESPACE}}
   labels:
     app: wizard
     tier: user-app
@@ -43,7 +43,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: wizard-svc
-  namespace: user-space-{{USERNAME}}
+  namespace: {{USER_NAMESPACE}}
 spec:
   selector:
     app: wizard

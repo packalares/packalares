@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: middleware-operator
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -33,14 +33,14 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: middleware-operator
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: middleware-operator
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
   labels:
     app: packalares-middleware
 spec:
@@ -59,7 +59,7 @@ spec:
         image: ghcr.io/packalares/middleware:latest
         env:
         - name: PG_HOST
-          value: "citus-svc.os-system"
+          value: "citus-svc.{{PLATFORM_NAMESPACE}}"
         - name: PG_PORT
           value: "5432"
         - name: PG_ADMIN_USER
@@ -70,7 +70,7 @@ spec:
               name: pg-admin-secrets
               key: password
         - name: REDIS_HOST
-          value: "kvrocks-svc.os-system"
+          value: "kvrocks-svc.{{PLATFORM_NAMESPACE}}"
         - name: REDIS_PORT
           value: "6379"
         - name: REDIS_PASSWORD
@@ -79,7 +79,7 @@ spec:
               name: redis-secrets
               key: password
         - name: NATS_HOST
-          value: "nats-svc.os-system"
+          value: "nats-svc.{{PLATFORM_NAMESPACE}}"
         - name: NATS_PORT
           value: "4222"
         - name: PLATFORM_NAMESPACE

@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: desktop
-  namespace: user-space-{{USERNAME}}
+  namespace: {{USER_NAMESPACE}}
   labels:
     app: desktop
     tier: user-app
@@ -47,7 +47,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: desktop-svc
-  namespace: user-space-{{USERNAME}}
+  namespace: {{USER_NAMESPACE}}
 spec:
   selector:
     app: desktop

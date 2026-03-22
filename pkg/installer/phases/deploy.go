@@ -3,6 +3,7 @@ package phases
 import (
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -47,26 +48,54 @@ func helmInstallOrUpgrade(name, chart, namespace string, values map[string]strin
 	return nil
 }
 
-func deployCRDsAndNamespaces(opts *InstallOptions) error {
-	// Apply the CRDs + namespaces + RBAC manifest
-	// This must run before any services so CRDs exist for controllers to watch
-	fmt.Println("  Creating namespaces, CRDs, and RBAC ...")
-
-	// Also create user namespace
-	userNS := config.UserNamespace(opts.Username)
-
-	manifests := []string{
-		"deploy/crds/crds-and-namespaces.yaml",
+// applyManifestFile reads a YAML file, replaces {{PLACEHOLDERS}} with
+// values from config, and applies it via kubectl.
+func applyManifestFile(path string, opts *InstallOptions) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("read %s: %w", path, err)
 	}
 
-	for _, path := range manifests {
-		cmd := exec.CommandContext(context.Background(), "kubectl", "apply", "-f", path)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("apply %s: %s\n%w", path, string(out), err)
-		}
+	manifest := replaceConfigPlaceholders(string(data), opts)
+	return kubectlApply(manifest)
+}
+
+// replaceConfigPlaceholders replaces all {{VARIABLE}} placeholders in a
+// manifest string with values from the centralized config.
+func replaceConfigPlaceholders(manifest string, opts *InstallOptions) string {
+	replacements := map[string]string{
+		"{{PLATFORM_NAMESPACE}}":  config.PlatformNamespace(),
+		"{{FRAMEWORK_NAMESPACE}}": config.FrameworkNamespace(),
+		"{{USER_NAMESPACE}}":      config.UserNamespace(opts.Username),
+		"{{USERNAME}}":            config.Username(),
+		"{{USER_ZONE}}":           config.UserZone(),
+		"{{DOMAIN}}":              config.Domain(),
+		"{{PG_USER}}":             config.CitusUser(),
+		"{{PG_PASSWORD}}":         config.CitusPassword(),
+		"{{REDIS_PASSWORD}}":      os.Getenv("REDIS_PASSWORD"),
+		"{{JWT_SECRET}}":          os.Getenv("JWT_SECRET"),
+		"{{SESSION_SECRET}}":      os.Getenv("SESSION_SECRET"),
+		"{{LLDAP_ADMIN_PASSWORD}}": os.Getenv("LLDAP_ADMIN_PASSWORD"),
+		"{{LLDAP_JWT_SECRET}}":    os.Getenv("LLDAP_JWT_SECRET"),
+		"{{ENCRYPTION_KEY}}":      os.Getenv("ENCRYPTION_KEY"),
+		"{{AUTH_SECRET}}":         os.Getenv("AUTH_SECRET"),
+	}
+
+	for placeholder, value := range replacements {
+		manifest = strings.ReplaceAll(manifest, placeholder, value)
+	}
+	return manifest
+}
+
+func deployCRDsAndNamespaces(opts *InstallOptions) error {
+	fmt.Println("  Creating namespaces, CRDs, and RBAC ...")
+
+	if err := applyManifestFile("deploy/crds/crds-and-namespaces.yaml", opts); err != nil {
+		return fmt.Errorf("apply CRDs: %w", err)
 	}
 
 	// Create user namespace
+	userNS := config.UserNamespace(opts.Username)
 	nsYaml := fmt.Sprintf("apiVersion: v1\nkind: Namespace\nmetadata:\n  name: %s\n", userNS)
 	if err := kubectlApply(nsYaml); err != nil {
 		fmt.Printf("  Warning: create namespace %s: %v\n", userNS, err)
@@ -74,60 +103,49 @@ func deployCRDsAndNamespaces(opts *InstallOptions) error {
 
 	fmt.Printf("  Namespaces: %s, %s, %s, %s\n",
 		config.PlatformNamespace(), config.FrameworkNamespace(), "monitoring", userNS)
-	fmt.Println("  CRDs: users.iam.kubesphere.io, applications.app.bytetrade.io, middlewarerequests.apr.bytetrade.io")
 	return nil
 }
 
 func deployPlatformCharts(opts *InstallOptions) error {
-	// Platform services: Citus (PostgreSQL), KVRocks, NATS, LLDAP, Infisical
-	components := []struct {
-		name      string
-		namespace string
-	}{
-		{"citus", config.PlatformNamespace()},
-		{"kvrocks", config.PlatformNamespace()},
-		{"nats", config.PlatformNamespace()},
-		{"lldap", config.PlatformNamespace()},
-		{"infisical", config.PlatformNamespace()},
+	manifests := []string{
+		"deploy/platform/citus.yaml",
+		"deploy/platform/nats.yaml",
+		"deploy/platform/lldap.yaml",
+		"deploy/platform/infisical.yaml",
 	}
+	// KVRocks is deployed separately in Phase 9 (pkg/installer/redis)
 
-	for _, comp := range components {
-		fmt.Printf("  Deploying %s ...\n", comp.name)
-		values := make(map[string]string)
-		if opts.Registry != "" {
-			values["global.imageRegistry"] = opts.Registry
-		}
-		manifest := generatePlatformManifest(comp.name, comp.namespace, opts.Registry)
-		if err := kubectlApply(manifest); err != nil {
-			return fmt.Errorf("deploy %s: %w", comp.name, err)
+	for _, path := range manifests {
+		name := strings.TrimSuffix(strings.TrimPrefix(path, "deploy/platform/"), ".yaml")
+		fmt.Printf("  Deploying %s ...\n", name)
+		if err := applyManifestFile(path, opts); err != nil {
+			return fmt.Errorf("deploy %s: %w", name, err)
 		}
 	}
 	return nil
 }
 
 func deployFrameworkCharts(opts *InstallOptions) error {
-	components := []struct {
-		name      string
-		namespace string
-	}{
-		{"auth", config.FrameworkNamespace()},
-		{"bfl", config.FrameworkNamespace()},
-		{"appservice", config.FrameworkNamespace()},
-		{"systemserver", config.FrameworkNamespace()},
-		{"middleware", config.FrameworkNamespace()},
-		{"files", config.FrameworkNamespace()},
-		{"market", config.FrameworkNamespace()},
-		{"monitor", config.FrameworkNamespace()},
-		{"mounts", config.FrameworkNamespace()},
-		{"kubesphere", config.FrameworkNamespace()},
-		{"samba", config.FrameworkNamespace()},
+	manifests := []string{
+		"deploy/framework/auth.yaml",
+		"deploy/framework/bfl-deployment.yaml",
+		"deploy/framework/appservice/deployment.yaml",
+		"deploy/framework/systemserver.yaml",
+		"deploy/framework/middleware.yaml",
+		"deploy/framework/files/files-server.yaml",
+		"deploy/framework/market/deployment.yaml",
+		"deploy/framework/monitor/monitoring-server.yaml",
+		"deploy/framework/mounts/mounts-server.yaml",
+		"deploy/framework/samba/samba-server.yaml",
+		"deploy/framework/l4proxy-deployment.yaml",
+		"deploy/proxy/proxy-deployment.yaml",
 	}
 
-	for _, comp := range components {
-		fmt.Printf("  Deploying %s ...\n", comp.name)
-		manifest := generateFrameworkManifest(comp.name, comp.namespace, opts)
-		if err := kubectlApply(manifest); err != nil {
-			return fmt.Errorf("deploy %s: %w", comp.name, err)
+	for _, path := range manifests {
+		name := strings.TrimSuffix(strings.TrimPrefix(path, "deploy/framework/"), ".yaml")
+		fmt.Printf("  Deploying %s ...\n", name)
+		if err := applyManifestFile(path, opts); err != nil {
+			return fmt.Errorf("deploy %s: %w", name, err)
 		}
 	}
 	return nil

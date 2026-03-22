@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kvrocks
-  namespace: os-system
+  namespace: {{PLATFORM_NAMESPACE}}
   labels:
     app: kvrocks
 spec:
@@ -48,7 +48,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kvrocks-svc
-  namespace: os-system
+  namespace: {{PLATFORM_NAMESPACE}}
 spec:
   selector:
     app: kvrocks

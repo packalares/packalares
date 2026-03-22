@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: app-service
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
   labels:
     app: app-service
     tier: framework
@@ -37,9 +37,9 @@ spec:
             - name: APP_OWNER
               value: admin
             - name: CHART_REPO_URL
-              value: "http://chart-repo-service.os-framework:82/"
+              value: "http://chart-repo-service.{{FRAMEWORK_NAMESPACE}}:82/"
             - name: LLDAP_HOST
-              value: "http://lldap-svc.os-system:17170"
+              value: "http://lldap-svc.{{PLATFORM_NAMESPACE}}:17170"
             - name: LLDAP_BIND_DN
               valueFrom:
                 secretKeyRef:
@@ -87,7 +87,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: app-service
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
   labels:
     app: app-service
 spec:
@@ -104,7 +104,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: app-service-data
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 spec:
   accessModes:
     - ReadWriteOnce
@@ -116,7 +116,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: app-service
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -149,7 +149,7 @@ metadata:
 subjects:
   - kind: ServiceAccount
     name: app-service
-    namespace: os-framework
+    namespace: {{FRAMEWORK_NAMESPACE}}
 roleRef:
   kind: ClusterRole
   name: app-service

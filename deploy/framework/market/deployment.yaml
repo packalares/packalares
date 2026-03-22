@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: market-backend
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
   labels:
     app: market-backend
     tier: framework
@@ -64,7 +64,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: market-backend
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
   labels:
     app: market-backend
 spec:
@@ -81,6 +81,6 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: market-catalog
-  namespace: os-framework
+  namespace: {{FRAMEWORK_NAMESPACE}}
 data:
   catalog.json: "[]"
