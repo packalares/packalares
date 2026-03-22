@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -85,6 +89,8 @@ func (s *Server) Run() error {
 	mux.HandleFunc("/api/v1/settings", s.handleSettings)
 	mux.HandleFunc("/api/v1/nginx/reload", s.handleNginxReload)
 	mux.HandleFunc("/healthz", s.handleHealth)
+	// Default handler: reverse proxy to installed apps based on Host header
+	mux.HandleFunc("/", s.handleAppProxy)
 
 	srv := &http.Server{
 		Addr:         s.cfg.ListenAddr,
@@ -414,4 +420,59 @@ func writeJSONResponse(w http.ResponseWriter, code int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(data)
+}
+
+// handleAppProxy reverse-proxies requests to installed apps based on the Host header.
+// The main nginx proxy sends *.laurs.olares.local traffic here.
+// We extract the app name from the subdomain and proxy to the app's K8s service.
+func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
+	host := r.Host
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+
+	// Extract app name from subdomain: {appname}.laurs.olares.local
+	parts := strings.SplitN(host, ".", 2)
+	if len(parts) < 2 {
+		http.Error(w, "unknown host", http.StatusNotFound)
+		return
+	}
+	appName := parts[0]
+
+	// Look up the app in our registry
+	s.appsMu.RLock()
+	app, exists := s.apps[appName]
+	s.appsMu.RUnlock()
+
+	if !exists {
+		http.Error(w, fmt.Sprintf("app %q not found", appName), http.StatusNotFound)
+		return
+	}
+
+	// Find the upstream URL from the app's entrances
+	if len(app.Spec.Entrances) == 0 {
+		http.Error(w, "no entrances configured", http.StatusBadGateway)
+		return
+	}
+
+	entrance := app.Spec.Entrances[0]
+	// Build upstream URL: {servicename}.{namespace}.svc.cluster.local:{port}
+	upstream := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d",
+		app.Spec.Name, app.Namespace, entrance.Port)
+
+	// Reverse proxy
+	target, err := url.Parse(upstream)
+	if err != nil {
+		http.Error(w, "bad upstream", http.StatusBadGateway)
+		return
+	}
+
+	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
+		log.Printf("proxy error for %s: %v", appName, err)
+		http.Error(w, "upstream error", http.StatusBadGateway)
+	}
+
+	r.Host = target.Host
+	proxy.ServeHTTP(w, r)
 }
