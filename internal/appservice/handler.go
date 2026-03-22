@@ -32,8 +32,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/app-service/v1/suspend", h.handleSuspend)
 	mux.HandleFunc("/app-service/v1/resume", h.handleResume)
 
-	// WebSocket endpoint for desktop real-time notifications
-	mux.Handle("/ws", WebSocketHandler())
+	// WebSocket endpoint for desktop real-time notifications.
+	// Auth is handled in-process (not via nginx auth_request) to avoid
+	// issues with WebSocket upgrade requests.
+	mux.Handle("/ws", AuthWebSocketHandler())
 
 	// Health check
 	mux.HandleFunc("/app-service/healthz", func(w http.ResponseWriter, r *http.Request) {

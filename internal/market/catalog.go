@@ -15,9 +15,9 @@ import (
 )
 
 // Catalog fetches, caches, and serves app catalog data.
-// It pulls from the Olares app repository on GitHub (beclab/apps),
-// falls back to a local catalog file, and finally uses a built-in
-// default catalog so the market always has apps to show.
+// It pulls from the Olares appstore API first, falls back to GitHub
+// (beclab/apps), then to a local catalog file, and finally uses a
+// built-in default catalog so the market always has apps to show.
 type Catalog struct {
 	mu         sync.RWMutex
 	apps       []MarketApp
@@ -26,27 +26,40 @@ type Catalog struct {
 	lastFetch  time.Time
 	cacheTTL   time.Duration
 
-	marketURL string // upstream marketplace URL (unused now, kept for config compat)
-	localPath string // path to local catalog JSON file
-	githubURL string // GitHub API URL for the apps repo
+	// Appstore-provided curated data
+	recommendations map[string][]string // group name -> app IDs
+	topics          map[string][]string // topic name -> app IDs
+	tops            []TopApp            // ranked apps
+	latest          []string            // latest app IDs
+	pages           map[string][]string // category name -> app IDs
+
+	marketURL    string // upstream marketplace URL (unused now, kept for config compat)
+	localPath    string // path to local catalog JSON file
+	githubURL    string // GitHub API URL for the apps repo
+	appstoreURL  string // Olares appstore API URL
 }
 
 // NewCatalog creates a new catalog with the given upstream URL.
 func NewCatalog(marketURL, localPath string) *Catalog {
 	c := &Catalog{
-		appsByName: make(map[string]*MarketApp),
-		cacheTTL:   30 * time.Minute,
-		marketURL:  marketURL,
-		localPath:  localPath,
-		githubURL:  "https://api.github.com/repos/beclab/apps/contents",
+		appsByName:      make(map[string]*MarketApp),
+		recommendations: make(map[string][]string),
+		topics:          make(map[string][]string),
+		pages:           make(map[string][]string),
+		cacheTTL:        30 * time.Minute,
+		marketURL:       marketURL,
+		localPath:       localPath,
+		githubURL:       "https://api.github.com/repos/beclab/apps/contents",
+		appstoreURL:     "https://appstore-server-prod.bttcdn.com/api/v1/appstore/info?version=1.12.0",
 	}
 	return c
 }
 
 // Load fetches the catalog from all available sources in priority order:
 // 1. Local catalog JSON file (fastest, user-controlled)
-// 2. GitHub beclab/apps repo (authoritative, all apps)
-// 3. Built-in default catalog (always works, curated subset)
+// 2. Olares appstore API (authoritative, 158+ apps with recommendations)
+// 3. GitHub beclab/apps repo (fallback, all apps)
+// 4. Built-in default catalog (always works, curated subset)
 func (c *Catalog) Load() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -80,12 +93,23 @@ func (c *Catalog) Load() error {
 		}
 	}
 
-	// Try fetching from GitHub beclab/apps repo
-	apps, err := c.fetchFromGitHub()
+	// Try fetching from Olares appstore API
+	apps, err := c.fetchFromAppstore()
+	if err == nil && len(apps) > 0 {
+		c.setApps(apps)
+		klog.Infof("loaded %d apps from Olares appstore API", len(apps))
+		c.saveCacheFile(apps)
+		return nil
+	}
+	if err != nil {
+		klog.Warningf("fetch from appstore: %v", err)
+	}
+
+	// Fall back to GitHub beclab/apps repo
+	apps, err = c.fetchFromGitHub()
 	if err == nil && len(apps) > 0 {
 		c.setApps(apps)
 		klog.Infof("loaded %d apps from GitHub beclab/apps", len(apps))
-		// Save to local cache for faster subsequent loads
 		c.saveCacheFile(apps)
 		return nil
 	}
@@ -121,6 +145,198 @@ func (c *Catalog) setApps(apps []MarketApp) {
 	})
 
 	c.lastFetch = time.Now()
+}
+
+// appstoreResponse is the top-level JSON envelope from the Olares appstore API.
+type appstoreResponse struct {
+	Data    appstoreData `json:"data"`
+	Version string       `json:"version"`
+}
+
+// appstoreData holds the nested data fields from the appstore API.
+type appstoreData struct {
+	Apps       map[string]appstoreApp    `json:"apps"`
+	Pages      map[string][]string       `json:"pages"`
+	Tags       map[string][]string       `json:"tags"`
+	Recommends map[string][]string       `json:"recommends"`
+	Topics     map[string][]string       `json:"topics"`
+	Tops       []TopApp                  `json:"tops"`
+	Latest     []string                  `json:"latest"`
+}
+
+// appstoreApp is a single app entry from the appstore API.
+// Field names mirror the JSON keys from the upstream API.
+type appstoreApp struct {
+	ID                 string        `json:"id"`
+	Name               string        `json:"name"`
+	Icon               string        `json:"icon"`
+	Description        string        `json:"desc"`
+	FullDescription    string        `json:"fullDescription"`
+	UpgradeDescription string        `json:"upgradeDescription"`
+	PromoteImage       []string      `json:"promoteImage"`
+	PromoteVideo       string        `json:"promoteVideo"`
+	SubCategory        string        `json:"subCategory"`
+	Developer          string        `json:"developer"`
+	Owner              string        `json:"owner"`
+	UID                string        `json:"uid"`
+	Title              string        `json:"title"`
+	Target             string        `json:"target"`
+	Version            string        `json:"version"`
+	VersionName        string        `json:"versionName"`
+	Categories         []string      `json:"categories"`
+	Category           string        `json:"category"`
+	Rating             float64       `json:"rating"`
+	Namespace          string        `json:"namespace"`
+	OnlyAdmin          bool          `json:"onlyAdmin"`
+	RequiredMemory     string        `json:"requiredMemory"`
+	RequiredDisk       string        `json:"requiredDisk"`
+	RequiredGPU        string        `json:"requiredGpu"`
+	RequiredCPU        string        `json:"requiredCpu"`
+	LimitedMemory      string        `json:"limitedMemory"`
+	LimitedCPU         string        `json:"limitedCpu"`
+	SupportArch        []string      `json:"supportArch"`
+	Status             string        `json:"status"`
+	CfgType            string        `json:"cfgType"`
+	Locale             []string      `json:"locale"`
+	Doc                string        `json:"doc"`
+	Website            string        `json:"website"`
+	SourceCode         string        `json:"sourceCode"`
+	License            []License     `json:"license"`
+	InstallCount       int64         `json:"installCount"`
+	LastUpdated        string        `json:"lastUpdated"`
+	MobileSupported    bool          `json:"mobileSupported"`
+	Entrances          []Entrance    `json:"entrances"`
+	Permission         *AppPermission `json:"permission"`
+	Dependencies       []Dependency  `json:"dependencies"`
+}
+
+// fetchFromAppstore fetches the full app catalog from the Olares appstore API.
+// This is the preferred source: it returns 158+ apps with pre-computed
+// categories, recommendations, rankings, and topics in a single request.
+func (c *Catalog) fetchFromAppstore() ([]MarketApp, error) {
+	client := &http.Client{Timeout: 30 * time.Second}
+
+	req, err := http.NewRequest("GET", c.appstoreURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("User-Agent", "packalares-market/1.0")
+	req.Header.Set("Accept", "application/json")
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("appstore request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return nil, fmt.Errorf("appstore API returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 50<<20)) // 50 MB limit
+	if err != nil {
+		return nil, fmt.Errorf("read appstore response: %w", err)
+	}
+
+	var storeResp appstoreResponse
+	if err := json.Unmarshal(body, &storeResp); err != nil {
+		return nil, fmt.Errorf("parse appstore response: %w", err)
+	}
+
+	if len(storeResp.Data.Apps) == 0 {
+		return nil, fmt.Errorf("appstore returned 0 apps")
+	}
+
+	// Convert appstore apps map into our MarketApp slice
+	apps := make([]MarketApp, 0, len(storeResp.Data.Apps))
+	for _, sa := range storeResp.Data.Apps {
+		app := convertAppstoreApp(sa)
+		apps = append(apps, app)
+	}
+
+	sort.Slice(apps, func(i, j int) bool {
+		return apps[i].Name < apps[j].Name
+	})
+
+	// Store the curated data from the appstore
+	c.pages = storeResp.Data.Pages
+	c.recommendations = storeResp.Data.Recommends
+	c.topics = storeResp.Data.Topics
+	c.tops = storeResp.Data.Tops
+	c.latest = storeResp.Data.Latest
+
+	return apps, nil
+}
+
+// convertAppstoreApp converts an appstore API app entry into our MarketApp.
+func convertAppstoreApp(sa appstoreApp) MarketApp {
+	app := MarketApp{
+		Name:               sa.Name,
+		CfgType:            sa.CfgType,
+		ChartName:          sa.Name,
+		Icon:               sa.Icon,
+		Description:        sa.Description,
+		FullDescription:    sa.FullDescription,
+		UpgradeDescription: sa.UpgradeDescription,
+		PromoteImage:       sa.PromoteImage,
+		PromoteVideo:       sa.PromoteVideo,
+		SubCategory:        sa.SubCategory,
+		Developer:          sa.Developer,
+		Owner:              sa.Owner,
+		UID:                sa.UID,
+		Title:              sa.Title,
+		Target:             sa.Target,
+		Version:            sa.Version,
+		VersionName:        sa.VersionName,
+		Categories:         sa.Categories,
+		Rating:             sa.Rating,
+		Namespace:          sa.Namespace,
+		OnlyAdmin:          sa.OnlyAdmin,
+		RequiredMemory:     sa.RequiredMemory,
+		RequiredDisk:       sa.RequiredDisk,
+		RequiredGPU:        sa.RequiredGPU,
+		RequiredCPU:        sa.RequiredCPU,
+		LimitedMemory:      sa.LimitedMemory,
+		LimitedCPU:         sa.LimitedCPU,
+		SupportArch:        sa.SupportArch,
+		Status:             sa.Status,
+		Locale:             sa.Locale,
+		Doc:                sa.Doc,
+		Website:            sa.Website,
+		SourceCode:         sa.SourceCode,
+		License:            sa.License,
+		InstallCount:       sa.InstallCount,
+		LastUpdated:        sa.LastUpdated,
+		MobileSupported:    sa.MobileSupported,
+		Entrances:          sa.Entrances,
+		Permission:         sa.Permission,
+		Dependencies:       sa.Dependencies,
+		Source:             "olares",
+	}
+
+	if app.Name == "" {
+		app.Name = sa.ID
+	}
+	if app.ChartName == "" {
+		app.ChartName = app.Name
+	}
+	if app.Title == "" {
+		app.Title = app.Name
+	}
+
+	// If categories is empty but category is set, use it
+	if len(app.Categories) == 0 && sa.Category != "" {
+		app.Categories = []string{sa.Category}
+	}
+
+	// Default type
+	if app.CfgType == "" {
+		app.CfgType = "app"
+	}
+	app.Type = app.CfgType
+
+	return app
 }
 
 // fetchFromGitHub fetches app metadata from the beclab/apps GitHub repository.
@@ -361,14 +577,52 @@ func (c *Catalog) GetApp(name string) (*MarketApp, bool) {
 }
 
 // ListCategories returns all known categories.
+// When the appstore API was used, categories come from the pre-computed
+// pages map which preserves the upstream ordering and app groupings.
 func (c *Catalog) ListCategories() []Category {
 	_ = c.Refresh()
 
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
+	// If we have pages data from the appstore, build categories from it
+	if len(c.pages) > 0 {
+		cats := make([]Category, 0, len(c.pages))
+		for name, ids := range c.pages {
+			cats = append(cats, Category{Name: name, Count: len(ids)})
+		}
+		sort.Slice(cats, func(i, j int) bool {
+			return cats[i].Name < cats[j].Name
+		})
+		return cats
+	}
+
 	result := make([]Category, len(c.categories))
 	copy(result, c.categories)
+	return result
+}
+
+// ListRecommendations returns app recommendation groups.
+// Each group maps a name (e.g. "Community choices") to the resolved MarketApp
+// objects for apps in that group.
+func (c *Catalog) ListRecommendations() map[string][]MarketApp {
+	_ = c.Refresh()
+
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	result := make(map[string][]MarketApp, len(c.recommendations))
+	for groupName, appIDs := range c.recommendations {
+		var apps []MarketApp
+		for _, id := range appIDs {
+			if app, ok := c.appsByName[id]; ok {
+				apps = append(apps, *app)
+			}
+		}
+		if len(apps) > 0 {
+			result[groupName] = apps
+		}
+	}
 	return result
 }
 

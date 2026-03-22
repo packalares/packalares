@@ -24,6 +24,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/market/v1/apps/", h.handleGetApp)
 	mux.HandleFunc("/market/v1/categories", h.handleCategories)
 	mux.HandleFunc("/market/v1/search", h.handleSearch)
+	mux.HandleFunc("/market/v1/recommendations", h.handleRecommendations)
 
 	// Health check
 	mux.HandleFunc("/market/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -36,6 +37,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/apps/", h.handleGetApp)
 	mux.HandleFunc("/api/v1/categories", h.handleCategories)
 	mux.HandleFunc("/api/v1/search", h.handleSearch)
+	mux.HandleFunc("/api/v1/recommendations", h.handleRecommendations)
 }
 
 // handleListApps handles GET /market/v1/apps
@@ -131,6 +133,20 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, SearchResponse{
 		Response: Response{Code: 200},
 		Data:     results,
+	})
+}
+
+// handleRecommendations handles GET /market/v1/recommendations
+func (h *Handler) handleRecommendations(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	recs := h.catalog.ListRecommendations()
+	writeJSON(w, http.StatusOK, RecommendationsResponse{
+		Response: Response{Code: 200},
+		Data:     recs,
 	})
 }
 
