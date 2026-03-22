@@ -58,6 +58,9 @@ func main() {
 		_ = server.Shutdown(shutdownCtx)
 	}()
 
+	// Start WebSocket metrics pusher (pushes CPU/mem/disk to connected clients every 5s)
+	appservice.StartMetricsPusher()
+
 	klog.Infof("app-service listening on %s", cfg.ListenAddr)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		klog.Fatalf("app-service server: %v", err)
