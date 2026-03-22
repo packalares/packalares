@@ -1,62 +1,777 @@
-<!DOCTYPE html><html><head><base href=/login/ ><title>Olares</title><meta charset=utf-8><meta name=description content="Olares OS Launcher"><meta name=format-detection content="telephone=no"><meta name=msapplication-tap-highlight content=no><meta name=viewport content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width"><meta name=apple-mobile-web-app-capable content=yes><meta http-equiv=Cache-Control content="max-age=31536000, public"><meta http-equiv=Expires content="Wed, 01 Jan 2025 00:00:00 GMT"><link rel=icon type=image/png sizes=128x128 href=icons/favicon.ico><script defer src=/login/js/639.ed2c87b0.js></script><script defer src=/login/js/app.593e4cc2.js></script><link href=/login/css/639.bac7eec1.css rel=stylesheet><link href=/login/css/app.8147948a.css rel=stylesheet><link as="font" crossorigin="anonymous" href="/login/fonts/MaterialSymbolsRounded.6ede07d1.woff2" rel="preload"></head><body><div id=q-app></div><div id=Loading><div class=loader-inner><img src=./os.svg alt=logo></div><div class=loader-txt style="font-size: 18px">Loading...</div></div></body></html><style>body {
-		overflow: hidden;
-		touch-action: none;
-	}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <base href="/login/">
+  <title>Packalares</title>
+  <meta charset="utf-8">
+  <meta name="description" content="Packalares Login">
+  <meta name="format-detection" content="telephone=no">
+  <meta name="msapplication-tap-highlight" content="no">
+  <meta name="viewport" content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <link rel="icon" type="image/png" sizes="128x128" href="icons/favicon.ico">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
 
-	#Loading {
-		top: 50%;
-		left: 50%;
-		position: absolute;
-		-webkit-transform: translateY(-50%) translateX(-50%);
-		transform: translateY(-50%) translateX(-50%);
-		z-index: 100;
-	}
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+      touch-action: none;
+      width: 100vw;
+      height: 100vh;
+      background: linear-gradient(135deg, #0f1923 0%, #1a2332 25%, #1e2a3a 50%, #192231 75%, #0d1520 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
 
-	.loader-txt {
-		color: #64605d;
-		font-weight: 600;
-		height: 60px;
-		line-height: 60px;
-		text-align: center;
-	}
+    /* Background wallpaper */
+    .bg-wallpaper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      z-index: 0;
+    }
 
-	.loader-txt span {
-		width: 20px;
-		height: 40px;
-		display: inline-block;
-		position: relative;
-	}
-	.loader-txt span i {
-		display: inline-block;
-		background-color: #ffffff;
-		position: absolute;
-		top: 0;
-		right: 0;
-		width: 10px;
-		height: 40px;
-		animation: spanAni 2s infinite linear;
-	}
+    .bg-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 1;
+    }
 
-	@keyframes spanAni {
-		0% {
-			width: 20px;
-		}
-		100% {
-			width: 0px;
-		}
-	}
+    #app {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+    }
 
-	.loader-inner {
-		width: 100px;
-		height: 100px;
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		animation: rotate 2s infinite ease-in-out;
-	}
+    .login-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      animation: fadeIn 0.6s ease-out;
+    }
 
-	@keyframes rotate {
-		100% {
-			transform: rotatey(360deg);
-		}
-	}</style>
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Avatar */
+    .avatar-wrapper {
+      width: 124px;
+      height: 124px;
+      border-radius: 50%;
+      padding: 3px;
+      background: linear-gradient(135deg,
+        rgba(255, 255, 255, 0.35) 0%,
+        rgba(255, 255, 255, 0.08) 50%,
+        rgba(255, 255, 255, 0.2) 100%);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      margin-bottom: 16px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25),
+                  inset 0 1px 0 rgba(255, 255, 255, 0.15);
+    }
+
+    .avatar-inner {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3a7bd5 0%, #5b8def 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 42px;
+      font-weight: 700;
+      color: #ffffff;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      user-select: none;
+    }
+
+    /* Username */
+    .username {
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+      text-align: center;
+      letter-spacing: 0.2px;
+    }
+
+    /* Hint text */
+    .hint-text {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 24px;
+      text-align: center;
+      font-weight: 400;
+    }
+
+    /* Password field wrapper */
+    .password-wrapper {
+      position: relative;
+      width: 220px;
+      height: 32px;
+    }
+
+    .password-input {
+      width: 100%;
+      height: 100%;
+      border: none;
+      outline: none;
+      border-radius: 16px;
+      padding: 0 36px 0 14px;
+      font-size: 14px;
+      font-family: 'Inter', sans-serif;
+      color: #ffffff;
+      background: rgba(255, 255, 255, 0.12);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+      caret-color: #ffffff;
+    }
+
+    .password-input::placeholder {
+      color: rgba(255, 255, 255, 0.35);
+      font-size: 13px;
+    }
+
+    .password-input:focus {
+      background: rgba(255, 255, 255, 0.16);
+      border-color: rgba(255, 255, 255, 0.25);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+    }
+
+    /* Submit arrow button */
+    .submit-btn {
+      position: absolute;
+      right: 3px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      opacity: 0;
+      pointer-events: none;
+      padding: 0;
+    }
+
+    .submit-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .submit-btn:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .submit-btn:active {
+      transform: translateY(-50%) scale(0.92);
+    }
+
+    .submit-btn svg {
+      width: 14px;
+      height: 14px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* Loading spinner */
+    .spinner {
+      width: 26px;
+      height: 26px;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-top: 2px solid #ffffff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: translateY(-50%) rotate(360deg); }
+    }
+
+    .submit-btn .spinner {
+      width: 16px;
+      height: 16px;
+      border-width: 2px;
+      animation: spinInPlace 0.8s linear infinite;
+    }
+
+    @keyframes spinInPlace {
+      to { transform: rotate(360deg); }
+    }
+
+    /* Shake animation */
+    .shake {
+      animation: shake 0.6s ease-in-out;
+    }
+
+    @keyframes shake {
+      10%, 90% { transform: translateX(-2px); }
+      20%, 80% { transform: translateX(3px); }
+      30%, 50%, 70% { transform: translateX(-5px); }
+      40%, 60% { transform: translateX(5px); }
+    }
+
+    /* Error message */
+    .error-msg {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #ff6b6b;
+      text-align: center;
+      min-height: 18px;
+      transition: opacity 0.2s ease;
+    }
+
+    /* ========== TOTP View ========== */
+    .totp-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      animation: fadeIn 0.4s ease-out;
+    }
+
+    .totp-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #ffffff;
+      margin-bottom: 6px;
+    }
+
+    .totp-subtitle {
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 28px;
+    }
+
+    .otp-inputs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    .otp-input {
+      width: 42px;
+      height: 48px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      color: #ffffff;
+      font-size: 22px;
+      font-weight: 600;
+      font-family: 'Inter', sans-serif;
+      text-align: center;
+      outline: none;
+      caret-color: transparent;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .otp-input:focus {
+      border-color: rgba(255, 255, 255, 0.4);
+      background: rgba(255, 255, 255, 0.16);
+    }
+
+    .otp-input.filled {
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Timer circle */
+    .timer-wrapper {
+      position: relative;
+      width: 48px;
+      height: 48px;
+      margin-bottom: 16px;
+    }
+
+    .timer-circle {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+
+    .timer-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.1);
+      stroke-width: 3;
+    }
+
+    .timer-progress {
+      fill: none;
+      stroke: #5b8def;
+      stroke-width: 3;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s linear;
+    }
+
+    .timer-text {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 14px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .totp-back {
+      margin-top: 8px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      border: none;
+      background: none;
+      font-family: 'Inter', sans-serif;
+      transition: color 0.2s ease;
+    }
+
+    .totp-back:hover {
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    /* Global loading overlay */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0f1923 0%, #1a2332 25%, #1e2a3a 50%, #192231 75%, #0d1520 100%);
+    }
+
+    .loading-overlay .loader-spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid #ffffff;
+      border-radius: 50%;
+      animation: spinInPlace 0.9s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    .loading-overlay .loader-text {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 14px;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-wallpaper" id="bgWallpaper"></div>
+<div class="bg-overlay"></div>
+
+<div id="app">
+  <!-- Initial loading -->
+  <div v-if="state === 'loading'" class="loading-overlay">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Loading...</div>
+  </div>
+
+  <!-- Login form -->
+  <div v-else-if="state === 'login'" class="login-container">
+    <div class="avatar-wrapper">
+      <div class="avatar-inner">{{ initials }}</div>
+    </div>
+    <div class="username">{{ displayName }}</div>
+    <div class="hint-text">Enter your password to log in</div>
+    <div class="password-wrapper" :class="{ shake: shaking }">
+      <input
+        ref="passwordInput"
+        type="password"
+        class="password-input"
+        placeholder="Password"
+        v-model="password"
+        @keydown.enter="doLogin"
+        :disabled="loggingIn"
+        autocomplete="current-password"
+        autofocus
+      >
+      <button
+        class="submit-btn"
+        :class="{ visible: password.length > 0 }"
+        @click="doLogin"
+        :disabled="loggingIn"
+      >
+        <div v-if="loggingIn" class="spinner"></div>
+        <svg v-else viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+    <div class="error-msg">{{ errorMsg }}</div>
+  </div>
+
+  <!-- TOTP view -->
+  <div v-else-if="state === 'totp'" class="totp-container" :class="{ shake: totpShaking }">
+    <div class="avatar-wrapper" style="width:80px;height:80px;margin-bottom:12px;">
+      <div class="avatar-inner" style="font-size:28px;">{{ initials }}</div>
+    </div>
+    <div class="totp-title">Two-Factor Authentication</div>
+    <div class="totp-subtitle">Enter the 6-digit code from your authenticator app</div>
+
+    <div class="otp-inputs">
+      <input
+        v-for="(d, i) in 6"
+        :key="i"
+        :ref="el => { if (el) otpRefs[i] = el }"
+        type="text"
+        inputmode="numeric"
+        maxlength="1"
+        class="otp-input"
+        :class="{ filled: otpDigits[i] !== '' }"
+        :value="otpDigits[i]"
+        @input="onOtpInput($event, i)"
+        @keydown="onOtpKeydown($event, i)"
+        @paste="onOtpPaste($event)"
+        :disabled="totpVerifying"
+      >
+    </div>
+
+    <div class="timer-wrapper">
+      <svg class="timer-circle" viewBox="0 0 48 48">
+        <circle class="timer-bg" cx="24" cy="24" r="20"/>
+        <circle
+          class="timer-progress"
+          cx="24" cy="24" r="20"
+          :stroke-dasharray="circumference"
+          :stroke-dashoffset="timerOffset"
+        />
+      </svg>
+      <span class="timer-text">{{ timerSeconds }}</span>
+    </div>
+
+    <div class="error-msg">{{ totpError }}</div>
+    <button class="totp-back" @click="backToLogin">Back to login</button>
+  </div>
+
+  <!-- Redirecting overlay -->
+  <div v-else-if="state === 'redirecting'" class="loading-overlay">
+    <div class="loader-spinner"></div>
+    <div class="loader-text">Signing in...</div>
+  </div>
+</div>
+
+<script>
+const { createApp, ref, computed, onMounted, nextTick, watch, onUnmounted } = Vue;
+
+createApp({
+  setup() {
+    const state = ref('loading');
+    const username = ref('');
+    const password = ref('');
+    const errorMsg = ref('');
+    const shaking = ref(false);
+    const loggingIn = ref(false);
+    const passwordInput = ref(null);
+
+    // TOTP
+    const otpDigits = ref(['', '', '', '', '', '']);
+    const otpRefs = ref([]);
+    const totpError = ref('');
+    const totpShaking = ref(false);
+    const totpVerifying = ref(false);
+    const timerSeconds = ref(30);
+    const circumference = 2 * Math.PI * 20;
+    let timerInterval = null;
+
+    // Auth token from first factor
+    let authToken = '';
+    let redirectUrl = '';
+
+    const displayName = computed(() => username.value || 'User');
+    const initials = computed(() => {
+      const name = username.value || 'U';
+      if (name.length <= 2) return name.toUpperCase();
+      return name.substring(0, 2).toUpperCase();
+    });
+
+    const timerOffset = computed(() => {
+      const progress = timerSeconds.value / 30;
+      return circumference * (1 - progress);
+    });
+
+    // Get redirect destination from ?rd= query param or response
+    function getRedirectTarget(responseRedirect) {
+      const params = new URLSearchParams(window.location.search);
+      const rd = params.get('rd');
+      if (rd) return rd;
+      if (responseRedirect) return responseRedirect;
+      return '/desktop/';
+    }
+
+    // Random background wallpaper
+    function setBackground() {
+      const bgIndex = Math.floor(Math.random() * 29);
+      const bgEl = document.getElementById('bgWallpaper');
+      if (bgEl) {
+        bgEl.style.backgroundImage = `url('/login/bg/${bgIndex}.jpg')`;
+      }
+    }
+
+    // Fetch user info
+    async function fetchUserInfo() {
+      try {
+        const resp = await fetch('/bfl/backend/v1/user-info');
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data && data.data && data.data.name) {
+            username.value = data.data.name;
+          }
+        }
+      } catch (e) {
+        console.warn('Could not fetch user info:', e);
+      }
+      state.value = 'login';
+      await nextTick();
+      if (passwordInput.value) {
+        passwordInput.value.focus();
+      }
+    }
+
+    // Login
+    async function doLogin() {
+      if (!password.value || loggingIn.value) return;
+
+      errorMsg.value = '';
+      loggingIn.value = true;
+
+      try {
+        const resp = await fetch('/api/firstfactor', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            username: username.value,
+            password: password.value,
+            keep_me_logged_in: true
+          })
+        });
+
+        const result = await resp.json();
+
+        if (result.status === 'OK') {
+          // Check if 2FA is needed
+          if (result.data && result.data.token && !result.data.redirect && resp.status === 200) {
+            // Might need TOTP - but if redirect is present, we're done
+          }
+
+          if (resp.status === 200 && result.status === 'OK') {
+            const target = getRedirectTarget(result.data && result.data.redirect);
+            state.value = 'redirecting';
+            setTimeout(() => { window.location.href = target; }, 300);
+            return;
+          }
+        }
+
+        // Check for 2FA required response
+        if (result.status === '2FA' || (resp.status === 200 && result.data && result.data.token && !result.data.redirect)) {
+          authToken = result.data.token;
+          state.value = 'totp';
+          startTimer();
+          await nextTick();
+          if (otpRefs.value[0]) otpRefs.value[0].focus();
+          loggingIn.value = false;
+          return;
+        }
+
+        // Error
+        throw new Error(result.message || 'Invalid username or password');
+      } catch (e) {
+        errorMsg.value = e.message || 'Authentication failed';
+        shaking.value = true;
+        setTimeout(() => { shaking.value = false; }, 650);
+        loggingIn.value = false;
+        password.value = '';
+        await nextTick();
+        if (passwordInput.value) passwordInput.value.focus();
+      }
+    }
+
+    // OTP input handling
+    function onOtpInput(event, index) {
+      const val = event.target.value.replace(/[^0-9]/g, '');
+      otpDigits.value[index] = val ? val[val.length - 1] : '';
+      event.target.value = otpDigits.value[index];
+
+      if (val && index < 5) {
+        otpRefs.value[index + 1].focus();
+      }
+
+      // Auto-submit when all 6 digits are entered
+      if (otpDigits.value.every(d => d !== '')) {
+        verifyTotp();
+      }
+    }
+
+    function onOtpKeydown(event, index) {
+      if (event.key === 'Backspace') {
+        if (otpDigits.value[index] === '' && index > 0) {
+          otpRefs.value[index - 1].focus();
+          otpDigits.value[index - 1] = '';
+        } else {
+          otpDigits.value[index] = '';
+        }
+      } else if (event.key === 'ArrowLeft' && index > 0) {
+        otpRefs.value[index - 1].focus();
+      } else if (event.key === 'ArrowRight' && index < 5) {
+        otpRefs.value[index + 1].focus();
+      }
+    }
+
+    function onOtpPaste(event) {
+      event.preventDefault();
+      const pasted = (event.clipboardData || window.clipboardData).getData('text').replace(/[^0-9]/g, '');
+      if (pasted.length >= 6) {
+        for (let i = 0; i < 6; i++) {
+          otpDigits.value[i] = pasted[i];
+        }
+        nextTick(() => {
+          if (otpRefs.value[5]) otpRefs.value[5].focus();
+          verifyTotp();
+        });
+      }
+    }
+
+    async function verifyTotp() {
+      if (totpVerifying.value) return;
+      const code = otpDigits.value.join('');
+      if (code.length !== 6) return;
+
+      totpError.value = '';
+      totpVerifying.value = true;
+
+      try {
+        const resp = await fetch('/api/secondfactor/totp', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: code })
+        });
+
+        const result = await resp.json();
+
+        if (result.status === 'OK' || resp.ok) {
+          const target = getRedirectTarget(result.data && result.data.redirect);
+          state.value = 'redirecting';
+          clearInterval(timerInterval);
+          setTimeout(() => { window.location.href = target; }, 300);
+          return;
+        }
+
+        throw new Error(result.message || 'Invalid code');
+      } catch (e) {
+        totpError.value = e.message || 'Verification failed';
+        totpShaking.value = true;
+        setTimeout(() => { totpShaking.value = false; }, 650);
+        otpDigits.value = ['', '', '', '', '', ''];
+        totpVerifying.value = false;
+        await nextTick();
+        if (otpRefs.value[0]) otpRefs.value[0].focus();
+      }
+    }
+
+    function startTimer() {
+      timerSeconds.value = 30;
+      clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timerSeconds.value--;
+        if (timerSeconds.value <= 0) {
+          timerSeconds.value = 30;
+        }
+      }, 1000);
+    }
+
+    function backToLogin() {
+      clearInterval(timerInterval);
+      state.value = 'login';
+      password.value = '';
+      errorMsg.value = '';
+      otpDigits.value = ['', '', '', '', '', ''];
+      totpError.value = '';
+      nextTick(() => {
+        if (passwordInput.value) passwordInput.value.focus();
+      });
+    }
+
+    onMounted(() => {
+      setBackground();
+      fetchUserInfo();
+    });
+
+    onUnmounted(() => {
+      clearInterval(timerInterval);
+    });
+
+    return {
+      state,
+      username,
+      displayName,
+      initials,
+      password,
+      errorMsg,
+      shaking,
+      loggingIn,
+      passwordInput,
+      doLogin,
+      otpDigits,
+      otpRefs,
+      totpError,
+      totpShaking,
+      totpVerifying,
+      timerSeconds,
+      circumference,
+      timerOffset,
+      onOtpInput,
+      onOtpKeydown,
+      onOtpPaste,
+      verifyTotp,
+      backToLogin
+    };
+  }
+}).mount('#app');
+</script>
+
+</body>
+</html>
