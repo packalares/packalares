@@ -47,8 +47,39 @@ func helmInstallOrUpgrade(name, chart, namespace string, values map[string]strin
 	return nil
 }
 
+func deployCRDsAndNamespaces(opts *InstallOptions) error {
+	// Apply the CRDs + namespaces + RBAC manifest
+	// This must run before any services so CRDs exist for controllers to watch
+	fmt.Println("  Creating namespaces, CRDs, and RBAC ...")
+
+	// Also create user namespace
+	userNS := config.UserNamespace(opts.Username)
+
+	manifests := []string{
+		"deploy/crds/crds-and-namespaces.yaml",
+	}
+
+	for _, path := range manifests {
+		cmd := exec.CommandContext(context.Background(), "kubectl", "apply", "-f", path)
+		if out, err := cmd.CombinedOutput(); err != nil {
+			return fmt.Errorf("apply %s: %s\n%w", path, string(out), err)
+		}
+	}
+
+	// Create user namespace
+	nsYaml := fmt.Sprintf("apiVersion: v1\nkind: Namespace\nmetadata:\n  name: %s\n", userNS)
+	if err := kubectlApply(nsYaml); err != nil {
+		fmt.Printf("  Warning: create namespace %s: %v\n", userNS, err)
+	}
+
+	fmt.Printf("  Namespaces: %s, %s, %s, %s\n",
+		config.PlatformNamespace(), config.FrameworkNamespace(), "monitoring", userNS)
+	fmt.Println("  CRDs: users.iam.kubesphere.io, applications.app.bytetrade.io, middlewarerequests.apr.bytetrade.io")
+	return nil
+}
+
 func deployPlatformCharts(opts *InstallOptions) error {
-	// Platform services: Citus (PostgreSQL), KVRocks, NATS, LLDAP, OPA
+	// Platform services: Citus (PostgreSQL), KVRocks, NATS, LLDAP, Infisical
 	components := []struct {
 		name      string
 		namespace string
@@ -57,7 +88,7 @@ func deployPlatformCharts(opts *InstallOptions) error {
 		{"kvrocks", config.PlatformNamespace()},
 		{"nats", config.PlatformNamespace()},
 		{"lldap", config.PlatformNamespace()},
-		{"opa", config.PlatformNamespace()},
+		{"infisical", config.PlatformNamespace()},
 	}
 
 	for _, comp := range components {
@@ -79,13 +110,17 @@ func deployFrameworkCharts(opts *InstallOptions) error {
 		name      string
 		namespace string
 	}{
-		{"auth-service", config.PlatformNamespace()},
-		{"bfl", config.PlatformNamespace()},
-		{"app-service", config.PlatformNamespace()},
-		{"system-server", config.PlatformNamespace()},
-		{"files-service", config.PlatformNamespace()},
-		{"market-service", config.PlatformNamespace()},
-		{"backup-service", config.PlatformNamespace()},
+		{"auth", config.FrameworkNamespace()},
+		{"bfl", config.FrameworkNamespace()},
+		{"appservice", config.FrameworkNamespace()},
+		{"systemserver", config.FrameworkNamespace()},
+		{"middleware", config.FrameworkNamespace()},
+		{"files", config.FrameworkNamespace()},
+		{"market", config.FrameworkNamespace()},
+		{"monitor", config.FrameworkNamespace()},
+		{"mounts", config.FrameworkNamespace()},
+		{"kubesphere", config.FrameworkNamespace()},
+		{"samba", config.FrameworkNamespace()},
 	}
 
 	for _, comp := range components {
