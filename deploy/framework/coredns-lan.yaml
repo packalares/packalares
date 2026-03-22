@@ -1,0 +1,75 @@
+# CoreDNS LAN exposure — makes server act as DNS for local network
+# Resolves *.{{USER_ZONE}} to the server's IP
+# Controlled via Settings UI: network.dns.expose_port_53
+#
+# This manifest:
+#   1. Adds a custom Corefile zone for the user's domain
+#   2. Deploys a DNS forwarder on hostNetwork port 53
+#      that forwards to CoreDNS ClusterIP
+#
+# LAN devices set their DNS to the server IP → all subdomains resolve
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: dns-forwarder
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      app: dns-forwarder
+  template:
+    metadata:
+      labels:
+        app: dns-forwarder
+    spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      tolerations:
+      - operator: Exists
+      containers:
+      - name: dns
+        image: coredns/coredns:1.11.1
+        args: ["-conf", "/etc/coredns-lan/Corefile"]
+        ports:
+        - containerPort: 53
+          hostPort: 53
+          protocol: UDP
+        - containerPort: 53
+          hostPort: 53
+          protocol: TCP
+        volumeMounts:
+        - name: config
+          mountPath: /etc/coredns-lan
+        resources:
+          requests:
+            cpu: 10m
+            memory: 16Mi
+          limits:
+            cpu: 100m
+            memory: 64Mi
+      volumes:
+      - name: config
+        configMap:
+          name: coredns-lan-config
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns-lan-config
+  namespace: kube-system
+data:
+  Corefile: |
+    {{USER_ZONE}}:53 {
+      template IN A {
+        answer "{.Name} 60 IN A {{SERVER_IP}}"
+      }
+      log
+    }
+
+    .:53 {
+      forward . {{COREDNS_CLUSTER_IP}}
+      log
+      errors
+      cache 30
+    }

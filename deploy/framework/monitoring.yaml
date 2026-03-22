@@ -8,7 +8,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: prometheus
-  namespace: monitoring
+  namespace: {{MONITORING_NAMESPACE}}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
@@ -35,13 +35,13 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: prometheus
-  namespace: monitoring
+  namespace: {{MONITORING_NAMESPACE}}
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: prometheus-config
-  namespace: monitoring
+  namespace: {{MONITORING_NAMESPACE}}
 data:
   prometheus.yml: |
     global:
@@ -89,7 +89,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: prometheus
-  namespace: monitoring
+  namespace: {{MONITORING_NAMESPACE}}
   labels:
     app: prometheus
 spec:
@@ -141,7 +141,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: prometheus-svc
-  namespace: monitoring
+  namespace: {{MONITORING_NAMESPACE}}
 spec:
   selector:
     app: prometheus
@@ -153,7 +153,7 @@ apiVersion: apps/v1
 kind: DaemonSet
 metadata:
   name: node-exporter
-  namespace: monitoring
+  namespace: {{MONITORING_NAMESPACE}}
   labels:
     app: node-exporter
 spec:
@@ -200,7 +200,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: node-exporter-svc
-  namespace: monitoring
+  namespace: {{MONITORING_NAMESPACE}}
 spec:
   selector:
     app: node-exporter
@@ -212,7 +212,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: kube-state-metrics
-  namespace: monitoring
+  namespace: {{MONITORING_NAMESPACE}}
   labels:
     app: kube-state-metrics
 spec:
@@ -252,7 +252,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: kube-state-metrics-svc
-  namespace: monitoring
+  namespace: {{MONITORING_NAMESPACE}}
 spec:
   selector:
     app: kube-state-metrics

@@ -129,7 +129,12 @@ func RunInstall(opts *InstallOptions) error {
 			return deployPlatformCharts(opts)
 		}},
 
-		// Phase 13: Deploy framework charts
+		// Phase 13: Seed Infisical with secrets
+		{"Seed secrets in Infisical", func() error {
+			return SeedInfisical(opts)
+		}},
+
+		// Phase 14: Deploy framework charts
 		{"Deploy framework services", func() error {
 			return deployFrameworkCharts(opts)
 		}},

@@ -65,7 +65,8 @@ func applyManifestFile(path string, opts *InstallOptions) error {
 func replaceConfigPlaceholders(manifest string, opts *InstallOptions) string {
 	replacements := map[string]string{
 		"{{PLATFORM_NAMESPACE}}":  config.PlatformNamespace(),
-		"{{FRAMEWORK_NAMESPACE}}": config.FrameworkNamespace(),
+		"{{FRAMEWORK_NAMESPACE}}":  config.FrameworkNamespace(),
+		"{{MONITORING_NAMESPACE}}": config.MonitoringNamespace(),
 		"{{USER_NAMESPACE}}":      config.UserNamespace(opts.Username),
 		"{{USERNAME}}":            config.Username(),
 		"{{USER_ZONE}}":           config.UserZone(),
@@ -77,8 +78,10 @@ func replaceConfigPlaceholders(manifest string, opts *InstallOptions) string {
 		"{{SESSION_SECRET}}":      os.Getenv("SESSION_SECRET"),
 		"{{LLDAP_ADMIN_PASSWORD}}": os.Getenv("LLDAP_ADMIN_PASSWORD"),
 		"{{LLDAP_JWT_SECRET}}":    os.Getenv("LLDAP_JWT_SECRET"),
-		"{{ENCRYPTION_KEY}}":      os.Getenv("ENCRYPTION_KEY"),
-		"{{AUTH_SECRET}}":         os.Getenv("AUTH_SECRET"),
+		"{{ENCRYPTION_KEY}}":       os.Getenv("ENCRYPTION_KEY"),
+		"{{AUTH_SECRET}}":          os.Getenv("AUTH_SECRET"),
+		"{{SERVER_IP}}":            os.Getenv("SERVER_IP"),
+		"{{COREDNS_CLUSTER_IP}}":   os.Getenv("COREDNS_CLUSTER_IP"),
 	}
 
 	for placeholder, value := range replacements {
