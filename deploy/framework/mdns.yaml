@@ -1,0 +1,38 @@
+# mDNS agent — announces Packalares on the local network
+# Devices on LAN see "Packalares" in network discovery
+# Runs with hostNetwork for multicast access (224.0.0.251:5353)
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: mdns-agent
+  namespace: {{FRAMEWORK_NAMESPACE}}
+  labels:
+    app: mdns-agent
+spec:
+  selector:
+    matchLabels:
+      app: mdns-agent
+  template:
+    metadata:
+      labels:
+        app: mdns-agent
+    spec:
+      hostNetwork: true
+      tolerations:
+      - operator: Exists
+      containers:
+      - name: mdns
+        image: ghcr.io/packalares/mdns:latest
+        env:
+        - name: MDNS_SERVICE_NAME
+          value: "Packalares"
+        - name: MDNS_PORT
+          value: "443"
+        resources:
+          requests:
+            cpu: 5m
+            memory: 8Mi
+          limits:
+            cpu: 50m
+            memory: 32Mi
