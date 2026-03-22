@@ -317,11 +317,24 @@ const clockTime = ref('');
 const weekDay = ref('');
 const dateStr = ref('');
 
+// Build subdomain URLs dynamically from current hostname
+function appUrl(name: string, path = '/'): string {
+  const host = window.location.hostname;
+  const parts = host.split('.');
+  // If on a subdomain (e.g. desktop.laurs.olares.local), use sibling subdomains
+  if (parts.length >= 3) {
+    const zone = parts.slice(1).join('.');
+    return `https://${name}.${zone}${path}`;
+  }
+  // IP access: use path-based routing
+  return `/${name}${path}`;
+}
+
 const systemApps: AppInfo[] = [
-  { id: 'files', name: 'files', title: 'Files', icon: 'folder', url: '/files/', status: 'running' },
-  { id: 'settings', name: 'settings', title: 'Settings', icon: 'settings', url: '/settings/', status: 'running' },
-  { id: 'market', name: 'market', title: 'Market', icon: 'storefront', url: '/market/', status: 'running' },
-  { id: 'dashboard', name: 'dashboard', title: 'Dashboard', icon: 'monitoring', url: '/dashboard/', status: 'running' },
+  { id: 'files', name: 'files', title: 'Files', icon: 'folder', url: appUrl('files'), status: 'running' },
+  { id: 'settings', name: 'settings', title: 'Settings', icon: 'settings', url: appUrl('settings'), status: 'running' },
+  { id: 'market', name: 'market', title: 'Market', icon: 'storefront', url: appUrl('market'), status: 'running' },
+  { id: 'dashboard', name: 'dashboard', title: 'Dashboard', icon: 'monitoring', url: appUrl('dashboard'), status: 'running' },
 ];
 
 const allApps = ref<AppInfo[]>([...systemApps]);
@@ -582,7 +595,7 @@ function onDockContextMenu(e: MouseEvent, app: AppInfo) {
 }
 
 function onAvatarClick() {
-  openApp({ id: 'settings', name: 'settings', title: 'Settings', icon: '', url: '/settings/account' });
+  openApp({ id: 'settings', name: 'settings', title: 'Settings', icon: '', url: appUrl('settings', '/account') });
 }
 
 function toggleLaunchPad() {
@@ -647,7 +660,7 @@ async function loadApps() {
         name: a.name,
         title: a.title || a.name,
         icon: a.icon || 'web',
-        url: a.url ? '//' + a.url : '#',
+        url: appUrl(a.name || a.id),
         status: a.status || 'running',
       }));
       // Merge: keep system apps, add remote apps that are not duplicates
