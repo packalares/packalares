@@ -11,6 +11,8 @@ import (
 	"os"
 	"strings"
 	"time"
+
+	"github.com/packalares/packalares/pkg/config"
 )
 
 // Client fetches secrets from Infisical via machine identity auth.
@@ -26,7 +28,7 @@ type Client struct {
 // NewClient creates an Infisical client from environment variables or K8s Secret mount.
 func NewClient() *Client {
 	return &Client{
-		url:          envOr("INFISICAL_URL", "http://infisical-svc.packalares-framework.svc.cluster.local:8080"),
+		url:          envOr("INFISICAL_URL", "http://"+config.InfisicalDNS()+":8080"),
 		clientID:     envOr("INFISICAL_CLIENT_ID", ""),
 		clientSecret: envOr("INFISICAL_CLIENT_SECRET", ""),
 		projectID:    envOr("INFISICAL_PROJECT_ID", ""),

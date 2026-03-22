@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: middleware-operator
-  namespace: packalares-framework
+  namespace: os-framework
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -33,14 +33,14 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: middleware-operator
-  namespace: packalares-framework
+  namespace: os-framework
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: middleware-operator
-  namespace: packalares-framework
+  namespace: os-framework
   labels:
     app: packalares-middleware
 spec:
@@ -59,7 +59,7 @@ spec:
         image: packalares/middleware:latest
         env:
         - name: PG_HOST
-          value: "citus-headless.os-platform"
+          value: "citus-svc.os-system"
         - name: PG_PORT
           value: "5432"
         - name: PG_ADMIN_USER
@@ -70,7 +70,7 @@ spec:
               name: pg-admin-secrets
               key: password
         - name: REDIS_HOST
-          value: "redis-cluster-proxy.os-platform"
+          value: "kvrocks-svc.os-system"
         - name: REDIS_PORT
           value: "6379"
         - name: REDIS_PASSWORD
@@ -79,11 +79,11 @@ spec:
               name: redis-secrets
               key: password
         - name: NATS_HOST
-          value: "nats.os-platform"
+          value: "nats-svc.os-system"
         - name: NATS_PORT
           value: "4222"
         - name: PLATFORM_NAMESPACE
-          value: "os-platform"
+          value: "os-system"
         resources:
           requests:
             cpu: 50m

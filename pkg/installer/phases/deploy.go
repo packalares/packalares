@@ -6,6 +6,8 @@ import (
 	"os/exec"
 	"strings"
 	"time"
+
+	"github.com/packalares/packalares/pkg/config"
 )
 
 func kubectlApply(yamlContent string) error {
@@ -51,11 +53,11 @@ func deployPlatformCharts(opts *InstallOptions) error {
 		name      string
 		namespace string
 	}{
-		{"citus", "os-system"},
-		{"kvrocks", "os-system"},
-		{"nats", "os-system"},
-		{"lldap", "os-system"},
-		{"opa", "os-system"},
+		{"citus", config.PlatformNamespace()},
+		{"kvrocks", config.PlatformNamespace()},
+		{"nats", config.PlatformNamespace()},
+		{"lldap", config.PlatformNamespace()},
+		{"opa", config.PlatformNamespace()},
 	}
 
 	for _, comp := range components {
@@ -77,13 +79,13 @@ func deployFrameworkCharts(opts *InstallOptions) error {
 		name      string
 		namespace string
 	}{
-		{"auth-service", "os-system"},
-		{"bfl", "os-system"},
-		{"app-service", "os-system"},
-		{"system-server", "os-system"},
-		{"files-service", "os-system"},
-		{"market-service", "os-system"},
-		{"backup-service", "os-system"},
+		{"auth-service", config.PlatformNamespace()},
+		{"bfl", config.PlatformNamespace()},
+		{"app-service", config.PlatformNamespace()},
+		{"system-server", config.PlatformNamespace()},
+		{"files-service", config.PlatformNamespace()},
+		{"market-service", config.PlatformNamespace()},
+		{"backup-service", config.PlatformNamespace()},
 	}
 
 	for _, comp := range components {
@@ -101,12 +103,12 @@ func deployAppCharts(opts *InstallOptions) error {
 		name      string
 		namespace string
 	}{
-		{"desktop", fmt.Sprintf("user-space-%s", opts.Username)},
-		{"wizard", fmt.Sprintf("user-space-%s", opts.Username)},
+		{"desktop", config.UserNamespace(opts.Username)},
+		{"wizard", config.UserNamespace(opts.Username)},
 	}
 
 	// Ensure user namespace exists
-	userNS := fmt.Sprintf("user-space-%s", opts.Username)
+	userNS := config.UserNamespace(opts.Username)
 	ensureNamespace(userNS)
 	ensureNamespace("user-system")
 
@@ -135,7 +137,7 @@ func deployKubeBlocks(opts *InstallOptions) error {
 func waitForAllPods() error {
 	fmt.Println("  Waiting for all pods to be ready ...")
 
-	namespaces := []string{"os-system", "kube-system", "user-system"}
+	namespaces := []string{config.PlatformNamespace(), "kube-system", "user-system"}
 
 	maxRetries := 60
 	for i := 0; i < maxRetries; i++ {

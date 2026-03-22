@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/packalares/packalares/pkg/config"
 	"k8s.io/klog/v2"
 )
 
@@ -29,7 +30,7 @@ type LLDAPClient struct {
 func NewLLDAPClient() *LLDAPClient {
 	host := os.Getenv("LLDAP_HOST")
 	if host == "" {
-		host = "http://lldap-service.os-platform:17170"
+		host = "http://" + config.LLDAPHost() + ":" + config.LLDAPPort()
 	}
 	user := os.Getenv("LLDAP_BIND_DN")
 	pass := os.Getenv("LLDAP_BIND_PASSWORD")
