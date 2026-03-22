@@ -2,10 +2,28 @@ package auth
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/packalares/packalares/pkg/secrets"
 )
+
+// loadInfisicalSecrets tries to fetch secrets from Infisical vault.
+// Returns nil if Infisical is not configured or unavailable.
+func loadInfisicalSecrets() map[string]string {
+	client := secrets.NewClient()
+	s, err := client.LoadSecrets()
+	if err != nil {
+		log.Printf("infisical: %v (using env vars)", err)
+		return nil
+	}
+	if s != nil {
+		log.Printf("infisical: loaded %d secrets from vault", len(s))
+	}
+	return s
+}
 
 // Config holds auth service configuration, all from environment variables.
 type Config struct {
@@ -50,6 +68,9 @@ type Config struct {
 }
 
 func LoadConfig() (*Config, error) {
+	// Try loading secrets from Infisical vault first
+	infisicalSecrets := loadInfisicalSecrets()
+
 	cfg := &Config{
 		ListenAddr:     ":9091",
 		UserZone:       "",
@@ -70,64 +91,74 @@ func LoadConfig() (*Config, error) {
 		CookieSameSite: "none",
 	}
 
-	if v := os.Getenv("AUTH_LISTEN_ADDR"); v != "" {
+	// Helper: get from Infisical first, then env var
+	get := func(key string) string {
+		if infisicalSecrets != nil {
+			if v, ok := infisicalSecrets[key]; ok && v != "" {
+				return v
+			}
+		}
+		return os.Getenv(key)
+	}
+
+	if v := get("AUTH_LISTEN_ADDR"); v != "" {
 		cfg.ListenAddr = v
 	}
-	if v := os.Getenv("USER_ZONE"); v != "" {
+	if v := get("USER_ZONE"); v != "" {
 		cfg.UserZone = v
 	}
-	if v := os.Getenv("JWT_SECRET"); v != "" {
+	if v := get("JWT_SECRET"); v != "" {
 		cfg.JWTSecret = v
 	}
-	if v := os.Getenv("SESSION_SECRET"); v != "" {
+	if v := get("SESSION_SECRET"); v != "" {
 		cfg.SessionSecret = v
 	}
-	if v := os.Getenv("REDIS_ADDR"); v != "" {
+	if v := get("REDIS_ADDR"); v != "" {
 		cfg.RedisAddr = v
 	}
-	if v := os.Getenv("REDIS_PASSWORD"); v != "" {
+	if v := get("REDIS_PASSWORD"); v != "" {
 		cfg.RedisPassword = v
 	}
-	if v := os.Getenv("REDIS_DB"); v != "" {
+	if v := get("REDIS_DB"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.RedisDB = n
 		}
 	}
-	if v := os.Getenv("LLDAP_HOST"); v != "" {
+	if v := get("LLDAP_HOST"); v != "" {
 		cfg.LLDAPHost = v
 	}
-	if v := os.Getenv("LLDAP_PORT"); v != "" {
+	if v := get("LLDAP_PORT"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.LLDAPPort = n
 		}
 	}
-	if v := os.Getenv("LLDAP_USER"); v != "" {
+	if v := get("LLDAP_USER"); v != "" {
 		cfg.LLDAPUser = v
 	}
-	if v := os.Getenv("LLDAP_PASSWORD"); v != "" {
+	if v := get("LLDAP_PASSWORD"); v != "" {
 		cfg.LLDAPPassword = v
 	}
-	if v := os.Getenv("LLDAP_BASE_DN"); v != "" {
+	if v := get("LLDAP_BASE_DN"); v != "" {
 		cfg.LLDAPBaseDN = v
 	}
-	if v := os.Getenv("SESSION_NAME"); v != "" {
+	if v := get("SESSION_NAME"); v != "" {
 		cfg.SessionName = v
 	}
-	if v := os.Getenv("SESSION_MAX_AGE"); v != "" {
+	if v := get("SESSION_MAX_AGE"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.SessionMaxAgeSec = n
 		}
 	}
-	if v := os.Getenv("TOTP_ISSUER"); v != "" {
+	if v := get("TOTP_ISSUER"); v != "" {
 		cfg.TOTPIssuer = v
 	}
-	if v := os.Getenv("PUBLIC_DOMAINS"); v != "" {
+	if v := get("PUBLIC_DOMAINS"); v != "" {
 		cfg.PublicDomains = strings.Split(v, ",")
 		for i := range cfg.PublicDomains {
 			cfg.PublicDomains[i] = strings.TrimSpace(cfg.PublicDomains[i])
 		}
 	}
-	if v := os.Getenv("COOKIE_SAMESITE"); v != "" {
+	if v := get("COOKIE_SAMESITE"); v != "" {
 		cfg.CookieSameSite = v
 	}
 
