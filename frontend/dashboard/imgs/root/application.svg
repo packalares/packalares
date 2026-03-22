@@ -1,0 +1,15 @@
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Group 207">
+<rect id="Rectangle 748" width="20" height="20" rx="5.33333" fill="url(#paint0_linear_1_365)"/>
+<path id="Rectangle 749" d="M10.3335 6.83331C10.3335 5.4526 11.4528 4.33331 12.8335 4.33331C14.2142 4.33331 15.3335 5.4526 15.3335 6.83331C15.3335 8.21402 14.2142 9.33331 12.8335 9.33331H10.3335V6.83331Z" fill="#FFFFFD"/>
+<path id="Rectangle 751" d="M9.6665 6.83331C9.6665 5.4526 8.54722 4.33331 7.1665 4.33331C5.78579 4.33331 4.6665 5.4526 4.6665 6.83331C4.6665 8.21402 5.78579 9.33331 7.1665 9.33331H9.6665V6.83331Z" fill="#FFFFFD"/>
+<path id="Rectangle 750" opacity="0.5" d="M10.3335 12.5C10.3335 13.8807 11.4528 15 12.8335 15C14.2142 15 15.3335 13.8807 15.3335 12.5C15.3335 11.1193 14.2142 10 12.8335 10H10.3335V12.5Z" fill="#FFFFFD"/>
+<path id="Rectangle 752" d="M9.6665 12.5C9.6665 13.8807 8.54722 15 7.1665 15C5.78579 15 4.6665 13.8807 4.6665 12.5C4.6665 11.1193 5.78579 10 7.1665 10H9.6665V12.5Z" fill="#FFFFFD"/>
+</g>
+<defs>
+<linearGradient id="paint0_linear_1_365" x1="10" y1="0" x2="10" y2="20" gradientUnits="userSpaceOnUse">
+<stop stop-color="#80DB32"/>
+<stop offset="1" stop-color="#34C011"/>
+</linearGradient>
+</defs>
+</svg>
