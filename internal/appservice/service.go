@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"k8s.io/klog/v2"
@@ -299,12 +300,35 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		return
 	}
 
-	// Merge helm values: middleware values first, then user-provided values
-	// (user overrides take precedence)
+	// Merge helm values: standard Olares values + middleware + user overrides
 	helmValues := make(map[string]string)
+
+	// Standard values ALL Olares charts expect
+	zone := os.Getenv("USER_ZONE")
+	if zone == "" {
+		zone = s.owner + ".olares.local"
+	}
+	helmValues["bfl.username"] = s.owner
+	helmValues["user.zone"] = zone
+	helmValues["domain"] = strings.TrimPrefix(zone, s.owner+".")
+	helmValues["namespace"] = s.namespace
+	helmValues["userspace.appData"] = "/appcache"
+	helmValues["userspace.appCache"] = "/appcache"
+	helmValues["userspace.userData"] = "/userdata"
+	helmValues["os.appKey"] = rec.AppID
+	helmValues["dep.namespace"] = s.namespace
+	helmValues["dep.middleware.redis.host"] = os.Getenv("REDIS_HOST")
+	helmValues["dep.middleware.redis.port"] = "6379"
+	helmValues["dep.middleware.redis.password"] = os.Getenv("REDIS_PASSWORD")
+	helmValues["dep.middleware.postgres.host"] = "postgres-svc.packalares-platform"
+	helmValues["dep.middleware.postgres.port"] = "5432"
+	helmValues["dep.middleware.postgres.password"] = os.Getenv("PG_PASSWORD")
+
+	// Middleware-provisioned values
 	for k, v := range middlewareValues {
 		helmValues[k] = v
 	}
+	// User overrides take precedence
 	if req.Values != nil {
 		for k, v := range req.Values {
 			helmValues[k] = v
