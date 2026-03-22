@@ -122,3 +122,21 @@ type SearchResponse struct {
 	Response
 	Data []MarketApp `json:"data"`
 }
+
+// RecommendationsResponse returns recommendation groups.
+type RecommendationsResponse struct {
+	Response
+	Data map[string][]MarketApp `json:"data"`
+}
+
+// Recommendation holds a named group of recommended app IDs.
+type Recommendation struct {
+	Name   string   `json:"name"`
+	AppIDs []string `json:"appIds"`
+}
+
+// TopApp holds a ranked app reference from the appstore API.
+type TopApp struct {
+	AppID string `json:"appId"`
+	Rank  int    `json:"rank"`
+}

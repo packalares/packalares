@@ -13,14 +13,15 @@ import (
 // Service is the main app-service controller that orchestrates installs,
 // uninstalls, suspends, and resumes.
 type Service struct {
-	helm      *HelmClient
-	store     *AppStore
-	k8s       *K8sClient
-	lldap     *LLDAPClient
-	genMgr    *GeneratedAppManager
-	owner     string
-	namespace string
-	chartRepo string
+	helm       *HelmClient
+	store      *AppStore
+	k8s        *K8sClient
+	lldap      *LLDAPClient
+	genMgr     *GeneratedAppManager
+	chartDL    *ChartDownloader
+	owner      string
+	namespace  string
+	chartRepo  string
 }
 
 // Config holds configuration for the app-service.
@@ -77,6 +78,7 @@ func NewService(cfg *Config) (*Service, error) {
 		store:     store,
 		k8s:       k8s,
 		lldap:     lldap,
+		chartDL:   NewChartDownloader(),
 		owner:     cfg.Owner,
 		namespace: cfg.Namespace,
 		chartRepo: cfg.ChartRepoURL,
@@ -161,6 +163,14 @@ func (s *Service) syncStatuses(ctx context.Context) {
 }
 
 // Install installs an app from a chart reference.
+//
+// The full flow:
+//  1. Download the chart from GitHub (beclab/apps) to /tmp/charts/{name}/
+//  2. Parse OlaresManifest.yaml for entrances, permissions, metadata
+//  3. Create the target namespace if it does not exist
+//  4. Run helm install from the local chart directory
+//  5. Create the Application CRD so the desktop and other services can discover the app
+//  6. Return success immediately; the actual install runs in the background
 func (s *Service) Install(ctx context.Context, req *InstallRequest) (*InstallationResponse, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("app name is required")
@@ -204,47 +214,11 @@ func (s *Service) Install(ctx context.Context, req *InstallRequest) (*Installati
 		return nil, fmt.Errorf("save app record: %w", err)
 	}
 
+	// Notify connected clients that install has started
+	GetWSHub().BroadcastAppState(req.Name, StatePending)
+
 	// Install in background
-	go func() {
-		bgCtx := context.Background()
-		rec.State = StateInstalling
-		_ = s.store.Put(bgCtx, rec)
-
-		chartRef := req.Name
-		repoURL := req.RepoURL
-		if repoURL == "" {
-			repoURL = s.chartRepo
-		}
-
-		// Add and update repo if we have a repo URL
-		if repoURL != "" {
-			if err := s.helm.AddRepo(bgCtx, req.Name, repoURL); err != nil {
-				klog.V(2).Infof("add repo %s: %v (may already exist)", req.Name, err)
-			}
-			if err := s.helm.UpdateRepo(bgCtx, req.Name); err != nil {
-				klog.V(2).Infof("update repo %s: %v", req.Name, err)
-			}
-			chartRef = fmt.Sprintf("%s/%s", req.Name, req.Name)
-		}
-
-		if err := s.helm.Install(bgCtx, releaseName, chartRef, req.Values, req.Version); err != nil {
-			klog.Errorf("helm install %s: %v", req.Name, err)
-			rec.State = StateInstallFailed
-			_ = s.store.Put(bgCtx, rec)
-			return
-		}
-
-		rec.State = StateRunning
-		_ = s.store.Put(bgCtx, rec)
-
-		// Register Application CRD if kubectl is available
-		manifest := ApplicationCRDManifest(rec)
-		if err := s.k8s.ApplyManifest(bgCtx, manifest); err != nil {
-			klog.V(2).Infof("apply application CRD for %s: %v", req.Name, err)
-		}
-
-		klog.Infof("app %s installed successfully", req.Name)
-	}()
+	go s.doInstall(rec, req)
 
 	return &InstallationResponse{
 		Response: Response{Code: 200},
@@ -253,6 +227,104 @@ func (s *Service) Install(ctx context.Context, req *InstallRequest) (*Installati
 			OpID: opID,
 		},
 	}, nil
+}
+
+// doInstall performs the actual install in a background goroutine.
+func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
+	bgCtx := context.Background()
+
+	// --- Step 1: Download chart from GitHub ---
+	rec.State = StateDownloading
+	_ = s.store.Put(bgCtx, rec)
+	GetWSHub().BroadcastAppState(rec.Name, StateDownloading)
+
+	chartDir, err := s.chartDL.DownloadChart(bgCtx, req.Name)
+	if err != nil {
+		klog.Errorf("download chart %s: %v", req.Name, err)
+		rec.State = StateInstallFailed
+		_ = s.store.Put(bgCtx, rec)
+		GetWSHub().BroadcastAppState(rec.Name, StateInstallFailed)
+		return
+	}
+	defer CleanupChart(req.Name)
+
+	// --- Step 2: Parse OlaresManifest.yaml ---
+	manifest, err := ParseOlaresManifest(chartDir)
+	if err != nil {
+		// Manifest is optional for simple charts, log and continue
+		klog.V(2).Infof("parse manifest for %s: %v (continuing without it)", req.Name, err)
+	}
+
+	// Parse Chart.yaml for version info
+	chartVersion, appVersion, chartErr := ParseChartMetadata(chartDir)
+	if chartErr != nil {
+		klog.V(2).Infof("parse Chart.yaml for %s: %v", req.Name, chartErr)
+	}
+
+	// Populate record with metadata from the manifest
+	if manifest != nil {
+		rec.Title = manifest.Metadata.Title
+		rec.Icon = manifest.Metadata.Icon
+		rec.Description = manifest.Metadata.Description
+		rec.Entrances = BuildEntrancesFromManifest(manifest, req.Name, s.owner, s.namespace)
+		if rec.Version == "" {
+			rec.Version = manifest.Metadata.Version
+		}
+	}
+	if rec.Version == "" && appVersion != "" {
+		rec.Version = appVersion
+	}
+	if rec.Version == "" && chartVersion != "" {
+		rec.Version = chartVersion
+	}
+	_ = s.store.Put(bgCtx, rec)
+
+	// --- Step 3: Create namespace if needed ---
+	if err := s.k8s.CreateNamespace(bgCtx, s.namespace); err != nil {
+		klog.V(2).Infof("ensure namespace %s: %v (may already exist)", s.namespace, err)
+	}
+
+	// --- Step 4: Run helm install from the local chart directory ---
+	rec.State = StateInstalling
+	_ = s.store.Put(bgCtx, rec)
+	GetWSHub().BroadcastAppState(rec.Name, StateInstalling)
+
+	helmValues := req.Values
+	if helmValues == nil {
+		helmValues = make(map[string]string)
+	}
+	// Inject standard Olares values that charts expect
+	if _, ok := helmValues["bfl.username"]; !ok {
+		helmValues["bfl.username"] = s.owner
+	}
+	if _, ok := helmValues["user.zone"]; !ok {
+		zone := os.Getenv("USER_ZONE")
+		if zone == "" {
+			zone = s.owner + ".olares.local"
+		}
+		helmValues["user.zone"] = zone
+	}
+
+	if err := s.helm.Install(bgCtx, rec.ReleaseName, chartDir, helmValues, ""); err != nil {
+		klog.Errorf("helm install %s: %v", req.Name, err)
+		rec.State = StateInstallFailed
+		_ = s.store.Put(bgCtx, rec)
+		GetWSHub().BroadcastAppState(rec.Name, StateInstallFailed)
+		return
+	}
+
+	// --- Step 5: Create Application CRD ---
+	rec.State = StateRunning
+	_ = s.store.Put(bgCtx, rec)
+
+	crdManifest := ApplicationCRDManifest(rec)
+	if err := s.k8s.ApplyManifest(bgCtx, crdManifest); err != nil {
+		klog.V(2).Infof("apply Application CRD for %s: %v", req.Name, err)
+	}
+
+	// --- Step 6: Done ---
+	GetWSHub().BroadcastAppState(rec.Name, StateRunning)
+	klog.Infof("app %s installed successfully (release=%s, namespace=%s)", req.Name, rec.ReleaseName, s.namespace)
 }
 
 // Uninstall removes an installed app.
