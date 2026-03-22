@@ -119,12 +119,17 @@ func RunInstall(opts *InstallOptions) error {
 			return helm.Install(opts.BaseDir, arch)
 		}},
 
-		// Phase 11: Deploy platform charts
+		// Phase 11: Register CRDs, create namespaces, RBAC
+		{"Setup Kubernetes management", func() error {
+			return deployCRDsAndNamespaces(opts)
+		}},
+
+		// Phase 12: Deploy platform charts
 		{"Deploy platform services", func() error {
 			return deployPlatformCharts(opts)
 		}},
 
-		// Phase 12: Deploy framework charts
+		// Phase 13: Deploy framework charts
 		{"Deploy framework services", func() error {
 			return deployFrameworkCharts(opts)
 		}},
