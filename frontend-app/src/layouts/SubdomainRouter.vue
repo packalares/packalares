@@ -18,10 +18,13 @@ const defaultPage = defineAsyncComponent(() => import('pages/Desktop/DesktopPage
 
 const currentPage = computed(() => {
   const host = window.location.hostname;
-  const parts = host.split('.');
-  if (parts.length >= 3) {
-    const sub = parts[0];
-    if (sub in subdomainPages) return subdomainPages[sub];
+  const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+  if (!isIP) {
+    const parts = host.split('.');
+    if (parts.length >= 3) {
+      const sub = parts[0];
+      if (sub in subdomainPages) return subdomainPages[sub];
+    }
   }
   // IP access or unknown subdomain — show desktop
   return defaultPage;

@@ -10,9 +10,10 @@ api.interceptors.response.use(
       const rd = encodeURIComponent(window.location.href);
       // On subdomains, redirect to the main domain's login page
       const host = window.location.hostname;
+      const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
       const parts = host.split('.');
       let loginUrl = '/login?rd=' + rd;
-      if (parts.length >= 3) {
+      if (!isIP && parts.length >= 3) {
         // subdomain: market.laurs.olares.local → laurs.olares.local/login
         const mainDomain = parts.slice(1).join('.');
         loginUrl = 'https://' + mainDomain + '/login?rd=' + rd;
