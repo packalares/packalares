@@ -1,67 +1,490 @@
-<!DOCTYPE html><html><head><base href=/desktop/ ><title>Olares</title><meta charset=utf-8><meta name=description content="Olares OS Launcher"><meta name=format-detection content="telephone=no"><meta name=msapplication-tap-highlight content=no><meta name=viewport content="user-scalable=no,initial-scale=1,maximum-scale=1,minimum-scale=1,width=device-width"><meta name=apple-mobile-web-app-capable content=yes><meta http-equiv=Cache-Control content="max-age=31536000, public"><meta http-equiv=Expires content="Wed, 01 Jan 2025 00:00:00 GMT"><link rel=icon type=image/ico href=icons/favicon.ico><script defer src=/desktop/js/500.4a29849f.js></script><script defer src=/desktop/js/app.4c00f843.js></script><link href=/desktop/css/500.6b9ffc94.css rel=stylesheet><link href=/desktop/css/app.41b3c21b.css rel=stylesheet><link rel=manifest href=manifest.json><meta name=theme-color content=transparent><meta name=apple-mobile-web-app-capable content=yes><meta name=apple-mobile-web-app-status-bar-style content=default><meta name=apple-mobile-web-app-title content=Olares><link rel=apple-touch-icon href=icons/apple-icon-120x120.png><link rel=apple-touch-icon sizes=152x152 href=icons/apple-icon-152x152.png><link rel=apple-touch-icon sizes=167x167 href=icons/apple-icon-167x167.png><link rel=apple-touch-icon sizes=180x180 href=icons/apple-icon-180x180.png><link rel=mask-icon href=icons/safari-pinned-tab.svg color=transparent><meta name=msapplication-TileImage content=icons/ms-icon-144x144.png><meta name=msapplication-TileColor content=#000000><link as="font" crossorigin="anonymous" href="/desktop/fonts/MaterialSymbolsRounded.77c57cd8.woff2" rel="preload"></head><body><div id=q-app></div><div id=Loading><div class=loader-inner><img src=./app-icon/os.svg alt=logo></div><div class=loader-txt style="font-size: 18px">Loading...</div></div></body></html><script>function inMobile() {
-    document.getElementsByTagName('html')[0].style.fontSize =
-      (document.documentElement.clientWidth / 450) * 100 + 'px';
-  }
-  document.addEventListener('DOMContentLoaded', inMobile);
-  window.onresize = inMobile;</script><style>body {
-    overflow: hidden;
-    touch-action: none;
-  }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Packalares</title>
+<link rel="icon" type="image/png" href="/desktop/icons/favicon.ico">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL@20..48,100..700,0..1" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --dock-w:60px;
+  --dock-bg:rgba(30,30,30,0.55);
+  --glass:rgba(255,255,255,0.08);
+  --glass-border:rgba(255,255,255,0.12);
+  --glass-strong:rgba(40,40,40,0.75);
+  --text:#fff;
+  --text-dim:rgba(255,255,255,0.6);
+  --accent:#4a9eff;
+  --danger:#ff5f57;
+  --warn:#febc2e;
+  --success:#28c840;
+  --radius:12px;
+  --app-size:44px;
+  --shadow:0 8px 32px rgba(0,0,0,0.4);
+}
+html,body{width:100%;height:100%;overflow:hidden;font-family:'Inter',system-ui,sans-serif;color:var(--text);user-select:none;-webkit-user-select:none}
+.material-symbols-rounded{font-variation-settings:'FILL' 1,'wght' 400,'GRAD' 0,'opsz' 24}
 
-  #Loading {
-    top: 50%;
-    left: 50%;
-    position: absolute;
-    -webkit-transform: translateY(-50%) translateX(-50%);
-    transform: translateY(-50%) translateX(-50%);
-    z-index: 100;
-  }
+/* === WALLPAPER === */
+#wallpaper{position:fixed;inset:0;z-index:0;background:#0a0a0a}
+#wallpaper img{width:100%;height:100%;object-fit:cover}
+#wallpaper .gradient{position:absolute;inset:0;background:linear-gradient(135deg,rgba(15,23,42,0.3),rgba(30,41,59,0.1),rgba(15,23,42,0.3))}
 
-  .loader-txt {
-    color: #64605d;
-    font-weight: 600;
-    height: 60px;
-    line-height: 60px;
-    text-align: center;
-  }
+/* === DAILY INFO (top-left) === */
+.daily-info{position:fixed;top:24px;left:calc(var(--dock-w) + 24px);z-index:10;display:flex;flex-direction:column;gap:4px}
+.daily-time{font-size:56px;font-weight:200;letter-spacing:-2px;line-height:1;text-shadow:0 2px 16px rgba(0,0,0,0.3)}
+.daily-date{font-size:14px;font-weight:400;color:var(--text-dim);text-shadow:0 1px 8px rgba(0,0,0,0.3)}
+.daily-stats{display:flex;gap:16px;margin-top:8px}
+.daily-stat{font-size:11px;color:var(--text-dim);display:flex;align-items:center;gap:4px;background:rgba(0,0,0,0.25);backdrop-filter:blur(12px);padding:4px 10px;border-radius:20px;border:1px solid rgba(255,255,255,0.06)}
+.daily-stat .dot{width:6px;height:6px;border-radius:50%}
+.dot-cpu{background:#4ade80}
+.dot-mem{background:#60a5fa}
+.dot-disk{background:#f59e0b}
 
-  .loader-txt span {
-    width: 20px;
-    height: 40px;
-    display: inline-block;
-    position: relative;
-  }
-  .loader-txt span i {
-    display: inline-block;
-    background-color: #ffffff;
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 10px;
-    height: 40px;
-    animation: spanAni 2s infinite linear;
-  }
+/* === DOCK === */
+.dock{position:fixed;left:0;top:0;bottom:0;width:var(--dock-w);z-index:100;display:flex;flex-direction:column;align-items:center;background:var(--dock-bg);backdrop-filter:blur(40px) saturate(1.8);border-right:1px solid var(--glass-border);padding:12px 0}
+.dock-avatar{width:36px;height:36px;border-radius:50%;background:var(--glass);border:2px solid rgba(255,255,255,0.15);display:flex;align-items:center;justify-content:center;cursor:pointer;margin-bottom:12px;overflow:hidden;transition:transform .2s}
+.dock-avatar:hover{transform:scale(1.1)}
+.dock-avatar img{width:100%;height:100%;object-fit:cover}
+.dock-avatar .initials{font-size:14px;font-weight:600}
+.dock-separator{width:28px;height:1px;background:rgba(255,255,255,0.12);margin:6px 0}
+.dock-apps{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;overflow-y:auto;overflow-x:hidden;padding:4px 0;scrollbar-width:none}
+.dock-apps::-webkit-scrollbar{display:none}
+.dock-item{position:relative;width:var(--app-size);height:var(--app-size);border-radius:calc(var(--app-size)*0.22);cursor:pointer;transition:transform .15s ease;flex-shrink:0}
+.dock-item:hover{transform:scale(1.15)}
+.dock-item:active{transform:scale(0.95)}
+.dock-item img{width:100%;height:100%;border-radius:inherit;object-fit:cover;pointer-events:none}
+.dock-item .placeholder-icon{width:100%;height:100%;border-radius:inherit;background:linear-gradient(135deg,var(--accent),#7c3aed);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff}
+.dock-item .active-dot{position:absolute;right:-7px;top:50%;transform:translateY(-50%);width:4px;height:4px;border-radius:50%;background:var(--text)}
+.dock-bottom{display:flex;flex-direction:column;align-items:center;gap:4px;padding-top:6px}
+.dock-btn{width:36px;height:36px;border-radius:8px;background:transparent;border:none;color:var(--text-dim);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.dock-btn:hover{background:var(--glass);color:var(--text)}
+.dock-btn .material-symbols-rounded{font-size:22px}
 
-  @keyframes spanAni {
-    0% {
-      width: 20px;
+/* === CONTEXT MENU === */
+.ctx-menu{position:fixed;z-index:1000;min-width:160px;background:var(--glass-strong);backdrop-filter:blur(40px) saturate(1.8);border:1px solid var(--glass-border);border-radius:8px;padding:4px;box-shadow:var(--shadow);animation:ctxIn .12s ease}
+@keyframes ctxIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
+.ctx-item{padding:6px 12px;border-radius:5px;font-size:13px;cursor:pointer;display:flex;align-items:center;gap:8px;color:var(--text)}
+.ctx-item:hover{background:var(--accent);color:#fff}
+.ctx-item.danger{color:var(--danger)}
+.ctx-item.danger:hover{background:var(--danger);color:#fff}
+.ctx-sep{height:1px;background:rgba(255,255,255,0.08);margin:4px 8px}
+
+/* === WINDOWS === */
+.window{position:fixed;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);display:flex;flex-direction:column;min-width:400px;min-height:300px;animation:winIn .2s ease}
+@keyframes winIn{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}
+.window.minimized{display:none!important}
+.window-titlebar{height:38px;background:var(--glass-strong);backdrop-filter:blur(30px);display:flex;align-items:center;padding:0 12px;cursor:grab;flex-shrink:0;border-bottom:1px solid rgba(255,255,255,0.06)}
+.window-titlebar:active{cursor:grabbing}
+.window-traffic{display:flex;gap:7px;align-items:center}
+.window-traffic span{width:12px;height:12px;border-radius:50%;cursor:pointer;transition:opacity .15s;position:relative}
+.window-traffic span:hover{opacity:0.8}
+.traffic-close{background:var(--danger)}
+.traffic-minimize{background:var(--warn)}
+.traffic-maximize{background:var(--success)}
+.window-title{flex:1;text-align:center;font-size:13px;font-weight:500;color:var(--text-dim);pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.window-titlebar .spacer{width:52px}
+.window-body{flex:1;background:#1a1a1a;position:relative}
+.window-body iframe{width:100%;height:100%;border:none;background:#fff}
+.window-resize{position:absolute;right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize}
+
+/* === LAUNCHPAD === */
+.launchpad-overlay{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.5);backdrop-filter:blur(40px);display:flex;flex-direction:column;align-items:center;justify-content:center;animation:lpIn .25s ease}
+@keyframes lpIn{from{opacity:0}to{opacity:1}}
+.launchpad-search{margin-bottom:32px;position:relative}
+.launchpad-search input{width:280px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,0.15);background:rgba(255,255,255,0.1);color:var(--text);padding:0 12px 0 36px;font-size:14px;outline:none;font-family:inherit}
+.launchpad-search input::placeholder{color:var(--text-dim)}
+.launchpad-search .material-symbols-rounded{position:absolute;left:10px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--text-dim)}
+.launchpad-grid{display:grid;grid-template-columns:repeat(7,80px);gap:24px 20px;max-height:60vh;overflow-y:auto;padding:0 40px;scrollbar-width:none}
+.launchpad-grid::-webkit-scrollbar{display:none}
+.launchpad-app{display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:transform .15s}
+.launchpad-app:hover{transform:scale(1.08)}
+.launchpad-app:active{transform:scale(0.95)}
+.launchpad-app img{width:56px;height:56px;border-radius:13px;object-fit:cover}
+.launchpad-app .placeholder-icon{width:56px;height:56px;border-radius:13px;background:linear-gradient(135deg,var(--accent),#7c3aed);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700}
+.launchpad-app span{font-size:11px;color:var(--text-dim);max-width:72px;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* === SEARCH === */
+.search-overlay{position:fixed;inset:0;z-index:300;display:flex;align-items:flex-start;justify-content:center;padding-top:15vh;background:rgba(0,0,0,0.4);backdrop-filter:blur(20px);animation:ctxIn .15s ease}
+.search-box{width:560px;background:var(--glass-strong);backdrop-filter:blur(40px);border:1px solid var(--glass-border);border-radius:12px;overflow:hidden;box-shadow:var(--shadow)}
+.search-input{display:flex;align-items:center;padding:0 16px;border-bottom:1px solid rgba(255,255,255,0.06)}
+.search-input .material-symbols-rounded{font-size:22px;color:var(--text-dim)}
+.search-input input{flex:1;height:48px;background:transparent;border:none;color:var(--text);font-size:16px;padding:0 12px;outline:none;font-family:inherit}
+.search-input input::placeholder{color:var(--text-dim)}
+.search-results{max-height:320px;overflow-y:auto;padding:8px}
+.search-result{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;cursor:pointer}
+.search-result:hover{background:var(--glass)}
+.search-result img{width:32px;height:32px;border-radius:8px}
+.search-result .info{display:flex;flex-direction:column}
+.search-result .info .name{font-size:13px;font-weight:500}
+.search-result .info .desc{font-size:11px;color:var(--text-dim)}
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Wallpaper -->
+  <div id="wallpaper">
+    <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1920&q=80" alt="" @error="$event.target.style.display='none'">
+    <div class="gradient"></div>
+  </div>
+
+  <!-- Daily Info -->
+  <div class="daily-info">
+    <div class="daily-time">{{ currentTime }}</div>
+    <div class="daily-date">{{ currentDate }}</div>
+    <div class="daily-stats">
+      <div class="daily-stat"><span class="dot dot-cpu"></span>CPU {{ cpuPercent }}%</div>
+      <div class="daily-stat"><span class="dot dot-mem"></span>Mem {{ memPercent }}%</div>
+      <div class="daily-stat"><span class="dot dot-disk"></span>Disk {{ diskPercent }}%</div>
+    </div>
+  </div>
+
+  <!-- Dock -->
+  <div class="dock">
+    <div class="dock-avatar" @click="openSettings" :title="username">
+      <img v-if="avatarUrl" :src="avatarUrl">
+      <span v-else class="initials">{{ userInitial }}</span>
+    </div>
+    <div class="dock-separator"></div>
+    <div class="dock-apps">
+      <div v-for="(app, idx) in dockApps" :key="app.id" class="dock-item"
+           @click="openApp(app)" @contextmenu.prevent="showCtxMenu($event, app, idx)"
+           draggable="true" @dragstart="onDragStart($event, idx)" @dragover.prevent @drop="onDrop($event, idx)">
+        <img v-if="app.icon" :src="app.icon" :alt="app.title" @error="$event.target.style.display='none'">
+        <div v-else class="placeholder-icon">{{ (app.title||app.name||'?')[0].toUpperCase() }}</div>
+        <div v-if="isAppOpen(app.id)" class="active-dot"></div>
+      </div>
+    </div>
+    <div class="dock-separator"></div>
+    <div class="dock-bottom">
+      <button class="dock-btn" @click="toggleLaunchpad" title="Launchpad">
+        <span class="material-symbols-rounded">apps</span>
+      </button>
+      <button class="dock-btn" @click="showSearch=true" title="Search">
+        <span class="material-symbols-rounded">search</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Windows -->
+  <div v-for="win in windows" :key="win.id" class="window" :class="{minimized: win.minimized}"
+       :style="{left:win.x+'px',top:win.y+'px',width:win.w+'px',height:win.h+'px',zIndex:win.z}"
+       @mousedown="bringToFront(win)">
+    <div class="window-titlebar" @mousedown.prevent="startDrag($event, win)">
+      <div class="window-traffic">
+        <span class="traffic-close" @mousedown.stop @click="closeWindow(win.id)"></span>
+        <span class="traffic-minimize" @mousedown.stop @click="minimizeWindow(win.id)"></span>
+        <span class="traffic-maximize" @mousedown.stop @click="maximizeWindow(win)"></span>
+      </div>
+      <div class="window-title">{{ win.title }}</div>
+      <div class="spacer"></div>
+    </div>
+    <div class="window-body">
+      <iframe :src="win.url" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+      <div class="window-resize" @mousedown.prevent="startResize($event, win)"></div>
+    </div>
+  </div>
+
+  <!-- LaunchPad -->
+  <div v-if="showLaunchpad" class="launchpad-overlay" @click.self="showLaunchpad=false">
+    <div class="launchpad-search">
+      <span class="material-symbols-rounded">search</span>
+      <input v-model="lpSearch" placeholder="Search apps..." autofocus @keydown.escape="showLaunchpad=false">
+    </div>
+    <div class="launchpad-grid">
+      <div v-for="app in filteredApps" :key="app.id" class="launchpad-app"
+           @click="openApp(app); showLaunchpad=false">
+        <img v-if="app.icon" :src="app.icon" :alt="app.title" @error="$event.target.style.display='none'">
+        <div v-else class="placeholder-icon">{{ (app.title||app.name||'?')[0].toUpperCase() }}</div>
+        <span>{{ app.title || app.name }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Overlay -->
+  <div v-if="showSearch" class="search-overlay" @click.self="showSearch=false" @keydown.escape="showSearch=false">
+    <div class="search-box">
+      <div class="search-input">
+        <span class="material-symbols-rounded">search</span>
+        <input v-model="searchQuery" placeholder="Search apps, files..." autofocus @keydown.escape="showSearch=false">
+      </div>
+      <div class="search-results">
+        <div v-for="app in searchResults" :key="app.id" class="search-result"
+             @click="openApp(app); showSearch=false">
+          <img v-if="app.icon" :src="app.icon" @error="$event.target.style.display='none'">
+          <div class="info">
+            <div class="name">{{ app.title || app.name }}</div>
+            <div class="desc">{{ app.description || 'Application' }}</div>
+          </div>
+        </div>
+        <div v-if="searchQuery && searchResults.length===0" style="padding:16px;text-align:center;color:var(--text-dim);font-size:13px">No results</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Context Menu -->
+  <div v-if="ctxMenu" class="ctx-menu" :style="{left:ctxMenu.x+'px',top:ctxMenu.y+'px'}" @mouseleave="ctxMenu=null">
+    <div class="ctx-item" v-if="!isAppOpen(ctxMenu.app.id)" @click="openApp(ctxMenu.app);ctxMenu=null">
+      <span class="material-symbols-rounded" style="font-size:16px">open_in_new</span> Open
+    </div>
+    <div class="ctx-item" v-if="isAppOpen(ctxMenu.app.id)" @click="focusWindow(ctxMenu.app.id);ctxMenu=null">
+      <span class="material-symbols-rounded" style="font-size:16px">visibility</span> Show
+    </div>
+    <div class="ctx-sep"></div>
+    <div class="ctx-item danger" @click="removeDockApp(ctxMenu.idx);ctxMenu=null">
+      <span class="material-symbols-rounded" style="font-size:16px">remove_circle</span> Remove from Dock
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script>
+const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+
+createApp({
+  setup() {
+    // --- State ---
+    const username = ref('');
+    const avatarUrl = ref('');
+    const allApps = ref([]);
+    const dockApps = ref([]);
+    const windows = ref([]);
+    const showLaunchpad = ref(false);
+    const showSearch = ref(false);
+    const lpSearch = ref('');
+    const searchQuery = ref('');
+    const ctxMenu = ref(null);
+    const cpuPercent = ref(0);
+    const memPercent = ref(0);
+    const diskPercent = ref(0);
+    const currentTime = ref('');
+    const currentDate = ref('');
+    let nextZ = 10;
+    let dragWin = null, dragOff = { x:0, y:0 };
+    let resizeWin = null, resizeStart = { x:0, y:0, w:0, h:0 };
+    let dragIdx = -1;
+
+    const userInitial = computed(() => (username.value || 'U')[0].toUpperCase());
+
+    // System apps always in dock
+    const systemApps = [
+      { id:'files', name:'files', title:'Files', icon:'', url:'/files/', color:'#3b82f6' },
+      { id:'settings', name:'settings', title:'Settings', icon:'', url:'/settings/', color:'#6b7280' },
+      { id:'market', name:'market', title:'Market', icon:'', url:'/market/', color:'#8b5cf6' },
+      { id:'dashboard', name:'dashboard', title:'Dashboard', icon:'', url:'/dashboard/', color:'#10b981' },
+    ];
+
+    // --- API calls ---
+    async function fetchJSON(url, opts = {}) {
+      const res = await fetch(url, { credentials:'same-origin', ...opts });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
     }
-    100% {
-      width: 0px;
-    }
-  }
 
-  .loader-inner {
-    width: 100px;
-    height: 100px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    animation: rotate 2s infinite ease-in-out;
-  }
-
-  @keyframes rotate {
-    100% {
-      transform: rotatey(360deg);
+    async function loadInit() {
+      try {
+        const data = await fetchJSON('/server/init');
+        const t = data.terminus || {};
+        const name = t.terminusName || '';
+        username.value = name.includes('@') ? name.split('@')[0] : (name || 'User');
+        avatarUrl.value = t.avatar || '';
+      } catch(e) { console.warn('init:', e); username.value = 'User'; }
     }
-  }</style>
+
+    async function loadApps() {
+      try {
+        const data = await fetchJSON('/server/myApps', { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' });
+        const apps = (data.data || []).map(a => ({
+          id: a.name || a.id,
+          name: a.name,
+          title: a.title || a.name,
+          icon: a.icon || '',
+          url: a.url || a.entrance || '',
+          status: a.status || 'running',
+          description: a.description || ''
+        }));
+        allApps.value = [...systemApps, ...apps];
+        dockApps.value = [...systemApps, ...apps.filter(a => a.status === 'running')];
+      } catch(e) {
+        console.warn('myApps:', e);
+        allApps.value = [...systemApps];
+        dockApps.value = [...systemApps];
+      }
+    }
+
+    async function loadMetrics() {
+      try {
+        const d = await fetchJSON('/api/monitor/cluster');
+        cpuPercent.value = Math.round((d.cpu?.ratio || 0) * 100);
+        memPercent.value = Math.round((d.memory?.ratio || 0) * 100);
+        diskPercent.value = Math.round((d.disk?.ratio || 0) * 100);
+      } catch(e) { console.warn('metrics:', e); }
+    }
+
+    // --- Clock ---
+    function updateClock() {
+      const now = new Date();
+      currentTime.value = now.toLocaleTimeString([], { hour:'2-digit', minute:'2-digit', hour12:false });
+      const opts = { weekday:'long', month:'long', day:'numeric' };
+      currentDate.value = now.toLocaleDateString('en-US', opts);
+    }
+
+    // --- Window management ---
+    function openApp(app) {
+      const existing = windows.value.find(w => w.appId === app.id);
+      if (existing) {
+        existing.minimized = false;
+        bringToFront(existing);
+        return;
+      }
+      const w = Math.min(1100, window.innerWidth - 140);
+      const h = Math.min(700, window.innerHeight - 80);
+      const x = 80 + Math.random() * 60;
+      const y = 30 + Math.random() * 40;
+      windows.value.push({
+        id: Date.now() + '_' + app.id,
+        appId: app.id,
+        title: app.title || app.name,
+        url: app.url,
+        x, y, w, h,
+        z: ++nextZ,
+        minimized: false,
+        maximized: false,
+        prevRect: null
+      });
+    }
+
+    function closeWindow(id) {
+      windows.value = windows.value.filter(w => w.id !== id);
+    }
+
+    function minimizeWindow(id) {
+      const w = windows.value.find(w => w.id === id);
+      if (w) w.minimized = true;
+    }
+
+    function maximizeWindow(win) {
+      if (win.maximized) {
+        if (win.prevRect) { win.x=win.prevRect.x; win.y=win.prevRect.y; win.w=win.prevRect.w; win.h=win.prevRect.h; }
+        win.maximized = false;
+      } else {
+        win.prevRect = { x:win.x, y:win.y, w:win.w, h:win.h };
+        win.x = 60; win.y = 0;
+        win.w = window.innerWidth - 60;
+        win.h = window.innerHeight;
+        win.maximized = true;
+      }
+      bringToFront(win);
+    }
+
+    function bringToFront(win) { win.z = ++nextZ; }
+
+    function isAppOpen(appId) { return windows.value.some(w => w.appId === appId && !w.minimized); }
+
+    function focusWindow(appId) {
+      const w = windows.value.find(w => w.appId === appId);
+      if (w) { w.minimized = false; bringToFront(w); }
+    }
+
+    // --- Drag window ---
+    function startDrag(e, win) {
+      dragWin = win;
+      dragOff = { x: e.clientX - win.x, y: e.clientY - win.y };
+      bringToFront(win);
+      const onMove = (ev) => { if(dragWin){ dragWin.x=ev.clientX-dragOff.x; dragWin.y=Math.max(0,ev.clientY-dragOff.y); }};
+      const onUp = () => { dragWin=null; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }
+
+    // --- Resize window ---
+    function startResize(e, win) {
+      resizeWin = win;
+      resizeStart = { x:e.clientX, y:e.clientY, w:win.w, h:win.h };
+      bringToFront(win);
+      const onMove = (ev) => { if(resizeWin){ resizeWin.w=Math.max(400,resizeStart.w+(ev.clientX-resizeStart.x)); resizeWin.h=Math.max(300,resizeStart.h+(ev.clientY-resizeStart.y)); }};
+      const onUp = () => { resizeWin=null; document.removeEventListener('mousemove',onMove); document.removeEventListener('mouseup',onUp); };
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    }
+
+    // --- Dock drag reorder ---
+    function onDragStart(e, idx) { dragIdx = idx; e.dataTransfer.effectAllowed = 'move'; }
+    function onDrop(e, idx) {
+      if (dragIdx < 0 || dragIdx === idx) return;
+      const item = dockApps.value.splice(dragIdx, 1)[0];
+      dockApps.value.splice(idx, 0, item);
+      dragIdx = -1;
+    }
+
+    // --- Context menu ---
+    function showCtxMenu(e, app, idx) { ctxMenu.value = { x: e.clientX, y: e.clientY, app, idx }; }
+    function removeDockApp(idx) { dockApps.value.splice(idx, 1); }
+
+    // --- Navigation ---
+    function openSettings() { openApp(systemApps.find(a=>a.id==='settings')); }
+    function toggleLaunchpad() { showLaunchpad.value = !showLaunchpad.value; lpSearch.value = ''; }
+
+    // --- Computed ---
+    const filteredApps = computed(() => {
+      const q = lpSearch.value.toLowerCase();
+      if (!q) return allApps.value;
+      return allApps.value.filter(a => (a.title||a.name||'').toLowerCase().includes(q));
+    });
+    const searchResults = computed(() => {
+      const q = searchQuery.value.toLowerCase();
+      if (!q) return [];
+      return allApps.value.filter(a => (a.title||a.name||'').toLowerCase().includes(q) || (a.description||'').toLowerCase().includes(q));
+    });
+
+    // --- Keyboard shortcuts ---
+    function onKeyDown(e) {
+      if (e.key === 'Escape') {
+        if (showSearch.value) showSearch.value = false;
+        else if (showLaunchpad.value) showLaunchpad.value = false;
+        else if (ctxMenu.value) ctxMenu.value = null;
+      }
+    }
+
+    // Close context menu on click outside
+    function onGlobalClick() { ctxMenu.value = null; }
+
+    // --- Lifecycle ---
+    let clockInterval, metricsInterval;
+    onMounted(async () => {
+      updateClock();
+      clockInterval = setInterval(updateClock, 1000);
+      document.addEventListener('keydown', onKeyDown);
+      document.addEventListener('click', onGlobalClick);
+
+      await loadInit();
+      await loadApps();
+      await loadMetrics();
+      metricsInterval = setInterval(loadMetrics, 10000);
+    });
+
+    onUnmounted(() => {
+      clearInterval(clockInterval);
+      clearInterval(metricsInterval);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('click', onGlobalClick);
+    });
+
+    return {
+      username, avatarUrl, userInitial, allApps, dockApps, windows,
+      showLaunchpad, showSearch, lpSearch, searchQuery, ctxMenu,
+      cpuPercent, memPercent, diskPercent, currentTime, currentDate,
+      filteredApps, searchResults,
+      openApp, closeWindow, minimizeWindow, maximizeWindow, bringToFront,
+      isAppOpen, focusWindow, startDrag, startResize,
+      onDragStart, onDrop, showCtxMenu, removeDockApp,
+      openSettings, toggleLaunchpad
+    };
+  }
+}).mount('#app');
+</script>
+</body>
+</html>
