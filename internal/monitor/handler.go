@@ -32,6 +32,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/monitoring/nodes", h.handleNodes)
 	mux.HandleFunc("/api/monitoring/pods", h.handlePods)
 	mux.HandleFunc("/api/monitoring/gpu", h.handleGPU)
+	mux.HandleFunc("/api/gpu", h.handleGPUList)
+	mux.HandleFunc("/api/gpu/list", h.handleGPUList)
 
 	// KubeSphere-compatible endpoints
 	mux.HandleFunc("/kapis/monitoring.kubesphere.io/v1alpha3/cluster", h.handleKSCluster)
@@ -173,6 +175,11 @@ func (h *Handler) handleGPU(w http.ResponseWriter, r *http.Request) {
 
 	result := h.queryMetrics(metrics, params)
 	writeJSON(w, result)
+}
+
+func (h *Handler) handleGPUList(w http.ResponseWriter, r *http.Request) {
+	gpuInfo := detectGPUs()
+	writeJSON(w, gpuInfo)
 }
 
 // ---------------------------------------------------------------------------
