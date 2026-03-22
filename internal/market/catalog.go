@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"sync"
@@ -13,6 +14,9 @@ import (
 
 	"k8s.io/klog/v2"
 )
+
+// catVersionSuffix matches version suffixes like "_v112" in category/page names.
+var catVersionSuffix = regexp.MustCompile(`_v\d+$`)
 
 // Catalog fetches, caches, and serves app catalog data.
 // It pulls from the Olares appstore API first, falls back to GitHub
@@ -266,25 +270,68 @@ func (c *Catalog) fetchFromAppstore() ([]MarketApp, error) {
 		return apps[i].Name < apps[j].Name
 	})
 
-	// Extract category names from pages, stripping version suffixes
-	c.pages = make(map[string][]string)
-	for catName := range storeResp.Data.Pages {
-		clean := catName
-		if idx := strings.LastIndex(catName, "_v"); idx > 0 {
-			clean = catName[:idx]
-		}
-		c.pages[clean] = []string{} // category exists, apps are already in the main list
+	// Build a map from app name/id to index for efficient lookup
+	appIndex := make(map[string]int, len(apps))
+	for i := range apps {
+		appIndex[apps[i].Name] = i
 	}
 
-	// Extract recommendation group names
+	// Extract categories from pages and assign them to apps.
+	// The pages structure maps category names (possibly with version suffixes
+	// like "Productivity_v112") to lists of app IDs in that category.
+	c.pages = make(map[string][]string)
+	for catName, raw := range storeResp.Data.Pages {
+		clean := catVersionSuffix.ReplaceAllString(catName, "")
+
+		// Try to parse the page entry as a list of app IDs
+		var appIDs []string
+		if err := json.Unmarshal(raw, &appIDs); err != nil {
+			// Might be a different structure; try as object with an "apps" field
+			var page struct {
+				Apps []string `json:"apps"`
+			}
+			if err := json.Unmarshal(raw, &page); err == nil {
+				appIDs = page.Apps
+			}
+		}
+
+		c.pages[clean] = appIDs
+
+		// Assign this category to each app that appears in the page
+		for _, id := range appIDs {
+			if idx, ok := appIndex[id]; ok {
+				apps[idx].Categories = appendUnique(apps[idx].Categories, clean)
+			}
+		}
+	}
+
+	// Extract recommendation group names and resolve app IDs
 	c.recommendations = make(map[string][]string)
-	for groupName := range storeResp.Data.Recommends {
-		c.recommendations[groupName] = []string{}
+	for groupName, raw := range storeResp.Data.Recommends {
+		var appIDs []string
+		if err := json.Unmarshal(raw, &appIDs); err != nil {
+			var group struct {
+				Apps []string `json:"apps"`
+			}
+			if err := json.Unmarshal(raw, &group); err == nil {
+				appIDs = group.Apps
+			}
+		}
+		c.recommendations[groupName] = appIDs
 	}
 
 	c.topics = make(map[string][]string)
-	for topicName := range storeResp.Data.Topics {
-		c.topics[topicName] = []string{}
+	for topicName, raw := range storeResp.Data.Topics {
+		var appIDs []string
+		if err := json.Unmarshal(raw, &appIDs); err != nil {
+			var topic struct {
+				Apps []string `json:"apps"`
+			}
+			if err := json.Unmarshal(raw, &topic); err == nil {
+				appIDs = topic.Apps
+			}
+		}
+		c.topics[topicName] = appIDs
 	}
 	c.tops = storeResp.Data.Tops
 	c.latest = storeResp.Data.Latest
@@ -346,6 +393,22 @@ func convertAppstoreApp(sa appstoreApp) MarketApp {
 	}
 	if app.Title == "" {
 		app.Title = app.Name
+	}
+
+	// If description is empty, fall back to fullDescription or upgradeDescription
+	if app.Description == "" && app.FullDescription != "" {
+		// Use the first 200 chars of fullDescription as summary
+		desc := app.FullDescription
+		if len(desc) > 200 {
+			desc = desc[:200] + "..."
+		}
+		app.Description = desc
+	}
+	if app.Description == "" && sa.UpgradeDescription != "" {
+		app.Description = sa.UpgradeDescription
+	}
+	if app.Description == "" {
+		app.Description = app.Title
 	}
 
 	// If categories is empty but category is set, use it
@@ -767,6 +830,16 @@ func matchesCategory(categories []string, query string) bool {
 		}
 	}
 	return false
+}
+
+// appendUnique appends a value to a slice only if it is not already present.
+func appendUnique(slice []string, val string) []string {
+	for _, v := range slice {
+		if v == val {
+			return slice
+		}
+	}
+	return append(slice, val)
 }
 
 // StartRefreshLoop periodically refreshes the catalog in the background.
