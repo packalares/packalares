@@ -524,7 +524,8 @@ function renderCharts() {
 }
 
 async function poll() {
-  await Promise.all([fetchMetrics(), fetchPods()]);
+  // Metrics come via WebSocket push; only poll pods status here
+  await fetchPods();
 }
 
 watch(activeNav, () => {
@@ -543,8 +544,9 @@ watch(activeNav, () => {
 });
 
 onMounted(async () => {
-  await Promise.all([poll(), fetchGpu()]);
-  pollTimer = setInterval(poll, 5000);
+  await Promise.all([fetchMetrics(), fetchPods(), fetchGpu()]);
+  // WebSocket pushes metrics; only poll pods every 30s
+  pollTimer = setInterval(poll, 30000);
   nextTick(() => {
     animFrameId = requestAnimationFrame(renderCharts);
   });

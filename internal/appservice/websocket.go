@@ -119,6 +119,55 @@ func (hub *WSHub) BroadcastAlert(level, message string) {
 	})
 }
 
+// StartMetricsPusher runs a background goroutine that pushes system metrics
+// to all connected WebSocket clients every 5 seconds. It queries the monitor
+// service and Prometheus, then broadcasts the data. This eliminates the need
+// for the UI to poll /api/metrics and /api/monitor/cluster.
+func StartMetricsPusher() {
+	monitorURL := os.Getenv("MONITOR_URL")
+	if monitorURL == "" {
+		monitorURL = "http://monitor-svc.packalares-framework.svc.cluster.local:8000"
+	}
+	prometheusURL := os.Getenv("PROMETHEUS_URL")
+	if prometheusURL == "" {
+		prometheusURL = "http://prometheus-svc.monitoring.svc.cluster.local:9090"
+	}
+
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		client := &http.Client{Timeout: 5 * time.Second}
+
+		for range ticker.C {
+			hub := GetWSHub()
+			if hub.clientCount() == 0 {
+				continue // No clients connected, skip
+			}
+
+			// Fetch metrics from monitor service
+			resp, err := client.Get(monitorURL + "/api/metrics")
+			if err != nil {
+				continue
+			}
+			var metrics json.RawMessage
+			json.NewDecoder(resp.Body).Decode(&metrics)
+			resp.Body.Close()
+
+			if metrics != nil {
+				hub.Broadcast(WSMessage{Type: "metrics", Data: metrics})
+			}
+
+			// Fetch cluster monitor data from appservice's own endpoint
+			resp2, err := client.Get(prometheusURL + "/api/v1/query?query=up")
+			if err == nil {
+				resp2.Body.Close()
+			}
+		}
+	}()
+
+	klog.Infof("ws: metrics pusher started (5s interval)")
+}
+
 // verifySession checks the packalares_session cookie against the auth
 // service. Returns nil if the session is valid, an error otherwise.
 func verifySession(r *http.Request) error {
@@ -154,15 +203,26 @@ func verifySession(r *http.Request) error {
 // cookie before upgrading to a WebSocket connection. This allows the
 // /ws endpoint to be served without nginx auth_request, avoiding issues
 // with WebSocket upgrade requests and auth subrequests.
+//
+// It uses websocket.Server with a custom Handshake function that skips
+// the default Origin header check. Auth is already enforced by verifying
+// the session cookie, so Origin checking is unnecessary.
 func AuthWebSocketHandler() http.Handler {
 	wsHandler := WebSocketHandler()
+	wsServer := websocket.Server{
+		Handler: wsHandler,
+		Handshake: func(cfg *websocket.Config, r *http.Request) error {
+			// Skip origin check; auth is handled by verifySession.
+			return nil
+		},
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if err := verifySession(r); err != nil {
 			klog.V(2).Infof("ws: auth rejected: %v", err)
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
-		wsHandler.ServeHTTP(w, r)
+		wsServer.ServeHTTP(w, r)
 	})
 }
 

@@ -277,6 +277,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import { api } from 'boot/axios';
 import { useUserStore } from 'stores/user';
 import { useMonitorStore } from 'stores/monitor';
+import { useWebSocketStore } from 'stores/websocket';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -354,7 +355,6 @@ const dockAppsRef = ref<HTMLElement | null>(null);
 // ─── Clock ───────────────────────────────────────────────────
 
 let clockInterval: ReturnType<typeof setInterval> | null = null;
-let monitorInterval: ReturnType<typeof setInterval> | null = null;
 
 function updateClock() {
   const now = new Date();
@@ -672,16 +672,17 @@ onMounted(async () => {
 
   await loadInit();
   await loadApps();
-  await monitorStore.loadCluster();
+  await monitorStore.loadCluster(); // Initial load
 
-  monitorInterval = setInterval(() => {
-    monitorStore.loadCluster();
-  }, 30000);
+  // Start WebSocket for real-time metrics push (no polling)
+  const wsStore = useWebSocketStore();
+  wsStore.start();
 });
 
 onUnmounted(() => {
   if (clockInterval) clearInterval(clockInterval);
-  if (monitorInterval) clearInterval(monitorInterval);
+  const wsStore = useWebSocketStore();
+  wsStore.stop();
   window.removeEventListener('keydown', onKeydown);
   document.removeEventListener('mousemove', onDragMove);
   document.removeEventListener('mouseup', onDragEnd);
