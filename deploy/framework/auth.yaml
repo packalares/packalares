@@ -48,14 +48,14 @@ spec:
               name: auth-secrets
               key: session_secret
         - name: REDIS_ADDR
-          value: "redis-cluster-proxy.os-platform:6379"
+          value: "kvrocks-svc.os-system:6379"
         - name: REDIS_PASSWORD
           valueFrom:
             secretKeyRef:
               name: auth-secrets
               key: redis_password
         - name: LLDAP_HOST
-          value: "lldap-service.os-platform"
+          value: "lldap-svc.os-system"
         - name: LLDAP_PORT
           value: "17170"
         - name: LLDAP_USER

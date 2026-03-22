@@ -49,6 +49,21 @@ func (h *HelmClient) Install(ctx context.Context, releaseName, chartRef string, 
 	return h.run(ctx, args...)
 }
 
+// InstallFromDir installs a helm chart from a local directory with no --wait,
+// no --set, and no --timeout. The chart's values.yaml should already contain
+// all needed values (injected by injectValuesYaml). The app may take time to
+// become ready (e.g. waiting for the middleware operator to provision a DB),
+// and that is fine -- pods will retry until dependencies are available.
+func (h *HelmClient) InstallFromDir(ctx context.Context, releaseName, chartDir, namespace string) error {
+	args := []string{
+		"install", releaseName, chartDir,
+		"--namespace", namespace,
+		"--create-namespace",
+	}
+	klog.Infof("helm install (from dir): %s", strings.Join(args, " "))
+	return h.run(ctx, args...)
+}
+
 // Uninstall removes a helm release.
 func (h *HelmClient) Uninstall(ctx context.Context, releaseName string) error {
 	args := []string{

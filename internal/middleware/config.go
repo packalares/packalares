@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+
+	"github.com/packalares/packalares/pkg/config"
 )
 
 // Config holds middleware operator configuration.
@@ -32,16 +34,16 @@ type Config struct {
 
 func LoadConfig() (*Config, error) {
 	cfg := &Config{
-		PGHost:            "postgres-svc.packalares-platform",
+		PGHost:            config.CitusHost(),
 		PGPort:            5432,
 		PGAdminUser:       "postgres",
 		PGAdminPassword:   "",
 		RedisHost:         "redis-cluster-proxy",
 		RedisPort:         6379,
 		RedisPassword:     "",
-		NATSHost:          "nats-svc.packalares-platform",
+		NATSHost:          config.NATSHost(),
 		NATSPort:          4222,
-		PlatformNamespace: "packalares-platform",
+		PlatformNamespace: config.PlatformNamespace(),
 		WatchNamespace:    "",
 	}
 

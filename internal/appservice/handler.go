@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/packalares/packalares/pkg/config"
 	"k8s.io/klog/v2"
 )
 
@@ -196,14 +197,11 @@ func (h *Handler) handleResume(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleServerInit(w http.ResponseWriter, r *http.Request) {
 	username := r.Header.Get("Remote-User")
 	if username == "" {
-		username = os.Getenv("USERNAME")
-	}
-	if username == "" {
-		username = "laurs"
+		username = config.Username()
 	}
 	zone := os.Getenv("USER_ZONE")
 	if zone == "" {
-		zone = username + ".olares.local"
+		zone = config.UserZone()
 	}
 
 	terminusName := username + "@" + strings.TrimPrefix(zone, username+".")
@@ -213,7 +211,7 @@ func (h *Handler) handleServerInit(w http.ResponseWriter, r *http.Request) {
 	// Try reading user info from BFL service
 	bflURL := os.Getenv("BFL_URL")
 	if bflURL == "" {
-		bflURL = "http://bfl-svc.packalares-framework.svc.cluster.local:8080"
+		bflURL = "http://" + config.BFLDNS() + ":8080"
 	}
 	resp2, err := http.Get(bflURL + "/bfl/backend/v1/user-info")
 	if err == nil {
@@ -271,10 +269,7 @@ func (h *Handler) handleDevice(w http.ResponseWriter, r *http.Request) {
 
 // handleMonitorCluster returns cluster monitoring data from Prometheus.
 func (h *Handler) handleMonitorCluster(w http.ResponseWriter, r *http.Request) {
-	promURL := os.Getenv("PROMETHEUS_URL")
-	if promURL == "" {
-		promURL = "http://prometheus-svc.monitoring.svc.cluster.local:9090"
-	}
+	promURL := config.PrometheusURL()
 
 	query := func(q string) float64 {
 		resp, err := http.Get(promURL + "/api/v1/query?query=" + url.QueryEscape(q))

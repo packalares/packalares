@@ -16,6 +16,7 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+	"github.com/packalares/packalares/pkg/config"
 	"k8s.io/klog/v2"
 )
 
@@ -168,7 +169,7 @@ func (k *K8sClient) GetDomain(ctx context.Context) (string, error) {
 		return domain, nil
 	}
 	// Try to read from cluster configmap
-	cm, err := k.Clientset.CoreV1().ConfigMaps("os-system").Get(ctx, "user-config", metav1.GetOptions{})
+	cm, err := k.Clientset.CoreV1().ConfigMaps(config.PlatformNamespace()).Get(ctx, "user-config", metav1.GetOptions{})
 	if err == nil {
 		if d, ok := cm.Data["domain"]; ok && d != "" {
 			return d, nil
@@ -182,7 +183,7 @@ func (k *K8sClient) GetOSVersion(ctx context.Context) string {
 	if v := os.Getenv("OLARES_VERSION"); v != "" {
 		return v
 	}
-	cm, err := k.Clientset.CoreV1().ConfigMaps("os-system").Get(ctx, "os-config", metav1.GetOptions{})
+	cm, err := k.Clientset.CoreV1().ConfigMaps(config.PlatformNamespace()).Get(ctx, "os-config", metav1.GetOptions{})
 	if err == nil {
 		if v, ok := cm.Data["version"]; ok {
 			return v

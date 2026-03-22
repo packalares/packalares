@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
+	"github.com/packalares/packalares/pkg/config"
 	"k8s.io/klog/v2"
 )
 
@@ -39,7 +39,7 @@ func DefaultConfig() *Config {
 	cfg := &Config{
 		DataDir:      "/var/lib/packalares/appservice",
 		Namespace:    "user-space-admin",
-		ChartRepoURL: "http://chart-repo-service.os-framework:82/",
+		ChartRepoURL: config.ChartRepoURL(),
 		Owner:        "admin",
 		ListenAddr:   ":6755",
 	}
@@ -292,84 +292,87 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		klog.V(2).Infof("ensure namespace %s: %v (may already exist)", s.namespace, err)
 	}
 
-	// --- Step 4: Provision middleware (databases, redis) and build helm values ---
-	rec.State = StateInitializing
-	_ = s.store.Put(bgCtx, rec)
-	GetWSHub().BroadcastAppState(rec.Name, StateInitializing)
+	// --- Step 4: Write standard values into the chart's values.yaml ---
+	// Instead of --set, modify values.yaml directly so ALL template references work.
+	// The middleware operator (separate pod) handles DB provisioning via CRDs that
+	// the chart's templates create -- we just need to supply connection info.
+	zone := config.UserZone()
+	domain := config.Domain()
 
-	provisioner := NewMiddlewareProvisioner(s.owner)
-	middlewareValues, err := provisioner.ProvisionAndBuildValues(bgCtx, chartDir, req.Name)
-	if err != nil {
-		// Non-fatal: many apps don't need middleware. Log and continue.
-		klog.V(2).Infof("middleware provision for %s: %v (continuing without middleware)", req.Name, err)
-		middlewareValues = make(map[string]string)
-	}
+	pgHost := config.CitusHost()
+	pgPort := config.CitusPort()
+	pgPass := config.CitusPassword()
+	pgUser := config.CitusUser()
 
-	// Merge helm values: standard Olares values + middleware + user overrides
-	helmValues := make(map[string]string)
-
-	// Standard values ALL Olares charts expect
-	zone := os.Getenv("USER_ZONE")
-	if zone == "" {
-		zone = s.owner + ".olares.local"
-	}
-	helmValues["bfl.username"] = s.owner
-	helmValues["admin"] = s.owner
-	helmValues["user.zone"] = zone
-	helmValues["domain"] = strings.TrimPrefix(zone, s.owner+".")
-	helmValues["namespace"] = s.namespace
-	helmValues["userspace.appData"] = "/appcache"
-	helmValues["userspace.appCache"] = "/appcache"
-	helmValues["userspace.userData"] = "/userdata"
-	helmValues["os.appKey"] = rec.AppID
-	helmValues["dep.namespace"] = s.namespace
-
-	// Middleware values — inject BOTH naming patterns (old and new charts)
-	pgHost := os.Getenv("PG_HOST")
-	if pgHost == "" {
-		pgHost = "postgres-svc.packalares-platform"
-	}
-	pgPass := os.Getenv("PG_PASSWORD")
-	redisHost := os.Getenv("REDIS_HOST")
-	if redisHost == "" {
-		redisHost = "redis-svc.packalares-platform"
-	}
+	redisHost := config.KVRocksHost()
+	redisPort := config.KVRocksPort()
 	redisPass := os.Getenv("REDIS_PASSWORD")
 
-	// New pattern (dep.middleware.*)
-	helmValues["dep.middleware.redis.host"] = redisHost
-	helmValues["dep.middleware.redis.port"] = "6379"
-	helmValues["dep.middleware.redis.password"] = redisPass
-	helmValues["dep.middleware.postgres.host"] = pgHost
-	helmValues["dep.middleware.postgres.port"] = "5432"
-	helmValues["dep.middleware.postgres.password"] = pgPass
-
-	// Old pattern (postgres.* / redis.* directly)
-	helmValues["postgres.host"] = pgHost
-	helmValues["postgres.port"] = "5432"
-	helmValues["postgres.password"] = pgPass
-	helmValues["postgres.username"] = "packalares"
-	helmValues["redis.host"] = redisHost
-	helmValues["redis.port"] = "6379"
-	helmValues["redis.password"] = redisPass
-
-	// Middleware-provisioned values
-	for k, v := range middlewareValues {
-		helmValues[k] = v
-	}
-	// User overrides take precedence
-	if req.Values != nil {
-		for k, v := range req.Values {
-			helmValues[k] = v
-		}
+	middlewareBlock := map[string]interface{}{
+		"postgres": map[string]interface{}{
+			"host":     pgHost,
+			"port":     pgPort,
+			"username": pgUser,
+			"password": pgPass,
+		},
+		"redis": map[string]interface{}{
+			"host":     redisHost,
+			"port":     redisPort,
+			"password": redisPass,
+		},
 	}
 
-	// --- Step 5: Run helm install from the local chart directory ---
+	err = injectValuesYaml(chartDir, map[string]interface{}{
+		"bfl": map[string]interface{}{
+			"username": s.owner,
+		},
+		"admin": s.owner,
+		"user": map[string]interface{}{
+			"zone": zone,
+		},
+		"domain":    domain,
+		"namespace": s.namespace,
+		"userspace": map[string]interface{}{
+			"appData":  "/terminus/userdata/appdata",
+			"appCache": "/terminus/userdata/appcache",
+			"userData": "/userdata",
+		},
+		"os": map[string]interface{}{
+			"appKey": rec.AppID,
+		},
+		"dep": map[string]interface{}{
+			"namespace":  s.namespace,
+			"middleware": middlewareBlock,
+		},
+		// Also set top-level postgres/redis for old charts
+		"postgres": map[string]interface{}{
+			"host":     pgHost,
+			"port":     pgPort,
+			"username": pgUser,
+			"password": pgPass,
+		},
+		"redis": map[string]interface{}{
+			"host":     redisHost,
+			"port":     redisPort,
+			"password": redisPass,
+		},
+	})
+	if err != nil {
+		klog.Errorf("inject values.yaml for %s: %v", req.Name, err)
+		rec.State = StateInstallFailed
+		_ = s.store.Put(bgCtx, rec)
+		GetWSHub().BroadcastAppState(rec.Name, StateInstallFailed)
+		return
+	}
+
+	// --- Step 5: helm install -- NO --wait, NO --set ---
+	// Let the chart create MiddlewareRequest CRDs naturally.
+	// The middleware operator will provision databases.
 	rec.State = StateInstalling
 	_ = s.store.Put(bgCtx, rec)
 	GetWSHub().BroadcastAppState(rec.Name, StateInstalling)
 
-	if err := s.helm.Install(bgCtx, rec.ReleaseName, chartDir, helmValues, ""); err != nil {
+	if err := s.helm.InstallFromDir(bgCtx, rec.ReleaseName, chartDir, s.namespace); err != nil {
 		klog.Errorf("helm install %s: %v", req.Name, err)
 		rec.State = StateInstallFailed
 		_ = s.store.Put(bgCtx, rec)
@@ -381,8 +384,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 	rec.State = StateRunning
 	_ = s.store.Put(bgCtx, rec)
 
-	crdManifest := ApplicationCRDManifest(rec)
-	if err := s.k8s.ApplyManifest(bgCtx, crdManifest); err != nil {
+	if err := s.k8s.ApplyApplicationCRD(bgCtx, rec); err != nil {
 		klog.Errorf("apply Application CRD for %s: %v", req.Name, err)
 	}
 
@@ -426,8 +428,7 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 		}
 
 		// Remove Application CRD
-		manifest := ApplicationCRDManifest(rec)
-		if err := s.k8s.DeleteManifest(bgCtx, manifest); err != nil {
+		if err := s.k8s.DeleteApplicationCRD(bgCtx, rec.ReleaseName, rec.Namespace); err != nil {
 			klog.Errorf("delete Application CRD for %s: %v", req.Name, err)
 		}
 

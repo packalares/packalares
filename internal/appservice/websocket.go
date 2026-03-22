@@ -8,13 +8,13 @@ import (
 	"sync"
 	"time"
 
+	"github.com/packalares/packalares/pkg/config"
 	"golang.org/x/net/websocket"
 	"k8s.io/klog/v2"
 )
 
 const (
-	defaultAuthVerifyURL = "http://auth-svc.packalares-framework.svc.cluster.local:9091/api/verify"
-	sessionCookieName    = "packalares_session"
+	sessionCookieName = "packalares_session"
 )
 
 // WSMessage is the envelope for all WebSocket messages sent to clients.
@@ -126,12 +126,9 @@ func (hub *WSHub) BroadcastAlert(level, message string) {
 func StartMetricsPusher() {
 	monitorURL := os.Getenv("MONITOR_URL")
 	if monitorURL == "" {
-		monitorURL = "http://monitor-svc.packalares-framework.svc.cluster.local:8000"
+		monitorURL = "http://" + config.MonitorDNS() + ":8000"
 	}
-	prometheusURL := os.Getenv("PROMETHEUS_URL")
-	if prometheusURL == "" {
-		prometheusURL = "http://prometheus-svc.monitoring.svc.cluster.local:9090"
-	}
+	prometheusURL := config.PrometheusURL()
 
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
@@ -178,7 +175,7 @@ func verifySession(r *http.Request) error {
 
 	verifyURL := os.Getenv("AUTH_VERIFY_URL")
 	if verifyURL == "" {
-		verifyURL = defaultAuthVerifyURL
+		verifyURL = "http://" + config.AuthDNS() + ":9091/api/verify"
 	}
 
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, verifyURL, nil)

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/packalares/packalares/pkg/config"
 	"github.com/spf13/cobra"
 )
 
@@ -54,7 +55,7 @@ func showStatus() error {
 
 	ctx := context.Background()
 	namespaces := []string{
-		"os-system",
+		config.PlatformNamespace(),
 		"user-system",
 		"kube-system",
 		"kubesphere-system",

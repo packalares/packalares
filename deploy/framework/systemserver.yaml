@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: system-server
-  namespace: packalares-framework
+  namespace: os-framework
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
@@ -30,14 +30,14 @@ roleRef:
 subjects:
 - kind: ServiceAccount
   name: system-server
-  namespace: packalares-framework
+  namespace: os-framework
 
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: system-server
-  namespace: packalares-framework
+  namespace: os-framework
   labels:
     app: packalares-system-server
 spec:
@@ -105,7 +105,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: system-server
-  namespace: packalares-framework
+  namespace: os-framework
 spec:
   selector:
     app: packalares-system-server

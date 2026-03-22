@@ -39,7 +39,7 @@ spec:
             - name: CHART_REPO_URL
               value: "http://chart-repo-service.os-framework:82/"
             - name: LLDAP_HOST
-              value: "http://lldap-service.os-platform:17170"
+              value: "http://lldap-svc.os-system:17170"
             - name: LLDAP_BIND_DN
               valueFrom:
                 secretKeyRef:

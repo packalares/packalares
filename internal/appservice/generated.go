@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/packalares/packalares/pkg/config"
 	"k8s.io/klog/v2"
 )
 
@@ -89,10 +90,7 @@ func (m *GeneratedAppManager) EnsureGeneratedApps(ctx context.Context) error {
 		return nil
 	}
 
-	chartRepoURL := os.Getenv("CHART_REPO_URL")
-	if chartRepoURL == "" {
-		chartRepoURL = "http://chart-repo-service.os-framework:82/"
-	}
+	chartRepoURL := config.ChartRepoURL()
 
 	for _, appName := range genApps {
 		releaseName := fmt.Sprintf("%s-%s", appName, m.owner)
