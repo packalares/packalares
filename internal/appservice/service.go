@@ -186,7 +186,9 @@ func (s *Service) Install(ctx context.Context, req *InstallRequest) (*Installati
 		source = SourceMarket
 	}
 
-	releaseName := fmt.Sprintf("%s-%s", req.Name, s.owner)
+	// Olares charts use Release.Name as base for service DNS names.
+	// Release name must be just the app name (not appname-owner).
+	releaseName := req.Name
 	appID := req.Name
 	if !IsSysApp(req.Name) {
 		appID = Md5Short(req.Name)
@@ -307,6 +309,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		zone = s.owner + ".olares.local"
 	}
 	helmValues["bfl.username"] = s.owner
+	helmValues["admin"] = s.owner
 	helmValues["user.zone"] = zone
 	helmValues["domain"] = strings.TrimPrefix(zone, s.owner+".")
 	helmValues["namespace"] = s.namespace
