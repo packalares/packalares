@@ -323,6 +323,8 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, reactive } from 'vue';
 import { api } from 'boot/axios';
+import { useQuasar } from 'quasar';
+const $q = useQuasar();
 
 interface MarketApp {
   name: string;
@@ -450,12 +452,21 @@ async function fetchInstalled() {
 async function installApp(app: MarketApp) {
   installingSet.add(app.name);
   try {
-    await api.post('/app-service/v1/install', { name: app.name, chart: app.name });
-    await fetchInstalled();
-  } catch (e) {
+    await api.post('/app-service/v1/install', { name: app.name, chart: app.chartName || app.name });
+    // Poll for installed status (Helm install takes time)
+    let attempts = 0;
+    const poll = setInterval(async () => {
+      attempts++;
+      await fetchInstalled();
+      if (isInstalled(app.name) || attempts >= 30) {
+        clearInterval(poll);
+        installingSet.delete(app.name);
+      }
+    }, 3000);
+  } catch (e: any) {
     console.error('Install failed:', e);
-  } finally {
     installingSet.delete(app.name);
+    $q.notify({ type: 'negative', message: `Install failed: ${e.message || 'unknown error'}` });
   }
 }
 

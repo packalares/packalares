@@ -379,7 +379,7 @@ async function fetchMetrics() {
 async function fetchPods() {
   try {
     const res: any = await api.get('/api/status');
-    pods.value = res?.data?.pods || [];
+    pods.value = res?.data?.pods || res?.pods || [];
   } catch {
     pods.value = [];
   }
