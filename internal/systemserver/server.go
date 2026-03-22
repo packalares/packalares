@@ -208,6 +208,12 @@ func (s *Server) handleAppCreateOrUpdate(app *Application) {
 		return
 	}
 
+	// Inject Envoy sidecar for per-app auth (if not already injected)
+	if err := s.injectEnvoySidecar(app); err != nil {
+		log.Printf("inject envoy sidecar for %s: %v", key, err)
+		// Non-fatal — app still works via proxy auth
+	}
+
 	// Register permissions
 	if len(app.Spec.Permissions) > 0 {
 		s.perms.Register(app.Spec.Name, app.Spec.Permissions)

@@ -32,6 +32,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/app-service/v1/suspend", h.handleSuspend)
 	mux.HandleFunc("/app-service/v1/resume", h.handleResume)
 
+	// WebSocket endpoint for desktop real-time notifications
+	mux.Handle("/ws", WebSocketHandler())
+
 	// Health check
 	mux.HandleFunc("/app-service/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
