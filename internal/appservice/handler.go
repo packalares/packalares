@@ -35,6 +35,12 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 
 	// Compatibility with Olares: /applications endpoint
 	mux.HandleFunc("/app-service/v1/applications", h.handleListApps)
+
+	// Desktop integration: /server/* endpoints for the Olares Vue.js desktop
+	mux.HandleFunc("/server/init", h.handleServerInit)
+	mux.HandleFunc("/server/myApps", h.handleServerMyApps)
+	mux.HandleFunc("/server/updateConfig", h.handleServerUpdateConfig)
+	mux.HandleFunc("/server/uninstall/", h.handleUninstall)
 }
 
 // handleInstall handles POST /app-service/v1/install
@@ -168,6 +174,68 @@ func (h *Handler) handleResume(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleServerInit returns desktop initialization data.
+// Called by the Olares Vue.js desktop at startup.
+func (h *Handler) handleServerInit(w http.ResponseWriter, r *http.Request) {
+	username := r.Header.Get("Remote-User")
+	if username == "" {
+		username = "laurs"
+	}
+
+	// Return the data the desktop expects
+	resp := map[string]interface{}{
+		"terminus": map[string]interface{}{
+			"terminusName": username + "@olares.local",
+			"wizardStatus": "completed",
+			"selfhosted":   true,
+			"osVersion":    "1.0.0",
+			"loginBackground": "",
+			"avatar":       "",
+			"did":          "",
+		},
+		"config": map[string]interface{}{
+			"apps":    []interface{}{},
+			"dock":    []interface{}{},
+			"bgIndex": 0,
+		},
+	}
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleServerMyApps returns installed apps for the desktop launcher.
+func (h *Handler) handleServerMyApps(w http.ResponseWriter, r *http.Request) {
+	apps := h.svc.ListApps(r.Context())
+
+	// Convert to the format the desktop expects
+	var desktopApps []map[string]interface{}
+	for _, app := range apps {
+		url := ""
+		if len(app.Entrances) > 0 {
+			url = app.Entrances[0].URL
+		}
+		desktopApps = append(desktopApps, map[string]interface{}{
+			"name":   app.Name,
+			"title":  app.Title,
+			"icon":   app.Icon,
+			"status": string(app.State),
+			"url":    url,
+		})
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"code": 200,
+		"data": desktopApps,
+	})
+}
+
+// handleServerUpdateConfig saves desktop layout config (dock, bg, etc).
+func (h *Handler) handleServerUpdateConfig(w http.ResponseWriter, r *http.Request) {
+	// Accept and acknowledge but don't persist yet
+	var config map[string]interface{}
+	_ = json.NewDecoder(r.Body).Decode(&config)
+	writeJSON(w, http.StatusOK, config)
 }
 
 // writeJSON serializes data as JSON to the response.
