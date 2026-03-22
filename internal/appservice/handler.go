@@ -41,6 +41,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/server/myApps", h.handleServerMyApps)
 	mux.HandleFunc("/server/updateConfig", h.handleServerUpdateConfig)
 	mux.HandleFunc("/server/uninstall/", h.handleUninstall)
+	mux.HandleFunc("/server/upgrade/state", h.handleUpgradeState)
+	mux.HandleFunc("/server/query", h.handleServerQuery)
+	mux.HandleFunc("/server/search", h.handleServerQuery)
+	mux.HandleFunc("/api/device", h.handleDevice)
+	mux.HandleFunc("/api/monitor/cluster", h.handleMonitorCluster)
 }
 
 // handleInstall handles POST /app-service/v1/install
@@ -202,6 +207,40 @@ func (h *Handler) handleServerInit(w http.ResponseWriter, r *http.Request) {
 		},
 	}
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleUpgradeState returns upgrade status (always up-to-date for self-hosted).
+func (h *Handler) handleUpgradeState(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"state":          "idle",
+		"currentVersion": "1.0.0",
+		"latestVersion":  "1.0.0",
+		"upgradeAvail":   false,
+	})
+}
+
+// handleDevice accepts device registration (stub).
+func (h *Handler) handleDevice(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "ok"})
+}
+
+// handleMonitorCluster returns basic cluster monitoring data.
+func (h *Handler) handleMonitorCluster(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"cpu":    map[string]interface{}{"ratio": 0.025, "total": 8, "usage": 0.2},
+		"memory": map[string]interface{}{"ratio": 0.25, "total": 8589934592, "usage": 2147483648},
+		"disk":   map[string]interface{}{"ratio": 0.22, "total": 65498251264, "usage": 14109589504},
+		"gpu":    map[string]interface{}{"ratio": 0, "total": 0, "usage": 0},
+		"net":    map[string]interface{}{"received": 0, "transmitted": 0},
+	})
+}
+
+// handleServerQuery handles search queries (stub).
+func (h *Handler) handleServerQuery(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"code": 200,
+		"data": []interface{}{},
+	})
 }
 
 // handleServerMyApps returns installed apps for the desktop launcher.
