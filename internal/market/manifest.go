@@ -3,6 +3,7 @@ package market
 import (
 	"encoding/base64"
 	"fmt"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -175,16 +176,16 @@ func parseOlaresManifest(data []byte, fallbackName string) (MarketApp, error) {
 	return app, nil
 }
 
+// categoryVersionSuffix matches version suffixes like "_v112", "_v2", "_v10".
+var categoryVersionSuffix = regexp.MustCompile(`_v\d+$`)
+
 // cleanCategories removes version suffixes like "_v112" and deduplicates.
 func cleanCategories(cats []string) []string {
 	seen := make(map[string]bool)
 	var result []string
 	for _, c := range cats {
 		// Remove version suffixes like "_v112"
-		clean := c
-		if idx := strings.LastIndex(c, "_v"); idx > 0 {
-			clean = c[:idx]
-		}
+		clean := categoryVersionSuffix.ReplaceAllString(c, "")
 		clean = strings.TrimSpace(clean)
 		if clean != "" && !seen[clean] {
 			seen[clean] = true

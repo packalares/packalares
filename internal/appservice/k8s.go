@@ -174,8 +174,44 @@ func (k *K8sClient) GetNamespaces(ctx context.Context) ([]string, error) {
 }
 
 // ApplicationCRDManifest generates an Application CRD manifest compatible with Olares.
+// Entrances are stored as a JSON string in an annotation (which is the Olares convention)
+// and as proper YAML list items in the spec.
 func ApplicationCRDManifest(rec *AppRecord) string {
-	entrancesJSON, _ := json.Marshal(rec.Entrances)
+	entrancesJSON, err := json.Marshal(rec.Entrances)
+	if err != nil {
+		klog.Errorf("marshal entrances for %s: %v", rec.Name, err)
+		entrancesJSON = []byte("[]")
+	}
+
+	// Build entrances as proper YAML list items for the spec section
+	var entrancesYAML string
+	if len(rec.Entrances) == 0 {
+		entrancesYAML = "  entrances: []"
+	} else {
+		var lines []string
+		lines = append(lines, "  entrances:")
+		for _, e := range rec.Entrances {
+			lines = append(lines, fmt.Sprintf("  - name: %s", yamlQuote(e.Name)))
+			lines = append(lines, fmt.Sprintf("    host: %s", yamlQuote(e.Host)))
+			lines = append(lines, fmt.Sprintf("    port: %d", e.Port))
+			if e.Title != "" {
+				lines = append(lines, fmt.Sprintf("    title: %s", yamlQuote(e.Title)))
+			}
+			if e.Icon != "" {
+				lines = append(lines, fmt.Sprintf("    icon: %s", yamlQuote(e.Icon)))
+			}
+			if e.AuthLevel != "" {
+				lines = append(lines, fmt.Sprintf("    authLevel: %s", yamlQuote(e.AuthLevel)))
+			}
+			if e.Invisible {
+				lines = append(lines, "    invisible: true")
+			}
+			if e.OpenMethod != "" {
+				lines = append(lines, fmt.Sprintf("    openMethod: %s", yamlQuote(e.OpenMethod)))
+			}
+		}
+		entrancesYAML = strings.Join(lines, "\n")
+	}
 
 	return fmt.Sprintf(`apiVersion: app.bytetrade.io/v1alpha1
 kind: Application
@@ -186,20 +222,20 @@ metadata:
     applications.app.bytetrade.io/name: %s
     applications.app.bytetrade.io/owner: %s
   annotations:
-    applications.app.bytetrade.io/entrances: '%s'
-    applications.app.bytetrade.io/icon: "%s"
-    applications.app.bytetrade.io/title: "%s"
-    applications.app.bytetrade.io/version: "%s"
-    applications.app.bytetrade.io/source: "%s"
+    applications.app.bytetrade.io/entrances: %s
+    applications.app.bytetrade.io/icon: %s
+    applications.app.bytetrade.io/title: %s
+    applications.app.bytetrade.io/version: %s
+    applications.app.bytetrade.io/source: %s
 spec:
   name: %s
   appid: %s
   namespace: %s
   owner: %s
   isSysApp: %v
-  icon: "%s"
-  description: "%s"
-  entrances: %s
+  icon: %s
+  description: %s
+%s
 status:
   state: %s
 `,
@@ -207,19 +243,26 @@ status:
 		rec.Namespace,
 		rec.Name,
 		rec.Owner,
-		string(entrancesJSON),
-		rec.Icon,
-		rec.Title,
-		rec.Version,
-		rec.Source,
+		yamlQuote(string(entrancesJSON)),
+		yamlQuote(rec.Icon),
+		yamlQuote(rec.Title),
+		yamlQuote(rec.Version),
+		yamlQuote(rec.Source),
 		rec.Name,
 		rec.AppID,
 		rec.Namespace,
 		rec.Owner,
 		rec.IsSysApp,
-		rec.Icon,
-		rec.Description,
-		string(entrancesJSON),
+		yamlQuote(rec.Icon),
+		yamlQuote(rec.Description),
+		entrancesYAML,
 		rec.State.String(),
 	)
+}
+
+// yamlQuote wraps a string in double quotes, escaping internal double quotes and backslashes.
+func yamlQuote(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `"`, `\"`)
+	return `"` + s + `"`
 }

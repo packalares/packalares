@@ -355,7 +355,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 
 	crdManifest := ApplicationCRDManifest(rec)
 	if err := s.k8s.ApplyManifest(bgCtx, crdManifest); err != nil {
-		klog.V(2).Infof("apply Application CRD for %s: %v", req.Name, err)
+		klog.Errorf("apply Application CRD for %s: %v", req.Name, err)
 	}
 
 	// --- Step 7: Done ---
@@ -400,7 +400,7 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 		// Remove Application CRD
 		manifest := ApplicationCRDManifest(rec)
 		if err := s.k8s.DeleteManifest(bgCtx, manifest); err != nil {
-			klog.V(2).Infof("delete application CRD for %s: %v", req.Name, err)
+			klog.Errorf("delete Application CRD for %s: %v", req.Name, err)
 		}
 
 		rec.State = StateUninstalled
