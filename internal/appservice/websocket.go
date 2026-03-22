@@ -2,11 +2,19 @@ package appservice
 
 import (
 	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
 	"sync"
 	"time"
 
 	"golang.org/x/net/websocket"
 	"k8s.io/klog/v2"
+)
+
+const (
+	defaultAuthVerifyURL = "http://auth-svc.packalares-framework.svc.cluster.local:9091/api/verify"
+	sessionCookieName    = "packalares_session"
 )
 
 // WSMessage is the envelope for all WebSocket messages sent to clients.
@@ -108,6 +116,53 @@ func (hub *WSHub) BroadcastAlert(level, message string) {
 			"level":   level,
 			"message": message,
 		},
+	})
+}
+
+// verifySession checks the packalares_session cookie against the auth
+// service. Returns nil if the session is valid, an error otherwise.
+func verifySession(r *http.Request) error {
+	cookie, err := r.Cookie(sessionCookieName)
+	if err != nil {
+		return fmt.Errorf("missing %s cookie", sessionCookieName)
+	}
+
+	verifyURL := os.Getenv("AUTH_VERIFY_URL")
+	if verifyURL == "" {
+		verifyURL = defaultAuthVerifyURL
+	}
+
+	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, verifyURL, nil)
+	if err != nil {
+		return fmt.Errorf("create verify request: %w", err)
+	}
+	req.AddCookie(cookie)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("auth verify request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("auth verify returned %d", resp.StatusCode)
+	}
+	return nil
+}
+
+// AuthWebSocketHandler returns an http.Handler that validates the session
+// cookie before upgrading to a WebSocket connection. This allows the
+// /ws endpoint to be served without nginx auth_request, avoiding issues
+// with WebSocket upgrade requests and auth subrequests.
+func AuthWebSocketHandler() http.Handler {
+	wsHandler := WebSocketHandler()
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := verifySession(r); err != nil {
+			klog.V(2).Infof("ws: auth rejected: %v", err)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+		wsHandler.ServeHTTP(w, r)
 	})
 }
 
