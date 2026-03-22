@@ -66,6 +66,9 @@ jobs:
           - name: desktop
             dockerfile: build/Dockerfile.desktop
             context: .
+          - name: envoy-init
+            dockerfile: build/envoy-init/Dockerfile
+            context: build/envoy-init
 
     steps:
       - name: Checkout
