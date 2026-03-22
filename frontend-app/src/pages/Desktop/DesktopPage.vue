@@ -374,9 +374,9 @@ function updateClock() {
 // ─── Stats ───────────────────────────────────────────────────
 
 const stats = computed(() => [
-  { name: 'CPU', value: Math.round(monitorStore.cpu.ratio * 100) / 100 || 0, color: 'light-blue-5' },
-  { name: 'MEM', value: Math.round(monitorStore.memory.ratio * 100) / 100 || 0, color: 'green-5' },
-  { name: 'DISK', value: Math.round(monitorStore.disk.ratio * 100) / 100 || 0, color: 'orange-5' },
+  { name: 'CPU', value: Math.round((monitorStore.cpu.ratio || 0) * 100), color: 'light-blue-5' },
+  { name: 'MEM', value: Math.round((monitorStore.memory.ratio || 0) * 100), color: 'green-5' },
+  { name: 'DISK', value: Math.round((monitorStore.disk.ratio || 0) * 100), color: 'orange-5' },
 ]);
 
 // ─── Computed ────────────────────────────────────────────────
