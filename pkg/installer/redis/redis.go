@@ -1,3 +1,7 @@
+// Package redis deploys KVRocks (Redis-compatible, SSD-backed) in Kubernetes.
+// Replaces the old host-based Redis systemd installation.
+// KVRocks is used for auth sessions, app caching, and shared state.
+// Infisical gets its own dedicated Redis pod via middleware operator.
 package redis
 
 import (
@@ -7,156 +11,124 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
+
+	"github.com/packalares/packalares/pkg/config"
 )
 
-const redisService = `[Unit]
-Description=Redis In-Memory Data Store
-After=network.target
-
-[Service]
-ExecStart=/usr/bin/redis-server /etc/redis/redis.conf
-ExecStop=/usr/bin/redis-cli shutdown
-Restart=always
-RestartSec=3
-LimitNOFILE=65536
-Type=notify
-
-[Install]
-WantedBy=multi-user.target
+const kvrocksManifest = `apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kvrocks
+  namespace: {{NAMESPACE}}
+  labels:
+    app: kvrocks
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kvrocks
+  template:
+    metadata:
+      labels:
+        app: kvrocks
+    spec:
+      containers:
+      - name: kvrocks
+        image: apache/kvrocks:nightly
+        ports:
+        - containerPort: 6666
+        command: ["kvrocks"]
+        args:
+        - --bind
+        - "0.0.0.0"
+        - --port
+        - "6666"
+        - --requirepass
+        - "{{PASSWORD}}"
+        - --dir
+        - /data
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        resources:
+          requests:
+            cpu: 50m
+            memory: 32Mi
+          limits:
+            cpu: 500m
+            memory: 256Mi
+        readinessProbe:
+          tcpSocket:
+            port: 6666
+          initialDelaySeconds: 5
+          periodSeconds: 10
+      volumes:
+      - name: data
+        hostPath:
+          path: /var/lib/packalares/kvrocks-data
+          type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kvrocks-svc
+  namespace: {{NAMESPACE}}
+spec:
+  selector:
+    app: kvrocks
+  ports:
+  - port: 6379
+    targetPort: 6666
 `
 
+// Install deploys KVRocks in Kubernetes and saves the password.
 func Install(baseDir string) error {
-	// Check if redis-server is available
-	redisPath, err := exec.LookPath("redis-server")
-	if err != nil {
-		// Try to install via package manager
-		fmt.Println("  Installing redis-server via package manager ...")
-		if err := installRedisPackage(); err != nil {
-			return fmt.Errorf("redis-server not found and could not be installed: %w", err)
-		}
-		redisPath = "/usr/bin/redis-server"
-	}
-	_ = redisPath
+	ns := config.PlatformNamespace()
 
 	// Generate password
 	pwBytes := make([]byte, 16)
 	if _, err := rand.Read(pwBytes); err != nil {
-		return fmt.Errorf("generate redis password: %w", err)
+		return fmt.Errorf("generate kvrocks password: %w", err)
 	}
 	password := hex.EncodeToString(pwBytes)
 
-	// Save password
-	os.MkdirAll(filepath.Join(baseDir, "state"), 0700)
-	if err := os.WriteFile(filepath.Join(baseDir, "state", "redis_password"), []byte(password), 0600); err != nil {
-		return fmt.Errorf("save redis password: %w", err)
+	// Save password for other services to read
+	stateDir := filepath.Join(baseDir, "state")
+	os.MkdirAll(stateDir, 0700)
+	if err := os.WriteFile(filepath.Join(stateDir, "redis_password"), []byte(password), 0600); err != nil {
+		return fmt.Errorf("save kvrocks password: %w", err)
 	}
 
-	// Generate config
-	config := generateRedisConfig(password)
-	os.MkdirAll("/etc/redis", 0755)
-	os.MkdirAll("/var/lib/redis", 0755)
-	os.MkdirAll("/var/log/redis", 0755)
-	if err := os.WriteFile("/etc/redis/redis.conf", []byte(config), 0644); err != nil {
-		return fmt.Errorf("write redis config: %w", err)
+	// Create data directory
+	os.MkdirAll("/var/lib/packalares/kvrocks-data", 0755)
+
+	// Build manifest
+	manifest := kvrocksManifest
+	manifest = strings.ReplaceAll(manifest, "{{NAMESPACE}}", ns)
+	manifest = strings.ReplaceAll(manifest, "{{PASSWORD}}", password)
+
+	// Apply via kubectl
+	fmt.Println("  Deploying KVRocks in Kubernetes ...")
+	cmd := exec.Command("kubectl", "apply", "-f", "-")
+	cmd.Stdin = strings.NewReader(manifest)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("deploy kvrocks: %s\n%w", string(out), err)
 	}
 
-	// Write systemd unit
-	if err := os.WriteFile("/etc/systemd/system/redis-server.service", []byte(redisService), 0644); err != nil {
-		return fmt.Errorf("write redis service: %w", err)
-	}
-
-	// Stop any existing redis
-	exec.Command("systemctl", "stop", "redis-server").Run()
-	exec.Command("systemctl", "stop", "redis").Run()
-
-	// Enable and start
-	cmds := [][]string{
-		{"systemctl", "daemon-reload"},
-		{"systemctl", "enable", "redis-server"},
-		{"systemctl", "start", "redis-server"},
-	}
-
-	for _, args := range cmds {
-		cmd := exec.Command(args[0], args[1:]...)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("run %v: %s\n%w", args, string(out), err)
-		}
-	}
-
-	// Wait for redis
-	fmt.Println("  Waiting for Redis to be ready ...")
-	for i := 0; i < 20; i++ {
-		cmd := exec.Command("redis-cli", "-a", password, "ping")
-		out, err := cmd.CombinedOutput()
-		if err == nil && len(out) >= 4 {
-			if string(out[:4]) == "PONG" {
-				fmt.Println("  Redis installed and running")
-				return nil
-			}
-		}
-		time.Sleep(2 * time.Second)
-	}
-
-	return fmt.Errorf("redis did not become ready in time")
-}
-
-func installRedisPackage() error {
-	// Try apt first (Ubuntu/Debian)
-	if _, err := exec.LookPath("apt-get"); err == nil {
-		cmd := exec.Command("apt-get", "install", "-y", "redis-server")
-		if out, err := cmd.CombinedOutput(); err != nil {
-			return fmt.Errorf("apt-get install redis: %s\n%w", string(out), err)
-		}
-		return nil
-	}
-
-	// Try dnf/yum (CentOS/RHEL/Fedora)
-	for _, mgr := range []string{"dnf", "yum"} {
-		if _, err := exec.LookPath(mgr); err == nil {
-			cmd := exec.Command(mgr, "install", "-y", "redis")
-			if out, err := cmd.CombinedOutput(); err != nil {
-				return fmt.Errorf("%s install redis: %s\n%w", mgr, string(out), err)
-			}
+	// Wait for pod to be ready
+	fmt.Println("  Waiting for KVRocks to be ready ...")
+	for i := 0; i < 30; i++ {
+		cmd := exec.Command("kubectl", "get", "pods", "-n", ns,
+			"-l", "app=kvrocks", "-o", "jsonpath={.items[0].status.phase}")
+		out, err := cmd.Output()
+		if err == nil && string(out) == "Running" {
+			fmt.Println("  KVRocks deployed and running")
 			return nil
 		}
+		time.Sleep(3 * time.Second)
 	}
 
-	return fmt.Errorf("no supported package manager found (tried apt-get, dnf, yum)")
-}
-
-func generateRedisConfig(password string) string {
-	return fmt.Sprintf(`# Packalares Redis configuration
-bind 127.0.0.1 -::1
-port 6379
-requirepass %s
-dir /var/lib/redis
-dbfilename dump.rdb
-
-# Persistence
-save 900 1
-save 300 10
-save 60 10000
-
-# Memory
-maxmemory 256mb
-maxmemory-policy allkeys-lru
-
-# Security
-protected-mode yes
-rename-command FLUSHALL ""
-rename-command FLUSHDB ""
-
-# Logging
-loglevel notice
-logfile /var/log/redis/redis-server.log
-
-# Performance
-tcp-keepalive 300
-timeout 0
-tcp-backlog 511
-
-# Supervised by systemd
-supervised systemd
-`, password)
+	return fmt.Errorf("kvrocks did not become ready in 90s")
 }
