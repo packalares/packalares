@@ -1,12 +1,11 @@
-FROM node:20-alpine
+FROM node:20
 
-RUN apk add --no-cache python3 make g++ && npm install -g @quasar/cli
+RUN npm install -g @quasar/cli
 
 WORKDIR /app
 COPY frontend-app/package*.json ./
 RUN npm ci
 COPY frontend-app/ .
-RUN apk del python3 make g++
 
 ENV DEV_PORT=80
 ENV API_PROXY_TARGET=https://localhost
