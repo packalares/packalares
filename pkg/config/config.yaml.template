@@ -17,6 +17,7 @@ user:
   # zone is auto-generated: {name}.{domain}
 
 network:
+  tls_secret_name: zone-tls
   tailscale:
     enabled: {{TAILSCALE_ENABLED}}
     auth_key: "{{TAILSCALE_AUTH_KEY}}"

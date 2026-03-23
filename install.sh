@@ -296,10 +296,10 @@ generate_self_signed_cert() {
 
     # Create Kubernetes TLS secret
     if command -v kubectl &>/dev/null; then
-        kubectl create secret tls zone-ssl-secret \
+        kubectl create secret tls zone-tls \
             --cert="$cert_dir/tls.crt" \
             --key="$cert_dir/tls.key" \
-            -n os-system \
+            -n os-framework \
             --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
     fi
 

@@ -93,6 +93,10 @@ func MonitoringNamespace() string {
 
 func APIGroup() string { return configOr("system.api_group", "API_GROUP", "packalares.io") }
 
+// ─── TLS ────────────────────────────────────────────────
+
+func TLSSecretName() string { return configOr("network.tls_secret_name", "TLS_SECRET_NAME", "zone-tls") }
+
 // ─── Domain ─────────────────────────────────────────────
 
 func Domain() string  { return configOr("system.domain", "SYSTEM_DOMAIN", "olares.local") }
