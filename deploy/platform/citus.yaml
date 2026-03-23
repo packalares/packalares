@@ -10,8 +10,10 @@ metadata:
   name: citus-config
   namespace: {{PLATFORM_NAMESPACE}}
 data:
-  POSTGRES_DB: "olares"
-  POSTGRES_USER: "olares"
+  POSTGRES_DB: "packalares"
+  POSTGRES_USER: "{{PG_USER}}"
+  init-databases.sql: |
+    SELECT 'CREATE DATABASE infisical' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'infisical')\gexec
 ---
 apiVersion: v1
 kind: Secret
@@ -57,6 +59,8 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /var/lib/postgresql/data
+        - name: init-scripts
+          mountPath: /docker-entrypoint-initdb.d
         resources:
           requests:
             cpu: 100m
@@ -66,14 +70,21 @@ spec:
             memory: 2Gi
         readinessProbe:
           exec:
-            command: ["pg_isready", "-U", "olares"]
+            command: ["pg_isready", "-U", "{{PG_USER}}"]
           initialDelaySeconds: 10
           periodSeconds: 5
         livenessProbe:
           exec:
-            command: ["pg_isready", "-U", "olares"]
+            command: ["pg_isready", "-U", "{{PG_USER}}"]
           initialDelaySeconds: 30
           periodSeconds: 10
+      volumes:
+      - name: init-scripts
+        configMap:
+          name: citus-config
+          items:
+          - key: init-databases.sql
+            path: init-databases.sql
   volumeClaimTemplates:
   - metadata:
       name: data

@@ -19,6 +19,8 @@ spec:
       containers:
       - name: lldap
         image: lldap/lldap:v0.5
+        securityContext:
+          runAsUser: 0
         ports:
         - containerPort: 3890
           name: ldap
@@ -36,7 +38,7 @@ spec:
               name: lldap-secret
               key: admin-password
         - name: LLDAP_LDAP_BASE_DN
-          value: "dc=olares,dc=local"
+          value: "dc=packalares,dc=local"
         - name: LLDAP_DATABASE_URL
           value: "sqlite:///data/lldap.db"
         volumeMounts:
