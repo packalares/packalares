@@ -127,15 +127,6 @@ spec:
               sleep 2; printf ".";
             done;
             echo " Redis is ready";
-      - name: migration
-        image: infisical/infisical:v0.158.20
-        command: ["npm", "run", "migration:latest"]
-        envFrom:
-        - secretRef:
-            name: infisical-secrets
-        env:
-        - name: NODE_ENV
-          value: "production"
       containers:
       - name: infisical
         image: infisical/infisical:v0.158.20
