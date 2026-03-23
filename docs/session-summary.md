@@ -1,107 +1,99 @@
-# Session Summary — March 22, 2026
+# Session Summary — March 23, 2026
 
-## What We Changed
+## Install Status
 
-### Repo Cleanup
-- Removed 715MB of dead code: compiled binaries, empty directories, duplicate code
-- 862MB → 147MB repo size
-- Removed `core/`, `ui/`, 5 empty `internal/` dirs, 13 empty `pkg/` dirs, `cmd/daemon/`
+**Full install completes successfully.** 32/32 pods running on clean server (188.241.210.104).
 
-### Centralized Config (`pkg/config/config.go`)
-- All namespaces, service DNS, domains read from environment variables
-- Defaults: `os-system` (platform), `os-framework` (framework), `monitoring`
-- Zero hardcoded namespace strings in Go code (was 80+)
-- Zero hardcoded namespaces in deploy manifests — all use `{{PLACEHOLDER}}` style
-- Installer replaces placeholders from config before `kubectl apply`
+### Working Pods
+- **Platform:** Citus (PostgreSQL), KVRocks, NATS, LLDAP, Infisical, Infisical-Redis
+- **Framework:** auth, bfl, app-service, system-server, middleware-operator, files-server, market-backend, monitoring-server, mounts-server, kubesphere, samba-server, mdns-agent, proxy (nginx)
+- **Monitoring:** Prometheus, node-exporter, kube-state-metrics
+- **User apps:** desktop, wizard
+- **Infrastructure:** Calico CNI, CoreDNS, OpenEBS, metrics-server
 
-### Deploy Manifests Fixed
-- All image refs: `ghcr.io/packalares/*` (ours) or upstream (zero beclab)
-- All `${REGISTRY}` variables removed
-- All `${VARIABLE}` converted to `{{VARIABLE}}` convention
-- Consistent naming: image names match GitHub Actions build matrix
-
-### Phase 1: Infrastructure — was already complete
-- containerd, etcd, K3s, Calico, OpenEBS, Helm — all written
-
-### Phase 2: Platform
-- KVRocks installer rewrote: host Redis → K8s KVRocks (`apache/kvrocks:2.15.0`)
-- Created `deploy/platform/infisical.yaml` (Infisical v0.158.20 + dedicated Redis)
-- Fixed all manifest namespaces and image tags
-- Removed host Redis completely (zero references in codebase)
-
-### Phase 3: Kubernetes Management
-- Created `deploy/crds/crds-and-namespaces.yaml`: User, GlobalRole, GlobalRoleBinding CRDs + namespaces + RBAC
-- Added installer step "Setup Kubernetes management" before service deploy
-- Fixed installer service names to match actual images
-- Fixed framework namespace: was using `PlatformNamespace()`, corrected to `FrameworkNamespace()`
-
-### Phase 4: Framework
-- Created `deploy/framework/kubesphere.yaml`
-- Created `deploy/framework/tailscale.yaml` (always installed, configured via Settings)
-- Fixed remaining wrong namespaces in files, mounts, auth, monitor manifests
-
-### Phase 5: Monitoring + Logs
-- Created `deploy/framework/loki.yaml` (Grafana Loki 2.9.4)
-- Created `deploy/framework/promtail.yaml` (log collector DaemonSet)
-- Created `deploy/framework/dcgm-exporter.yaml` (NVIDIA GPU metrics)
-- Fixed `monitoring.yaml` namespace to `{{MONITORING_NAMESPACE}}`
-
-### Phase 6: Security + DNS
-- Created `deploy/framework/coredns-lan.yaml` (DNS forwarder on port 53 for LAN)
-- Created `pkg/installer/phases/infisical.go` (seeds secrets after Infisical deploys)
-- Added installer step "Seed secrets in Infisical"
-
-### Phase 7: GPU
-- Created `pkg/installer/phases/gpu.go` (auto-detect, install driver, container toolkit)
-- Created `deploy/framework/hami.yaml` (HAMi v2.4.1 GPU sharing)
-- Added installer step "Setup GPU"
-
-### Phase 8: Post-install (partial)
-- Created `internal/mdns/server.go` + `cmd/mdns/main.go` (mDNS agent)
-- Created `deploy/framework/mdns.yaml` + `build/Dockerfile.mdns`
-- Added to GitHub Actions + installer
-
-### API Gateway
-- Created `deploy/proxy/nginx.conf.template` — unified API under `/api/`
-- Updated `frontend-app/src/boot/axios.ts` — `getApiBase()`, `getMainDomain()`, `getWsUrl()`
-- Proxy translates clean external paths to internal service paths
+### Install Flow (20 phases)
+1. Precheck → 2. Download binaries → 3. Kernel config → 4. containerd → 5. etcd → 6. K3s → 7. Calico CNI → 8. OpenEBS → 9. CRDs + namespaces → 10. KVRocks → 11. Helm → 12. Generate secrets (+ detect SERVER_IP, COREDNS_CLUSTER_IP) → 13. Platform services → 14. Framework services → 15. Seed Infisical → 16. User apps → 17. Monitoring → 18. GPU (if detected) → 19. Wait for pods → 20. Write release file
 
 ---
 
-## What Still Needs Wiring Up
+## What Changed (March 22-23)
 
-### Frontend
-- Vue pages still call old paths (`/market/v1/apps`, `/server/init`, `/bfl/backend/v1/user-info`)
-- Need to update all API calls to use new `/api/` paths via `getApiBase()`
-- Desktop, Market, Settings, Dashboard, Files, Login pages all need updating
+### Repo & Build Pipeline
+- Removed 715MB dead code, repo 862MB → 147MB
+- GitHub Actions workflow builds 15 container images + CLI binary
+- CLI binary published to GitHub Releases (not artifacts)
+- Workflow triggers on: `internal/`, `cmd/`, `pkg/`, `frontend/`, `frontend-app/`, `build/`, `deploy/`, `install.sh`, `go.mod`, `go.sum`
+- All deploy manifests embedded in CLI binary via `go:embed`
+
+### Config System
+- `pkg/config/config.go` — single source of truth, reads from `/etc/packalares/config.yaml` → env vars → defaults
+- `config.yaml.template` with `{{PLACEHOLDER}}` values, rendered by installer from `--username`, `--domain`, `--tailscale-auth-key` flags
+- `config.APIGroup()` — CRD API group configurable (default: `packalares.io`)
+- `config.TLSSecretName()` — TLS secret name configurable
+- `replaceConfigPlaceholders()` replaces all `{{VAR}}` in manifests from config at deploy time
+- Auto-detect `SERVER_IP` (via `ip route`) and `COREDNS_CLUSTER_IP` (via `kubectl get svc kube-dns`)
+
+### Olares Cleanup
+- All `bytetrade.io` CRD groups → `{{API_GROUP}}` in YAML, `config.APIGroup()` in Go
+- All `beclab/*` image references → `ghcr.io/packalares/*`
+- All hardcoded namespaces → `{{PLACEHOLDER}}` or `config.*Namespace()`
+- All hardcoded "laurs" → removed
+- L4 proxy removed from deploy (port conflict with unified proxy)
+- `beclab/apps` GitHub repo kept as app catalog source (intentional — public charts)
+
+### Install Fixes
+- **OpenEBS:** Matched Olares setup — v3.3.0, `kube-system` namespace, `openebs-maya-operator` SA, `OPENEBS_IO_HELPER_IMAGE` env
+- **Calico:** Wait for CRDs before applying Installation CR
+- **KVRocks:** `--log-dir stdout`, `emptyDir` volume
+- **LLDAP:** `nitnelave/lldap:v0.5.0`, init container chowns `/data` to UID 1000, `?mode=rwc` on SQLite URL
+- **Infisical:** Init containers wait for Postgres + Redis, seed via `kubectl exec` (not host HTTP), removed broken migration init container
+- **Citus:** `{{PG_USER}}` placeholder, init script creates `infisical` database
+- **Middleware-operator:** Use `{{PG_PASSWORD}}`/`{{REDIS_PASSWORD}}` placeholders instead of missing Secrets, fixed service name to `citus-coordinator-svc`
+- **Tailscale:** `dnsPolicy: ClusterFirstWithHostNet`, skipped if no auth key
+- **Proxy:** Inline nginx.conf.template into ConfigMap, TLS secret name from config, correct namespace (`os-framework`)
+- **Desktop/wizard/monitoring:** Use embedded YAML files (`deploy/apps/`, `deploy/framework/monitoring.yaml`) instead of inline Go generators with `beclab/*` images
+- **Namespace ordering:** CRDs + namespaces created before KVRocks (was after)
+- **Cleanup:** `/var/openebs` and `/var/lib/packalares` removed on reinstall
+
+### Frontend (Quasar Vue 3)
+- All Material Symbols icons fixed to use `sym_r_` prefix with `<q-icon>`
+- Launchpad: click-to-close via pointer-events passthrough, no fade transitions
+- Desktop: macOS-style dock, wallpaper, daily info widget
+- Login: background image, default avatar
+- Settings: account avatar icon fixed
+- `quasar build` output → `frontend/` → Docker image
+
+---
+
+## Still Needed
+
+### Frontend Wiring
+- Vue pages still call old API paths — need to use `/api/` routes via `getApiBase()`
+- Desktop, Market, Settings, Dashboard, Files pages need API path updates
 
 ### App Install Flow
-- `internal/appservice/chartrewrite.go` was created by agent but needs review
-- `service.go` `doInstall()` rewritten (no `--wait`, values injected into values.yaml)
-- `helm.go` `InstallFromDir()` added (no `--set`)
-- `k8s.go` Application CRD creation via dynamic client
-- All created but reverted when user stopped — changes are lost, need to redo
-
-### Installer Integration
-- `pkg/installer/phases/deploy.go` reads manifest files + replaces placeholders — done
-- But `generatePlatformManifest()` and `generateFrameworkManifest()` old functions may still be referenced
-- Monitoring deploy step needs to include Loki + Promtail manifests
-- DCGM exporter should only deploy if GPU detected (separate from monitoring step)
-
-### Config File
-- `/etc/packalares/config.yaml` doesn't exist yet — need to create the reader
-- Currently everything reads from env vars via `pkg/config`
-- Need a YAML parser that reads config.yaml and sets env vars at startup
+- `chartrewrite.go`, `doInstall()` rewrite — was done but reverted, needs redo
+- Helm chart values injection (no `--set`, inject into values.yaml)
 
 ### Setup Wizard
-- No Vue page — needs creating
-- First-time password set, NAS config, Tailscale auth key
+- No Vue page for first-time setup (password, NAS, Tailscale key)
 
 ### Phone Backup
 - WebDAV exists in files service
-- No Syncthing deployment
-- No auto-discovery mechanism
+- No Syncthing deployment or auto-discovery
 
-### L4 Proxy
-- Still in codebase (`cmd/l4proxy/`, `internal/l4proxy/`)
-- Not needed for single-user — discuss whether to remove
+### Loki + Promtail
+- Manifests exist (`deploy/framework/loki.yaml`, `deploy/framework/promtail.yaml`)
+- Not in the deploy list yet — monitoring phase only deploys Prometheus stack
+
+### CoreDNS LAN
+- Manifest exists (`deploy/framework/coredns-lan.yaml`)
+- Not in the deploy list yet
+
+### DCGM Exporter
+- Manifest exists (`deploy/framework/dcgm-exporter.yaml`)
+- Should only deploy if GPU detected (separate from monitoring)
+
+### L4 Proxy Code
+- `cmd/l4proxy/` and `internal/l4proxy/` still in codebase
+- Removed from deploy but code remains — can delete entirely
