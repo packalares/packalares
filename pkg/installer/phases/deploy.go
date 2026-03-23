@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/packalares/packalares/deploy"
 	"github.com/packalares/packalares/pkg/config"
 )
 
@@ -48,10 +49,12 @@ func helmInstallOrUpgrade(name, chart, namespace string, values map[string]strin
 	return nil
 }
 
-// applyManifestFile reads a YAML file, replaces {{PLACEHOLDERS}} with
-// values from config, and applies it via kubectl.
+// applyManifestFile reads a YAML file from the embedded deploy/ filesystem,
+// replaces {{PLACEHOLDERS}} with values from config, and applies via kubectl.
 func applyManifestFile(path string, opts *InstallOptions) error {
-	data, err := os.ReadFile(path)
+	// Strip "deploy/" prefix since embed.FS is rooted at deploy/
+	embedPath := strings.TrimPrefix(path, "deploy/")
+	data, err := deploy.Manifests.ReadFile(embedPath)
 	if err != nil {
 		return fmt.Errorf("read %s: %w", path, err)
 	}
