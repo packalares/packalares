@@ -17,6 +17,13 @@ spec:
       labels:
         app: loki
     spec:
+      initContainers:
+      - name: fix-permissions
+        image: busybox:1.36
+        command: ["sh", "-c", "chown 10001:10001 /loki"]
+        volumeMounts:
+        - name: data
+          mountPath: /loki
       containers:
       - name: loki
         image: grafana/loki:2.9.4

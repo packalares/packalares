@@ -262,6 +262,7 @@ spec:
         app: proxy
     spec:
       hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: packalares-admin
       tolerations:
       - key: node-role.kubernetes.io/control-plane
