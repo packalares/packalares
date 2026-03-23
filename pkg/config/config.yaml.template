@@ -12,7 +12,7 @@ system:
     monitoring: monitoring
 
 user:
-  name: laurs
+  name: ""
   # zone is auto-generated: {name}.{domain}
 
 network:
