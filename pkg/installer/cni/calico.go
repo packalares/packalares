@@ -22,6 +22,19 @@ func DeployCalico(registry string) error {
 		return fmt.Errorf("apply calico operator: %s\n%w", string(out), err)
 	}
 
+	// Wait for CRDs to be registered by the operator
+	fmt.Println("  Waiting for Calico CRDs ...")
+	for i := 0; i < 60; i++ {
+		crdCheck := exec.CommandContext(ctx, "kubectl", "get", "crd", "installations.operator.tigera.io", "--no-headers")
+		if out, err := crdCheck.CombinedOutput(); err == nil && len(out) > 0 {
+			break
+		}
+		if i == 59 {
+			return fmt.Errorf("calico CRDs not registered after 5 minutes")
+		}
+		time.Sleep(5 * time.Second)
+	}
+
 	// Apply custom resource with our CIDR
 	calicoCustomResource := `apiVersion: operator.tigera.io/v1
 kind: Installation
