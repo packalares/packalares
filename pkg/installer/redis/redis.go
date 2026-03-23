@@ -49,6 +49,10 @@ spec:
         - "{{PASSWORD}}"
         - --dir
         - /data
+        - --log-dir
+        - /data
+        - --log-level
+        - info
         volumeMounts:
         - name: data
           mountPath: /data
