@@ -18,9 +18,7 @@ spec:
     spec:
       containers:
       - name: lldap
-        image: lldap/lldap:v0.5
-        securityContext:
-          runAsUser: 0
+        image: nitnelave/lldap:v0.5.0
         ports:
         - containerPort: 3890
           name: ldap
