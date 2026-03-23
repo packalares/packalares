@@ -124,19 +124,24 @@ func RunInstall(opts *InstallOptions) error {
 			return helm.Install(opts.BaseDir, arch)
 		}},
 
-		// Phase 12: Deploy platform charts
-		{"Deploy platform services", func() error {
-			return deployPlatformCharts(opts)
+		// Phase 12: Generate system secrets (before deploying services that need them)
+		{"Generate secrets", func() error {
+			return GenerateSecrets(opts)
 		}},
 
-		// Phase 13: Seed Infisical with secrets
-		{"Seed secrets in Infisical", func() error {
-			return SeedInfisical(opts)
+		// Phase 13: Deploy platform charts (Citus, NATS, LLDAP, Infisical)
+		{"Deploy platform services", func() error {
+			return deployPlatformCharts(opts)
 		}},
 
 		// Phase 14: Deploy framework charts
 		{"Deploy framework services", func() error {
 			return deployFrameworkCharts(opts)
+		}},
+
+		// Phase 15: Seed Infisical (pod has init containers that wait for PG+Redis)
+		{"Seed Infisical", func() error {
+			return SeedInfisical(opts)
 		}},
 
 		// Phase 13: Deploy user apps
