@@ -7,7 +7,7 @@
         :class="{ 'sidebar-item-active': currentPath === '/settings/account' }"
         @click="navigateTo('/settings/account')"
       >
-        <q-avatar size="40px" color="grey-8" text-color="white" icon="person" />
+        <q-avatar size="40px" color="grey-8" text-color="white" icon="sym_r_person" />
         <div class="sidebar-user-info">
           <div
             class="sidebar-user-name"

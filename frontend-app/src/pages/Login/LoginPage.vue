@@ -22,12 +22,10 @@
           <div class="avatar-ring">
             <div class="avatar-inner">
               <img
-                v-if="userAvatar"
-                :src="userAvatar"
+                :src="userAvatar || '/avatar-default.png'"
                 class="avatar-img"
                 alt=""
               />
-              <span v-else class="avatar-initial">{{ userInitial }}</span>
             </div>
           </div>
 
@@ -225,7 +223,7 @@ const currentView = ref<ViewType>('password');
 // ---------- State: user info ----------
 const userName = ref('');
 const userAvatar = ref('');
-const wallpaperUrl = ref('');
+const wallpaperUrl = ref('/bg/macos1.jpg');
 
 const userInitial = computed(() => {
   const name = userName.value || '';

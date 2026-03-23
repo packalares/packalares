@@ -1,42 +1,42 @@
 <template>
   <div class="files-page">
     <div class="files-sidebar">
-      <div class="sidebar-header"><q-icon name="folder" size="24px" color="blue" /><span>Files</span></div>
+      <div class="sidebar-header"><q-icon name="sym_r_folder" size="24px" color="blue" /><span>Files</span></div>
       <q-list dense>
         <q-item v-for="f in sidebarFolders" :key="f.path" clickable :active="currentPath===f.path" active-class="sidebar-active" @click="navigateTo(f.path)">
-          <q-item-section avatar><q-icon :name="f.icon" size="20px" /></q-item-section>
+          <q-item-section avatar><q-icon :name="'sym_r_' + f.icon" size="20px" /></q-item-section>
           <q-item-section>{{ f.label }}</q-item-section>
         </q-item>
       </q-list>
     </div>
     <div class="files-main">
       <div class="files-toolbar">
-        <q-btn flat dense icon="arrow_back" :disable="historyIdx<=0" @click="goBack" />
-        <q-btn flat dense icon="arrow_forward" :disable="historyIdx>=history.length-1" @click="goForward" />
-        <q-btn flat dense icon="arrow_upward" @click="goUp" />
+        <q-btn flat dense icon="sym_r_arrow_back" :disable="historyIdx<=0" @click="goBack" />
+        <q-btn flat dense icon="sym_r_arrow_forward" :disable="historyIdx>=history.length-1" @click="goForward" />
+        <q-btn flat dense icon="sym_r_arrow_upward" @click="goUp" />
         <div class="breadcrumb"><span v-for="(c,i) in breadcrumbs" :key="i" class="crumb" @click="navigateTo(c.path)">{{c.name}}<span v-if="i<breadcrumbs.length-1" class="sep">/</span></span></div>
         <q-space />
-        <q-btn flat dense :icon="viewMode==='grid'?'view_list':'grid_view'" @click="viewMode=viewMode==='grid'?'list':'grid'" />
-        <q-btn flat dense icon="create_new_folder" @click="showNewFolder=true" />
-        <q-btn flat dense icon="upload_file" @click="triggerUpload" />
+        <q-btn flat dense :icon="viewMode==='grid'?'sym_r_view_list':'sym_r_grid_view'" @click="viewMode=viewMode==='grid'?'list':'grid'" />
+        <q-btn flat dense icon="sym_r_create_new_folder" @click="showNewFolder=true" />
+        <q-btn flat dense icon="sym_r_upload_file" @click="triggerUpload" />
       </div>
       <div class="files-content" @click="selected=-1">
         <div v-if="viewMode==='grid'" class="file-grid">
           <div v-for="(file,idx) in files" :key="file.name" class="file-card" :class="{selected:selected===idx}" @click.stop="selected=idx" @dblclick="openFile(file)">
-            <q-icon :name="file.isDir?'folder':fileIcon(file.name)" size="48px" :color="file.isDir?'amber':'grey'" />
+            <q-icon :name="file.isDir?'sym_r_folder':fileIcon(file.name)" size="48px" :color="file.isDir?'amber':'grey'" />
             <div class="file-name">{{file.name}}</div>
             <div v-if="!file.isDir" class="file-meta">{{fmtSize(file.size)}}</div>
           </div>
         </div>
         <q-list v-else dense separator>
           <q-item v-for="(file,idx) in files" :key="file.name" clickable :class="{'bg-blue-10':selected===idx}" @click.stop="selected=idx" @dblclick="openFile(file)">
-            <q-item-section avatar><q-icon :name="file.isDir?'folder':fileIcon(file.name)" :color="file.isDir?'amber':'grey'" /></q-item-section>
+            <q-item-section avatar><q-icon :name="file.isDir?'sym_r_folder':fileIcon(file.name)" :color="file.isDir?'amber':'grey'" /></q-item-section>
             <q-item-section>{{file.name}}</q-item-section>
             <q-item-section side>{{file.isDir?'':fmtSize(file.size)}}</q-item-section>
             <q-item-section side style="min-width:140px">{{fmtDate(file.modified)}}</q-item-section>
           </q-item>
         </q-list>
-        <div v-if="!files.length&&!loading" class="empty-state"><q-icon name="folder_open" size="64px" color="grey-7" /><div>Empty folder</div></div>
+        <div v-if="!files.length&&!loading" class="empty-state"><q-icon name="sym_r_folder_open" size="64px" color="grey-7" /><div>Empty folder</div></div>
       </div>
       <div class="files-status">{{files.length}} items<span v-if="selected>=0"> — {{files[selected]?.name}}</span></div>
     </div>
@@ -82,7 +82,7 @@ function openFile(f:any) { if(f.isDir) navigateTo(currentPath.value+'/'+f.name);
 async function createFolder() { if(!newFolderName.value.trim()) return; try{await api.put('/api/resources'+currentPath.value+'/'+newFolderName.value.trim()+'/',{}); showNewFolder.value=false; newFolderName.value=''; loadFiles(currentPath.value);} catch{$q.notify({type:'negative',message:'Failed'});} }
 function triggerUpload() { uploadRef.value?.click(); }
 async function handleUpload(e:Event) { const i=e.target as HTMLInputElement; if(!i.files?.length) return; for(const f of Array.from(i.files)){const fd=new FormData();fd.append('file',f);try{await api.post('/api/resources'+currentPath.value+'/'+f.name,fd);}catch{}} i.value=''; loadFiles(currentPath.value); }
-function fileIcon(n:string) { const e=n.split('.').pop()?.toLowerCase()||''; const m:Record<string,string>={pdf:'picture_as_pdf',doc:'description',txt:'article',png:'image',jpg:'image',jpeg:'image',mp4:'movie',mp3:'audio_file',zip:'folder_zip',js:'code',ts:'code',py:'code',go:'code',html:'code'}; return m[e]||'draft'; }
+function fileIcon(n:string) { const e=n.split('.').pop()?.toLowerCase()||''; const m:Record<string,string>={pdf:'sym_r_picture_as_pdf',doc:'sym_r_description',txt:'sym_r_article',png:'sym_r_image',jpg:'sym_r_image',jpeg:'sym_r_image',mp4:'sym_r_movie',mp3:'sym_r_audio_file',zip:'sym_r_folder_zip',js:'sym_r_code',ts:'sym_r_code',py:'sym_r_code',go:'sym_r_code',html:'sym_r_code'}; return m[e]||'sym_r_draft'; }
 function fmtSize(b:number) { if(!b)return''; const u=['B','KB','MB','GB']; let i=0; while(b>=1024&&i<3){b/=1024;i++;} return b.toFixed(i>0?1:0)+' '+u[i]; }
 function fmtDate(d:string) { return d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):''; }
 onMounted(() => loadFiles(currentPath.value));

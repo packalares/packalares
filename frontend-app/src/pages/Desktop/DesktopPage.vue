@@ -43,7 +43,7 @@
             :src="userStore.avatar"
             class="dock-avatar-img"
           />
-          <span v-else class="material-symbols-rounded dock-avatar-fallback">person</span>
+          <q-icon v-else name="sym_r_person" size="20px" color="white" class="dock-avatar-fallback" />
         </div>
         <div class="dock-separator"></div>
       </div>
@@ -58,7 +58,7 @@
           @contextmenu.prevent.stop="onDockContextMenu($event, app)"
         >
           <div class="dock-app-icon" :class="{ 'dock-app-hover': true }">
-            <span class="material-symbols-rounded dock-icon-glyph">{{ app.icon }}</span>
+            <q-icon :name="'sym_r_' + app.icon" size="20px" color="white" />
           </div>
           <div
             v-if="isAppOpen(app.id)"
@@ -71,10 +71,10 @@
       <div class="dock-bottom-section">
         <div class="dock-separator"></div>
         <div class="dock-bottom-btn" @click.stop="toggleLaunchPad">
-          <span class="material-symbols-rounded">grid_view</span>
+          <q-icon name="sym_r_grid_view" size="18px" color="white" />
         </div>
         <div class="dock-bottom-btn" @click.stop="toggleSearch">
-          <span class="material-symbols-rounded">search</span>
+          <q-icon name="sym_r_search" size="18px" color="white" />
         </div>
       </div>
     </div>
@@ -127,7 +127,7 @@
             @dblclick="toggleMaximize(win.id)"
           >
             <div class="titlebar-left">
-              <span class="material-symbols-rounded titlebar-icon">{{ getAppById(win.appId)?.icon || 'web' }}</span>
+              <q-icon :name="'sym_r_' + (getAppById(win.appId)?.icon || 'web')" size="16px" class="titlebar-icon" />
               <span class="titlebar-title">{{ win.title }}</span>
             </div>
             <div class="titlebar-buttons">
@@ -177,17 +177,13 @@
     </div>
 
     <!-- LaunchPad Overlay -->
-    <transition
-      enter-active-class="animated fadeIn"
-      leave-active-class="animated fadeOut"
-    >
       <div
         v-if="showLaunchPad"
         class="launchpad-overlay"
-        @click.self="showLaunchPad = false"
+        @click="showLaunchPad = false"
       >
-        <div class="launchpad-mask"></div>
-        <div class="launchpad-content">
+        <div class="launchpad-mask" @click="showLaunchPad = false"></div>
+        <div class="launchpad-content" @click.stop>
           <div class="launchpad-search-row">
             <q-input
               v-model="launchSearch"
@@ -198,12 +194,12 @@
               @click.stop
             >
               <template #prepend>
-                <q-icon name="search" size="18px" color="grey-5" />
+                <q-icon name="sym_r_search" size="18px" color="grey-5" />
               </template>
               <template #append>
                 <q-icon
                   v-if="launchSearch"
-                  name="close"
+                  name="sym_r_close"
                   size="16px"
                   class="cursor-pointer"
                   @click.stop="launchSearch = ''"
@@ -219,7 +215,7 @@
               @click.stop="onLaunchAppClick(app)"
             >
               <div class="launchpad-app-icon">
-                <span class="material-symbols-rounded">{{ app.icon }}</span>
+                <q-icon :name="'sym_r_' + app.icon" size="34px" color="white" />
               </div>
               <div class="launchpad-app-name">{{ app.title }}</div>
             </div>
@@ -229,13 +225,8 @@
           </div>
         </div>
       </div>
-    </transition>
 
     <!-- Search overlay -->
-    <transition
-      enter-active-class="animated fadeIn"
-      leave-active-class="animated fadeOut"
-    >
       <div
         v-if="showSearchOverlay"
         class="search-overlay"
@@ -252,7 +243,7 @@
             @click.stop
           >
             <template #prepend>
-              <q-icon name="search" size="20px" />
+              <q-icon name="sym_r_search" size="20px" />
             </template>
           </q-input>
           <div class="search-results" v-if="searchResults.length">
@@ -262,13 +253,12 @@
               class="search-result-item"
               @click.stop="onSearchResultClick(app)"
             >
-              <span class="material-symbols-rounded q-mr-sm">{{ app.icon }}</span>
+              <q-icon :name="'sym_r_' + app.icon" size="20px" class="q-mr-sm" />
               {{ app.title }}
             </div>
           </div>
         </div>
       </div>
-    </transition>
   </div>
 </template>
 
@@ -312,7 +302,7 @@ const monitorStore = useMonitorStore();
 
 // ─── State ───────────────────────────────────────────────────
 
-const wallpaper = ref('/bg/0.jpg');
+const wallpaper = ref('/bg/macos4.jpg');
 const clockTime = ref('');
 const weekDay = ref('');
 const dateStr = ref('');
@@ -602,7 +592,7 @@ function onDockContextMenu(e: MouseEvent, app: AppInfo) {
 }
 
 function onAvatarClick() {
-  openApp({ id: 'settings', name: 'settings', title: 'Settings', icon: '', url: appUrl('settings', '/account') });
+  onDockAppClick({ id: 'settings', name: 'settings', title: 'Settings', icon: 'settings', url: appUrl('settings', '/account'), status: 'running' });
 }
 
 function toggleLaunchPad() {
@@ -808,24 +798,26 @@ onUnmounted(() => {
    ═══════════════════════════════════════════════════════════ */
 .dock-bar {
   position: absolute;
-  left: 24px;
+  left: 12px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 999;
-  width: 60px;
+  width: 56px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 20px 0;
-  border-radius: 16px;
-  max-height: 94vh;
+  padding: 10px 0;
+  border-radius: 18px;
+  max-height: 90vh;
 
-  /* Glassmorphism matching Olares dock */
-  background: rgba(246, 246, 246, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  filter: drop-shadow(0px 0px 40px rgba(0, 0, 0, 0.2))
-    drop-shadow(0px 0px 2px rgba(0, 0, 0, 0.4));
-  backdrop-filter: blur(120px);
+  /* macOS-style frosted glass */
+  background: rgba(255, 255, 255, 0.18);
+  border: 0.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    inset 0 0.5px 0 rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(50px) saturate(1.8);
+  -webkit-backdrop-filter: blur(50px) saturate(1.8);
 }
 
 /* Avatar */
@@ -836,16 +828,20 @@ onUnmounted(() => {
   width: 100%;
 }
 .dock-avatar {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   overflow: hidden;
-  box-shadow: 0 0 11px 0 rgba(0, 0, 0, 0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.2);
+  transition: transform 0.15s ease;
+}
+.dock-avatar:hover {
+  transform: scale(1.1);
 }
 .dock-avatar-img {
   width: 100%;
@@ -857,10 +853,10 @@ onUnmounted(() => {
   color: rgba(255, 255, 255, 0.7);
 }
 .dock-separator {
-  width: 36px;
+  width: 28px;
   height: 0;
-  border-bottom: 1px solid rgba(31, 24, 20, 0.3);
-  margin: 12px 0;
+  border-bottom: 0.5px solid rgba(255, 255, 255, 0.25);
+  margin: 8px 0;
 }
 
 /* App icons */
@@ -883,21 +879,21 @@ onUnmounted(() => {
   cursor: pointer;
 }
 .dock-app-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 22%;
+  width: 36px;
+  height: 36px;
+  border-radius: 9px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.12);
-  box-shadow: 0 2px 10px 0 rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.15);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   transition: transform 0.15s ease;
 }
 .dock-app-icon:hover {
-  transform: scale(1.15);
+  transform: scale(1.08);
 }
 .dock-icon-glyph {
-  font-size: 26px;
+  font-size: 20px;
   color: #fff;
 }
 .dock-active-dot {
@@ -919,19 +915,19 @@ onUnmounted(() => {
   width: 100%;
 }
 .dock-bottom-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 18px;
-  background: rgba(255, 255, 255, 0.2);
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  margin-top: 10px;
-  transition: background 0.15s;
+  margin-top: 6px;
+  transition: background 0.2s ease;
   .material-symbols-rounded {
-    font-size: 16px;
-    color: #fff;
+    font-size: 18px;
+    color: rgba(255, 255, 255, 0.8);
   }
   &:hover {
     background: rgba(255, 255, 255, 0.35);
@@ -1098,13 +1094,17 @@ onUnmounted(() => {
 }
 .launchpad-content {
   width: calc(100% - 108px);
-  height: 100%;
+  max-height: calc(100% - 60px);
   margin-left: 108px;
   padding-top: 36px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  overflow: hidden;
+  overflow: visible;
+  pointer-events: none;
+  & > * {
+    pointer-events: auto;
+  }
 }
 .launchpad-search-row {
   width: 100%;
@@ -1129,6 +1129,8 @@ onUnmounted(() => {
   padding: 0 40px;
   overflow-y: auto;
   flex: 1;
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
 }
 .launchpad-app {
   display: flex;
@@ -1150,9 +1152,8 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  .material-symbols-rounded {
+  .q-icon {
     font-size: 34px;
-    color: #fff;
   }
 }
 .launchpad-app-name {

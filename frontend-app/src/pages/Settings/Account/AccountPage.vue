@@ -6,7 +6,7 @@
       <div class="section-title">Profile</div>
       <div class="settings-card">
         <div class="profile-header">
-          <q-avatar size="72px" color="grey-8" text-color="white" icon="person" />
+          <q-avatar size="72px" color="grey-8" text-color="white" icon="sym_r_person" />
           <div class="profile-info">
             <div class="profile-name">{{ userInfo.name || 'admin' }}</div>
             <div class="profile-email">{{ userInfo.email || 'admin@packalares.local' }}</div>
