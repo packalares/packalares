@@ -4,7 +4,7 @@
 
 system:
   hostname: packalares
-  domain: olares.local
+  domain: {{DOMAIN}}
   timezone: UTC
   namespaces:
     platform: os-system
@@ -12,13 +12,13 @@ system:
     monitoring: monitoring
 
 user:
-  name: ""
+  name: {{USERNAME}}
   # zone is auto-generated: {name}.{domain}
 
 network:
   tailscale:
-    enabled: false
-    auth_key: ""
+    enabled: {{TAILSCALE_ENABLED}}
+    auth_key: "{{TAILSCALE_AUTH_KEY}}"
     hostname: packalares
   dns:
     expose_port_53: false
