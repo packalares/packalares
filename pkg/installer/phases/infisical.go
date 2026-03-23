@@ -48,8 +48,50 @@ func GenerateSecrets(opts *InstallOptions) error {
 		os.Setenv(k, v)
 	}
 
+	// Detect SERVER_IP
+	if os.Getenv("SERVER_IP") == "" {
+		if ip, err := detectServerIP(); err == nil {
+			os.Setenv("SERVER_IP", ip)
+			fmt.Printf("  Detected server IP: %s\n", ip)
+		}
+	}
+
+	// Detect COREDNS_CLUSTER_IP
+	if os.Getenv("COREDNS_CLUSTER_IP") == "" {
+		if ip, err := detectCoreDNSIP(); err == nil {
+			os.Setenv("COREDNS_CLUSTER_IP", ip)
+			fmt.Printf("  Detected CoreDNS IP: %s\n", ip)
+		}
+	}
+
 	fmt.Println("  Secrets generated and saved to", stateDir)
 	return nil
+}
+
+func detectServerIP() (string, error) {
+	out, err := exec.Command("sh", "-c",
+		"ip route get 1.1.1.1 2>/dev/null | grep -oP 'src \\K[^ ]+'").Output()
+	if err != nil {
+		return "", err
+	}
+	ip := strings.TrimSpace(string(out))
+	if ip == "" {
+		return "", fmt.Errorf("no IP found")
+	}
+	return ip, nil
+}
+
+func detectCoreDNSIP() (string, error) {
+	out, err := exec.Command("kubectl", "get", "svc", "kube-dns",
+		"-n", "kube-system", "-o", "jsonpath={.spec.clusterIP}").Output()
+	if err != nil {
+		return "", err
+	}
+	ip := strings.TrimSpace(string(out))
+	if ip == "" {
+		return "", fmt.Errorf("no CoreDNS IP found")
+	}
+	return ip, nil
 }
 
 // SeedInfisical waits for the Infisical pod to be ready, then runs a
