@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/packalares/packalares/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -16,9 +17,8 @@ import (
 	"k8s.io/klog/v2"
 )
 
-// applicationGVR is the GroupVersionResource for the Olares Application CRD.
 var applicationGVR = schema.GroupVersionResource{
-	Group:    "app.bytetrade.io",
+	Group:    "app." + config.APIGroup(),
 	Version:  "v1alpha1",
 	Resource: "applications",
 }
@@ -228,7 +228,7 @@ func (k *K8sClient) DeleteApplicationCRD(ctx context.Context, name, namespace st
 	}
 
 	// Fallback: kubectl
-	cmd := exec.CommandContext(ctx, "kubectl", "delete", "application.app.bytetrade.io",
+	cmd := exec.CommandContext(ctx, "kubectl", "delete", "application.app."+config.APIGroup(),
 		name, "--namespace", namespace, "--ignore-not-found")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -275,21 +275,21 @@ func buildApplicationObject(rec *AppRecord) *unstructured.Unstructured {
 
 	obj := &unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": "app.bytetrade.io/v1alpha1",
+			"apiVersion": "app." + config.APIGroup() + "/v1alpha1",
 			"kind":       "Application",
 			"metadata": map[string]interface{}{
 				"name":      rec.ReleaseName,
 				"namespace": rec.Namespace,
 				"labels": map[string]interface{}{
-					"applications.app.bytetrade.io/name":  rec.Name,
-					"applications.app.bytetrade.io/owner": rec.Owner,
+					"applications.app." + config.APIGroup() + "/name":  rec.Name,
+					"applications.app." + config.APIGroup() + "/owner": rec.Owner,
 				},
 				"annotations": map[string]interface{}{
-					"applications.app.bytetrade.io/entrances": string(entrancesJSON),
-					"applications.app.bytetrade.io/icon":      rec.Icon,
-					"applications.app.bytetrade.io/title":     rec.Title,
-					"applications.app.bytetrade.io/version":   rec.Version,
-					"applications.app.bytetrade.io/source":    rec.Source,
+					"applications.app." + config.APIGroup() + "/entrances": string(entrancesJSON),
+					"applications.app." + config.APIGroup() + "/icon":      rec.Icon,
+					"applications.app." + config.APIGroup() + "/title":     rec.Title,
+					"applications.app." + config.APIGroup() + "/version":   rec.Version,
+					"applications.app." + config.APIGroup() + "/source":    rec.Source,
 				},
 			},
 			"spec": map[string]interface{}{

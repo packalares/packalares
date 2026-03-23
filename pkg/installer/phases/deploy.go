@@ -67,6 +67,7 @@ func applyManifestFile(path string, opts *InstallOptions) error {
 // manifest string with values from the centralized config.
 func replaceConfigPlaceholders(manifest string, opts *InstallOptions) string {
 	replacements := map[string]string{
+		"{{API_GROUP}}":           config.APIGroup(),
 		"{{PLATFORM_NAMESPACE}}":  config.PlatformNamespace(),
 		"{{FRAMEWORK_NAMESPACE}}":  config.FrameworkNamespace(),
 		"{{MONITORING_NAMESPACE}}": config.MonitoringNamespace(),
@@ -146,11 +147,15 @@ func deployFrameworkCharts(opts *InstallOptions) error {
 		"deploy/framework/samba/samba-server.yaml",
 		"deploy/framework/tailscale.yaml",
 		"deploy/framework/mdns.yaml",
-		"deploy/framework/l4proxy-deployment.yaml",
 		"deploy/proxy/proxy-deployment.yaml",
 	}
 
 	for _, path := range manifests {
+		// Skip tailscale if no auth key configured
+		if path == "deploy/framework/tailscale.yaml" && opts.TailscaleAuthKey == "" {
+			fmt.Println("  Skipping tailscale (no auth key configured)")
+			continue
+		}
 		name := strings.TrimSuffix(strings.TrimPrefix(path, "deploy/framework/"), ".yaml")
 		fmt.Printf("  Deploying %s ...\n", name)
 		if err := applyManifestFile(path, opts); err != nil {
@@ -161,24 +166,21 @@ func deployFrameworkCharts(opts *InstallOptions) error {
 }
 
 func deployAppCharts(opts *InstallOptions) error {
-	components := []struct {
-		name      string
-		namespace string
-	}{
-		{"desktop", config.UserNamespace(opts.Username)},
-		{"wizard", config.UserNamespace(opts.Username)},
-	}
-
 	// Ensure user namespace exists
 	userNS := config.UserNamespace(opts.Username)
 	ensureNamespace(userNS)
 	ensureNamespace("user-system")
 
-	for _, comp := range components {
-		fmt.Printf("  Deploying %s ...\n", comp.name)
-		manifest := generateAppManifest(comp.name, comp.namespace, opts)
-		if err := kubectlApply(manifest); err != nil {
-			return fmt.Errorf("deploy %s: %w", comp.name, err)
+	manifests := []string{
+		"deploy/apps/desktop.yaml",
+		"deploy/apps/wizard.yaml",
+	}
+
+	for _, path := range manifests {
+		name := strings.TrimSuffix(strings.TrimPrefix(path, "deploy/apps/"), ".yaml")
+		fmt.Printf("  Deploying %s ...\n", name)
+		if err := applyManifestFile(path, opts); err != nil {
+			return fmt.Errorf("deploy %s: %w", name, err)
 		}
 	}
 	return nil
@@ -186,8 +188,7 @@ func deployAppCharts(opts *InstallOptions) error {
 
 func deployMonitoring(opts *InstallOptions) error {
 	fmt.Println("  Deploying Prometheus + node-exporter + kube-state-metrics ...")
-	manifest := generateMonitoringManifest(opts.Registry)
-	return kubectlApply(manifest)
+	return applyManifestFile("deploy/framework/monitoring.yaml", opts)
 }
 
 func deployKubeBlocks(opts *InstallOptions) error {

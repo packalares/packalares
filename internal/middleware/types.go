@@ -1,16 +1,16 @@
 package middleware
 
 import (
+	"github.com/packalares/packalares/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
-// MiddlewareRequest CRD types - compatible with Olares marketplace apps.
-// Group: apr.bytetrade.io, Version: v1alpha1
+// MiddlewareRequest CRD types.
 
-const (
-	Group   = "apr.bytetrade.io"
+var (
+	Group   = "apr." + config.APIGroup()
 	Version = "v1alpha1"
 )
 

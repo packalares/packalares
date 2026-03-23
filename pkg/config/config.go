@@ -89,6 +89,10 @@ func MonitoringNamespace() string {
 	return configOr("system.namespaces.monitoring", "MONITORING_NAMESPACE", "monitoring")
 }
 
+// ─── API Group ──────────────────────────────────────────
+
+func APIGroup() string { return configOr("system.api_group", "API_GROUP", "packalares.io") }
+
 // ─── Domain ─────────────────────────────────────────────
 
 func Domain() string  { return configOr("system.domain", "SYSTEM_DOMAIN", "olares.local") }

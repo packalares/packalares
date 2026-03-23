@@ -11,7 +11,7 @@ kind: ClusterRole
 metadata:
   name: middleware-operator
 rules:
-- apiGroups: ["apr.bytetrade.io"]
+- apiGroups: ["apr.{{API_GROUP}}"]
   resources: ["middlewarerequests"]
   verbs: ["get", "list", "watch", "update", "patch"]
 - apiGroups: [""]
@@ -59,31 +59,25 @@ spec:
         image: ghcr.io/packalares/middleware:latest
         env:
         - name: PG_HOST
-          value: "citus-svc.{{PLATFORM_NAMESPACE}}"
+          value: "citus-coordinator-svc.{{PLATFORM_NAMESPACE}}"
         - name: PG_PORT
           value: "5432"
         - name: PG_ADMIN_USER
-          value: "postgres"
+          value: "{{PG_USER}}"
         - name: PG_ADMIN_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: pg-admin-secrets
-              key: password
+          value: "{{PG_PASSWORD}}"
         - name: REDIS_HOST
           value: "kvrocks-svc.{{PLATFORM_NAMESPACE}}"
         - name: REDIS_PORT
           value: "6379"
         - name: REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: redis-secrets
-              key: password
+          value: "{{REDIS_PASSWORD}}"
         - name: NATS_HOST
           value: "nats-svc.{{PLATFORM_NAMESPACE}}"
         - name: NATS_PORT
           value: "4222"
         - name: PLATFORM_NAMESPACE
-          value: "os-system"
+          value: "{{PLATFORM_NAMESPACE}}"
         resources:
           requests:
             cpu: 50m
@@ -97,9 +91,9 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: middlewarerequests.apr.bytetrade.io
+  name: middlewarerequests.apr.{{API_GROUP}}
 spec:
-  group: apr.bytetrade.io
+  group: apr.{{API_GROUP}}
   versions:
   - name: v1alpha1
     served: true

@@ -412,7 +412,7 @@ spec:
 // --- Framework Manifests ---
 
 func frameworkImage(registry, component string) string {
-	defaultImg := fmt.Sprintf("beclab/%s:latest", component)
+	defaultImg := fmt.Sprintf("ghcr.io/packalares/%s:latest", component)
 	return imageRef(registry, defaultImg)
 }
 

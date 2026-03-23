@@ -11,7 +11,7 @@ kind: ClusterRole
 metadata:
   name: system-server
 rules:
-- apiGroups: ["app.bytetrade.io"]
+- apiGroups: ["app.{{API_GROUP}}"]
   resources: ["applications"]
   verbs: ["get", "list", "watch"]
 - apiGroups: [""]
@@ -121,9 +121,9 @@ spec:
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
-  name: applications.app.bytetrade.io
+  name: applications.app.{{API_GROUP}}
 spec:
-  group: app.bytetrade.io
+  group: app.{{API_GROUP}}
   versions:
   - name: v1alpha1
     served: true

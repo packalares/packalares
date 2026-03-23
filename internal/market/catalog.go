@@ -20,7 +20,7 @@ var catVersionSuffix = regexp.MustCompile(`_v\d+$`)
 
 // Catalog fetches, caches, and serves app catalog data.
 // It pulls from the Olares appstore API first, falls back to GitHub
-// (beclab/apps), then to a local catalog file, and finally uses a
+// (Olares community apps repo), then to a local catalog file, and finally uses a
 // built-in default catalog so the market always has apps to show.
 type Catalog struct {
 	mu         sync.RWMutex

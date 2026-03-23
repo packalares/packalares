@@ -6,6 +6,7 @@ system:
   hostname: packalares
   domain: {{DOMAIN}}
   timezone: UTC
+  api_group: packalares.io
   namespaces:
     platform: os-system
     framework: os-framework

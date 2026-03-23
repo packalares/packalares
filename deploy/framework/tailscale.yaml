@@ -18,6 +18,7 @@ spec:
         app: tailscale
     spec:
       hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       serviceAccountName: packalares-admin
       containers:
       - name: tailscale
