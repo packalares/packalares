@@ -190,7 +190,6 @@ func deployAppCharts(opts *InstallOptions) error {
 	// Ensure user namespace exists
 	userNS := config.UserNamespace(opts.Username)
 	ensureNamespace(userNS)
-	ensureNamespace("user-system")
 
 	manifests := []string{
 		"deploy/apps/desktop.yaml",
@@ -235,7 +234,13 @@ func deployKubeBlocks(opts *InstallOptions) error {
 func waitForAllPods() error {
 	fmt.Println("  Waiting for all pods to be ready ...")
 
-	namespaces := []string{config.PlatformNamespace(), "kube-system", "user-system"}
+	namespaces := []string{
+		config.PlatformNamespace(),
+		config.FrameworkNamespace(),
+		config.MonitoringNamespace(),
+		config.UserNamespace(config.Username()),
+		"kube-system",
+	}
 
 	maxRetries := 60
 	for i := 0; i < maxRetries; i++ {
