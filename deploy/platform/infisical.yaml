@@ -66,7 +66,9 @@ type: Opaque
 stringData:
   ENCRYPTION_KEY: "{{ENCRYPTION_KEY}}"
   AUTH_SECRET: "{{AUTH_SECRET}}"
-  DB_CONNECTION_URI: "postgresql://{{PG_USER}}:{{PG_PASSWORD}}@citus-svc.{{PLATFORM_NAMESPACE}}:5432/infisical?sslmode=disable"
+  PGUSER: "{{PG_USER}}"
+  PGPASSWORD: "{{PG_PASSWORD}}"
+  DB_CONNECTION_URI: "postgresql://{{PG_USER}}:{{PG_PASSWORD}}@citus-coordinator-svc.{{PLATFORM_NAMESPACE}}:5432/infisical?sslmode=disable"
   REDIS_URL: "redis://infisical-redis-svc.{{PLATFORM_NAMESPACE}}:6379/0"
   SITE_URL: "https://infisical.{{USER_ZONE}}"
 ---
@@ -87,6 +89,53 @@ spec:
       labels:
         app: infisical
     spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:16.0-alpine3.18
+        command:
+          - sh
+          - -c
+          - >-
+            echo "Waiting for PostgreSQL ...";
+            until psql -h $PGHOST -p 5432 -U $PGUSER -d $PGDB -c "SELECT 1" 2>/dev/null; do
+              sleep 2; printf ".";
+            done;
+            echo " PostgreSQL is ready";
+        env:
+        - name: PGHOST
+          value: "citus-coordinator-svc.{{PLATFORM_NAMESPACE}}"
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: infisical-secrets
+              key: PGUSER
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: infisical-secrets
+              key: PGPASSWORD
+        - name: PGDB
+          value: "infisical"
+      - name: wait-for-redis
+        image: redis:7-alpine
+        command:
+          - sh
+          - -c
+          - >-
+            echo "Waiting for Redis ...";
+            until redis-cli -h infisical-redis-svc.{{PLATFORM_NAMESPACE}} ping 2>/dev/null | grep -q PONG; do
+              sleep 2; printf ".";
+            done;
+            echo " Redis is ready";
+      - name: migration
+        image: infisical/infisical:v0.158.20
+        command: ["npm", "run", "migration:latest"]
+        envFrom:
+        - secretRef:
+            name: infisical-secrets
+        env:
+        - name: NODE_ENV
+          value: "production"
       containers:
       - name: infisical
         image: infisical/infisical:v0.158.20
