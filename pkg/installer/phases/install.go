@@ -109,19 +109,19 @@ func RunInstall(opts *InstallOptions) error {
 			return storage.DeployOpenEBS(opts.Registry)
 		}},
 
-		// Phase 9: Deploy KVRocks (Redis-compatible) in K8s
+		// Phase 9: Register CRDs, create namespaces, RBAC
+		{"Setup Kubernetes management", func() error {
+			return deployCRDsAndNamespaces(opts)
+		}},
+
+		// Phase 10: Deploy KVRocks (Redis-compatible) in K8s
 		{"Deploy KVRocks", func() error {
 			return redis.Install(opts.BaseDir)
 		}},
 
-		// Phase 10: Install Helm
+		// Phase 11: Install Helm
 		{"Install Helm", func() error {
 			return helm.Install(opts.BaseDir, arch)
-		}},
-
-		// Phase 11: Register CRDs, create namespaces, RBAC
-		{"Setup Kubernetes management", func() error {
-			return deployCRDsAndNamespaces(opts)
 		}},
 
 		// Phase 12: Deploy platform charts
