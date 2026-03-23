@@ -102,6 +102,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION)" >> "$GITHUB_OUTPUT"
+
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -110,11 +114,18 @@ jobs:
       - name: Build CLI
         run: |
           cd cmd/cli
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o ../../packalares-linux-amd64 .
-          chmod +x ../../packalares-linux-amd64
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.Version=${{ steps.version.outputs.version }}" -o ../../packalares-amd64 .
+          chmod +x ../../packalares-amd64
 
-      - name: Upload CLI artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: packalares-linux-amd64
-          path: packalares-linux-amd64
+      - name: Create or update release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v${{ steps.version.outputs.version }}"
+          # Delete existing release if it exists (to update the binary)
+          gh release delete "$VERSION" --yes 2>/dev/null || true
+          gh release create "$VERSION" \
+            --title "Packalares $VERSION" \
+            --notes "Automated build from commit ${{ github.sha }}" \
+            --latest \
+            packalares-amd64
