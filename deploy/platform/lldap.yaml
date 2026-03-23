@@ -45,7 +45,7 @@ spec:
         - name: LLDAP_LDAP_BASE_DN
           value: "dc=packalares,dc=local"
         - name: LLDAP_DATABASE_URL
-          value: "sqlite:///data/lldap.db"
+          value: "sqlite:///data/lldap.db?mode=rwc"
         volumeMounts:
         - name: data
           mountPath: /data
