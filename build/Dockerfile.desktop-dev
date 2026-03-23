@@ -1,0 +1,15 @@
+FROM node:20-alpine
+
+RUN npm install -g @quasar/cli
+
+WORKDIR /app
+COPY frontend-app/package*.json ./
+RUN npm ci
+COPY frontend-app/ .
+
+ENV DEV_PORT=80
+ENV API_PROXY_TARGET=https://localhost
+
+EXPOSE 80
+
+CMD ["npx", "quasar", "dev", "--port", "80", "--hostname", "0.0.0.0"]
