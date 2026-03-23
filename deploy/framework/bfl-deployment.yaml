@@ -21,7 +21,7 @@ rules:
   - apiGroups: ["metrics.k8s.io"]
     resources: ["nodes"]
     verbs: ["get", "list"]
-  - apiGroups: ["app.bytetrade.io"]
+  - apiGroups: ["app.{{API_GROUP}}"]
     resources: ["applications"]
     verbs: ["get", "list", "watch"]
   - apiGroups: ["apps"]

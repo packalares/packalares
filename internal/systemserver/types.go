@@ -1,16 +1,16 @@
 package systemserver
 
 import (
+	"github.com/packalares/packalares/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 // Application CRD types for watching app registrations.
-// These are compatible with Olares app CRDs.
 
-const (
-	AppGroup   = "app.bytetrade.io"
+var (
+	AppGroup   = "app." + config.APIGroup()
 	AppVersion = "v1alpha1"
 )
 

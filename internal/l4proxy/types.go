@@ -1,9 +1,13 @@
 package l4proxy
 
-import "fmt"
+import (
+	"fmt"
 
-const (
-	annotationGroup = "bytetrade.io"
+	"github.com/packalares/packalares/pkg/config"
+)
+
+var (
+	annotationGroup = config.APIGroup()
 
 	annoZone         = annotationGroup + "/zone"
 	annoDID          = annotationGroup + "/did"
@@ -59,7 +63,7 @@ type Cfg struct {
 }
 
 func defaultLocalDomain() string {
-	return "olares.local"
+	return config.Domain()
 }
 
 func bflServiceName(userNSPrefix, userName string) string {

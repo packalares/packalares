@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/packalares/packalares/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -16,7 +17,6 @@ import (
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
-	"github.com/packalares/packalares/pkg/config"
 	"k8s.io/klog/v2"
 )
 
@@ -484,7 +484,7 @@ func parseMemory(s string) float64 {
 // ---------------------------------------------------------------------------
 
 var appGVR = schema.GroupVersionResource{
-	Group:    "app.bytetrade.io",
+	Group:    "app." + config.APIGroup(),
 	Version:  "v1alpha1",
 	Resource: "applications",
 }

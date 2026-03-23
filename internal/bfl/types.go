@@ -1,9 +1,13 @@
 package bfl
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/packalares/packalares/pkg/config"
+)
 
 // ---------------------------------------------------------------------------
-// Response envelope — identical wire format to beclab/bfl
+// Response envelope
 // ---------------------------------------------------------------------------
 
 type APIResponse struct {
@@ -200,41 +204,43 @@ func (t TerminusName) UserZone() string {
 }
 
 // ---------------------------------------------------------------------------
-// Annotation keys (bytetrade.io/*)
+// Annotation keys
 // ---------------------------------------------------------------------------
 
-const (
-	AnnotationGroup = "bytetrade.io"
+var AnnotationGroup = config.APIGroup()
 
-	AnnoTerminusName      = AnnotationGroup + "/terminus-name"
-	AnnoZone              = AnnotationGroup + "/zone"
-	AnnoOwnerRole         = AnnotationGroup + "/owner-role"
-	AnnoIsEphemeral       = AnnotationGroup + "/is-ephemeral"
-	AnnoCreator           = AnnotationGroup + "/creator"
-	AnnoWizardStatus      = AnnotationGroup + "/wizard-status"
-	AnnoWizardError       = AnnotationGroup + "/wizard-error"
-	AnnoAccessLevel       = AnnotationGroup + "/launcher-access-level"
-	AnnoAllowCIDR         = AnnotationGroup + "/launcher-allow-cidr"
-	AnnoAuthPolicy        = AnnotationGroup + "/launcher-auth-policy"
-	AnnoDenyAll           = AnnotationGroup + "/deny-all"
-	AnnoPublicDomainIP    = AnnotationGroup + "/public-domain-ip"
-	AnnoLocalDomainIP     = AnnotationGroup + "/local-domain-ip"
-	AnnoLocalDNSRecord    = AnnotationGroup + "/local-domain-dns-record"
-	AnnoReverseProxyType  = AnnotationGroup + "/reverse-proxy-type"
-	AnnoLanguage          = AnnotationGroup + "/language"
-	AnnoLocation          = AnnotationGroup + "/location"
-	AnnoTheme             = AnnotationGroup + "/theme"
-	AnnoAvatar            = AnnotationGroup + "/avatar"
-	AnnoLoginBackground   = AnnotationGroup + "/login-background"
-	AnnoLoginBGStyle      = AnnotationGroup + "/login-background-style"
-	AnnoUserDID           = AnnotationGroup + "/user-did"
-	AnnoCPULimit          = AnnotationGroup + "/user-cpu-limit"
-	AnnoMemoryLimit       = AnnotationGroup + "/user-memory-limit"
-	AnnoJWSToken          = AnnotationGroup + "/jws-token-signature"
-	AnnoCertManagerDID    = AnnotationGroup + "/user-did"
-	AnnoAllowedDomainTS   = AnnotationGroup + "/deny-all-public-update"
-	AnnoNatGatewayIP      = AnnotationGroup + "/nat-gateway-ip"
-	AnnoTaskEnableSSL     = AnnotationGroup + "/task-enable-ssl"
+func anno(key string) string { return AnnotationGroup + "/" + key }
+
+var (
+	AnnoTerminusName      = anno("terminus-name")
+	AnnoZone              = anno("zone")
+	AnnoOwnerRole         = anno("owner-role")
+	AnnoIsEphemeral       = anno("is-ephemeral")
+	AnnoCreator           = anno("creator")
+	AnnoWizardStatus      = anno("wizard-status")
+	AnnoWizardError       = anno("wizard-error")
+	AnnoAccessLevel       = anno("launcher-access-level")
+	AnnoAllowCIDR         = anno("launcher-allow-cidr")
+	AnnoAuthPolicy        = anno("launcher-auth-policy")
+	AnnoDenyAll           = anno("deny-all")
+	AnnoPublicDomainIP    = anno("public-domain-ip")
+	AnnoLocalDomainIP     = anno("local-domain-ip")
+	AnnoLocalDNSRecord    = anno("local-domain-dns-record")
+	AnnoReverseProxyType  = anno("reverse-proxy-type")
+	AnnoLanguage          = anno("language")
+	AnnoLocation          = anno("location")
+	AnnoTheme             = anno("theme")
+	AnnoAvatar            = anno("avatar")
+	AnnoLoginBackground   = anno("login-background")
+	AnnoLoginBGStyle      = anno("login-background-style")
+	AnnoUserDID           = anno("user-did")
+	AnnoCPULimit          = anno("user-cpu-limit")
+	AnnoMemoryLimit       = anno("user-memory-limit")
+	AnnoJWSToken          = anno("jws-token-signature")
+	AnnoCertManagerDID    = anno("user-did")
+	AnnoAllowedDomainTS   = anno("deny-all-public-update")
+	AnnoNatGatewayIP      = anno("nat-gateway-ip")
+	AnnoTaskEnableSSL     = anno("task-enable-ssl")
 )
 
 const (

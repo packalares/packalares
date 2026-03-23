@@ -16,6 +16,8 @@ spec:
       labels:
         app: lldap
     spec:
+      securityContext:
+        fsGroup: 1000
       containers:
       - name: lldap
         image: nitnelave/lldap:v0.5.0
