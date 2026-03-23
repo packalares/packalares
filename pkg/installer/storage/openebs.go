@@ -51,6 +51,8 @@ metadata:
       - name: BasePath
         value: /var/openebs/local
 provisioner: openebs.io/local
+parameters:
+  basePath: "/var/openebs/local"
 reclaimPolicy: Delete
 volumeBindingMode: WaitForFirstConsumer
 `
