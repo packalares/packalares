@@ -56,9 +56,7 @@ spec:
           periodSeconds: 5
       volumes:
       - name: data
-        hostPath:
-          path: /var/lib/packalares/lldap-data
-          type: DirectoryOrCreate
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Secret

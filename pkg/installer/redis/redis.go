@@ -49,8 +49,8 @@ spec:
         - "{{PASSWORD}}"
         - --dir
         - /data
-        - --log-to-stdout
-        - "yes"
+        - --log-dir
+        - stdout
         volumeMounts:
         - name: data
           mountPath: /data
@@ -68,9 +68,7 @@ spec:
           periodSeconds: 10
       volumes:
       - name: data
-        hostPath:
-          path: /var/lib/packalares/kvrocks-data
-          type: DirectoryOrCreate
+        emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
