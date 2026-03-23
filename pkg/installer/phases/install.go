@@ -54,6 +54,11 @@ func RunInstall(opts *InstallOptions) error {
 		fmt.Printf("[install] Generated admin password: %s\n", opts.Password)
 	}
 
+	// Write config.yaml so all config.*() functions return correct values
+	if err := writeConfigYAML(opts); err != nil {
+		return fmt.Errorf("write config.yaml: %w", err)
+	}
+
 	arch := getArch()
 
 	phases := []phase{
