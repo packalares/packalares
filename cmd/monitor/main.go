@@ -6,10 +6,11 @@ import (
 	"os"
 
 	"github.com/packalares/packalares/internal/monitor"
+	"github.com/packalares/packalares/pkg/config"
 )
 
 func main() {
-	prometheusURL := envOr("PROMETHEUS_URL", "http://prometheus.kubesphere-monitoring-system.svc:9090")
+	prometheusURL := envOr("PROMETHEUS_URL", config.PrometheusURL())
 	port := envOr("PORT", "8000")
 
 	handler := monitor.NewHandler(prometheusURL)

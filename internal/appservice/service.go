@@ -38,9 +38,9 @@ type Config struct {
 func DefaultConfig() *Config {
 	cfg := &Config{
 		DataDir:      "/var/lib/packalares/appservice",
-		Namespace:    "user-space-admin",
+		Namespace:    config.UserNamespace(config.Username()),
 		ChartRepoURL: config.ChartRepoURL(),
-		Owner:        "admin",
+		Owner:        config.Username(),
 		ListenAddr:   ":6755",
 	}
 

@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/packalares/packalares/pkg/config"
 	"github.com/packalares/packalares/pkg/secrets"
 )
 
@@ -76,14 +77,14 @@ func LoadConfig() (*Config, error) {
 		UserZone:       "",
 		JWTSecret:      "",
 		SessionSecret:  "",
-		RedisAddr:      "localhost:6379",
+		RedisAddr:      config.KVRocksHost() + ":" + config.KVRocksPort(),
 		RedisPassword:  "",
 		RedisDB:        0,
-		LLDAPHost:      "lldap-service",
+		LLDAPHost:      config.LLDAPHost(),
 		LLDAPPort:      17170,
 		LLDAPUser:      "admin",
-		LLDAPPassword:  "adminpassword",
-		LLDAPBaseDN:    "dc=example,dc=com",
+		LLDAPPassword:  "",
+		LLDAPBaseDN:    "dc=packalares,dc=local",
 		SessionName:    "packalares_session",
 		SessionMaxAgeSec:  1209600, // 14 days
 		SessionInactivity: 604800,  // 7 days

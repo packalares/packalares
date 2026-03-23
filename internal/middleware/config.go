@@ -36,9 +36,9 @@ func LoadConfig() (*Config, error) {
 	cfg := &Config{
 		PGHost:            config.CitusHost(),
 		PGPort:            5432,
-		PGAdminUser:       "postgres",
+		PGAdminUser:       config.CitusUser(),
 		PGAdminPassword:   "",
-		RedisHost:         "redis-cluster-proxy",
+		RedisHost:         config.KVRocksHost(),
 		RedisPort:         6379,
 		RedisPassword:     "",
 		NATSHost:          config.NATSHost(),
