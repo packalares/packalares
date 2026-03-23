@@ -78,7 +78,7 @@ cleanup_previous() {
     rm -f /usr/bin/{containerd,ctr,runc,crictl}
 
     # Remove data
-    rm -rf /var/lib/rancher /var/lib/etcd /var/lib/kubelet /var/lib/cni /var/lib/calico /var/lib/containerd /var/lib/openebs
+    rm -rf /var/lib/rancher /var/lib/etcd /var/lib/kubelet /var/lib/cni /var/lib/calico /var/lib/containerd /var/lib/openebs /var/openebs /var/lib/packalares
     rm -rf /etc/rancher /etc/cni /etc/etcd.env /etc/ssl/etcd /etc/calico /etc/containerd
     rm -rf /run/containerd /run/flannel /run/calico /var/run/calico
     rm -rf /root/.kube /root/.olares /olares
