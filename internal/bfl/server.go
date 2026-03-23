@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/packalares/packalares/pkg/config"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
@@ -691,8 +692,8 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request, use
 		}
 	}
 
-	// Call authelia to actually reset the password
-	autheliaURL := fmt.Sprintf("http://authelia-backend-provider.user-system-%s:28080/api/reset/%s/password", userName, userName)
+	// Call auth service to reset the password
+	autheliaURL := fmt.Sprintf("http://%s:9091/api/reset/%s/password", config.AuthDNS(), userName)
 
 	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, autheliaURL, bytes.NewReader(body))
 	if err != nil {
