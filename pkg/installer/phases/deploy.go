@@ -68,6 +68,7 @@ func applyManifestFile(path string, opts *InstallOptions) error {
 func replaceConfigPlaceholders(manifest string, opts *InstallOptions) string {
 	replacements := map[string]string{
 		"{{API_GROUP}}":           config.APIGroup(),
+		"{{TLS_SECRET_NAME}}":    config.TLSSecretName(),
 		"{{PLATFORM_NAMESPACE}}":  config.PlatformNamespace(),
 		"{{FRAMEWORK_NAMESPACE}}":  config.FrameworkNamespace(),
 		"{{MONITORING_NAMESPACE}}": config.MonitoringNamespace(),

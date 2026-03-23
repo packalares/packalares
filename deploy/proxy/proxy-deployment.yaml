@@ -48,4 +48,4 @@ spec:
           name: proxy-config
       - name: tls
         secret:
-          secretName: zone-tls
+          secretName: {{TLS_SECRET_NAME}}
