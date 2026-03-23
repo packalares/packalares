@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/packalares/packalares/pkg/config"
+	pkgconfig "github.com/packalares/packalares/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -65,7 +65,7 @@ func NewK8sClient() (*K8sClient, error) {
 		if user != "" {
 			ns = fmt.Sprintf("%s-%s", DefaultUserNamespacePrefix, user)
 		} else {
-			ns = "user-space-admin"
+			ns = pkgconfig.UserNamespace(pkgconfig.Username())
 		}
 	}
 
@@ -169,7 +169,7 @@ func (k *K8sClient) GetDomain(ctx context.Context) (string, error) {
 		return domain, nil
 	}
 	// Try to read from cluster configmap
-	cm, err := k.Clientset.CoreV1().ConfigMaps(config.PlatformNamespace()).Get(ctx, "user-config", metav1.GetOptions{})
+	cm, err := k.Clientset.CoreV1().ConfigMaps(pkgconfig.PlatformNamespace()).Get(ctx, "user-config", metav1.GetOptions{})
 	if err == nil {
 		if d, ok := cm.Data["domain"]; ok && d != "" {
 			return d, nil
@@ -183,7 +183,7 @@ func (k *K8sClient) GetOSVersion(ctx context.Context) string {
 	if v := os.Getenv("OLARES_VERSION"); v != "" {
 		return v
 	}
-	cm, err := k.Clientset.CoreV1().ConfigMaps(config.PlatformNamespace()).Get(ctx, "os-config", metav1.GetOptions{})
+	cm, err := k.Clientset.CoreV1().ConfigMaps(pkgconfig.PlatformNamespace()).Get(ctx, "os-config", metav1.GetOptions{})
 	if err == nil {
 		if v, ok := cm.Data["version"]; ok {
 			return v
@@ -484,7 +484,7 @@ func parseMemory(s string) float64 {
 // ---------------------------------------------------------------------------
 
 var appGVR = schema.GroupVersionResource{
-	Group:    "app." + config.APIGroup(),
+	Group:    "app." + pkgconfig.APIGroup(),
 	Version:  "v1alpha1",
 	Resource: "applications",
 }

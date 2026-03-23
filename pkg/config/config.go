@@ -122,7 +122,7 @@ func ServiceDNS(name, namespace string) string {
 
 // ─── Platform services ─────────────────────────────────
 
-func CitusDNS() string  { return ServiceDNS("citus-svc", PlatformNamespace()) }
+func CitusDNS() string  { return ServiceDNS("citus-coordinator-svc", PlatformNamespace()) }
 func CitusHost() string  { return configOr("database.host", "PG_HOST", CitusDNS()) }
 func CitusPort() string  { return configOr("database.port", "PG_PORT", "5432") }
 func CitusPassword() string { return configOr("database.password", "PG_PASSWORD", "") }
@@ -149,12 +149,13 @@ func ChartRepoURL() string {
 
 // ─── Framework services ────────────────────────────────
 
-func AuthDNS() string       { return ServiceDNS("auth-svc", FrameworkNamespace()) }
-func BFLDNS() string        { return ServiceDNS("bfl-svc", FrameworkNamespace()) }
-func MonitorDNS() string    { return ServiceDNS("monitor-svc", FrameworkNamespace()) }
-func MarketDNS() string     { return ServiceDNS("market-svc", FrameworkNamespace()) }
-func AppserviceDNS() string { return ServiceDNS("appservice-svc", FrameworkNamespace()) }
-func DesktopDNS() string    { return ServiceDNS("desktop-svc", FrameworkNamespace()) }
+func AuthDNS() string       { return ServiceDNS("auth-backend", FrameworkNamespace()) }
+func BFLDNS() string        { return ServiceDNS("bfl", FrameworkNamespace()) }
+func MonitorDNS() string    { return ServiceDNS("monitoring-server", FrameworkNamespace()) }
+func MarketDNS() string     { return ServiceDNS("market-backend", FrameworkNamespace()) }
+func AppserviceDNS() string { return ServiceDNS("app-service", FrameworkNamespace()) }
+func SystemServerDNS() string { return ServiceDNS("system-server", FrameworkNamespace()) }
+func DesktopDNS() string    { return ServiceDNS("desktop-svc", UserNamespace(Username())) }
 
 // ─── Monitoring ─────────────────────────────────────────
 
