@@ -23,15 +23,15 @@ http {
     ssl_certificate_key /etc/tls/tls.key;
     ssl_protocols TLSv1.2 TLSv1.3;
 
-    set $auth_up auth-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $bfl_up bfl-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $desktop_up desktop-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $files_up files-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $market_up market-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $app_up appservice-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $mon_up monitor-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $mounts_up mounts-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $ss_up systemserver-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $auth_up auth-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $bfl_up bfl.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $desktop_up desktop-svc.{{USER_NAMESPACE}}.svc.cluster.local;
+    set $files_up files-server.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $market_up market-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $app_up app-service.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $mon_up monitoring-server.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $mounts_up mounts-server.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $ss_up system-server.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
 
     # --- Auth subrequest ---
     location = /_auth {
@@ -52,7 +52,7 @@ http {
     location /api/auth/state    { proxy_pass http://$auth_up:9091/api/state; proxy_set_header Cookie $http_cookie; }
     location /api/auth/logout   { proxy_pass http://$auth_up:9091/api/logout; proxy_set_header Cookie $http_cookie; }
     location /api/auth/health   { proxy_pass http://$auth_up:9091/api/health; }
-    location /api/user/info     { proxy_pass http://$bfl_up:8080/bfl/backend/v1/user-info; proxy_set_header Host $host; }
+    location /api/user/info     { proxy_pass http://$bfl_up:80/bfl/backend/v1/user-info; proxy_set_header Host $host; }
 
     # --- Protected API (auth required) ---
 
@@ -78,13 +78,13 @@ http {
     location /api/files/upload     { auth_request /_auth; proxy_pass http://$files_up:80/upload; proxy_set_header Host $host; client_max_body_size 10G; }
 
     # Monitor
-    location /api/monitor/         { auth_request /_auth; proxy_pass http://$mon_up:8000/api/; proxy_set_header Host $host; }
+    location /api/monitor/         { auth_request /_auth; proxy_pass http://$mon_up:80/api/; proxy_set_header Host $host; }
 
     # Mounts
     location /api/mounts           { auth_request /_auth; proxy_pass http://$mounts_up:8080/api/mounts; proxy_set_header Host $host; }
 
     # User/BFL (protected)
-    location /api/user/            { auth_request /_auth; proxy_pass http://$bfl_up:8080/bfl/; proxy_set_header Host $host; }
+    location /api/user/            { auth_request /_auth; proxy_pass http://$bfl_up:80/bfl/; proxy_set_header Host $host; }
 
     # WebSocket
     location /ws { proxy_pass http://$app_up:6755/ws; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade; proxy_set_header Cookie $http_cookie; }
@@ -116,13 +116,13 @@ http {
     ssl_certificate /etc/tls/tls.crt;
     ssl_certificate_key /etc/tls/tls.key;
 
-    set $auth_up auth-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $bfl_up bfl-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $files_up files-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $market_up market-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $app_up appservice-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $mon_up monitor-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $mounts_up mounts-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $auth_up auth-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $bfl_up bfl.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $files_up files-server.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $market_up market-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $app_up app-service.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $mon_up monitoring-server.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $mounts_up mounts-server.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
 
     # CORS for cross-subdomain requests
     add_header Access-Control-Allow-Origin "https://$http_origin" always;
@@ -151,7 +151,7 @@ http {
     location /api/auth/state    { proxy_pass http://$auth_up:9091/api/state; proxy_set_header Cookie $http_cookie; }
     location /api/auth/logout   { proxy_pass http://$auth_up:9091/api/logout; proxy_set_header Cookie $http_cookie; }
     location /api/auth/health   { proxy_pass http://$auth_up:9091/api/health; }
-    location /api/user/info     { proxy_pass http://$bfl_up:8080/bfl/backend/v1/user-info; }
+    location /api/user/info     { proxy_pass http://$bfl_up:80/bfl/backend/v1/user-info; }
 
     # Protected
     location /api/auth/         { auth_request /_auth; proxy_pass http://$auth_up:9091; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
@@ -164,9 +164,9 @@ http {
     location /api/files/resources { auth_request /_auth; proxy_pass http://$files_up:80/api/resources; proxy_set_header Host $host; client_max_body_size 10G; }
     location /api/files/raw     { auth_request /_auth; proxy_pass http://$files_up:80/api/raw; proxy_set_header Host $host; }
     location /api/files/upload  { auth_request /_auth; proxy_pass http://$files_up:80/upload; proxy_set_header Host $host; client_max_body_size 10G; }
-    location /api/monitor/      { auth_request /_auth; proxy_pass http://$mon_up:8000/api/; proxy_set_header Host $host; }
+    location /api/monitor/      { auth_request /_auth; proxy_pass http://$mon_up:80/api/; proxy_set_header Host $host; }
     location /api/mounts        { auth_request /_auth; proxy_pass http://$mounts_up:8080/api/mounts; proxy_set_header Host $host; }
-    location /api/user/         { auth_request /_auth; proxy_pass http://$bfl_up:8080/bfl/; proxy_set_header Host $host; }
+    location /api/user/         { auth_request /_auth; proxy_pass http://$bfl_up:80/bfl/; proxy_set_header Host $host; }
     location /ws { proxy_pass http://$app_up:6755/ws; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade; proxy_set_header Cookie $http_cookie; }
   }
 
@@ -181,8 +181,8 @@ http {
     ssl_certificate /etc/tls/tls.crt;
     ssl_certificate_key /etc/tls/tls.key;
 
-    set $auth_up auth-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $desktop_up desktop-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $auth_up auth-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $desktop_up desktop-svc.{{USER_NAMESPACE}}.svc.cluster.local;
 
     location = /_auth { internal; proxy_pass http://$auth_up:9091/api/verify; proxy_pass_request_body off; proxy_set_header Content-Length ""; proxy_set_header X-Forwarded-Host $host; proxy_set_header Cookie $http_cookie; }
     error_page 401 = @lr;
@@ -205,9 +205,9 @@ http {
     ssl_certificate /etc/tls/tls.crt;
     ssl_certificate_key /etc/tls/tls.key;
 
-    set $auth_up auth-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $bfl_up bfl-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $desktop_up desktop-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $auth_up auth-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $bfl_up bfl.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $desktop_up desktop-svc.{{USER_NAMESPACE}}.svc.cluster.local;
 
     location /js/    { proxy_pass http://$desktop_up:80; }
     location /css/   { proxy_pass http://$desktop_up:80; }
@@ -227,8 +227,8 @@ http {
     ssl_certificate /etc/tls/tls.crt;
     ssl_certificate_key /etc/tls/tls.key;
 
-    set $auth_up auth-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $ss_up systemserver-svc.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $auth_up auth-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $ss_up system-server.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
 
     location = /_auth { internal; proxy_pass http://$auth_up:9091/api/verify; proxy_pass_request_body off; proxy_set_header Content-Length ""; proxy_set_header X-Forwarded-Host $host; proxy_set_header Cookie $http_cookie; }
     error_page 401 = @lr;
