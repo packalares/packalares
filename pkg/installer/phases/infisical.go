@@ -25,7 +25,7 @@ func GenerateSecrets(opts *InstallOptions) error {
 		"SESSION_SECRET":       generateSecret(32),
 		"PG_PASSWORD":          generateSecret(16),
 		"REDIS_PASSWORD":       generateSecret(16),
-		"LLDAP_ADMIN_PASSWORD": generateSecret(16),
+		"LLDAP_ADMIN_PASSWORD": opts.Password,
 		"LLDAP_JWT_SECRET":     generateSecret(32),
 		"ENCRYPTION_KEY":       generateSecret(16),
 		"AUTH_SECRET":          generateSecret(32),

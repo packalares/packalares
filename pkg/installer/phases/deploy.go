@@ -109,6 +109,26 @@ func deployCRDsAndNamespaces(opts *InstallOptions) error {
 		fmt.Printf("  Warning: create namespace %s: %v\n", userNS, err)
 	}
 
+	// Create User CRD for admin user
+	userCRD := fmt.Sprintf(`apiVersion: iam.kubesphere.io/v1alpha2
+kind: User
+metadata:
+  name: %s
+  annotations:
+    %s/owner-role: platform-admin
+    %s/zone: %s
+spec:
+  displayName: %s
+  email: %s@%s
+  lang: en
+  groups:
+  - admins
+`, opts.Username, config.APIGroup(), config.APIGroup(), config.UserZone(),
+		opts.Username, opts.Username, config.Domain())
+	if err := kubectlApply(userCRD); err != nil {
+		fmt.Printf("  Warning: create User CRD: %v\n", err)
+	}
+
 	fmt.Printf("  Namespaces: %s, %s, %s, %s\n",
 		config.PlatformNamespace(), config.FrameworkNamespace(), "monitoring", userNS)
 	return nil

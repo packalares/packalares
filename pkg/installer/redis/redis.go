@@ -5,12 +5,9 @@
 package redis
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -83,26 +80,16 @@ spec:
     targetPort: 6666
 `
 
-// Install deploys KVRocks in Kubernetes and saves the password.
+// Install deploys KVRocks in Kubernetes using the REDIS_PASSWORD
+// from GenerateSecrets (must be called after GenerateSecrets).
 func Install(baseDir string) error {
 	ns := config.PlatformNamespace()
 
-	// Generate password
-	pwBytes := make([]byte, 16)
-	if _, err := rand.Read(pwBytes); err != nil {
-		return fmt.Errorf("generate kvrocks password: %w", err)
+	// Read password from env (set by GenerateSecrets)
+	password := os.Getenv("REDIS_PASSWORD")
+	if password == "" {
+		return fmt.Errorf("REDIS_PASSWORD not set — GenerateSecrets must run before KVRocks deploy")
 	}
-	password := hex.EncodeToString(pwBytes)
-
-	// Save password for other services to read
-	stateDir := filepath.Join(baseDir, "state")
-	os.MkdirAll(stateDir, 0700)
-	if err := os.WriteFile(filepath.Join(stateDir, "redis_password"), []byte(password), 0600); err != nil {
-		return fmt.Errorf("save kvrocks password: %w", err)
-	}
-
-	// Create data directory
-	os.MkdirAll("/var/lib/packalares/kvrocks-data", 0755)
 
 	// Build manifest
 	manifest := kvrocksManifest

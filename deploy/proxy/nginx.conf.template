@@ -95,6 +95,8 @@ http {
     location /fonts/ { proxy_pass http://$desktop_up:80; }
     location /icons/ { proxy_pass http://$desktop_up:80; }
     location /bg/    { proxy_pass http://$desktop_up:80; }
+    location /avatar-default.png { proxy_pass http://$desktop_up:80; }
+    location ~ \.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
 
     # --- Login page (public) ---
     location /login { proxy_pass http://$desktop_up:80; }

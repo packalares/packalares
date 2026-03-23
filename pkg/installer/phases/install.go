@@ -119,19 +119,19 @@ func RunInstall(opts *InstallOptions) error {
 			return deployCRDsAndNamespaces(opts)
 		}},
 
-		// Phase 10: Deploy KVRocks (Redis-compatible) in K8s
+		// Phase 10: Generate system secrets (before deploying anything that needs them)
+		{"Generate secrets", func() error {
+			return GenerateSecrets(opts)
+		}},
+
+		// Phase 11: Deploy KVRocks (uses REDIS_PASSWORD from GenerateSecrets)
 		{"Deploy KVRocks", func() error {
 			return redis.Install(opts.BaseDir)
 		}},
 
-		// Phase 11: Install Helm
+		// Phase 12: Install Helm
 		{"Install Helm", func() error {
 			return helm.Install(opts.BaseDir, arch)
-		}},
-
-		// Phase 12: Generate system secrets (before deploying services that need them)
-		{"Generate secrets", func() error {
-			return GenerateSecrets(opts)
 		}},
 
 		// Phase 13: Deploy platform charts (Citus, NATS, LLDAP, Infisical)
