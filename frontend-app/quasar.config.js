@@ -1,5 +1,7 @@
 const { configure } = require('quasar/wrappers');
 
+const apiTarget = process.env.API_PROXY_TARGET || 'https://localhost';
+
 module.exports = configure(function () {
   return {
     boot: ['axios'],
@@ -22,7 +24,21 @@ module.exports = configure(function () {
         notify: { position: 'top-right', timeout: 3000 }
       }
     },
-    devServer: { open: false, port: 9000 },
+    devServer: {
+      open: false,
+      port: process.env.DEV_PORT ? parseInt(process.env.DEV_PORT) : 9000,
+      proxy: {
+        '/api': {
+          target: apiTarget,
+          changeOrigin: true,
+          secure: false,
+        },
+        '/ws': {
+          target: apiTarget.replace('https://', 'wss://').replace('http://', 'ws://'),
+          ws: true,
+          secure: false,
+        },
+      },
+    },
   };
 });
-// This file is intentionally empty - quasar reads it

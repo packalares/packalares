@@ -188,8 +188,22 @@ func deployAppCharts(opts *InstallOptions) error {
 }
 
 func deployMonitoring(opts *InstallOptions) error {
-	fmt.Println("  Deploying Prometheus + node-exporter + kube-state-metrics ...")
-	return applyManifestFile("deploy/framework/monitoring.yaml", opts)
+	manifests := []struct {
+		name string
+		path string
+	}{
+		{"Prometheus + node-exporter + kube-state-metrics", "deploy/framework/monitoring.yaml"},
+		{"Loki (log aggregation)", "deploy/framework/loki.yaml"},
+		{"Promtail (log collector)", "deploy/framework/promtail.yaml"},
+	}
+
+	for _, m := range manifests {
+		fmt.Printf("  Deploying %s ...\n", m.name)
+		if err := applyManifestFile(m.path, opts); err != nil {
+			return fmt.Errorf("deploy %s: %w", m.name, err)
+		}
+	}
+	return nil
 }
 
 func deployKubeBlocks(opts *InstallOptions) error {
