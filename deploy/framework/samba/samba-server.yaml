@@ -88,5 +88,5 @@ metadata:
   namespace: {{FRAMEWORK_NAMESPACE}}
 type: Opaque
 stringData:
-  username: packalares
-  password: changeme
+  username: "{{USERNAME}}"
+  password: "{{SAMBA_PASSWORD}}"
