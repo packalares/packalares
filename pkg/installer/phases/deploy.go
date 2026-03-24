@@ -85,6 +85,7 @@ func replaceConfigPlaceholders(manifest string, opts *InstallOptions) string {
 		"{{LLDAP_JWT_SECRET}}":    os.Getenv("LLDAP_JWT_SECRET"),
 		"{{ENCRYPTION_KEY}}":       os.Getenv("ENCRYPTION_KEY"),
 		"{{AUTH_SECRET}}":          os.Getenv("AUTH_SECRET"),
+		"{{SAMBA_PASSWORD}}":       os.Getenv("SAMBA_PASSWORD"),
 		"{{SERVER_IP}}":            os.Getenv("SERVER_IP"),
 		"{{COREDNS_CLUSTER_IP}}":   os.Getenv("COREDNS_CLUSTER_IP"),
 	}

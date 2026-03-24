@@ -30,6 +30,7 @@ func GenerateSecrets(opts *InstallOptions) error {
 		"LLDAP_JWT_SECRET":     generateSecret(32),
 		"ENCRYPTION_KEY":       generateSecret(16),
 		"AUTH_SECRET":          generateSecret(32),
+		"SAMBA_PASSWORD":       generateSecret(16),
 	}
 
 	// Also set PG_USER default
@@ -136,6 +137,7 @@ func SeedInfisical(opts *InstallOptions) error {
 		"LLDAP_JWT_SECRET":     os.Getenv("LLDAP_JWT_SECRET"),
 		"ENCRYPTION_KEY":       os.Getenv("ENCRYPTION_KEY"),
 		"AUTH_SECRET":          os.Getenv("AUTH_SECRET"),
+		"SAMBA_PASSWORD":       os.Getenv("SAMBA_PASSWORD"),
 	}
 
 	// Store secrets via kubectl exec into the tapr sidecar
