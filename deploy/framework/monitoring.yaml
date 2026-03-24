@@ -105,7 +105,7 @@ spec:
       serviceAccountName: prometheus
       containers:
       - name: prometheus
-        image: prom/prometheus:v2.51.0
+        image: ghcr.io/packalares/prometheus:v2.51.0
         ports:
         - containerPort: 9090
         args:
@@ -171,7 +171,7 @@ spec:
       - operator: Exists
       containers:
       - name: node-exporter
-        image: prom/node-exporter:v1.7.0
+        image: ghcr.io/packalares/node-exporter:v1.7.0
         ports:
         - containerPort: 9100
           hostPort: 9100
@@ -228,7 +228,7 @@ spec:
       serviceAccountName: prometheus
       containers:
       - name: kube-state-metrics
-        image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.11.0
+        image: ghcr.io/packalares/kube-state-metrics:v2.11.0
         ports:
         - containerPort: 8080
           name: metrics

@@ -46,8 +46,8 @@ func DeployOpenEBS(registry string) error {
 }
 
 func generateOpenEBSManifest(registry string) string {
-	provisionerImg := "openebs/provisioner-localpv:3.3.0"
-	linuxUtilsImg := "openebs/linux-utils:3.3.0"
+	provisionerImg := "ghcr.io/packalares/openebs-provisioner:3.3.0"
+	linuxUtilsImg := "ghcr.io/packalares/openebs-linux-utils:3.3.0"
 	if registry != "" {
 		provisionerImg = registry + "/" + provisionerImg
 		linuxUtilsImg = registry + "/" + linuxUtilsImg

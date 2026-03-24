@@ -316,7 +316,7 @@ spec:
         effect: NoSchedule
       containers:
       - name: nginx
-        image: nginx:stable-alpine
+        image: ghcr.io/packalares/nginx:stable-alpine
         ports:
         - containerPort: 443
           hostPort: 443

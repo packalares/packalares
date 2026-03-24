@@ -83,7 +83,7 @@ spec:
       - operator: Exists
       containers:
       - name: promtail
-        image: grafana/promtail:2.9.4
+        image: ghcr.io/packalares/promtail:2.9.4
         args:
         - -config.file=/etc/promtail/promtail.yaml
         ports:

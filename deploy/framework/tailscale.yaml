@@ -22,7 +22,7 @@ spec:
       serviceAccountName: packalares-admin
       containers:
       - name: tailscale
-        image: tailscale/tailscale:stable
+        image: ghcr.io/packalares/tailscale:stable
         securityContext:
           capabilities:
             add: ["NET_ADMIN", "NET_RAW"]

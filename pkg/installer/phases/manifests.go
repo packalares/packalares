@@ -162,7 +162,7 @@ spec:
 }
 
 func generateKVRocksManifest(namespace, registry string) string {
-	img := imageRef(registry, "apache/kvrocks:2.8")
+	img := imageRef(registry, "ghcr.io/packalares/kvrocks:2.15.0")
 	return fmt.Sprintf(`---
 apiVersion: apps/v1
 kind: StatefulSet
