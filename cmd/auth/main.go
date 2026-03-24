@@ -7,10 +7,12 @@ import (
 	"syscall"
 
 	"github.com/packalares/packalares/internal/auth"
+	"github.com/packalares/packalares/pkg/secrets"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	secrets.MustLoadSecrets()
 	log.Println("packalares-auth starting")
 
 	cfg, err := auth.LoadConfig()
