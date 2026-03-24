@@ -1,39 +1,65 @@
 import { boot } from 'quasar/wrappers';
 import axios, { AxiosInstance } from 'axios';
 
-// Returns the API base URL depending on how the user accesses the system:
-//   IP access (188.241.210.104): returns '' → calls /api/* on same origin
-//   Subdomain (market.user.zone): returns 'https://api.user.zone'
-export function getApiBase(): string {
+function isIP(host: string): boolean {
+  return /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+}
+
+// Returns the user zone (e.g. admin.olares.local) from the hostname.
+// Works for both zone access and subdomain access.
+function getZone(): string {
   const host = window.location.hostname;
-  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
-    return ''; // same origin on IP
-  }
+  if (isIP(host)) return '';
   const parts = host.split('.');
-  if (parts.length >= 3) {
-    return 'https://api.' + parts.slice(1).join('.');
+  if (parts.length >= 4) {
+    // subdomain.admin.olares.local → admin.olares.local
+    return parts.slice(1).join('.');
+  }
+  if (parts.length === 3) {
+    // admin.olares.local → admin.olares.local
+    return host;
   }
   return '';
 }
 
-// Returns the main domain for redirects:
-//   IP: '' (same origin)
-//   Subdomain: 'https://user.zone'
-export function getMainDomain(): string {
+// Returns the API base URL:
+//   IP access: '' → /api/* on same origin
+//   Zone (admin.olares.local): '' → /api/* on same origin
+//   Subdomain (desktop.admin.olares.local): 'https://api.admin.olares.local'
+export function getApiBase(): string {
   const host = window.location.hostname;
-  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
-    return '';
-  }
+  if (isIP(host)) return '';
   const parts = host.split('.');
-  if (parts.length >= 3) {
-    return 'https://' + parts.slice(1).join('.');
+  if (parts.length >= 4) {
+    // On a subdomain — use api.zone for cross-origin API calls
+    return 'https://api.' + parts.slice(1).join('.');
   }
+  // On the zone itself or auth subdomain — same origin
   return '';
+}
+
+// Returns the auth URL for login redirects:
+//   IP: '/login'
+//   Domain: 'https://auth.zone/login'
+export function getAuthUrl(rd?: string): string {
+  const zone = getZone();
+  const rdParam = rd ? '?rd=' + encodeURIComponent(rd) : '';
+  if (!zone) return '/login' + rdParam;
+  return 'https://auth.' + zone + '/login' + rdParam;
+}
+
+// Returns the desktop URL:
+//   IP: '/desktop'
+//   Domain: 'https://desktop.zone'
+export function getDesktopUrl(): string {
+  const zone = getZone();
+  if (!zone) return '/desktop';
+  return 'https://desktop.' + zone;
 }
 
 // Returns the WebSocket URL:
-//   IP: wss://188.241.210.104/ws
-//   Subdomain: wss://api.user.zone/ws
+//   IP: wss://host/ws
+//   Subdomain: wss://api.zone/ws
 export function getWsUrl(): string {
   const base = getApiBase();
   if (base) {
@@ -49,9 +75,7 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
-      const rd = encodeURIComponent(window.location.href);
-      const main = getMainDomain();
-      window.location.href = main + '/login?rd=' + rd;
+      window.location.href = getAuthUrl(window.location.href);
     }
     return Promise.reject(error);
   }
