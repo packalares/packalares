@@ -358,7 +358,7 @@ function formatUptime(seconds?: number): string {
 
 async function fetchMetrics() {
   try {
-    const res: any = await api.get('/api/metrics');
+    const res: any = await api.get('/api/monitor/metrics');
     metrics.value = res || {};
 
     const cpu = res.cpu_usage ?? 0;
@@ -378,7 +378,7 @@ async function fetchMetrics() {
 
 async function fetchPods() {
   try {
-    const res: any = await api.get('/api/status');
+    const res: any = await api.get('/api/monitor/status');
     pods.value = res?.data?.pods || res?.pods || [];
   } catch {
     pods.value = [];
@@ -387,7 +387,7 @@ async function fetchPods() {
 
 async function fetchGpu() {
   try {
-    const res: any = await api.get('/api/gpu/list');
+    const res: any = await api.get('/api/monitor/gpu/list');
     gpuData.value = res || { gpus: [], gpu_count: 0, driver_installed: false };
   } catch {
     gpuData.value = { gpus: [], gpu_count: 0, driver_installed: false };

@@ -153,7 +153,7 @@ const loggingOut = ref(false);
 
 onMounted(async () => {
   try {
-    const res: any = await api.get('/bfl/backend/v1/user-info');
+    const res: any = await api.get('/api/user/info');
     if (res) {
       userInfo.name = res.name || res.username || 'admin';
       userInfo.email = res.email || '';
@@ -213,7 +213,7 @@ const confirmLogout = () => {
 const logout = async () => {
   loggingOut.value = true;
   try {
-    await api.post('/api/logout');
+    await api.post('/api/auth/logout');
   } catch {
     // proceed even on error
   }

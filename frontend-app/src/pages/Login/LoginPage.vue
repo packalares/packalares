@@ -276,7 +276,7 @@ function getRedirectUrl(responseRedirect?: string): string {
 // ---------- Fetch user info ----------
 async function fetchUserInfo() {
   try {
-    const res: any = await api.get('/bfl/backend/v1/user-info');
+    const res: any = await api.get('/api/user/info');
     const data = res?.data ?? res;
     if (data?.name) userName.value = data.name;
     if (data?.avatar) userAvatar.value = data.avatar;
@@ -312,7 +312,7 @@ async function onLogin() {
 
   loading.value = true;
   try {
-    const res: any = await api.post('/api/firstfactor', {
+    const res: any = await api.post('/api/auth/login', {
       username: userName.value,
       password: password.value,
       keep_me_logged_in: true,
@@ -443,7 +443,7 @@ async function submitTotp() {
 
   totpLoading.value = true;
   try {
-    const res: any = await api.post('/api/secondfactor/totp', {
+    const res: any = await api.post('/api/auth/totp', {
       token,
     });
 

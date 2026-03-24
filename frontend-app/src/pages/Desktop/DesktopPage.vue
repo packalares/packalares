@@ -384,9 +384,9 @@ function updateClock() {
 // ─── Stats ───────────────────────────────────────────────────
 
 const stats = computed(() => [
-  { name: 'CPU', value: Math.round((monitorStore.cpu.ratio || 0) * 100), color: 'light-blue-5' },
-  { name: 'MEM', value: Math.round((monitorStore.memory.ratio || 0) * 100), color: 'green-5' },
-  { name: 'DISK', value: Math.round((monitorStore.disk.ratio || 0) * 100), color: 'orange-5' },
+  { name: 'CPU', value: Math.round(monitorStore.cpuUsage || 0), color: 'light-blue-5' },
+  { name: 'MEM', value: monitorStore.memTotal ? Math.round((monitorStore.memUsed / monitorStore.memTotal) * 100) : 0, color: 'green-5' },
+  { name: 'DISK', value: monitorStore.diskTotal ? Math.round((monitorStore.diskUsed / monitorStore.diskTotal) * 100) : 0, color: 'orange-5' },
 ]);
 
 // ─── Computed ────────────────────────────────────────────────
@@ -633,7 +633,7 @@ function onKeydown(e: KeyboardEvent) {
 
 async function loadInit() {
   try {
-    const data: any = await api.get('/server/init');
+    const data: any = await api.get('/api/desktop/init');
     if (data?.terminus) {
       userStore.terminusName = data.terminus.terminusName || '';
       userStore.avatar = data.terminus.avatar || '';
@@ -650,7 +650,7 @@ async function loadInit() {
 
 async function loadApps() {
   try {
-    const data: any = await api.post('/server/myApps');
+    const data: any = await api.post('/api/desktop/myApps');
     if (data?.code === 200 && Array.isArray(data.data)) {
       const remote: AppInfo[] = data.data.map((a: any) => ({
         id: a.name || a.id,
@@ -682,9 +682,8 @@ onMounted(async () => {
 
   await loadInit();
   await loadApps();
-  await monitorStore.loadCluster(); // Initial load
-
-  // Start WebSocket for real-time metrics push (no polling)
+  // Load initial metrics, then WebSocket takes over
+  await monitorStore.loadMetrics();
   const wsStore = useWebSocketStore();
   wsStore.start();
 });

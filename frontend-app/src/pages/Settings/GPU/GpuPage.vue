@@ -140,7 +140,7 @@ const usageQColor = (pct: number) => {
 
 onMounted(async () => {
   try {
-    const res: any = await api.get('/api/gpu/list');
+    const res: any = await api.get('/api/monitor/gpu/list');
     if (res && Array.isArray(res)) {
       gpus.value = res.map((g: any) => ({
         name: g.name || g.product_name || 'Unknown GPU',

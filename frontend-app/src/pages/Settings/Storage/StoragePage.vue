@@ -111,7 +111,7 @@ const formatBytes = (bytes: number) => {
 
 onMounted(async () => {
   try {
-    const res: any = await api.get('/api/metrics');
+    const res: any = await api.get('/api/monitor/metrics');
     if (res) {
       diskTotal.value = res.disk_total || 0;
       diskUsed.value = res.disk_used || 0;

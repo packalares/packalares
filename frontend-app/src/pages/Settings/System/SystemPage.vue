@@ -143,7 +143,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 
 const fetchMetrics = async () => {
   try {
-    const res: any = await api.get('/api/metrics');
+    const res: any = await api.get('/api/monitor/metrics');
     if (res) {
       systemInfo.value = {
         hostname: res.hostname || '--',

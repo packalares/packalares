@@ -529,7 +529,7 @@ async function openDetail(app: MarketApp) {
   detailData.value = null;
   detailLoading.value = true;
   try {
-    const res: any = await api.get('/market/v1/app/' + app.name);
+    const res: any = await api.get('/api/market/app/' + app.name);
     detailData.value = res.data || null;
   } catch {
     detailData.value = app;
@@ -540,7 +540,7 @@ async function openDetail(app: MarketApp) {
 
 async function fetchApps() {
   try {
-    const res: any = await api.get('/market/v1/apps');
+    const res: any = await api.get('/api/market/apps');
     apps.value = res.data || [];
   } catch {
     apps.value = [];
@@ -549,7 +549,7 @@ async function fetchApps() {
 
 async function fetchCategories() {
   try {
-    const res: any = await api.get('/market/v1/categories');
+    const res: any = await api.get('/api/market/categories');
     categories.value = res.data || [];
   } catch {
     categories.value = [];
@@ -558,7 +558,7 @@ async function fetchCategories() {
 
 async function fetchInstalled() {
   try {
-    const res: any = await api.get('/app-service/v1/apps');
+    const res: any = await api.get('/api/apps/apps');
     installedApps.value = res.data || [];
   } catch {
     installedApps.value = [];
@@ -569,7 +569,7 @@ async function installApp(app: MarketApp) {
   installingSet.add(app.name);
   appStates[app.name] = 'downloading';
   try {
-    await api.post('/app-service/v1/install', { name: app.name, chart: app.chartName || app.name });
+    await api.post('/api/apps/install', { name: app.name, chart: app.chartName || app.name });
     // WebSocket will update the state; fall back to polling
     let attempts = 0;
     const poll = setInterval(async () => {
@@ -609,7 +609,7 @@ function confirmUninstall(app: MarketApp) {
 
 async function uninstallApp(app: MarketApp) {
   try {
-    await api.post('/app-service/v1/uninstall', { name: app.name });
+    await api.post('/api/apps/uninstall', { name: app.name });
     detailApp.value = null;
     await fetchInstalled();
     $q.notify({ type: 'positive', message: app.title + ' uninstalled.' });
