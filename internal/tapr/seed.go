@@ -112,16 +112,14 @@ func Seed(ctx context.Context, cfg SeedConfig) (*SeedResult, error) {
 	var existingKeyID string
 	err = db.QueryRowContext(ctx, `SELECT id FROM user_encryption_keys WHERE "userId" = $1`, userID).Scan(&existingKeyID)
 	if err != nil {
-		// Create new
 		_, err = db.ExecContext(ctx,
-			`INSERT INTO user_encryption_keys (id, "userId", "publicKey", "encryptedPrivateKey", iv, tag, salt, verifier, "encryptionVersion", "createdAt", "updatedAt")
-			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10)`,
-			uuid.New().String(), userID, publicKey, encPrivKey, encIV, encTag, salt, verifier, now, now)
+			`INSERT INTO user_encryption_keys (id, "userId", "publicKey", "encryptedPrivateKey", iv, tag, salt, verifier, "encryptionVersion")
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1)`,
+			uuid.New().String(), userID, publicKey, encPrivKey, encIV, encTag, salt, verifier)
 	} else {
-		// Update existing
 		_, err = db.ExecContext(ctx,
-			`UPDATE user_encryption_keys SET "publicKey" = $1, "encryptedPrivateKey" = $2, iv = $3, tag = $4, salt = $5, verifier = $6, "updatedAt" = $7 WHERE "userId" = $8`,
-			publicKey, encPrivKey, encIV, encTag, salt, verifier, now, userID)
+			`UPDATE user_encryption_keys SET "publicKey" = $1, "encryptedPrivateKey" = $2, iv = $3, tag = $4, salt = $5, verifier = $6 WHERE "userId" = $7`,
+			publicKey, encPrivKey, encIV, encTag, salt, verifier, userID)
 	}
 	if err != nil {
 		return nil, fmt.Errorf("create encryption keys: %w", err)
