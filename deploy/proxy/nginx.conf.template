@@ -8,17 +8,13 @@ http {
   map $http_upgrade $connection_upgrade { default upgrade; "" close; }
   resolver {{COREDNS_CLUSTER_IP}} valid=30s ipv6=off;
 
-  # Upstream variables (all from config, never hardcoded)
-  # These use DNS names so nginx resolves at request time, not startup
-
   # ══════════════════════════════════════════════════════════
-  # API GATEWAY — one place for ALL API routes
-  # Works on: api.{{USER_ZONE}} and {{SERVER_IP}}/api/
+  # IP ACCESS — everything on same origin, /api/* prefix
   # ══════════════════════════════════════════════════════════
 
   server {
     listen 443 ssl default_server;
-    server_name {{SERVER_IP}} {{USER_ZONE}};
+    server_name {{SERVER_IP}};
     ssl_certificate /etc/tls/tls.crt;
     ssl_certificate_key /etc/tls/tls.key;
     ssl_protocols TLSv1.2 TLSv1.3;
@@ -55,35 +51,19 @@ http {
     location /api/user/info     { proxy_pass http://$bfl_up:80/bfl/backend/v1/user-info; proxy_set_header Host $host; }
 
     # --- Protected API (auth required) ---
-
-    # Auth management
     location /api/auth/verify   { auth_request /_auth; proxy_pass http://$auth_up:9091/api/verify; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
     location /api/auth/password { auth_request /_auth; proxy_pass http://$auth_up:9091/api/auth/password; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
-
-    # Market
     location /api/market/       { auth_request /_auth; proxy_pass http://$market_up:6756/market/v1/; proxy_set_header Host $host; }
-
-    # Apps (install/uninstall/list)
     location /api/apps/         { auth_request /_auth; proxy_pass http://$app_up:6755/app-service/v1/; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
-
-    # Desktop APIs
     location /api/desktop/init      { auth_request /_auth; proxy_pass http://$app_up:6755/server/init; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
     location /api/desktop/myApps    { auth_request /_auth; proxy_pass http://$app_up:6755/server/myApps; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
     location /api/desktop/upgrade   { auth_request /_auth; proxy_pass http://$app_up:6755/server/upgrade/state; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
     location /api/desktop/device    { auth_request /_auth; proxy_pass http://$app_up:6755/api/device; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
-
-    # Files
     location /api/files/resources  { auth_request /_auth; proxy_pass http://$files_up:80/api/resources; proxy_set_header Host $host; client_max_body_size 10G; }
     location /api/files/raw        { auth_request /_auth; proxy_pass http://$files_up:80/api/raw; proxy_set_header Host $host; }
     location /api/files/upload     { auth_request /_auth; proxy_pass http://$files_up:80/upload; proxy_set_header Host $host; client_max_body_size 10G; }
-
-    # Monitor
     location /api/monitor/         { auth_request /_auth; proxy_pass http://$mon_up:80/api/; proxy_set_header Host $host; }
-
-    # Mounts
     location /api/mounts           { auth_request /_auth; proxy_pass http://$mounts_up:8080/api/mounts; proxy_set_header Host $host; }
-
-    # User/BFL (protected)
     location /api/user/            { auth_request /_auth; proxy_pass http://$bfl_up:80/bfl/; proxy_set_header Host $host; }
 
     # WebSocket
@@ -109,7 +89,44 @@ http {
   }
 
   # ══════════════════════════════════════════════════════════
-  # API SUBDOMAIN — same API routes, with CORS
+  # ZONE ACCESS — redirect to auth or desktop subdomain
+  # ══════════════════════════════════════════════════════════
+
+  server {
+    listen 443 ssl;
+    server_name {{USER_ZONE}};
+    ssl_certificate /etc/tls/tls.crt;
+    ssl_certificate_key /etc/tls/tls.key;
+
+    set $auth_up auth-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+
+    location = /_auth {
+      internal;
+      proxy_pass http://$auth_up:9091/api/verify;
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header X-Forwarded-Host $host;
+      proxy_set_header Cookie $http_cookie;
+    }
+
+    # Logged in → desktop, not logged in → auth
+    location = / {
+      auth_request /_auth;
+      error_page 401 = @to_auth;
+      return 302 https://desktop.{{USER_ZONE}};
+    }
+    location @to_auth { return 302 https://auth.{{USER_ZONE}}; }
+
+    # Catch-all → same redirect logic
+    location / {
+      auth_request /_auth;
+      error_page 401 = @to_auth;
+      return 302 https://desktop.{{USER_ZONE}}$request_uri;
+    }
+  }
+
+  # ══════════════════════════════════════════════════════════
+  # API SUBDOMAIN — /api/* routes with CORS
   # ══════════════════════════════════════════════════════════
 
   server {
@@ -145,7 +162,7 @@ http {
       proxy_set_header Cookie $http_cookie;
     }
     error_page 401 = @login_redirect;
-    location @login_redirect { return 302 https://{{USER_ZONE}}/login?rd=https://$host$request_uri; }
+    location @login_redirect { return 302 https://auth.{{USER_ZONE}}/login?rd=https://$host$request_uri; }
 
     # Public
     location /api/auth/login    { proxy_pass http://$auth_up:9091/api/firstfactor; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
@@ -173,12 +190,39 @@ http {
   }
 
   # ══════════════════════════════════════════════════════════
-  # SYSTEM APP SUBDOMAINS — just serve SPA, no API routes
+  # DESKTOP SUBDOMAIN — SPA with auth
   # ══════════════════════════════════════════════════════════
 
   server {
     listen 443 ssl;
-    server_name desktop.{{USER_ZONE}} market.{{USER_ZONE}} settings.{{USER_ZONE}}
+    server_name desktop.{{USER_ZONE}};
+    ssl_certificate /etc/tls/tls.crt;
+    ssl_certificate_key /etc/tls/tls.key;
+
+    set $auth_up auth-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $desktop_up desktop-svc.{{USER_NAMESPACE}}.svc.cluster.local;
+
+    location = /_auth { internal; proxy_pass http://$auth_up:9091/api/verify; proxy_pass_request_body off; proxy_set_header Content-Length ""; proxy_set_header X-Forwarded-Host $host; proxy_set_header Cookie $http_cookie; }
+    error_page 401 = @lr;
+    location @lr { return 302 https://auth.{{USER_ZONE}}/login?rd=https://$host$request_uri; }
+
+    location /js/    { proxy_pass http://$desktop_up:80; }
+    location /css/   { proxy_pass http://$desktop_up:80; }
+    location /fonts/ { proxy_pass http://$desktop_up:80; }
+    location /icons/ { proxy_pass http://$desktop_up:80; }
+    location /bg/    { proxy_pass http://$desktop_up:80; }
+    location /avatar-default.png { proxy_pass http://$desktop_up:80; }
+    location ~ \.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
+    location /       { auth_request /_auth; proxy_pass http://$desktop_up:80; }
+  }
+
+  # ══════════════════════════════════════════════════════════
+  # SYSTEM APP SUBDOMAINS — SPA with auth
+  # ══════════════════════════════════════════════════════════
+
+  server {
+    listen 443 ssl;
+    server_name market.{{USER_ZONE}} settings.{{USER_ZONE}}
                 files.{{USER_ZONE}} dashboard.{{USER_ZONE}};
     ssl_certificate /etc/tls/tls.crt;
     ssl_certificate_key /etc/tls/tls.key;
@@ -188,12 +232,13 @@ http {
 
     location = /_auth { internal; proxy_pass http://$auth_up:9091/api/verify; proxy_pass_request_body off; proxy_set_header Content-Length ""; proxy_set_header X-Forwarded-Host $host; proxy_set_header Cookie $http_cookie; }
     error_page 401 = @lr;
-    location @lr { return 302 https://{{USER_ZONE}}/login?rd=https://$host$request_uri; }
+    location @lr { return 302 https://auth.{{USER_ZONE}}/login?rd=https://$host$request_uri; }
 
     location /js/    { proxy_pass http://$desktop_up:80; }
     location /css/   { proxy_pass http://$desktop_up:80; }
     location /fonts/ { proxy_pass http://$desktop_up:80; }
     location /bg/    { proxy_pass http://$desktop_up:80; }
+    location ~ \.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
     location /       { auth_request /_auth; proxy_pass http://$desktop_up:80; }
   }
 
@@ -208,12 +253,12 @@ http {
     ssl_certificate_key /etc/tls/tls.key;
 
     set $auth_up auth-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
-    set $bfl_up bfl.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
     set $desktop_up desktop-svc.{{USER_NAMESPACE}}.svc.cluster.local;
 
     location /js/    { proxy_pass http://$desktop_up:80; }
     location /css/   { proxy_pass http://$desktop_up:80; }
     location /fonts/ { proxy_pass http://$desktop_up:80; }
+    location ~ \.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
     location = /     { rewrite ^ /login last; }
     location /api/   { proxy_pass http://$auth_up:9091; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
     location /       { proxy_pass http://$desktop_up:80; }
@@ -234,7 +279,7 @@ http {
 
     location = /_auth { internal; proxy_pass http://$auth_up:9091/api/verify; proxy_pass_request_body off; proxy_set_header Content-Length ""; proxy_set_header X-Forwarded-Host $host; proxy_set_header Cookie $http_cookie; }
     error_page 401 = @lr;
-    location @lr { return 302 https://{{USER_ZONE}}/login?rd=https://$host$request_uri; }
+    location @lr { return 302 https://auth.{{USER_ZONE}}/login?rd=https://$host$request_uri; }
     location / { auth_request /_auth; proxy_pass http://$ss_up:8080; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
   }
 
