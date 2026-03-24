@@ -69,7 +69,10 @@ export function getWsUrl(): string {
   return proto + '//' + window.location.host + '/ws';
 }
 
-const api: AxiosInstance = axios.create({ baseURL: getApiBase() });
+const api: AxiosInstance = axios.create({
+  baseURL: getApiBase(),
+  withCredentials: true,
+});
 
 api.interceptors.response.use(
   (response) => response.data,
