@@ -144,7 +144,12 @@ func RunInstall(opts *InstallOptions) error {
 			return deployFrameworkCharts(opts)
 		}},
 
-		// Phase 15: Seed Infisical (pod has init containers that wait for PG+Redis)
+		// Phase 15: Generate TLS certificate (before proxy needs it)
+		{"Generate TLS certificate", func() error {
+			return generateTLSCert(opts)
+		}},
+
+		// Phase 16: Seed Infisical (pod has init containers that wait for PG+Redis)
 		{"Seed Infisical", func() error {
 			return SeedInfisical(opts)
 		}},
