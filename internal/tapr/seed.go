@@ -131,7 +131,7 @@ func Seed(ctx context.Context, cfg SeedConfig) (*SeedResult, error) {
 	if err != nil {
 		_, err = db.ExecContext(ctx,
 			`INSERT INTO memberships (id, scope, "actorUserId", "scopeOrgId", "isActive", status, "createdAt", "updatedAt")
-			 VALUES ($1, 'org', $2, $3, true, 'accepted', $4, $5)`,
+			 VALUES ($1, 'organization', $2, $3, true, 'accepted', $4, $5)`,
 			uuid.New().String(), userID, orgID, now, now)
 		if err != nil {
 			// Ignore — schema might differ
