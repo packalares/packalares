@@ -98,7 +98,7 @@ const systemSummary = reactive({
 
 onMounted(async () => {
   try {
-    const res: any = await api.get('/api/metrics');
+    const res: any = await api.get('/api/monitor/metrics');
     if (res) {
       systemSummary.hostname = res.hostname || '--';
       systemSummary.platform = res.os_version || res.platform || '--';

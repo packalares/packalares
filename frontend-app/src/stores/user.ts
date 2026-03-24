@@ -13,7 +13,7 @@ export const useUserStore = defineStore('user', {
   actions: {
     async loadUserInfo() {
       try {
-        const data: any = await api.get('/bfl/backend/v1/user-info');
+        const data: any = await api.get('/api/user/info');
         const u = data.data || data;
         this.username = u.name || '';
         this.terminusName = u.terminusName || '';
@@ -26,7 +26,7 @@ export const useUserStore = defineStore('user', {
       }
     },
     async logout() {
-      try { await api.post('/api/logout'); } catch {}
+      try { await api.post('/api/auth/logout'); } catch {}
       window.location.href = '/login/';
     },
   },

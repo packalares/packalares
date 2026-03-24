@@ -27,7 +27,7 @@ export const useMonitorStore = defineStore('monitor', {
     },
     async loadMetrics() {
       try {
-        const d: any = await api.get('/api/metrics');
+        const d: any = await api.get('/api/monitor/metrics');
         this.cpuUsage = d.cpu_usage || 0;
         this.memUsed = d.memory?.used || 0;
         this.memTotal = d.memory?.total || 0;

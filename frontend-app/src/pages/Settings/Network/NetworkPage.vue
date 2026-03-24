@@ -89,7 +89,7 @@ const networkInfo = ref<NetworkInfo>({
 
 onMounted(async () => {
   try {
-    const res: any = await api.get('/api/metrics');
+    const res: any = await api.get('/api/monitor/metrics');
     if (res) {
       networkInfo.value = {
         ip_address: res.ip_address || res.network?.ip_address || '--',
