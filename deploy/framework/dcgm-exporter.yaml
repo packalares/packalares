@@ -24,7 +24,7 @@ spec:
       - operator: Exists
       containers:
       - name: dcgm-exporter
-        image: ghcr.io/packalares/dcgm-exporter:3.3.8
+        image: ghcr.io/packalares/dcgm-exporter:3.6.1
         ports:
         - containerPort: 9400
           name: metrics
