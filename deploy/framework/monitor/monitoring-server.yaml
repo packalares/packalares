@@ -16,10 +16,22 @@ spec:
       labels:
         app: monitoring-server
     spec:
+      initContainers:
+      - name: wait-for-tapr
+        image: busybox:1.36
+        command:
+          - sh
+          - -c
+          - >-
+            echo "Waiting for tapr ...";
+            until wget -q -O- http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080/healthz 2>/dev/null | grep -q ok; do
+              sleep 2; printf ".";
+            done;
+            echo " tapr is ready";
       containers:
       - name: monitoring-server
         image: ghcr.io/packalares/monitor:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8000
           name: http

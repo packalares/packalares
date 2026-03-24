@@ -16,6 +16,18 @@ spec:
       labels:
         app: packalares-auth
     spec:
+      initContainers:
+      - name: wait-for-tapr
+        image: busybox:1.36
+        command:
+          - sh
+          - -c
+          - >-
+            echo "Waiting for tapr ...";
+            until wget -q -O- http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080/healthz 2>/dev/null | grep -q ok; do
+              sleep 2; printf ".";
+            done;
+            echo " tapr is ready";
       containers:
       - name: auth
         image: ghcr.io/packalares/auth:latest
