@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -94,81 +95,79 @@ func detectCoreDNSIP() (string, error) {
 	return ip, nil
 }
 
-// SeedInfisical waits for the Infisical pod to be ready, then runs a
-// K8s Job inside the cluster to create the admin account.
+// SeedInfisical waits for the tapr sidecar to be ready, then stores all
+// generated secrets via tapr's API. Tapr handles the Infisical database
+// seeding (user, org, encryption keys) automatically at startup.
 func SeedInfisical(opts *InstallOptions) error {
 	ns := config.PlatformNamespace()
 
-	// Wait for Infisical pod to be ready (has init containers that wait for PG+Redis)
-	fmt.Println("  Waiting for Infisical pod to be ready ...")
+	// Wait for tapr sidecar to be ready
+	fmt.Println("  Waiting for tapr secrets gateway ...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+
+	taprURL := "http://tapr-svc." + ns + ":8080"
 
 	for {
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("infisical pod not ready after 5 minutes")
+			return fmt.Errorf("tapr not ready after 5 minutes")
 		default:
 		}
 
-		cmd := exec.CommandContext(ctx, "kubectl", "get", "pods", "-n", ns,
-			"-l", "app=infisical", "-o",
-			"jsonpath={.items[0].status.conditions[?(@.type=='Ready')].status}")
-		out, err := cmd.Output()
-		if err == nil && strings.TrimSpace(string(out)) == "True" {
-			fmt.Println("  Infisical pod is ready")
+		cmd := exec.CommandContext(ctx, "kubectl", "run", "tapr-check",
+			"--rm", "--restart=Never", "-n", ns,
+			"--image=curlimages/curl", "--command", "--",
+			"curl", "-sf", taprURL+"/healthz")
+		if out, err := cmd.CombinedOutput(); err == nil && strings.Contains(string(out), "ok") {
+			fmt.Println("  Tapr is ready")
 			break
 		}
+		// Clean up failed pod
+		exec.Command("kubectl", "delete", "pod", "tapr-check", "-n", ns, "--ignore-not-found").Run()
 		time.Sleep(5 * time.Second)
 	}
 
-	// Seed admin account via kubectl exec into the running Infisical pod
-	fmt.Println("  Seeding Infisical admin account ...")
-	adminEmail := config.Username() + "@" + config.Domain()
-	adminPassword := "Packalares" + generateSecret(4) + "!"
+	// Store all generated secrets via tapr
+	fmt.Println("  Storing secrets in Infisical via tapr ...")
+	secrets := map[string]string{
+		"REDIS_PASSWORD":       os.Getenv("REDIS_PASSWORD"),
+		"PG_PASSWORD":          os.Getenv("PG_PASSWORD"),
+		"PG_USER":              os.Getenv("PG_USER"),
+		"JWT_SECRET":           os.Getenv("JWT_SECRET"),
+		"SESSION_SECRET":       os.Getenv("SESSION_SECRET"),
+		"LLDAP_ADMIN_PASSWORD": os.Getenv("LLDAP_ADMIN_PASSWORD"),
+		"LLDAP_JWT_SECRET":     os.Getenv("LLDAP_JWT_SECRET"),
+		"ENCRYPTION_KEY":       os.Getenv("ENCRYPTION_KEY"),
+		"AUTH_SECRET":          os.Getenv("AUTH_SECRET"),
+	}
 
-	// Use curl inside the pod to hit localhost
-	seedCmd := fmt.Sprintf(
-		`curl -sf -X POST http://localhost:8080/api/v1/admin/signup `+
-			`-H "Content-Type: application/json" `+
-			`-d '{"email":"%s","firstName":"%s","lastName":"Admin","password":"%s"}' || true`,
-		adminEmail, config.Username(), adminPassword,
+	// Use kubectl exec to POST secrets to tapr
+	secretsJSON, _ := json.Marshal(secrets)
+	storeCmd := fmt.Sprintf(
+		`curl -sf -X POST %s/secrets -H "Content-Type: application/json" -d '%s'`,
+		taprURL, string(secretsJSON),
 	)
 
-	cmd := exec.Command("kubectl", "exec", "-n", ns,
-		"deploy/infisical", "-c", "infisical", "--",
-		"sh", "-c", seedCmd)
+	cmd := exec.Command("kubectl", "run", "tapr-seed",
+		"--rm", "-i", "--restart=Never", "-n", ns,
+		"--image=curlimages/curl", "--command", "--",
+		"sh", "-c", storeCmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("  Admin signup: %v (may already exist)\n%s\n", err, string(out))
+		fmt.Printf("  Warning: store secrets: %v\n%s\n", err, string(out))
+	} else {
+		fmt.Printf("  Stored %d secrets in Infisical\n", len(secrets))
 	}
+	// Clean up
+	exec.Command("kubectl", "delete", "pod", "tapr-seed", "-n", ns, "--ignore-not-found").Run()
 
-	// Save credentials
+	// Save admin info
 	stateDir := filepath.Join(opts.BaseDir, "state")
-	os.WriteFile(filepath.Join(stateDir, "infisical_admin_password"), []byte(adminPassword), 0600)
+	adminEmail := config.Username() + "@" + config.Domain()
 	os.WriteFile(filepath.Join(stateDir, "infisical_admin_email"), []byte(adminEmail), 0600)
 
-	// Create machine identity secrets in both namespaces
-	infisicalURL := "http://infisical-svc." + ns + ":8080"
-	for _, targetNS := range []string{ns, config.FrameworkNamespace()} {
-		secretYAML := fmt.Sprintf(`apiVersion: v1
-kind: Secret
-metadata:
-  name: infisical-machine-identity
-  namespace: %s
-type: Opaque
-stringData:
-  clientId: ""
-  clientSecret: ""
-  projectId: ""
-  infisicalUrl: "%s"
-`, targetNS, infisicalURL)
-		if err := kubectlApply(secretYAML); err != nil {
-			fmt.Printf("  Warning: create infisical-machine-identity in %s: %v\n", targetNS, err)
-		}
-	}
-
-	fmt.Printf("  Infisical admin: %s / %s\n", adminEmail, adminPassword)
+	fmt.Printf("  Infisical admin: %s\n", adminEmail)
 	return nil
 }
 
