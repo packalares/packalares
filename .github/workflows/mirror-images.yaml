@@ -69,6 +69,15 @@ jobs:
           - source: openebs/linux-utils:3.3.0
             target: openebs-linux-utils
             tag: "3.3.0"
+          - source: coredns/coredns:1.11.1
+            target: coredns
+            tag: "1.11.1"
+          - source: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.8-3.6.1-ubuntu22.04
+            target: dcgm-exporter
+            tag: "3.3.8"
+          - source: projecthami/hami:v2.4.1
+            target: hami
+            tag: v2.4.1
 
     steps:
       - name: Log in to GHCR

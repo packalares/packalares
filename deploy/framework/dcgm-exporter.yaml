@@ -24,7 +24,7 @@ spec:
       - operator: Exists
       containers:
       - name: dcgm-exporter
-        image: nvcr.io/nvidia/k8s/dcgm-exporter:3.3.8-3.6.1-ubuntu22.04
+        image: ghcr.io/packalares/dcgm-exporter:3.3.8
         ports:
         - containerPort: 9400
           name: metrics

@@ -29,7 +29,7 @@ spec:
       - operator: Exists
       containers:
       - name: dns
-        image: coredns/coredns:1.11.1
+        image: ghcr.io/packalares/coredns:1.11.1
         args: ["-conf", "/etc/coredns-lan/Corefile"]
         ports:
         - containerPort: 53
