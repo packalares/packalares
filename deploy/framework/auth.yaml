@@ -1,16 +1,4 @@
 ---
-apiVersion: v1
-kind: Secret
-metadata:
-  name: auth-secrets
-  namespace: {{FRAMEWORK_NAMESPACE}}
-type: Opaque
-stringData:
-  jwt_secret: "{{JWT_SECRET}}"
-  session_secret: "{{SESSION_SECRET}}"
-  redis_password: "{{REDIS_PASSWORD}}"
-
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -35,33 +23,18 @@ spec:
         - containerPort: 9091
           name: http
         env:
+        - name: TAPR_URL
+          value: "http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080"
         - name: USER_ZONE
           value: "{{USER_ZONE}}"
-        - name: JWT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: auth-secrets
-              key: jwt_secret
-        - name: SESSION_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: auth-secrets
-              key: session_secret
         - name: REDIS_ADDR
           value: "kvrocks-svc.{{PLATFORM_NAMESPACE}}:6379"
-        - name: REDIS_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: auth-secrets
-              key: redis_password
         - name: LLDAP_HOST
           value: "lldap-svc.{{PLATFORM_NAMESPACE}}"
         - name: LLDAP_PORT
           value: "17170"
         - name: LLDAP_USER
           value: "admin"
-        - name: LLDAP_PASSWORD
-          value: "{{LLDAP_ADMIN_PASSWORD}}"
         - name: TOTP_ISSUER
           value: "packalares"
         - name: AUTH_LISTEN_ADDR

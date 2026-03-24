@@ -58,20 +58,16 @@ spec:
       - name: middleware
         image: ghcr.io/packalares/middleware:latest
         env:
+        - name: TAPR_URL
+          value: "http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080"
         - name: PG_HOST
           value: "citus-coordinator-svc.{{PLATFORM_NAMESPACE}}"
         - name: PG_PORT
           value: "5432"
-        - name: PG_ADMIN_USER
-          value: "{{PG_USER}}"
-        - name: PG_ADMIN_PASSWORD
-          value: "{{PG_PASSWORD}}"
         - name: REDIS_HOST
           value: "kvrocks-svc.{{PLATFORM_NAMESPACE}}"
         - name: REDIS_PORT
           value: "6379"
-        - name: REDIS_PASSWORD
-          value: "{{REDIS_PASSWORD}}"
         - name: NATS_HOST
           value: "nats-svc.{{PLATFORM_NAMESPACE}}"
         - name: NATS_PORT

@@ -34,24 +34,14 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.namespace
+            - name: TAPR_URL
+              value: "http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080"
             - name: APP_OWNER
-              value: admin
+              value: "{{USERNAME}}"
             - name: CHART_REPO_URL
               value: "http://chart-repo-service.{{FRAMEWORK_NAMESPACE}}:82/"
             - name: LLDAP_HOST
               value: "http://lldap-svc.{{PLATFORM_NAMESPACE}}:17170"
-            - name: LLDAP_BIND_DN
-              valueFrom:
-                secretKeyRef:
-                  name: lldap-credentials
-                  key: lldap-ldap-user-dn
-                  optional: true
-            - name: LLDAP_BIND_PASSWORD
-              valueFrom:
-                secretKeyRef:
-                  name: lldap-credentials
-                  key: lldap-ldap-user-pass
-                  optional: true
             - name: SYS_APPS
               value: ""
             - name: GENERATED_APPS
