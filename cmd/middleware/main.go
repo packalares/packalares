@@ -7,10 +7,12 @@ import (
 	"syscall"
 
 	"github.com/packalares/packalares/internal/middleware"
+	"github.com/packalares/packalares/pkg/secrets"
 )
 
 func main() {
 	log.SetFlags(log.LstdFlags | log.Lshortfile)
+	secrets.MustLoadSecrets()
 	log.Println("packalares-middleware-operator starting")
 
 	cfg, err := middleware.LoadConfig()

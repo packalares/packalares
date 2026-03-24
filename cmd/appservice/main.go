@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"github.com/packalares/packalares/internal/appservice"
+	"github.com/packalares/packalares/pkg/secrets"
 	"k8s.io/klog/v2"
 )
 
 func main() {
 	klog.InitFlags(nil)
 	flag.Parse()
+	secrets.MustLoadSecrets()
 
 	cfg := appservice.DefaultConfig()
 

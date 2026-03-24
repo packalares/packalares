@@ -11,10 +11,12 @@ import (
 
 	"github.com/packalares/packalares/internal/monitor"
 	"github.com/packalares/packalares/pkg/config"
+	"github.com/packalares/packalares/pkg/secrets"
 	"github.com/redis/go-redis/v9"
 )
 
 func main() {
+	secrets.MustLoadSecrets()
 	prometheusURL := envOr("PROMETHEUS_URL", config.PrometheusURL())
 	port := envOr("PORT", "8000")
 
