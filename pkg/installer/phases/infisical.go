@@ -106,8 +106,6 @@ func SeedInfisical(opts *InstallOptions) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
-	taprURL := "http://tapr-svc." + ns + ":8080"
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -115,16 +113,14 @@ func SeedInfisical(opts *InstallOptions) error {
 		default:
 		}
 
-		cmd := exec.CommandContext(ctx, "kubectl", "run", "tapr-check",
-			"--rm", "--restart=Never", "-n", ns,
-			"--image=curlimages/curl", "--command", "--",
-			"curl", "-sf", taprURL+"/healthz")
+		// Check tapr via kubectl exec on the infisical pod (tapr is a sidecar)
+		cmd := exec.CommandContext(ctx, "kubectl", "exec", "-n", ns,
+			"deploy/infisical", "-c", "tapr", "--",
+			"wget", "-q", "-O-", "http://localhost:8081/healthz")
 		if out, err := cmd.CombinedOutput(); err == nil && strings.Contains(string(out), "ok") {
 			fmt.Println("  Tapr is ready")
 			break
 		}
-		// Clean up failed pod
-		exec.Command("kubectl", "delete", "pod", "tapr-check", "-n", ns, "--ignore-not-found").Run()
 		time.Sleep(5 * time.Second)
 	}
 
@@ -142,16 +138,15 @@ func SeedInfisical(opts *InstallOptions) error {
 		"AUTH_SECRET":          os.Getenv("AUTH_SECRET"),
 	}
 
-	// Use kubectl exec to POST secrets to tapr
+	// Store secrets via kubectl exec into the tapr sidecar
 	secretsJSON, _ := json.Marshal(secrets)
 	storeCmd := fmt.Sprintf(
-		`curl -sf -X POST %s/secrets -H "Content-Type: application/json" -d '%s'`,
-		taprURL, string(secretsJSON),
+		`wget -q -O- --post-data='%s' --header='Content-Type: application/json' http://localhost:8081/secrets`,
+		string(secretsJSON),
 	)
 
-	cmd := exec.Command("kubectl", "run", "tapr-seed",
-		"--rm", "-i", "--restart=Never", "-n", ns,
-		"--image=curlimages/curl", "--command", "--",
+	cmd := exec.Command("kubectl", "exec", "-n", ns,
+		"deploy/infisical", "-c", "tapr", "--",
 		"sh", "-c", storeCmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -159,8 +154,6 @@ func SeedInfisical(opts *InstallOptions) error {
 	} else {
 		fmt.Printf("  Stored %d secrets in Infisical\n", len(secrets))
 	}
-	// Clean up
-	exec.Command("kubectl", "delete", "pod", "tapr-seed", "-n", ns, "--ignore-not-found").Run()
 
 	// Save admin info
 	stateDir := filepath.Join(opts.BaseDir, "state")
