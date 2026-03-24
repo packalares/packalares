@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: redis
-        image: redis:7-alpine
+        image: ghcr.io/packalares/redis:7-alpine
         ports:
         - containerPort: 6379
         args:
@@ -91,7 +91,7 @@ spec:
     spec:
       initContainers:
       - name: wait-for-postgres
-        image: postgres:16.0-alpine3.18
+        image: ghcr.io/packalares/postgres:16.0-alpine
         command:
           - sh
           - -c
@@ -117,7 +117,7 @@ spec:
         - name: PGDB
           value: "infisical"
       - name: wait-for-redis
-        image: redis:7-alpine
+        image: ghcr.io/packalares/redis:7-alpine
         command:
           - sh
           - -c
@@ -129,7 +129,7 @@ spec:
             echo " Redis is ready";
       containers:
       - name: infisical
-        image: infisical/infisical:v0.158.20
+        image: ghcr.io/packalares/infisical:v0.158.20
         ports:
         - containerPort: 8080
         envFrom:

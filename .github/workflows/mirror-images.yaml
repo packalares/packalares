@@ -1,0 +1,85 @@
+name: Mirror Docker Hub Images to GHCR
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 1 * *'  # Monthly, to catch security updates
+
+env:
+  REGISTRY: ghcr.io
+  ORG: packalares
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - source: postgres:16.0-alpine3.18
+            target: postgres
+            tag: 16.0-alpine
+          - source: redis:7-alpine
+            target: redis
+            tag: 7-alpine
+          - source: busybox:1.36
+            target: busybox
+            tag: "1.36"
+          - source: nginx:stable-alpine
+            target: nginx
+            tag: stable-alpine
+          - source: infisical/infisical:v0.158.20
+            target: infisical
+            tag: v0.158.20
+          - source: nitnelave/lldap:v0.5.0
+            target: lldap
+            tag: v0.5.0
+          - source: apache/kvrocks:2.15.0
+            target: kvrocks
+            tag: "2.15.0"
+          - source: citusdata/citus:12.1
+            target: citus
+            tag: "12.1"
+          - source: nats:2.10-alpine
+            target: nats
+            tag: 2.10-alpine
+          - source: prom/prometheus:v2.51.0
+            target: prometheus
+            tag: v2.51.0
+          - source: prom/node-exporter:v1.7.0
+            target: node-exporter
+            tag: v1.7.0
+          - source: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.11.0
+            target: kube-state-metrics
+            tag: v2.11.0
+          - source: grafana/loki:2.9.4
+            target: loki
+            tag: "2.9.4"
+          - source: grafana/promtail:2.9.4
+            target: promtail
+            tag: "2.9.4"
+          - source: tailscale/tailscale:stable
+            target: tailscale
+            tag: stable
+          - source: openebs/provisioner-localpv:3.3.0
+            target: openebs-provisioner
+            tag: "3.3.0"
+          - source: openebs/linux-utils:3.3.0
+            target: openebs-linux-utils
+            tag: "3.3.0"
+
+    steps:
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Mirror ${{ matrix.source }}
+        run: |
+          docker pull ${{ matrix.source }}
+          docker tag ${{ matrix.source }} ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.target }}:${{ matrix.tag }}
+          docker push ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.target }}:${{ matrix.tag }}

@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
       - name: redis
-        image: redis:7-alpine
+        image: ghcr.io/packalares/redis:7-alpine
         ports:
         - containerPort: 6379
         args:

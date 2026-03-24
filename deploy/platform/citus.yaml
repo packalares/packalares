@@ -47,7 +47,7 @@ spec:
     spec:
       containers:
       - name: citus
-        image: citusdata/citus:12.1
+        image: ghcr.io/packalares/citus:12.1
         ports:
         - containerPort: 5432
           name: postgres
