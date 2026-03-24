@@ -50,7 +50,7 @@ spec:
       priorityClassName: system-node-critical
       containers:
       - name: device-plugin
-        image: projecthami/hami:v2.4.1
+        image: ghcr.io/packalares/hami:v2.4.1
         command: ["hami-device-plugin"]
         args:
         - --mig-strategy=none
@@ -104,7 +104,7 @@ spec:
       serviceAccountName: hami-scheduler
       containers:
       - name: scheduler
-        image: projecthami/hami:v2.4.1
+        image: ghcr.io/packalares/hami:v2.4.1
         command: ["hami-scheduler"]
         args:
         - --http-bind=:443
