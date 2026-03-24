@@ -25,9 +25,11 @@ spec:
           name: http
         env:
         - name: PROMETHEUS_URL
-          value: http://prometheus.kubesphere-monitoring-system.svc:9090
+          value: "http://prometheus-svc.{{MONITORING_NAMESPACE}}:9090"
         - name: PORT
           value: "8000"
+        - name: REDIS_PASSWORD
+          value: "{{REDIS_PASSWORD}}"
         livenessProbe:
           httpGet:
             path: /healthz

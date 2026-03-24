@@ -33,7 +33,7 @@ type DiskMetrics struct {
 
 // collectSystemMetrics gathers CPU, memory, disk, uptime, and load data
 // from the local /proc filesystem and syscall.Statfs.
-func collectSystemMetrics() (*SystemMetrics, error) {
+func CollectSystemMetrics() (*SystemMetrics, error) {
 	cpuUsage, err := readCPUUsage()
 	if err != nil {
 		return nil, fmt.Errorf("cpu: %w", err)

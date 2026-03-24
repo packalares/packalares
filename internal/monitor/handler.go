@@ -49,7 +49,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 // ---------------------------------------------------------------------------
 
 func (h *Handler) handleMetrics(w http.ResponseWriter, r *http.Request) {
-	metrics, err := collectSystemMetrics()
+	metrics, err := CollectSystemMetrics()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
