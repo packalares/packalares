@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { getWsUrl } from 'boot/axios';
 import { useMonitorStore } from './monitor';
 
 export const useWebSocketStore = defineStore('websocket', {
@@ -9,9 +10,7 @@ export const useWebSocketStore = defineStore('websocket', {
   }),
   actions: {
     start() {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const host = window.location.host;
-      const url = `${protocol}//${host}/ws`;
+      const url = getWsUrl();
 
       try {
         this.ws = new WebSocket(url);
