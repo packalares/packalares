@@ -73,6 +73,9 @@ jobs:
           - name: desktop-dev
             dockerfile: build/Dockerfile.desktop-dev
             context: .
+          - name: tapr
+            dockerfile: build/Dockerfile.tapr
+            context: .
           - name: envoy-init
             dockerfile: build/envoy-init/Dockerfile
             context: build/envoy-init
