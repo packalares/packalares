@@ -83,12 +83,10 @@ func Seed(ctx context.Context, cfg SeedConfig) (*SeedResult, error) {
 	// Check if org exists
 	err = db.QueryRowContext(ctx, `SELECT id FROM organizations LIMIT 1`).Scan(&orgID)
 	if err != nil {
-		// Create org
 		orgID = uuid.New().String()
 		_, err = db.ExecContext(ctx,
 			`INSERT INTO organizations (id, name, slug, "createdAt", "updatedAt")
-			 VALUES ($1, $2, $3, $4, $5)
-			 ON CONFLICT DO NOTHING`,
+			 VALUES ($1, $2, $3, $4, $5)`,
 			orgID, cfg.OrgName, slugify(cfg.OrgName), now, now)
 		if err != nil {
 			return nil, fmt.Errorf("create org: %w", err)
@@ -101,69 +99,74 @@ func Seed(ctx context.Context, cfg SeedConfig) (*SeedResult, error) {
 	if err == nil {
 		userID = existingUserID
 	} else {
-		// Create user
 		_, err = db.ExecContext(ctx,
 			`INSERT INTO users (id, email, "firstName", "lastName", "isAccepted", username, "superAdmin", "createdAt", "updatedAt")
-			 VALUES ($1, $2, $3, $4, true, $5, true, $6, $7)
-			 ON CONFLICT (email) DO NOTHING`,
+			 VALUES ($1, $2, $3, $4, true, $5, true, $6, $7)`,
 			userID, cfg.Email, cfg.Username, "Admin", cfg.Username, now, now)
 		if err != nil {
 			return nil, fmt.Errorf("create user: %w", err)
 		}
 	}
 
-	// Upsert encryption keys
-	_, err = db.ExecContext(ctx,
-		`INSERT INTO user_encryption_keys (id, "userId", "publicKey", "encryptedPrivateKey", iv, tag, salt, verifier, "encryptionVersion", "createdAt", "updatedAt")
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10)
-		 ON CONFLICT ("userId") DO UPDATE SET
-		   "publicKey" = EXCLUDED."publicKey",
-		   "encryptedPrivateKey" = EXCLUDED."encryptedPrivateKey",
-		   iv = EXCLUDED.iv,
-		   tag = EXCLUDED.tag,
-		   salt = EXCLUDED.salt,
-		   verifier = EXCLUDED.verifier,
-		   "updatedAt" = EXCLUDED."updatedAt"`,
-		uuid.New().String(), userID, publicKey, encPrivKey, encIV, encTag, salt, verifier, now, now)
+	// Check if encryption keys exist for this user
+	var existingKeyID string
+	err = db.QueryRowContext(ctx, `SELECT id FROM user_encryption_keys WHERE "userId" = $1`, userID).Scan(&existingKeyID)
+	if err != nil {
+		// Create new
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO user_encryption_keys (id, "userId", "publicKey", "encryptedPrivateKey", iv, tag, salt, verifier, "encryptionVersion", "createdAt", "updatedAt")
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 1, $9, $10)`,
+			uuid.New().String(), userID, publicKey, encPrivKey, encIV, encTag, salt, verifier, now, now)
+	} else {
+		// Update existing
+		_, err = db.ExecContext(ctx,
+			`UPDATE user_encryption_keys SET "publicKey" = $1, "encryptedPrivateKey" = $2, iv = $3, tag = $4, salt = $5, verifier = $6, "updatedAt" = $7 WHERE "userId" = $8`,
+			publicKey, encPrivKey, encIV, encTag, salt, verifier, now, userID)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("create encryption keys: %w", err)
 	}
 
-	// Create org membership
-	_, err = db.ExecContext(ctx,
-		`INSERT INTO memberships (id, scope, "actorUserId", "scopeOrgId", "isActive", status, "createdAt", "updatedAt")
-		 VALUES ($1, 'org', $2, $3, true, 'accepted', $4, $5)
-		 ON CONFLICT DO NOTHING`,
-		uuid.New().String(), userID, orgID, now, now)
+	// Check if org membership exists
+	var existingMemberID string
+	err = db.QueryRowContext(ctx, `SELECT id FROM memberships WHERE "actorUserId" = $1 AND "scopeOrgId" = $2`, userID, orgID).Scan(&existingMemberID)
 	if err != nil {
-		// Try old schema
-		db.ExecContext(ctx,
-			`INSERT INTO org_memberships (id, "userId", "orgId", role, status, "createdAt", "updatedAt")
-			 VALUES ($1, $2, $3, 'admin', 'accepted', $4, $5)
-			 ON CONFLICT DO NOTHING`,
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO memberships (id, scope, "actorUserId", "scopeOrgId", "isActive", status, "createdAt", "updatedAt")
+			 VALUES ($1, 'org', $2, $3, true, 'accepted', $4, $5)`,
 			uuid.New().String(), userID, orgID, now, now)
+		if err != nil {
+			// Ignore — schema might differ
+			fmt.Printf("tapr: warning: create membership: %v\n", err)
+		}
 	}
 
-	// Create membership role
+	// Create membership role if membership exists
 	var membershipID string
 	err = db.QueryRowContext(ctx,
 		`SELECT id FROM memberships WHERE "actorUserId" = $1 AND "scopeOrgId" = $2`, userID, orgID).Scan(&membershipID)
 	if err == nil {
-		_, _ = db.ExecContext(ctx,
-			`INSERT INTO membership_roles (id, role, "isTemporary", "membershipId", "createdAt", "updatedAt")
-			 VALUES ($1, 'admin', false, $2, $3, $4)
-			 ON CONFLICT DO NOTHING`,
-			uuid.New().String(), membershipID, now, now)
+		var existingRoleID string
+		err = db.QueryRowContext(ctx, `SELECT id FROM membership_roles WHERE "membershipId" = $1`, membershipID).Scan(&existingRoleID)
+		if err != nil {
+			db.ExecContext(ctx,
+				`INSERT INTO membership_roles (id, role, "isTemporary", "membershipId", "createdAt", "updatedAt")
+				 VALUES ($1, 'admin', false, $2, $3, $4)`,
+				uuid.New().String(), membershipID, now, now)
+		}
 	}
 
-	// Create auth token session
-	_, err = db.ExecContext(ctx,
-		`INSERT INTO auth_token_sessions (id, "userId", ip, "userAgent", "accessVersion", "refreshVersion", "lastUsed", "createdAt", "updatedAt")
-		 VALUES ($1, $2, '127.0.0.1', 'packalares-installer', 1, 1, $3, $4, $5)
-		 ON CONFLICT DO NOTHING`,
-		uuid.New().String(), userID, now, now, now)
+	// Create auth token session if not exists
+	var existingSessionID string
+	err = db.QueryRowContext(ctx, `SELECT id FROM auth_token_sessions WHERE "userId" = $1 LIMIT 1`, userID).Scan(&existingSessionID)
 	if err != nil {
-		return nil, fmt.Errorf("create session: %w", err)
+		_, err = db.ExecContext(ctx,
+			`INSERT INTO auth_token_sessions (id, "userId", ip, "userAgent", "accessVersion", "refreshVersion", "lastUsed", "createdAt", "updatedAt")
+			 VALUES ($1, $2, '127.0.0.1', 'packalares-tapr', 1, 1, $3, $4, $5)`,
+			uuid.New().String(), userID, now, now, now)
+		if err != nil {
+			return nil, fmt.Errorf("create session: %w", err)
+		}
 	}
 
 	return &SeedResult{
