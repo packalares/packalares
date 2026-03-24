@@ -30,6 +30,7 @@ type SeedConfig struct {
 type SeedResult struct {
 	UserID      string
 	OrgID       string
+	SessionID   string // auth_token_sessions.id for JWT tokenVersionId
 	ProjectID   string
 	PublicKey   string // base64 NaCl public key
 	PrivateKey  string // base64 NaCl private key (plaintext, for runtime use)
@@ -155,13 +156,14 @@ func Seed(ctx context.Context, cfg SeedConfig) (*SeedResult, error) {
 	}
 
 	// Create auth token session if not exists
-	var existingSessionID string
-	err = db.QueryRowContext(ctx, `SELECT id FROM auth_token_sessions WHERE "userId" = $1 LIMIT 1`, userID).Scan(&existingSessionID)
+	var sessionID string
+	err = db.QueryRowContext(ctx, `SELECT id FROM auth_token_sessions WHERE "userId" = $1 LIMIT 1`, userID).Scan(&sessionID)
 	if err != nil {
+		sessionID = uuid.New().String()
 		_, err = db.ExecContext(ctx,
 			`INSERT INTO auth_token_sessions (id, "userId", ip, "userAgent", "accessVersion", "refreshVersion", "lastUsed", "createdAt", "updatedAt")
 			 VALUES ($1, $2, '127.0.0.1', 'packalares-tapr', 1, 1, $3, $4, $5)`,
-			uuid.New().String(), userID, now, now, now)
+			sessionID, userID, now, now, now)
 		if err != nil {
 			return nil, fmt.Errorf("create session: %w", err)
 		}
@@ -170,6 +172,7 @@ func Seed(ctx context.Context, cfg SeedConfig) (*SeedResult, error) {
 	return &SeedResult{
 		UserID:     userID,
 		OrgID:      orgID,
+		SessionID:  sessionID,
 		PublicKey:  publicKey,
 		PrivateKey: privateKey,
 	}, nil

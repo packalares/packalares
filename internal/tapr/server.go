@@ -22,6 +22,7 @@ type Server struct {
 	jwtSecret    string // from infisical-backend K8s Secret
 	userID       string
 	orgID        string
+	sessionID    string // auth_token_sessions.id — required for JWT
 	publicKey    string // base64 NaCl public key
 	privateKey   string // base64 NaCl private key (plaintext)
 	password     string // admin password for decrypting private key
@@ -51,7 +52,7 @@ func (s *Server) issueToken() (string, error) {
 	claims := jwt.MapClaims{
 		"userId":         s.userID,
 		"authTokenType":  "accessToken",
-		"tokenVersionId": "packalares-tapr",
+		"tokenVersionId": s.sessionID,
 		"accessVersion":  1,
 		"organizationId": s.orgID,
 		"authMethod":     "email",
@@ -386,9 +387,10 @@ func SeedAndStart(ctx context.Context, listenAddr string, initialSecrets map[str
 		}
 		srv.userID = result.UserID
 		srv.orgID = result.OrgID
+		srv.sessionID = result.SessionID
 		srv.publicKey = result.PublicKey
 		srv.privateKey = result.PrivateKey
-		log.Printf("tapr: seeded user=%s org=%s", srv.userID, srv.orgID)
+		log.Printf("tapr: seeded user=%s org=%s session=%s", srv.userID, srv.orgID, srv.sessionID)
 	}
 
 	// Store initial secrets if provided
