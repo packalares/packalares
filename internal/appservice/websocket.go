@@ -1,6 +1,7 @@
 package appservice
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/packalares/packalares/pkg/config"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/net/websocket"
 	"k8s.io/klog/v2"
 )
@@ -119,50 +121,44 @@ func (hub *WSHub) BroadcastAlert(level, message string) {
 	})
 }
 
-// StartMetricsPusher runs a background goroutine that pushes system metrics
-// to all connected WebSocket clients every 5 seconds. It queries the monitor
-// service and Prometheus, then broadcasts the data. This eliminates the need
-// for the UI to poll /api/metrics and /api/monitor/cluster.
+// StartMetricsPusher runs a background goroutine that reads system metrics
+// from KVRocks (written by monitoring-server) and broadcasts to all connected
+// WebSocket clients every 5 seconds.
 func StartMetricsPusher() {
-	monitorURL := os.Getenv("MONITOR_URL")
-	if monitorURL == "" {
-		monitorURL = "http://" + config.MonitorDNS() + ":8000"
+	redisAddr := os.Getenv("REDIS_ADDR")
+	if redisAddr == "" {
+		redisAddr = config.KVRocksHost() + ":" + config.KVRocksPort()
 	}
-	prometheusURL := config.PrometheusURL()
+	redisPass := os.Getenv("REDIS_PASSWORD")
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     redisAddr,
+		Password: redisPass,
+	})
+
+	ctx := context.Background()
 
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
-		client := &http.Client{Timeout: 5 * time.Second}
 
 		for range ticker.C {
 			hub := GetWSHub()
 			if hub.clientCount() == 0 {
-				continue // No clients connected, skip
+				continue
 			}
 
-			// Fetch metrics from monitor service
-			resp, err := client.Get(monitorURL + "/api/metrics")
+			data, err := rdb.Get(ctx, "packalares:metrics").Bytes()
 			if err != nil {
 				continue
 			}
-			var metrics json.RawMessage
-			json.NewDecoder(resp.Body).Decode(&metrics)
-			resp.Body.Close()
 
-			if metrics != nil {
-				hub.Broadcast(WSMessage{Type: "metrics", Data: metrics})
-			}
-
-			// Fetch cluster monitor data from appservice's own endpoint
-			resp2, err := client.Get(prometheusURL + "/api/v1/query?query=up")
-			if err == nil {
-				resp2.Body.Close()
-			}
+			var metrics json.RawMessage = data
+			hub.Broadcast(WSMessage{Type: "metrics", Data: metrics})
 		}
 	}()
 
-	klog.Infof("ws: metrics pusher started (5s interval)")
+	klog.Infof("ws: metrics pusher started (5s interval, reading from KVRocks)")
 }
 
 // verifySession checks the packalares_session cookie against the auth
