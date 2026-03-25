@@ -150,6 +150,14 @@ async function saveTailscale() {
     });
     saveMsg.value = 'Saved. Tailscale restarting...';
     tsStatus.value = tsAuthKey.value ? 'connecting' : 'not configured';
+    // Re-fetch to confirm saved values
+    try {
+      const ts: any = await api.get('/api/settings/tailscale');
+      tsAuthKey.value = ts?.auth_key || ts?.data?.auth_key || '';
+      tsControlURL.value = ts?.control_url || ts?.data?.control_url || '';
+      tsHostname.value = ts?.hostname || ts?.data?.hostname || 'packalares';
+      tsStatus.value = tsAuthKey.value ? 'connecting' : 'not configured';
+    } catch {}
   } catch (e: any) {
     saveMsg.value = 'Error: ' + (e.message || 'unknown');
   }

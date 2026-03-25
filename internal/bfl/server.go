@@ -15,6 +15,9 @@ import (
 	"time"
 
 	"github.com/packalares/packalares/pkg/config"
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/klog/v2"
@@ -548,10 +551,13 @@ func (s *Server) handleTailscaleSettings(w http.ResponseWriter, r *http.Request)
 			respondJSON(w, http.StatusOK, map[string]interface{}{"auth_key": "", "hostname": "packalares", "control_url": ""})
 			return
 		}
+		// Strip --login-server= prefix from extra-args to return clean URL
+		controlURL := string(secret.Data["extra-args"])
+		controlURL = strings.TrimPrefix(controlURL, "--login-server=")
 		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"auth_key":    string(secret.Data["auth-key"]),
 			"hostname":    string(secret.Data["hostname"]),
-			"control_url": string(secret.Data["extra-args"]),
+			"control_url": controlURL,
 		})
 
 	case http.MethodPost:
@@ -565,31 +571,63 @@ func (s *Server) handleTailscaleSettings(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
+		extraArgs := ""
+		if req.ControlURL != "" {
+			extraArgs = "--login-server=" + req.ControlURL
+		}
+		hostname := req.Hostname
+		if hostname == "" {
+			hostname = "packalares"
+		}
+
 		secret, err := s.K8s.Clientset.CoreV1().Secrets(ns).Get(ctx, secretName, metav1.GetOptions{})
 		if err != nil {
-			respondError(w, "tailscale-config secret not found")
-			return
+			// Secret doesn't exist — create it
+			newSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: secretName, Namespace: ns},
+				Type:       corev1.SecretTypeOpaque,
+				Data: map[string][]byte{
+					"auth-key":   []byte(req.AuthKey),
+					"hostname":   []byte(hostname),
+					"extra-args": []byte(extraArgs),
+				},
+			}
+			if _, err := s.K8s.Clientset.CoreV1().Secrets(ns).Create(ctx, newSecret, metav1.CreateOptions{}); err != nil {
+				respondError(w, fmt.Sprintf("create secret: %v", err))
+				return
+			}
+			// Also create state secret
+			stateSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "tailscale-state", Namespace: ns},
+				Type:       corev1.SecretTypeOpaque,
+			}
+			s.K8s.Clientset.CoreV1().Secrets(ns).Create(ctx, stateSecret, metav1.CreateOptions{}) // best effort
+		} else {
+			// Secret exists — update it
+			if secret.Data == nil {
+				secret.Data = make(map[string][]byte)
+			}
+			secret.Data["auth-key"] = []byte(req.AuthKey)
+			secret.Data["hostname"] = []byte(hostname)
+			secret.Data["extra-args"] = []byte(extraArgs)
+
+			if _, err := s.K8s.Clientset.CoreV1().Secrets(ns).Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
+				respondError(w, fmt.Sprintf("update secret: %v", err))
+				return
+			}
 		}
 
-		if secret.Data == nil {
-			secret.Data = make(map[string][]byte)
+		// Ensure tailscale deployment exists, deploy if missing
+		_, depErr := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, "tailscale", metav1.GetOptions{})
+		if depErr != nil {
+			klog.Infof("Tailscale deployment not found, creating...")
+			if err := s.createTailscaleDeployment(ctx, ns); err != nil {
+				klog.Errorf("Failed to create tailscale deployment: %v", err)
+			}
+		} else {
+			// Restart to pick up new config
+			exec.CommandContext(ctx, "kubectl", "rollout", "restart", "deployment/tailscale", "-n", ns).Run()
 		}
-		secret.Data["auth-key"] = []byte(req.AuthKey)
-		if req.Hostname != "" {
-			secret.Data["hostname"] = []byte(req.Hostname)
-		}
-		if req.ControlURL != "" {
-			secret.Data["extra-args"] = []byte("--login-server=" + req.ControlURL)
-		}
-
-		if _, err := s.K8s.Clientset.CoreV1().Secrets(ns).Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
-			respondError(w, fmt.Sprintf("update secret: %v", err))
-			return
-		}
-
-		// Restart tailscale deployment to pick up new config
-		// This triggers a rollout with the new secret values
-		exec.CommandContext(ctx, "kubectl", "rollout", "restart", "deployment/tailscale", "-n", ns).Run()
 
 		respondJSON(w, http.StatusOK, map[string]interface{}{"status": "OK", "message": "Tailscale config updated, restarting..."})
 
@@ -784,6 +822,68 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request, use
 
 	klog.Infof("password reset for user %s", userName)
 	respondSuccess(w)
+}
+
+// ---------------------------------------------------------------------------
+// Tailscale deployment creation
+// ---------------------------------------------------------------------------
+
+func (s *Server) createTailscaleDeployment(ctx context.Context, ns string) error {
+	replicas := int32(1)
+	hostNetwork := true
+	labels := map[string]string{"app": "tailscale"}
+	optionalSecret := true
+
+	dep := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{Name: "tailscale", Namespace: ns, Labels: labels},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{MatchLabels: labels},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{Labels: labels},
+				Spec: corev1.PodSpec{
+					HostNetwork:        hostNetwork,
+					DNSPolicy:          corev1.DNSClusterFirstWithHostNet,
+					ServiceAccountName: "packalares-admin",
+					Containers: []corev1.Container{{
+						Name:  "tailscale",
+						Image: "ghcr.io/packalares/tailscale:stable",
+						SecurityContext: &corev1.SecurityContext{
+							Capabilities: &corev1.Capabilities{Add: []corev1.Capability{"NET_ADMIN", "NET_RAW"}},
+						},
+						Env: []corev1.EnvVar{
+							{Name: "TS_KUBE_SECRET", Value: "tailscale-state"},
+							{Name: "TS_USERSPACE", Value: "false"},
+							{Name: "TS_AUTH_KEY", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "tailscale-config"}, Key: "auth-key", Optional: &optionalSecret,
+							}}},
+							{Name: "TS_HOSTNAME", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "tailscale-config"}, Key: "hostname", Optional: &optionalSecret,
+							}}},
+							{Name: "TS_EXTRA_ARGS", ValueFrom: &corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "tailscale-config"}, Key: "extra-args", Optional: &optionalSecret,
+							}}},
+						},
+						VolumeMounts: []corev1.VolumeMount{
+							{Name: "dev-tun", MountPath: "/dev/net/tun"},
+							{Name: "state", MountPath: "/var/lib/tailscale"},
+						},
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("10m"), corev1.ResourceMemory: resource.MustParse("32Mi")},
+							Limits:   corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("200m"), corev1.ResourceMemory: resource.MustParse("128Mi")},
+						},
+					}},
+					Volumes: []corev1.Volume{
+						{Name: "dev-tun", VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/dev/net/tun"}}},
+						{Name: "state", VolumeSource: corev1.VolumeSource{HostPath: &corev1.HostPathVolumeSource{Path: "/var/lib/packalares/tailscale-state"}}},
+					},
+				},
+			},
+		},
+	}
+
+	_, err := s.K8s.Clientset.AppsV1().Deployments(ns).Create(ctx, dep, metav1.CreateOptions{})
+	return err
 }
 
 // ---------------------------------------------------------------------------
