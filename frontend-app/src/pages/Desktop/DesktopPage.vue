@@ -682,8 +682,7 @@ onMounted(async () => {
 
   await loadInit();
   await loadApps();
-  // Load initial metrics, then WebSocket takes over
-  await monitorStore.loadMetrics();
+  // WebSocket pushes metrics every 5s
   const wsStore = useWebSocketStore();
   wsStore.start();
 });
