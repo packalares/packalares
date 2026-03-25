@@ -68,6 +68,10 @@ spec:
         - containerPort: 8000
           name: http
         env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
         - name: TAPR_URL
           value: "http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080"
         - name: PROMETHEUS_URL
