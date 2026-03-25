@@ -303,10 +303,39 @@ http {
 
     set $auth_up auth-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
     set $desktop_up desktop-svc.{{USER_NAMESPACE}}.svc.cluster.local;
+    set $market_up market-backend.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $app_up app-service.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $mon_up monitoring-server.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
+    set $bfl_up bfl.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
 
     location = /_auth { internal; proxy_pass http://$auth_up:9091/api/verify; proxy_pass_request_body off; proxy_set_header Content-Length ""; proxy_set_header X-Forwarded-Host $host; proxy_set_header Cookie $http_cookie; }
     error_page 401 = @lr;
     location @lr { return 302 https://auth.{{USER_ZONE}}/login?rd=https://$host$request_uri; }
+
+    # API routes (same as IP block)
+    location /api/market/ {
+      auth_request /_auth;
+      rewrite ^/api/market/(.*) /market/v1/$1 break;
+      proxy_pass http://$market_up:6756;
+      proxy_set_header Host $host;
+    }
+    location /api/apps/ {
+      auth_request /_auth;
+      rewrite ^/api/apps/(.*) /app-service/v1/$1 break;
+      proxy_pass http://$app_up:6755;
+      proxy_set_header Host $host;
+      proxy_set_header Cookie $http_cookie;
+    }
+    location /api/monitor/ {
+      auth_request /_auth;
+      rewrite ^/api/monitor/(.*) /api/$1 break;
+      proxy_pass http://$mon_up:80;
+      proxy_set_header Host $host;
+    }
+    location /api/user/info { proxy_pass http://$bfl_up:80/bfl/backend/v1/user-info; proxy_set_header Host $host; }
+    location /api/auth/login { proxy_pass http://$auth_up:9091/api/firstfactor; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+    location /api/auth/state { proxy_pass http://$auth_up:9091/api/state; proxy_set_header Cookie $http_cookie; }
+    location /ws { proxy_pass http://$app_up:6755/ws; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade; proxy_set_header Cookie $http_cookie; }
 
     location /js/    { proxy_pass http://$desktop_up:80; }
     location /css/   { proxy_pass http://$desktop_up:80; }
