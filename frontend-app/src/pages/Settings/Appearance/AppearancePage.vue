@@ -14,13 +14,9 @@
             @click="selectWallpaper(wp)"
           >
             <img :src="wp" class="wallpaper-thumb" loading="lazy" />
-            <q-icon
-              v-if="selectedWallpaper === wp"
-              name="sym_r_check_circle"
-              color="blue-5"
-              size="20px"
-              class="wallpaper-check"
-            />
+            <div v-if="selectedWallpaper === wp" class="wallpaper-check">
+              <q-icon name="sym_r_check_circle" color="white" size="18px" />
+            </div>
           </div>
         </div>
       </div>
@@ -31,37 +27,37 @@
         <div class="theme-selector">
           <div
             class="theme-option"
-            :class="{ 'theme-option-active': selectedTheme === 'dark' }"
+            :class="{ 'theme-active': selectedTheme === 'dark' }"
             @click="selectTheme('dark')"
           >
-            <div class="theme-preview theme-preview-dark">
-              <div class="preview-sidebar"></div>
-              <div class="preview-content">
-                <div class="preview-bar"></div>
-                <div class="preview-card"></div>
-                <div class="preview-card short"></div>
+            <div class="theme-preview theme-dark">
+              <div class="tp-sidebar"></div>
+              <div class="tp-content">
+                <div class="tp-bar"></div>
+                <div class="tp-card"></div>
+                <div class="tp-card short"></div>
               </div>
             </div>
             <div class="theme-label">
-              <q-radio v-model="selectedTheme" val="dark" color="blue-8" dark dense />
+              <div class="theme-radio" :class="{ checked: selectedTheme === 'dark' }"></div>
               <span>Dark</span>
             </div>
           </div>
           <div
             class="theme-option"
-            :class="{ 'theme-option-active': selectedTheme === 'light' }"
+            :class="{ 'theme-active': selectedTheme === 'light' }"
             @click="selectTheme('light')"
           >
-            <div class="theme-preview theme-preview-light">
-              <div class="preview-sidebar"></div>
-              <div class="preview-content">
-                <div class="preview-bar"></div>
-                <div class="preview-card"></div>
-                <div class="preview-card short"></div>
+            <div class="theme-preview theme-light">
+              <div class="tp-sidebar"></div>
+              <div class="tp-content">
+                <div class="tp-bar"></div>
+                <div class="tp-card"></div>
+                <div class="tp-card short"></div>
               </div>
             </div>
             <div class="theme-label">
-              <q-radio v-model="selectedTheme" val="light" color="blue-8" dark dense />
+              <div class="theme-radio" :class="{ checked: selectedTheme === 'light' }"></div>
               <span>Light</span>
             </div>
           </div>
@@ -99,33 +95,129 @@ function selectTheme(theme: string) {
 </script>
 
 <style lang="scss" scoped>
-.settings-page { height: 100%; display: flex; flex-direction: column; }
-.page-title { font-size: 18px; font-weight: 600; color: var(--ink-1); padding: 16px 24px; height: 56px; display: flex; align-items: center; flex-shrink: 0; }
-.page-scroll { flex: 1; overflow-y: auto; padding: 0 24px 24px; }
-.section-title { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-.settings-card { background: var(--bg-2); border-radius: 12px; border: 1px solid var(--separator); overflow: hidden; }
-
-.wallpaper-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 16px; }
-.wallpaper-item { position: relative; cursor: pointer; border-radius: 8px; overflow: hidden; border: 2px solid transparent; transition: border-color 0.15s; &:hover { border-color: var(--glass-border); } }
-.wallpaper-selected { border-color: var(--accent) !important; }
-.wallpaper-thumb { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; display: block; border-radius: 6px; }
-.wallpaper-check { position: absolute; bottom: 6px; right: 6px; }
-
-.theme-selector { display: flex; gap: 16px; padding: 20px; }
-.theme-option { cursor: pointer; border-radius: 10px; overflow: hidden; border: 2px solid transparent; transition: border-color 0.15s; &:hover { border-color: var(--glass-border); } }
-.theme-option-active { border-color: var(--accent) !important; }
-.theme-preview { width: 166px; height: 100px; display: flex; border-radius: 8px 8px 0 0; overflow: hidden; }
-.theme-preview-dark {
-  .preview-sidebar { width: 40px; background: #1a1a1a; border-right: 1px solid rgba(255,255,255,0.06); }
-  .preview-content { flex: 1; background: #1f1f1f; padding: 8px; }
-  .preview-bar { height: 8px; background: #333; border-radius: 4px; margin-bottom: 6px; }
-  .preview-card { height: 20px; background: #2a2a2a; border-radius: 4px; margin-bottom: 4px; &.short { width: 60%; } }
+.wallpaper-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 14px;
 }
-.theme-preview-light {
-  .preview-sidebar { width: 40px; background: #f0f0f0; border-right: 1px solid rgba(0,0,0,0.08); }
-  .preview-content { flex: 1; background: #fafafa; padding: 8px; }
-  .preview-bar { height: 8px; background: #e0e0e0; border-radius: 4px; margin-bottom: 6px; }
-  .preview-card { height: 20px; background: #eee; border-radius: 4px; margin-bottom: 4px; &.short { width: 60%; } }
+
+.wallpaper-item {
+  position: relative;
+  cursor: pointer;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.15);
+    transform: scale(1.02);
+  }
 }
-.theme-label { display: flex; align-items: center; gap: 4px; padding: 8px 12px; font-size: 13px; color: var(--ink-1); }
+
+.wallpaper-selected {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.wallpaper-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  display: block;
+}
+
+.wallpaper-check {
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.theme-selector {
+  display: flex;
+  gap: 14px;
+  padding: 16px;
+}
+
+.theme-option {
+  cursor: pointer;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 2px solid transparent;
+  transition: all 0.15s ease;
+  flex: 1;
+  max-width: 180px;
+
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+}
+
+.theme-active {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.theme-preview {
+  height: 90px;
+  display: flex;
+  overflow: hidden;
+}
+
+.theme-dark {
+  .tp-sidebar { width: 36px; background: #141414; border-right: 1px solid rgba(255,255,255,0.06); }
+  .tp-content { flex: 1; background: #1c1c1e; padding: 8px; }
+  .tp-bar { height: 6px; background: #2c2c2e; border-radius: 3px; margin-bottom: 6px; }
+  .tp-card { height: 16px; background: #252525; border-radius: 4px; margin-bottom: 4px; &.short { width: 55%; } }
+}
+
+.theme-light {
+  .tp-sidebar { width: 36px; background: #f2f2f7; border-right: 1px solid rgba(0,0,0,0.06); }
+  .tp-content { flex: 1; background: #ffffff; padding: 8px; }
+  .tp-bar { height: 6px; background: #e5e5ea; border-radius: 3px; margin-bottom: 6px; }
+  .tp-card { height: 16px; background: #f2f2f7; border-radius: 4px; margin-bottom: 4px; &.short { width: 55%; } }
+}
+
+.theme-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-1);
+}
+
+.theme-radio {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--ink-3);
+  position: relative;
+  transition: all 0.15s ease;
+
+  &.checked {
+    border-color: var(--accent);
+
+    &::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+  }
+}
 </style>

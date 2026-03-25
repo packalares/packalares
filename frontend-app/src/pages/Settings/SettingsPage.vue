@@ -7,53 +7,28 @@
         :class="{ 'sidebar-item-active': currentPath === '/settings/account' }"
         @click="navigateTo('/settings/account')"
       >
-        <q-avatar size="40px" color="grey-8" text-color="white" icon="sym_r_person" />
+        <q-avatar size="36px" color="grey-8" text-color="white" icon="sym_r_person" class="user-avatar" />
         <div class="sidebar-user-info">
-          <div
-            class="sidebar-user-name"
-            :class="{ 'text-accent-active': currentPath === '/settings/account' }"
-          >
-            {{ userName }}
-          </div>
-          <div
-            class="sidebar-user-role"
-            :class="{ 'text-accent-active': currentPath === '/settings/account' }"
-          >
-            {{ userRole }}
-          </div>
+          <div class="sidebar-user-name">{{ userName }}</div>
+          <div class="sidebar-user-role">{{ userRole }}</div>
         </div>
       </div>
 
-      <q-separator class="sidebar-separator" />
+      <div class="sidebar-divider" />
 
       <!-- Navigation items -->
-      <q-list dense class="sidebar-nav">
-        <q-item
+      <div class="sidebar-nav">
+        <div
           v-for="item in navItems"
           :key="item.path"
-          clickable
-          :active="currentPath === item.path"
-          active-class="sidebar-item-active"
-          class="sidebar-nav-item"
+          class="nav-item"
+          :class="{ 'nav-item-active': currentPath === item.path }"
           @click="navigateTo(item.path)"
         >
-          <q-item-section avatar style="min-width: 36px">
-            <q-icon
-              :name="item.icon"
-              :color="currentPath === item.path ? undefined : undefined"
-              :class="{ 'text-accent-active': currentPath === item.path }"
-              size="20px"
-            />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label
-              :class="currentPath === item.path ? 'text-accent-active' : 'text-ink-1'"
-            >
-              {{ item.label }}
-            </q-item-label>
-          </q-item-section>
-        </q-item>
-      </q-list>
+          <q-icon :name="item.icon" size="18px" class="nav-icon" />
+          <span class="nav-text">{{ item.label }}</span>
+        </div>
+      </div>
     </div>
 
     <div class="settings-content">
@@ -103,38 +78,42 @@ const navigateTo = (path: string) => {
 }
 
 .settings-sidebar {
-  width: 240px;
-  min-width: 240px;
+  width: 220px;
+  min-width: 220px;
   height: 100%;
   background-color: var(--bg-1);
   border-right: 1px solid var(--separator);
   display: flex;
   flex-direction: column;
-  padding: 12px 8px;
+  padding: 16px 10px;
   overflow-y: auto;
 }
 
 .sidebar-user-card {
   display: flex;
   align-items: center;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: all 0.12s ease;
+  gap: 10px;
 
   &:hover {
     background-color: var(--glass);
   }
 }
 
+.user-avatar {
+  flex-shrink: 0;
+}
+
 .sidebar-user-info {
-  margin-left: 10px;
   overflow: hidden;
 }
 
 .sidebar-user-name {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--ink-1);
   white-space: nowrap;
   overflow: hidden;
@@ -142,43 +121,66 @@ const navigateTo = (path: string) => {
 }
 
 .sidebar-user-role {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--ink-3);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.sidebar-separator {
-  margin: 8px 12px;
-  background-color: var(--separator);
+.sidebar-divider {
+  height: 1px;
+  background: var(--separator);
+  margin: 8px 10px;
 }
 
 .sidebar-nav {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.sidebar-nav-item {
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
   border-radius: 8px;
-  min-height: 40px;
-  margin-bottom: 2px;
-  color: var(--ink-1);
+  cursor: pointer;
+  transition: all 0.12s ease;
 
-  .q-item__section--avatar {
-    padding-right: 0;
+  .nav-icon {
+    color: var(--ink-3);
+    flex-shrink: 0;
   }
+
+  .nav-text {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-2);
+  }
+
+  &:hover {
+    background-color: var(--glass);
+
+    .nav-icon { color: var(--ink-2); }
+    .nav-text { color: var(--ink-1); }
+  }
+}
+
+.nav-item-active {
+  background-color: var(--accent-soft) !important;
+
+  .nav-icon { color: var(--accent) !important; }
+  .nav-text { color: var(--accent) !important; font-weight: 600; }
 }
 
 .sidebar-item-active {
   background-color: var(--accent-soft) !important;
-}
 
-.text-accent-active {
-  color: var(--accent) !important;
-}
-
-.text-ink-1 {
-  color: var(--ink-1);
+  .sidebar-user-name { color: var(--accent) !important; }
+  .sidebar-user-role { color: var(--accent) !important; opacity: 0.7; }
 }
 
 .settings-content {

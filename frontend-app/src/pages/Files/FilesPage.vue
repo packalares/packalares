@@ -1,19 +1,19 @@
 <template>
   <div class="files-page">
     <div class="files-sidebar">
-      <div class="sidebar-header"><q-icon name="sym_r_folder" size="24px" color="blue" /><span>Files</span></div>
+      <div class="sidebar-header"><q-icon name="sym_r_folder" size="22px" color="blue" /><span>Files</span></div>
       <q-list dense>
-        <q-item v-for="f in sidebarFolders" :key="f.path" clickable :active="currentPath===f.path" active-class="sidebar-active" @click="navigateTo(f.path)">
-          <q-item-section avatar><q-icon :name="'sym_r_' + f.icon" size="20px" /></q-item-section>
-          <q-item-section>{{ f.label }}</q-item-section>
+        <q-item v-for="f in sidebarFolders" :key="f.path" clickable :active="currentPath===f.path" active-class="sidebar-active" @click="navigateTo(f.path)" class="sidebar-item">
+          <q-item-section avatar style="min-width:32px"><q-icon :name="'sym_r_' + f.icon" size="18px" /></q-item-section>
+          <q-item-section><span class="sidebar-label">{{ f.label }}</span></q-item-section>
         </q-item>
       </q-list>
     </div>
     <div class="files-main">
       <div class="files-toolbar">
-        <q-btn flat dense icon="sym_r_arrow_back" :disable="historyIdx<=0" @click="goBack" />
-        <q-btn flat dense icon="sym_r_arrow_forward" :disable="historyIdx>=history.length-1" @click="goForward" />
-        <q-btn flat dense icon="sym_r_arrow_upward" :disable="currentPath==='/'" @click="goUp" />
+        <q-btn flat dense round icon="sym_r_arrow_back" size="sm" :disable="historyIdx<=0" @click="goBack" />
+        <q-btn flat dense round icon="sym_r_arrow_forward" size="sm" :disable="historyIdx>=history.length-1" @click="goForward" />
+        <q-btn flat dense round icon="sym_r_arrow_upward" size="sm" :disable="currentPath==='/'" @click="goUp" />
         <div class="breadcrumb">
           <span class="crumb" @click="navigateTo('/')">Root</span>
           <template v-for="(c,i) in breadcrumbs" :key="i">
@@ -22,41 +22,43 @@
           </template>
         </div>
         <q-space />
-        <q-btn flat dense :icon="viewMode==='grid'?'sym_r_view_list':'sym_r_grid_view'" @click="viewMode=viewMode==='grid'?'list':'grid'" />
-        <q-btn flat dense icon="sym_r_create_new_folder" @click="showNewFolder=true" />
-        <q-btn flat dense icon="sym_r_upload_file" @click="triggerUpload" />
-        <q-btn flat dense icon="sym_r_delete" color="negative" :disable="selected<0 || !files[selected]" @click="deleteSelected" />
+        <q-btn flat dense round :icon="viewMode==='grid'?'sym_r_view_list':'sym_r_grid_view'" size="sm" @click="viewMode=viewMode==='grid'?'list':'grid'" />
+        <q-btn flat dense round icon="sym_r_create_new_folder" size="sm" @click="showNewFolder=true" />
+        <q-btn flat dense round icon="sym_r_upload_file" size="sm" @click="triggerUpload" />
+        <q-btn flat dense round icon="sym_r_delete" size="sm" color="negative" :disable="selected<0 || !files[selected]" @click="deleteSelected" />
       </div>
       <div class="files-content" @click="selected=-1">
         <div v-if="viewMode==='grid'" class="file-grid">
           <div v-for="(file,idx) in files" :key="file.name" class="file-card" :class="{selected:selected===idx}" @click.stop="selected=idx" @dblclick="openFile(file)" @contextmenu.prevent.stop="onContext($event, file, idx)">
-            <q-icon :name="file.isDir?'sym_r_folder':fileIcon(file.name)" size="48px" :color="file.isDir?'amber':'grey'" />
+            <div class="file-icon-wrap" :class="file.isDir ? 'icon-folder' : 'icon-file'">
+              <q-icon :name="file.isDir?'sym_r_folder':fileIcon(file.name)" size="28px" />
+            </div>
             <div class="file-name">{{file.name}}</div>
             <div v-if="!file.isDir" class="file-meta">{{fmtSize(file.size)}}</div>
           </div>
         </div>
-        <q-list v-else dense separator>
-          <q-item v-for="(file,idx) in files" :key="file.name" clickable :class="{'bg-blue-10':selected===idx}" @click.stop="selected=idx" @dblclick="openFile(file)" @contextmenu.prevent.stop="onContext($event, file, idx)">
-            <q-item-section avatar><q-icon :name="file.isDir?'sym_r_folder':fileIcon(file.name)" :color="file.isDir?'amber':'grey'" /></q-item-section>
-            <q-item-section>{{file.name}}</q-item-section>
-            <q-item-section side style="min-width:80px;text-align:right">{{file.isDir ? (file.numFiles||0)+' files' : fmtSize(file.size)}}</q-item-section>
-            <q-item-section side style="min-width:140px">{{fmtDate(file.modified)}}</q-item-section>
-            <q-item-section side style="min-width:40px">
-              <q-btn flat dense round icon="sym_r_delete" size="sm" color="negative" @click.stop="deleteFile(file)" />
+        <q-list v-else dense separator class="list-view">
+          <q-item v-for="(file,idx) in files" :key="file.name" clickable :class="{'list-item-selected':selected===idx}" @click.stop="selected=idx" @dblclick="openFile(file)" @contextmenu.prevent.stop="onContext($event, file, idx)" class="list-item">
+            <q-item-section avatar style="min-width:36px"><q-icon :name="file.isDir?'sym_r_folder':fileIcon(file.name)" :color="file.isDir?'amber':'grey'" size="20px" /></q-item-section>
+            <q-item-section><span class="list-name">{{file.name}}</span></q-item-section>
+            <q-item-section side style="min-width:80px;text-align:right"><span class="list-meta">{{file.isDir ? (file.numFiles||0)+' files' : fmtSize(file.size)}}</span></q-item-section>
+            <q-item-section side style="min-width:130px"><span class="list-meta">{{fmtDate(file.modified)}}</span></q-item-section>
+            <q-item-section side style="min-width:36px">
+              <q-btn flat dense round icon="sym_r_delete" size="xs" color="negative" @click.stop="deleteFile(file)" />
             </q-item-section>
           </q-item>
         </q-list>
-        <div v-if="!files.length&&!loading" class="empty-state"><q-icon name="sym_r_folder_open" size="64px" color="grey-7" /><div>Empty folder</div></div>
+        <div v-if="!files.length&&!loading" class="empty-state"><q-icon name="sym_r_folder_open" size="48px" color="grey-7" /><div class="q-mt-sm">Empty folder</div></div>
       </div>
       <div class="files-status">
         {{files.length}} items
-        <span v-if="selected>=0"> — {{files[selected]?.name}}</span>
+        <span v-if="selected>=0"> &mdash; {{files[selected]?.name}}</span>
         <span v-if="selected>=0 && !files[selected]?.isDir"> ({{fmtSize(files[selected]?.size)}})</span>
         <q-space />
-        <span>{{currentPath}}</span>
+        <span class="status-path">{{currentPath}}</span>
       </div>
     </div>
-    <q-dialog v-model="showNewFolder"><q-card style="min-width:300px" class="bg-dark"><q-card-section class="text-h6">New Folder</q-card-section><q-card-section><q-input v-model="newFolderName" label="Name" dense dark autofocus @keydown.enter="createFolder" /></q-card-section><q-card-actions align="right"><q-btn flat label="Cancel" v-close-popup /><q-btn flat label="Create" color="primary" @click="createFolder" /></q-card-actions></q-card></q-dialog>
+    <q-dialog v-model="showNewFolder"><q-card style="min-width:320px;border-radius:14px" class="bg-dark"><q-card-section class="text-subtitle1" style="font-weight:600">New Folder</q-card-section><q-card-section><q-input v-model="newFolderName" label="Folder name" dense dark outlined autofocus @keydown.enter="createFolder" /></q-card-section><q-card-actions align="right"><q-btn flat label="Cancel" v-close-popup class="btn-ghost" /><q-btn unelevated label="Create" class="btn-primary" @click="createFolder" /></q-card-actions></q-card></q-dialog>
     <input ref="uploadRef" type="file" multiple style="display:none" @change="handleUpload" />
   </div>
 </template>
@@ -118,20 +120,102 @@ function fmtDate(d:string) { return d?new Date(d).toLocaleDateString('en-US',{mo
 onMounted(() => loadFiles(currentPath.value));
 </script>
 <style scoped lang="scss">
-.files-page{display:flex;height:100vh;background:var(--bg-1)}
-.files-sidebar{width:220px;background:var(--bg-1);border-right:1px solid var(--separator);flex-shrink:0;padding:16px 0}
-.sidebar-header{display:flex;align-items:center;gap:10px;padding:0 20px 16px;font-size:16px;font-weight:600}
-.sidebar-active{background:var(--accent-soft)!important;color:var(--accent)!important}
-.files-main{flex:1;display:flex;flex-direction:column;min-width:0}
-.files-toolbar{height:48px;display:flex;align-items:center;gap:4px;padding:0 12px;border-bottom:1px solid var(--separator);flex-shrink:0}
-.breadcrumb{display:flex;align-items:center;font-size:13px;margin-left:8px}
-.crumb{cursor:pointer;padding:2px 4px;border-radius:4px;&:hover{background:var(--glass)}}
-.sep{margin:0 2px;color:var(--ink-3)}
-.files-content{flex:1;overflow-y:auto;padding:16px}
-.file-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px}
-.file-card{display:flex;flex-direction:column;align-items:center;padding:12px 8px;border-radius:8px;cursor:pointer;&:hover{background:var(--glass)}&.selected{background:var(--accent-soft)}}
-.file-name{font-size:12px;margin-top:6px;text-align:center;word-break:break-all;max-width:90px;overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
-.file-meta{font-size:10px;color:var(--ink-3);margin-top:2px}
-.empty-state{display:flex;flex-direction:column;align-items:center;gap:12px;padding:60px 0;color:var(--ink-3)}
-.files-status{height:28px;display:flex;align-items:center;padding:0 16px;font-size:12px;color:var(--ink-3);border-top:1px solid var(--separator);flex-shrink:0}
+.files-page { display: flex; height: 100vh; background: var(--bg-1); }
+
+.files-sidebar {
+  width: 200px;
+  background: var(--bg-1);
+  border-right: 1px solid var(--separator);
+  flex-shrink: 0;
+  padding: 16px 8px;
+}
+
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 14px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-1);
+}
+
+.sidebar-item {
+  border-radius: 8px;
+  min-height: 34px;
+  margin-bottom: 1px;
+}
+
+.sidebar-active { background: var(--accent-soft) !important; color: var(--accent) !important; }
+
+.sidebar-label { font-size: 13px; font-weight: 500; }
+
+.files-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+.files-toolbar {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+
+.breadcrumb { display: flex; align-items: center; font-size: 13px; margin-left: 6px; }
+.crumb { cursor: pointer; padding: 2px 6px; border-radius: 4px; color: var(--ink-2); font-weight: 500; &:hover { background: var(--glass); color: var(--ink-1); } }
+.sep { margin: 0 1px; color: var(--ink-3); font-size: 11px; }
+
+.files-content { flex: 1; overflow-y: auto; padding: 14px; }
+
+.file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 6px; }
+
+.file-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 6px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+
+  &:hover { background: var(--glass); }
+  &.selected { background: var(--accent-soft); }
+}
+
+.file-icon-wrap {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.icon-folder { background: rgba(255, 204, 0, 0.12); color: #ffcc00; }
+  &.icon-file { background: var(--glass); color: var(--ink-3); }
+}
+
+.file-name { font-size: 11px; margin-top: 6px; text-align: center; word-break: break-all; max-width: 86px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: var(--ink-1); font-weight: 500; }
+.file-meta { font-size: 10px; color: var(--ink-3); margin-top: 2px; }
+
+.list-view { padding: 0; }
+.list-item { min-height: 38px; border-radius: 6px; margin: 0 4px; }
+.list-item-selected { background: var(--accent-soft) !important; }
+.list-name { font-size: 13px; font-weight: 500; color: var(--ink-1); }
+.list-meta { font-size: 11px; color: var(--ink-3); font-family: 'SF Mono', monospace; }
+
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 60px 0; color: var(--ink-3); font-size: 13px; }
+
+.files-status {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  font-size: 11px;
+  color: var(--ink-3);
+  border-top: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+
+.status-path { font-family: 'SF Mono', monospace; font-size: 10px; }
 </style>

@@ -8,26 +8,34 @@
         <div class="metric-row">
           <div class="metric-header">
             <span class="info-label">Used</span>
-            <span class="metric-value">{{ formatBytes(diskUsed) }} / {{ formatBytes(diskTotal) }} ({{ diskPct.toFixed(1) }}%)</span>
+            <span class="metric-value" :class="diskPct > 80 ? 'text-red-5' : diskPct > 50 ? 'text-amber-7' : 'text-green-5'">
+              {{ formatBytes(diskUsed) }} / {{ formatBytes(diskTotal) }}
+            </span>
           </div>
-          <q-linear-progress :value="diskPct / 100" :color="diskPct > 80 ? 'red-6' : diskPct > 50 ? 'amber-7' : 'green-6'" track-color="grey-9" rounded size="10px" class="q-mt-sm" />
+          <q-linear-progress :value="diskPct / 100" :color="diskPct > 80 ? 'red-6' : diskPct > 50 ? 'amber-7' : 'green-6'" track-color="grey-9" rounded size="6px" class="q-mt-sm" />
+          <div class="metric-sub">{{ diskPct.toFixed(1) }}% used</div>
         </div>
       </div>
 
       <!-- Network Mounts -->
       <div class="section-title">Network Mounts</div>
       <div class="settings-card">
-        <div v-if="mounts.length === 0" class="empty-state">No mounts configured.</div>
+        <div v-if="mounts.length === 0" class="empty-state">
+          <q-icon name="sym_r_folder_off" size="32px" color="grey-7" class="q-mb-sm" />
+          <div>No mounts configured</div>
+        </div>
         <template v-for="(m, i) in mounts" :key="m.name">
           <div class="mount-row">
             <div class="mount-info">
-              <q-icon :name="m.type === 'smb' ? 'sym_r_folder_shared' : 'sym_r_cloud'" size="20px" class="q-mr-sm" style="color:var(--ink-3)" />
+              <div class="mount-icon-wrap">
+                <q-icon :name="m.type === 'smb' ? 'sym_r_folder_shared' : m.type === 'nfs' ? 'sym_r_dns' : 'sym_r_cloud'" size="16px" />
+              </div>
               <div>
                 <div class="mount-name">{{ m.name }}</div>
-                <div class="mount-path">{{ m.type }}://{{ m.remote }} → {{ m.local_path }}</div>
+                <div class="mount-path">{{ m.type }}://{{ m.remote }} &rarr; {{ m.local_path }}</div>
               </div>
             </div>
-            <q-btn flat dense icon="sym_r_delete" color="negative" size="sm" @click="removeMount(m.name)" />
+            <q-btn flat dense round icon="sym_r_delete" size="xs" color="negative" @click="removeMount(m.name)" />
           </div>
           <q-separator v-if="i < mounts.length - 1" class="card-separator" />
         </template>
@@ -57,7 +65,7 @@
           <q-input v-model="newMount.password" dense dark outlined type="password" class="setting-input" />
         </div>
         <div class="action-row">
-          <q-btn flat dense label="Add Mount" color="primary" :loading="adding" @click="addMount" />
+          <q-btn unelevated dense label="Add Mount" class="btn-primary" :loading="adding" @click="addMount" />
           <span v-if="mountMsg" class="save-msg" :class="mountMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ mountMsg }}</span>
         </div>
       </div>
@@ -112,24 +120,47 @@ onMounted(() => { loadDisk(); loadMounts(); });
 </script>
 
 <style lang="scss" scoped>
-.settings-page { height: 100%; display: flex; flex-direction: column; }
-.page-title { font-size: 18px; font-weight: 600; color: var(--ink-1); padding: 16px 24px; height: 56px; display: flex; align-items: center; flex-shrink: 0; }
-.page-scroll { flex: 1; overflow-y: auto; padding: 0 24px 24px; }
-.section-title { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-.settings-card { background: var(--bg-2); border-radius: 12px; border: 1px solid var(--separator); overflow: hidden; }
-.info-label { font-size: 14px; color: var(--ink-1); font-weight: 500; }
-.metric-row { padding: 16px 20px; }
-.metric-header { display: flex; justify-content: space-between; align-items: center; }
-.metric-value { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; color: var(--ink-2); }
-.card-separator { background: var(--separator); margin: 0 20px; }
-.empty-state { padding: 20px; color: var(--ink-3); font-size: 13px; text-align: center; }
-.mount-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; }
-.mount-info { display: flex; align-items: center; }
-.mount-name { font-size: 14px; font-weight: 500; color: var(--ink-1); }
-.mount-path { font-size: 12px; color: var(--ink-3); font-family: monospace; }
-.input-row { display: flex; align-items: center; padding: 8px 20px; gap: 12px; }
-.input-label { font-size: 13px; color: var(--ink-1); font-weight: 500; min-width: 80px; }
-.setting-input { flex: 1; }
-.action-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; }
-.save-msg { font-size: 12px; }
+.metric-sub {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 6px;
+  text-align: right;
+}
+
+.mount-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+}
+
+.mount-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.mount-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--glass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+}
+
+.mount-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-1);
+}
+
+.mount-path {
+  font-size: 11px;
+  color: var(--ink-3);
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+  margin-top: 1px;
+}
 </style>
