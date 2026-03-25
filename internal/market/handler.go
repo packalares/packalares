@@ -1,6 +1,7 @@
 package market
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"path/filepath"
@@ -251,8 +252,8 @@ func (h *Handler) handleSync(w http.ResponseWriter, r *http.Request) {
 		sourceNames = req.Sources
 	}
 
-	// Start sync in background
-	go h.syncMgr.SyncAll(r.Context(), sourceNames)
+	// Start sync in background with detached context (survives HTTP response)
+	go h.syncMgr.SyncAll(context.Background(), sourceNames)
 
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"code":    200,
