@@ -44,7 +44,7 @@ http {
 
     # --- Public API (no auth) ---
     location /api/auth/login    { proxy_pass http://$auth_up:9091/api/firstfactor; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
-    location /api/auth/totp     { proxy_pass http://$auth_up:9091/api/secondfactor/totp; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+    location = /api/auth/totp   { proxy_pass http://$auth_up:9091/api/secondfactor/totp; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
     location /api/auth/state    { proxy_pass http://$auth_up:9091/api/state; proxy_set_header Cookie $http_cookie; }
     location /api/auth/logout   { proxy_pass http://$auth_up:9091/api/logout; proxy_set_header Cookie $http_cookie; }
     location /api/auth/health   { proxy_pass http://$auth_up:9091/api/health; }
@@ -183,7 +183,7 @@ http {
 
     # Public
     location /api/auth/login    { proxy_pass http://$auth_up:9091/api/firstfactor; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
-    location /api/auth/totp     { proxy_pass http://$auth_up:9091/api/secondfactor/totp; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+    location = /api/auth/totp   { proxy_pass http://$auth_up:9091/api/secondfactor/totp; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
     location /api/auth/state    { proxy_pass http://$auth_up:9091/api/state; proxy_set_header Cookie $http_cookie; }
     location /api/auth/logout   { proxy_pass http://$auth_up:9091/api/logout; proxy_set_header Cookie $http_cookie; }
     location /api/auth/health   { proxy_pass http://$auth_up:9091/api/health; }
