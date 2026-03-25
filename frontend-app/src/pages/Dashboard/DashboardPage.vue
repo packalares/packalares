@@ -3,10 +3,9 @@
     <!-- Left Sidebar -->
     <div class="dash-sidebar">
       <div class="sidebar-header">
-        <q-icon name="sym_r_dashboard" size="28px" color="white" />
-        <span class="sidebar-title">Dashboard</span>
+        <q-icon name="sym_r_monitoring" size="26px" class="header-icon" />
+        <span class="sidebar-title">System</span>
       </div>
-
       <q-list dense class="sidebar-nav">
         <q-item
           v-for="item in navItems"
@@ -17,230 +16,235 @@
           class="sidebar-nav-item"
           @click="activeNav = item.key"
         >
-          <q-item-section avatar style="min-width: 36px">
-            <q-icon
-              :name="item.icon"
-              size="20px"
-              :class="{ 'text-accent-active': activeNav === item.key }"
-            />
+          <q-item-section avatar style="min-width: 32px">
+            <q-icon :name="item.icon" size="18px" />
           </q-item-section>
           <q-item-section>
-            <q-item-label
-              :class="activeNav === item.key ? 'text-accent-active' : 'text-ink-1'"
-            >
-              {{ item.label }}
-            </q-item-label>
+            <q-item-label class="nav-label">{{ item.label }}</q-item-label>
+          </q-item-section>
+          <q-item-section side v-if="item.badge">
+            <span class="nav-badge">{{ item.badge }}</span>
           </q-item-section>
         </q-item>
       </q-list>
+      <div class="sidebar-footer">
+        <div class="sys-uptime">
+          <span class="uptime-dot"></span>
+          <span class="uptime-text">{{ formatUptime(metrics.uptime) }}</span>
+        </div>
+      </div>
     </div>
 
     <!-- Main Content -->
     <div class="dash-content">
-      <!-- Overview -->
+
+      <!-- ═══════ OVERVIEW ═══════ -->
       <template v-if="activeNav === 'overview'">
-        <div class="dash-page-title">Overview</div>
-
-        <!-- Resource Cards -->
-        <div class="resource-cards">
-          <div class="resource-card card">
-            <div class="resource-card-header">
-              <q-icon name="sym_r_memory" size="22px" class="resource-icon resource-icon-cpu" />
-              <span class="resource-label">CPU</span>
+        <!-- Top Resource Strip -->
+        <div class="resource-strip">
+          <div class="strip-card" v-for="r in resourceCards" :key="r.label">
+            <div class="strip-label">{{ r.label }}</div>
+            <div class="strip-value" :style="{ color: r.color }">{{ r.value }}</div>
+            <div class="strip-bar-track">
+              <div class="strip-bar-fill" :style="{ width: r.percent + '%', background: r.color }"></div>
             </div>
-            <div class="resource-value">{{ metrics.cpu_usage?.toFixed(1) ?? '--' }}%</div>
-            <q-linear-progress
-              :value="(metrics.cpu_usage ?? 0) / 100"
-              class="resource-bar"
-              :color="progressColor(metrics.cpu_usage ?? 0)"
-              track-color="grey-9"
-              rounded
-              size="6px"
-            />
-          </div>
-
-          <div class="resource-card card">
-            <div class="resource-card-header">
-              <q-icon name="sym_r_speed" size="22px" class="resource-icon resource-icon-mem" />
-              <span class="resource-label">Memory</span>
-            </div>
-            <div class="resource-value">
-              {{ formatBytes(metrics.memory?.used) }} / {{ formatBytes(metrics.memory?.total) }}
-            </div>
-            <q-linear-progress
-              :value="memPercent / 100"
-              class="resource-bar"
-              :color="progressColor(memPercent)"
-              track-color="grey-9"
-              rounded
-              size="6px"
-            />
-          </div>
-
-          <div class="resource-card card">
-            <div class="resource-card-header">
-              <q-icon name="sym_r_hard_drive" size="22px" class="resource-icon resource-icon-disk" />
-              <span class="resource-label">Disk</span>
-            </div>
-            <div class="resource-value">
-              {{ formatBytes(metrics.disk?.used) }} / {{ formatBytes(metrics.disk?.total) }}
-            </div>
-            <q-linear-progress
-              :value="diskPercent / 100"
-              class="resource-bar"
-              :color="progressColor(diskPercent)"
-              track-color="grey-9"
-              rounded
-              size="6px"
-            />
-          </div>
-
-          <div class="resource-card card">
-            <div class="resource-card-header">
-              <q-icon name="sym_r_deployed_code" size="22px" class="resource-icon resource-icon-pods" />
-              <span class="resource-label">Pods</span>
-            </div>
-            <div class="resource-value">{{ pods.length }} running</div>
-            <q-linear-progress
-              :value="pods.length > 0 ? 1 : 0"
-              class="resource-bar"
-              color="positive"
-              track-color="grey-9"
-              rounded
-              size="6px"
-            />
           </div>
         </div>
 
-        <!-- Uptime & Load -->
-        <div class="info-row">
-          <div class="info-chip card">
-            <q-icon name="sym_r_schedule" size="16px" style="color: var(--ink-3)" />
-            <span class="info-chip-label">Uptime</span>
-            <span class="info-chip-value">{{ formatUptime(metrics.uptime) }}</span>
-          </div>
-          <div class="info-chip card" v-if="metrics.load">
-            <q-icon name="sym_r_trending_up" size="16px" style="color: var(--ink-3)" />
-            <span class="info-chip-label">Load</span>
-            <span class="info-chip-value">{{ metrics.load }}</span>
-          </div>
-        </div>
-
-        <!-- Charts Row -->
-        <div class="charts-row">
-          <div class="chart-card card">
-            <div class="chart-title">CPU Usage %</div>
+        <!-- Charts Grid -->
+        <div class="charts-grid">
+          <div class="chart-panel">
+            <div class="chart-head">
+              <span class="chart-title">CPU</span>
+              <span class="chart-live" :style="{ color: '#4c9fe7' }">{{ metrics.cpu_usage?.toFixed(1) ?? '0' }}%</span>
+            </div>
             <canvas ref="cpuCanvas" class="chart-canvas"></canvas>
           </div>
-          <div class="chart-card card">
-            <div class="chart-title">Memory Usage %</div>
+          <div class="chart-panel">
+            <div class="chart-head">
+              <span class="chart-title">Memory</span>
+              <span class="chart-live" :style="{ color: '#29cc5f' }">{{ memPercent.toFixed(1) }}%</span>
+            </div>
             <canvas ref="memCanvas" class="chart-canvas"></canvas>
+          </div>
+          <div class="chart-panel">
+            <div class="chart-head">
+              <span class="chart-title">Network</span>
+              <span class="chart-live" :style="{ color: '#e0a040' }">
+                <span style="font-size:10px">RX</span> {{ formatRate(metrics.network?.rx_bytes_per_sec) }}
+                <span style="font-size:10px;margin-left:6px">TX</span> {{ formatRate(metrics.network?.tx_bytes_per_sec) }}
+              </span>
+            </div>
+            <canvas ref="netCanvas" class="chart-canvas"></canvas>
+          </div>
+          <div class="chart-panel">
+            <div class="chart-head">
+              <span class="chart-title">Disk I/O</span>
+              <span class="chart-live" :style="{ color: '#c07ae0' }">
+                <span style="font-size:10px">R</span> {{ formatRate(metrics.disk_io?.read_bytes_per_sec) }}
+                <span style="font-size:10px;margin-left:6px">W</span> {{ formatRate(metrics.disk_io?.write_bytes_per_sec) }}
+              </span>
+            </div>
+            <canvas ref="diskIOCanvas" class="chart-canvas"></canvas>
           </div>
         </div>
 
-        <!-- GPU Section -->
-        <div v-if="gpuData.driver_installed && gpuData.gpus.length > 0" class="gpu-section">
-          <div class="section-title">GPU</div>
-          <div class="gpu-cards">
-            <div v-for="(gpu, i) in gpuData.gpus" :key="i" class="gpu-card card">
-              <div class="gpu-name">{{ gpu.name || `GPU ${i}` }}</div>
-              <div class="gpu-details">
-                <span v-if="gpu.memory_total">
-                  {{ formatBytes(gpu.memory_used) }} / {{ formatBytes(gpu.memory_total) }}
-                </span>
-                <span v-if="gpu.utilization !== undefined">
-                  {{ gpu.utilization }}% util
-                </span>
-                <span v-if="gpu.temperature !== undefined">
-                  {{ gpu.temperature }}C
-                </span>
+        <!-- Per-Core CPU + System Info -->
+        <div class="bottom-row">
+          <div class="cores-panel">
+            <div class="panel-head">CPU Cores</div>
+            <div class="cores-list">
+              <div class="core-row" v-for="(val, i) in (metrics.cpu_cores || [])" :key="i">
+                <span class="core-id">{{ i }}</span>
+                <div class="core-bar-track">
+                  <div class="core-bar-fill" :style="{ width: val.toFixed(0) + '%' }"></div>
+                </div>
+                <span class="core-val">{{ val.toFixed(0) }}%</span>
+              </div>
+            </div>
+          </div>
+          <div class="info-panel">
+            <div class="panel-head">System</div>
+            <div class="info-grid">
+              <div class="info-item">
+                <span class="info-label">Load</span>
+                <span class="info-val" v-if="metrics.load">{{ fmtLoad(metrics.load) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Pods</span>
+                <span class="info-val">{{ pods.length }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Power</span>
+                <span class="info-val">{{ metrics.power?.total_watts?.toFixed(1) ?? '--' }} W</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Net RX</span>
+                <span class="info-val">{{ formatRate(metrics.network?.rx_bytes_per_sec) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Net TX</span>
+                <span class="info-val">{{ formatRate(metrics.network?.tx_bytes_per_sec) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Disk R</span>
+                <span class="info-val">{{ formatRate(metrics.disk_io?.read_bytes_per_sec) }}</span>
+              </div>
+              <div class="info-item">
+                <span class="info-label">Disk W</span>
+                <span class="info-val">{{ formatRate(metrics.disk_io?.write_bytes_per_sec) }}</span>
+              </div>
+              <div class="info-item" v-if="gpuData.driver_installed">
+                <span class="info-label">GPU</span>
+                <span class="info-val">{{ gpuData.gpus[0]?.utilization ?? 0 }}%</span>
               </div>
             </div>
           </div>
         </div>
+      </template>
 
-        <!-- Pod Table -->
-        <div class="section-title">Pods</div>
-        <div class="pod-table-wrap card">
+      <!-- ═══════ NETWORK ═══════ -->
+      <template v-if="activeNav === 'network'">
+        <div class="page-title">Network</div>
+        <div class="stat-row">
+          <div class="stat-box"><span class="stat-label">Download</span><span class="stat-val rx">{{ formatRate(metrics.network?.rx_bytes_per_sec) }}</span></div>
+          <div class="stat-box"><span class="stat-label">Upload</span><span class="stat-val tx">{{ formatRate(metrics.network?.tx_bytes_per_sec) }}</span></div>
+        </div>
+        <div class="full-chart-panel">
+          <canvas ref="netFullCanvas" class="chart-canvas-full"></canvas>
+        </div>
+      </template>
+
+      <!-- ═══════ STORAGE ═══════ -->
+      <template v-if="activeNav === 'storage'">
+        <div class="page-title">Storage</div>
+        <div class="stat-row">
+          <div class="stat-box"><span class="stat-label">Used</span><span class="stat-val">{{ formatBytes(metrics.disk?.used) }}</span></div>
+          <div class="stat-box"><span class="stat-label">Total</span><span class="stat-val">{{ formatBytes(metrics.disk?.total) }}</span></div>
+          <div class="stat-box"><span class="stat-label">Usage</span><span class="stat-val">{{ diskPercent.toFixed(1) }}%</span></div>
+        </div>
+        <div class="disk-usage-bar">
+          <div class="disk-used" :style="{ width: diskPercent + '%' }"></div>
+        </div>
+        <div class="page-subtitle">Disk I/O</div>
+        <div class="stat-row">
+          <div class="stat-box"><span class="stat-label">Read</span><span class="stat-val rx">{{ formatRate(metrics.disk_io?.read_bytes_per_sec) }}</span></div>
+          <div class="stat-box"><span class="stat-label">Write</span><span class="stat-val tx">{{ formatRate(metrics.disk_io?.write_bytes_per_sec) }}</span></div>
+        </div>
+        <div class="full-chart-panel">
+          <canvas ref="diskIOFullCanvas" class="chart-canvas-full"></canvas>
+        </div>
+      </template>
+
+      <!-- ═══════ POWER ═══════ -->
+      <template v-if="activeNav === 'power'">
+        <div class="page-title">Power Consumption</div>
+        <div class="stat-row">
+          <div class="stat-box"><span class="stat-label">CPU</span><span class="stat-val">{{ metrics.power?.cpu_watts?.toFixed(1) ?? '--' }} W</span></div>
+          <div class="stat-box"><span class="stat-label">GPU</span><span class="stat-val">{{ metrics.power?.gpu_watts?.toFixed(1) ?? '--' }} W</span></div>
+          <div class="stat-box"><span class="stat-label">Total</span><span class="stat-val power-total">{{ metrics.power?.total_watts?.toFixed(1) ?? '--' }} W</span></div>
+        </div>
+        <div class="full-chart-panel">
+          <canvas ref="powerCanvas" class="chart-canvas-full"></canvas>
+        </div>
+      </template>
+
+      <!-- ═══════ LOGS ═══════ -->
+      <template v-if="activeNav === 'logs'">
+        <div class="page-title">Logs</div>
+        <div class="logs-controls">
+          <q-input
+            v-model="logQuery"
+            dense dark outlined
+            placeholder='{namespace="os-system"}'
+            class="log-query-input"
+            @keyup.enter="fetchLogs"
+          >
+            <template #prepend>
+              <q-icon name="sym_r_search" size="18px" />
+            </template>
+          </q-input>
+          <q-select
+            v-model="logNamespace"
+            dense dark outlined
+            :options="logNamespaceOptions"
+            label="Namespace"
+            class="log-ns-select"
+            @update:model-value="onNamespaceChange"
+          />
+          <q-btn flat dense label="Fetch" class="log-fetch-btn" @click="fetchLogs" />
+        </div>
+        <div class="logs-output" ref="logsContainer">
+          <div v-if="logEntries.length === 0" class="logs-empty">No logs. Enter a LogQL query and click Fetch.</div>
+          <div v-for="(entry, i) in logEntries" :key="i" class="log-line">
+            <span class="log-ts">{{ entry.ts }}</span>
+            <span class="log-ns">{{ entry.ns }}</span>
+            <span class="log-msg">{{ entry.msg }}</span>
+          </div>
+        </div>
+      </template>
+
+      <!-- ═══════ PODS ═══════ -->
+      <template v-if="activeNav === 'pods'">
+        <div class="page-title">Pods ({{ pods.length }})</div>
+        <div class="pod-table-wrap">
           <q-table
-            flat
-            dense
+            flat dense
             :rows="pods"
             :columns="podColumns"
             row-key="name"
-            :rows-per-page-options="[20, 50, 0]"
+            :rows-per-page-options="[25, 50, 0]"
             class="pod-table"
             dark
-            :pagination="{ rowsPerPage: 20 }"
+            :pagination="{ rowsPerPage: 25 }"
           >
-            <template v-slot:body-cell-phase="props">
+            <template v-slot:body-cell-status="props">
               <q-td :props="props">
-                <q-badge
-                  :label="props.row.phase"
-                  :class="'pod-status-badge pod-status-' + (props.row.phase || '').toLowerCase()"
-                />
+                <span class="pod-dot" :class="'dot-' + (props.row.status || '').toLowerCase()"></span>
+                {{ props.row.status }}
               </q-td>
             </template>
           </q-table>
-        </div>
-      </template>
-
-      <!-- Applications view -->
-      <template v-if="activeNav === 'applications'">
-        <div class="dash-page-title">Applications</div>
-        <div class="pod-table-wrap card">
-          <q-table
-            flat
-            dense
-            :rows="appPods"
-            :columns="podColumns"
-            row-key="name"
-            :rows-per-page-options="[20, 50, 0]"
-            class="pod-table"
-            dark
-            :pagination="{ rowsPerPage: 20 }"
-          >
-            <template v-slot:body-cell-phase="props">
-              <q-td :props="props">
-                <q-badge
-                  :label="props.row.phase"
-                  :class="'pod-status-badge pod-status-' + (props.row.phase || '').toLowerCase()"
-                />
-              </q-td>
-            </template>
-          </q-table>
-        </div>
-      </template>
-
-      <!-- Nodes view -->
-      <template v-if="activeNav === 'nodes'">
-        <div class="dash-page-title">Nodes</div>
-        <div class="resource-cards">
-          <div class="resource-card card">
-            <div class="resource-card-header">
-              <q-icon name="sym_r_dns" size="22px" class="resource-icon resource-icon-cpu" />
-              <span class="resource-label">Node</span>
-            </div>
-            <div class="resource-value">1 node</div>
-            <div class="node-info">
-              <div class="node-info-row">
-                <span class="node-info-label">CPU</span>
-                <span class="node-info-value">{{ metrics.cpu_usage?.toFixed(1) ?? '--' }}%</span>
-              </div>
-              <div class="node-info-row">
-                <span class="node-info-label">Memory</span>
-                <span class="node-info-value">{{ memPercent.toFixed(1) }}%</span>
-              </div>
-              <div class="node-info-row">
-                <span class="node-info-label">Disk</span>
-                <span class="node-info-value">{{ diskPercent.toFixed(1) }}%</span>
-              </div>
-              <div class="node-info-row">
-                <span class="node-info-label">Pods</span>
-                <span class="node-info-value">{{ pods.length }}</span>
-              </div>
-            </div>
-          </div>
         </div>
       </template>
     </div>
@@ -249,629 +253,544 @@
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
-import { api } from 'boot/axios';
+import { api, getWsUrl } from 'boot/axios';
 
+// ─── Types ───
 interface Metrics {
   cpu_usage?: number;
+  cpu_cores?: number[];
   memory?: { used: number; total: number };
   disk?: { used: number; total: number };
+  disk_io?: { read_bytes_per_sec: number; write_bytes_per_sec: number };
+  network?: { rx_bytes_per_sec: number; tx_bytes_per_sec: number };
+  power?: { cpu_watts: number; gpu_watts: number; total_watts: number };
   uptime?: number;
-  load?: string;
+  load?: number[];
 }
 
 interface Pod {
   name: string;
   namespace: string;
-  phase: string;
+  status: string;
   ready: string;
   restarts: number;
   age: string;
-}
-
-interface GpuInfo {
-  name?: string;
-  memory_used?: number;
-  memory_total?: number;
-  utilization?: number;
-  temperature?: number;
+  ip?: string;
+  node?: string;
 }
 
 interface GpuData {
-  gpus: GpuInfo[];
+  gpus: { name?: string; utilization?: number; temperature?: number; vram_used_mb?: number; vram_total_mb?: number }[];
   gpu_count: number;
   driver_installed: boolean;
 }
 
+interface LogEntry { ts: string; ns: string; msg: string }
+
+// ─── State ───
 const activeNav = ref('overview');
-
-const navItems = [
-  { key: 'overview', label: 'Overview', icon: 'sym_r_dashboard' },
-  { key: 'applications', label: 'Applications', icon: 'sym_r_wysiwyg' },
-  { key: 'nodes', label: 'Nodes', icon: 'sym_r_dns' },
-];
-
 const metrics = ref<Metrics>({});
 const pods = ref<Pod[]>([]);
 const gpuData = ref<GpuData>({ gpus: [], gpu_count: 0, driver_installed: false });
 
+const navItems = [
+  { key: 'overview', label: 'Overview', icon: 'sym_r_dashboard' },
+  { key: 'network', label: 'Network', icon: 'sym_r_lan' },
+  { key: 'storage', label: 'Storage', icon: 'sym_r_hard_drive' },
+  { key: 'power', label: 'Power', icon: 'sym_r_bolt' },
+  { key: 'logs', label: 'Logs', icon: 'sym_r_terminal' },
+  { key: 'pods', label: 'Pods', icon: 'sym_r_deployed_code', badge: '' },
+];
+
+// Canvas refs
 const cpuCanvas = ref<HTMLCanvasElement | null>(null);
 const memCanvas = ref<HTMLCanvasElement | null>(null);
+const netCanvas = ref<HTMLCanvasElement | null>(null);
+const diskIOCanvas = ref<HTMLCanvasElement | null>(null);
+const netFullCanvas = ref<HTMLCanvasElement | null>(null);
+const diskIOFullCanvas = ref<HTMLCanvasElement | null>(null);
+const powerCanvas = ref<HTMLCanvasElement | null>(null);
 
+// History arrays
+const MAX_POINTS = 60;
 const cpuHistory = ref<number[]>([]);
 const memHistory = ref<number[]>([]);
-const MAX_POINTS = 60;
+const netRxHistory = ref<number[]>([]);
+const netTxHistory = ref<number[]>([]);
+const diskRHistory = ref<number[]>([]);
+const diskWHistory = ref<number[]>([]);
+const powerHistory = ref<number[]>([]);
 
+let ws: WebSocket | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let animFrameId: number | null = null;
 
+// Logs
+const logQuery = ref('{namespace=~".+"}');
+const logNamespace = ref('All');
+const logNamespaceOptions = ['All', 'os-system', 'os-framework', 'monitoring', 'user-space-admin', 'kube-system'];
+const logEntries = ref<LogEntry[]>([]);
+const logsContainer = ref<HTMLElement | null>(null);
+
+// ─── Computed ───
 const memPercent = computed(() => {
   const m = metrics.value.memory;
-  if (!m || !m.total) return 0;
-  return (m.used / m.total) * 100;
+  return m && m.total ? (m.used / m.total) * 100 : 0;
 });
 
 const diskPercent = computed(() => {
   const d = metrics.value.disk;
-  if (!d || !d.total) return 0;
-  return (d.used / d.total) * 100;
+  return d && d.total ? (d.used / d.total) * 100 : 0;
 });
 
-const appPods = computed(() =>
-  pods.value.filter(
-    (p) => !p.namespace.startsWith('kube-') && p.namespace !== 'default'
-  )
-);
+const resourceCards = computed(() => [
+  { label: 'CPU', value: (metrics.value.cpu_usage?.toFixed(1) ?? '0') + '%', percent: metrics.value.cpu_usage ?? 0, color: '#4c9fe7' },
+  { label: 'MEM', value: formatBytes(metrics.value.memory?.used), percent: memPercent.value, color: '#29cc5f' },
+  { label: 'DISK', value: diskPercent.value.toFixed(0) + '%', percent: diskPercent.value, color: '#e0a040' },
+  { label: 'NET', value: formatRate(metrics.value.network?.rx_bytes_per_sec), percent: Math.min((metrics.value.network?.rx_bytes_per_sec ?? 0) / 1_000_000 * 100, 100), color: '#e07a7a' },
+  { label: 'POWER', value: (metrics.value.power?.total_watts?.toFixed(0) ?? '0') + 'W', percent: Math.min((metrics.value.power?.total_watts ?? 0) / 200 * 100, 100), color: '#c07ae0' },
+  { label: 'PODS', value: String(pods.value.length), percent: pods.value.length > 0 ? 100 : 0, color: '#70b0e0' },
+]);
 
 const podColumns = [
   { name: 'name', label: 'Name', field: 'name', align: 'left' as const, sortable: true },
   { name: 'namespace', label: 'Namespace', field: 'namespace', align: 'left' as const, sortable: true },
-  { name: 'phase', label: 'Status', field: 'phase', align: 'left' as const, sortable: true },
+  { name: 'status', label: 'Status', field: 'status', align: 'left' as const, sortable: true },
   { name: 'ready', label: 'Ready', field: 'ready', align: 'center' as const },
   { name: 'restarts', label: 'Restarts', field: 'restarts', align: 'center' as const, sortable: true },
+  { name: 'node', label: 'Node', field: 'node', align: 'left' as const },
   { name: 'age', label: 'Age', field: 'age', align: 'left' as const },
 ];
 
-function progressColor(val: number): string {
-  if (val > 90) return 'negative';
-  if (val > 70) return 'warning';
-  return 'positive';
+// ─── Helpers ───
+function formatBytes(b?: number): string {
+  if (b == null) return '--';
+  if (b === 0) return '0 B';
+  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(b) / Math.log(1024));
+  return (b / Math.pow(1024, i)).toFixed(1) + ' ' + u[i];
 }
 
-function formatBytes(bytes?: number): string {
-  if (bytes == null) return '--';
-  if (bytes === 0) return '0 B';
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  const val = bytes / Math.pow(1024, i);
-  return val.toFixed(1) + ' ' + units[i];
+function formatRate(bps?: number): string {
+  if (bps == null || bps === 0) return '0 B/s';
+  if (bps < 1024) return bps.toFixed(0) + ' B/s';
+  if (bps < 1024 * 1024) return (bps / 1024).toFixed(1) + ' KB/s';
+  return (bps / 1024 / 1024).toFixed(1) + ' MB/s';
 }
 
-function formatUptime(seconds?: number): string {
-  if (seconds == null) return '--';
-  const d = Math.floor(seconds / 86400);
-  const h = Math.floor((seconds % 86400) / 3600);
-  const m = Math.floor((seconds % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h ${m}m`;
+function formatUptime(s?: number): string {
+  if (s == null) return '--';
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
   if (h > 0) return `${h}h ${m}m`;
   return `${m}m`;
 }
 
-async function fetchMetrics() {
-  try {
-    const res: any = await api.get('/api/monitor/metrics');
-    metrics.value = res || {};
-
-    const cpu = res.cpu_usage ?? 0;
-    cpuHistory.value.push(cpu);
-    if (cpuHistory.value.length > MAX_POINTS) cpuHistory.value.shift();
-
-    const mem =
-      res.memory && res.memory.total
-        ? (res.memory.used / res.memory.total) * 100
-        : 0;
-    memHistory.value.push(mem);
-    if (memHistory.value.length > MAX_POINTS) memHistory.value.shift();
-  } catch {
-    /* silent */
-  }
+function fmtLoad(l: number[]): string {
+  return l.map(v => v.toFixed(2)).join('  ');
 }
 
+function pushHistory(arr: number[], val: number) {
+  arr.push(val);
+  if (arr.length > MAX_POINTS) arr.shift();
+}
+
+// ─── WebSocket ───
+function startWS() {
+  ws = new WebSocket(getWsUrl());
+  ws.onmessage = (e) => {
+    try {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'metrics' && msg.data) {
+        const d = typeof msg.data === 'string' ? JSON.parse(msg.data) : msg.data;
+        metrics.value = d;
+        pushHistory(cpuHistory.value, d.cpu_usage ?? 0);
+        pushHistory(memHistory.value, d.memory && d.memory.total ? (d.memory.used / d.memory.total) * 100 : 0);
+        pushHistory(netRxHistory.value, d.network?.rx_bytes_per_sec ?? 0);
+        pushHistory(netTxHistory.value, d.network?.tx_bytes_per_sec ?? 0);
+        pushHistory(diskRHistory.value, d.disk_io?.read_bytes_per_sec ?? 0);
+        pushHistory(diskWHistory.value, d.disk_io?.write_bytes_per_sec ?? 0);
+        pushHistory(powerHistory.value, d.power?.total_watts ?? 0);
+        // Update pod badge
+        const podsNav = navItems.find(n => n.key === 'pods');
+        if (podsNav) podsNav.badge = String(pods.value.length);
+      }
+    } catch { /* */ }
+  };
+  ws.onclose = () => { setTimeout(() => { if (ws) startWS(); }, 5000); };
+}
+
+// ─── API ───
 async function fetchPods() {
   try {
     const res: any = await api.get('/api/monitor/status');
-    pods.value = res?.data?.pods || res?.pods || [];
-  } catch {
-    pods.value = [];
-  }
+    pods.value = res?.pods || res?.data?.pods || [];
+  } catch { pods.value = []; }
 }
 
 async function fetchGpu() {
   try {
     const res: any = await api.get('/api/monitor/gpu/list');
     gpuData.value = res || { gpus: [], gpu_count: 0, driver_installed: false };
-  } catch {
-    gpuData.value = { gpus: [], gpu_count: 0, driver_installed: false };
-  }
+  } catch { gpuData.value = { gpus: [], gpu_count: 0, driver_installed: false }; }
 }
 
-function drawChart(
-  canvas: HTMLCanvasElement | null,
-  data: number[],
-  color: string,
-  gradientStart: string,
-  gradientEnd: string
-) {
+async function fetchLogs() {
+  try {
+    const q = logNamespace.value !== 'All'
+      ? `{namespace="${logNamespace.value}"}`
+      : logQuery.value;
+    const res: any = await api.get('/api/logs', { params: { query: q, limit: 200 } });
+    const streams = res?.data?.result || [];
+    const entries: LogEntry[] = [];
+    for (const s of streams) {
+      const ns = s.stream?.namespace || s.stream?.pod || '';
+      for (const v of (s.values || [])) {
+        const ts = new Date(Number(v[0]) / 1_000_000).toLocaleTimeString();
+        entries.push({ ts, ns, msg: v[1] });
+      }
+    }
+    logEntries.value = entries.reverse();
+    nextTick(() => { if (logsContainer.value) logsContainer.value.scrollTop = logsContainer.value.scrollHeight; });
+  } catch { logEntries.value = []; }
+}
+
+function onNamespaceChange() { fetchLogs(); }
+
+// ─── Chart Drawing ───
+function drawLine(canvas: HTMLCanvasElement | null, data: number[], color: string, gStart: string, gEnd: string, maxVal = 100, unit = '%') {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-
   const dpr = window.devicePixelRatio || 1;
   const rect = canvas.getBoundingClientRect();
   canvas.width = rect.width * dpr;
   canvas.height = rect.height * dpr;
   ctx.scale(dpr, dpr);
-
-  const w = rect.width;
-  const h = rect.height;
-  const pad = { top: 10, right: 10, bottom: 24, left: 36 };
-  const chartW = w - pad.left - pad.right;
-  const chartH = h - pad.top - pad.bottom;
-
+  const w = rect.width, h = rect.height;
+  const pad = { top: 8, right: 8, bottom: 20, left: 40 };
+  const cw = w - pad.left - pad.right, ch = h - pad.top - pad.bottom;
   ctx.clearRect(0, 0, w, h);
 
-  // Y axis labels & grid
-  ctx.font = '10px Inter, sans-serif';
+  // Grid
+  ctx.font = '10px monospace';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   for (let i = 0; i <= 4; i++) {
-    const val = i * 25;
-    const y = pad.top + chartH - (chartH * val) / 100;
-    ctx.fillStyle = '#707070';
-    ctx.fillText(val + '%', pad.left - 6, y);
-
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(pad.left, y);
-    ctx.lineTo(w - pad.right, y);
-    ctx.stroke();
-  }
-
-  // X axis labels
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillStyle = '#707070';
-  const points = data.length || 1;
-  const step = chartW / (MAX_POINTS - 1);
-
-  // Label every ~15 points
-  for (let i = 0; i < MAX_POINTS; i += 15) {
-    const x = pad.left + i * step;
-    const secondsAgo = (MAX_POINTS - 1 - i) * 5;
-    ctx.fillText(secondsAgo === 0 ? 'now' : `-${secondsAgo}s`, x, h - pad.bottom + 6);
+    const val = (maxVal * i) / 4;
+    const y = pad.top + ch - (ch * i) / 4;
+    ctx.fillStyle = '#555';
+    ctx.fillText(unit === '%' ? val.toFixed(0) + '%' : formatRate(val), pad.left - 4, y);
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
   }
 
   if (data.length < 2) return;
+  const step = cw / (MAX_POINTS - 1);
+  const off = MAX_POINTS - data.length;
+  const pts = data.map((v, i) => ({
+    x: pad.left + (off + i) * step,
+    y: pad.top + ch - (ch * Math.min(v, maxVal)) / maxVal,
+  }));
 
-  // Build points
-  const pts: { x: number; y: number }[] = [];
-  const offset = MAX_POINTS - data.length;
-  for (let i = 0; i < data.length; i++) {
-    const x = pad.left + (offset + i) * step;
-    const y = pad.top + chartH - (chartH * Math.min(data[i], 100)) / 100;
-    pts.push({ x, y });
-  }
-
-  // Gradient fill
-  const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + chartH);
-  grad.addColorStop(0, gradientStart);
-  grad.addColorStop(1, gradientEnd);
-
+  // Fill
+  const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ch);
+  grad.addColorStop(0, gStart); grad.addColorStop(1, gEnd);
   ctx.beginPath();
-  ctx.moveTo(pts[0].x, pad.top + chartH);
+  ctx.moveTo(pts[0].x, pad.top + ch);
   ctx.lineTo(pts[0].x, pts[0].y);
-
-  // Bezier curve through points
   for (let i = 1; i < pts.length; i++) {
-    const prev = pts[i - 1];
-    const cur = pts[i];
-    const cpx = (prev.x + cur.x) / 2;
-    ctx.bezierCurveTo(cpx, prev.y, cpx, cur.y, cur.x, cur.y);
+    const cpx = (pts[i - 1].x + pts[i].x) / 2;
+    ctx.bezierCurveTo(cpx, pts[i - 1].y, cpx, pts[i].y, pts[i].x, pts[i].y);
   }
-
-  ctx.lineTo(pts[pts.length - 1].x, pad.top + chartH);
-  ctx.closePath();
-  ctx.fillStyle = grad;
-  ctx.fill();
+  ctx.lineTo(pts[pts.length - 1].x, pad.top + ch);
+  ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
 
   // Line
   ctx.beginPath();
   ctx.moveTo(pts[0].x, pts[0].y);
   for (let i = 1; i < pts.length; i++) {
-    const prev = pts[i - 1];
-    const cur = pts[i];
-    const cpx = (prev.x + cur.x) / 2;
-    ctx.bezierCurveTo(cpx, prev.y, cpx, cur.y, cur.x, cur.y);
+    const cpx = (pts[i - 1].x + pts[i].x) / 2;
+    ctx.bezierCurveTo(cpx, pts[i - 1].y, cpx, pts[i].y, pts[i].x, pts[i].y);
   }
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  ctx.strokeStyle = color; ctx.lineWidth = 1.5; ctx.stroke();
+}
 
-  // Latest value dot
-  const last = pts[pts.length - 1];
+function drawDualLine(canvas: HTMLCanvasElement | null, d1: number[], d2: number[], c1: string, c2: string, g1s: string, g1e: string) {
+  if (!canvas) return;
+  const max = Math.max(...d1, ...d2, 1024) * 1.2;
+  drawLine(canvas, d1, c1, g1s, g1e, max, 'rate');
+  // Draw second line without fill
+  const ctx = canvas.getContext('2d');
+  if (!ctx || d2.length < 2) return;
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const w = rect.width, h = rect.height;
+  const pad = { top: 8, right: 8, bottom: 20, left: 40 };
+  const cw = w - pad.left - pad.right, ch = h - pad.top - pad.bottom;
+  const step = cw / (MAX_POINTS - 1);
+  const off = MAX_POINTS - d2.length;
+  const pts = d2.map((v, i) => ({
+    x: pad.left + (off + i) * step,
+    y: pad.top + ch - (ch * Math.min(v, max)) / max,
+  }));
   ctx.beginPath();
-  ctx.arc(last.x, last.y, 3, 0, Math.PI * 2);
-  ctx.fillStyle = color;
-  ctx.fill();
+  ctx.moveTo(pts[0].x, pts[0].y);
+  for (let i = 1; i < pts.length; i++) {
+    const cpx = (pts[i - 1].x + pts[i].x) / 2;
+    ctx.bezierCurveTo(cpx, pts[i - 1].y, cpx, pts[i].y, pts[i].x, pts[i].y);
+  }
+  ctx.strokeStyle = c2; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.stroke();
+  ctx.setLineDash([]);
 }
 
 function renderCharts() {
-  drawChart(
-    cpuCanvas.value,
-    cpuHistory.value,
-    '#4c9fe7',
-    'rgba(76, 159, 231, 0.25)',
-    'rgba(76, 159, 231, 0.0)'
-  );
-  drawChart(
-    memCanvas.value,
-    memHistory.value,
-    '#29cc5f',
-    'rgba(41, 204, 95, 0.25)',
-    'rgba(41, 204, 95, 0.0)'
-  );
+  drawLine(cpuCanvas.value, cpuHistory.value, '#4c9fe7', 'rgba(76,159,231,0.2)', 'rgba(76,159,231,0)');
+  drawLine(memCanvas.value, memHistory.value, '#29cc5f', 'rgba(41,204,95,0.2)', 'rgba(41,204,95,0)');
+  drawDualLine(netCanvas.value, netRxHistory.value, netTxHistory.value, '#e0a040', '#e07a50', 'rgba(224,160,64,0.15)', 'rgba(224,160,64,0)');
+  drawDualLine(diskIOCanvas.value, diskRHistory.value, diskWHistory.value, '#c07ae0', '#7ae0c0', 'rgba(192,122,224,0.15)', 'rgba(192,122,224,0)');
+  // Full page charts
+  drawDualLine(netFullCanvas.value, netRxHistory.value, netTxHistory.value, '#e0a040', '#e07a50', 'rgba(224,160,64,0.2)', 'rgba(224,160,64,0)');
+  drawDualLine(diskIOFullCanvas.value, diskRHistory.value, diskWHistory.value, '#c07ae0', '#7ae0c0', 'rgba(192,122,224,0.2)', 'rgba(192,122,224,0)');
+  drawLine(powerCanvas.value, powerHistory.value, '#e07ae0', 'rgba(224,122,224,0.2)', 'rgba(224,122,224,0)', Math.max(...powerHistory.value, 50) * 1.2, 'rate');
   animFrameId = requestAnimationFrame(renderCharts);
 }
 
-async function poll() {
-  // Metrics come via WebSocket push; only poll pods status here
-  await fetchPods();
-}
-
+// ─── Lifecycle ───
 watch(activeNav, () => {
-  if (activeNav.value === 'overview') {
-    nextTick(() => {
-      if (!animFrameId) {
-        animFrameId = requestAnimationFrame(renderCharts);
-      }
-    });
-  } else {
-    if (animFrameId) {
-      cancelAnimationFrame(animFrameId);
-      animFrameId = null;
-    }
-  }
+  nextTick(() => {
+    if (!animFrameId) animFrameId = requestAnimationFrame(renderCharts);
+  });
 });
 
 onMounted(async () => {
-  await Promise.all([fetchMetrics(), fetchPods(), fetchGpu()]);
-  // WebSocket pushes metrics; only poll pods every 30s
-  pollTimer = setInterval(poll, 30000);
-  nextTick(() => {
-    animFrameId = requestAnimationFrame(renderCharts);
-  });
+  await Promise.all([fetchPods(), fetchGpu()]);
+  startWS();
+  pollTimer = setInterval(fetchPods, 30000);
+  nextTick(() => { animFrameId = requestAnimationFrame(renderCharts); });
 });
 
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer);
   if (animFrameId) cancelAnimationFrame(animFrameId);
+  if (ws) { ws.onclose = null; ws.close(); ws = null; }
 });
 </script>
 
 <style lang="scss" scoped>
+$bg-deep: #0d0f12;
+$bg-card: #13161b;
+$bg-hover: #1a1d24;
+$border: rgba(255,255,255,0.06);
+$ink-1: #e8eaed;
+$ink-2: #9aa0a6;
+$ink-3: #5f6368;
+$accent: #4c9fe7;
+
 .dash-root {
   display: flex;
   width: 100%;
   height: 100vh;
-  background-color: var(--bg-1);
+  background: $bg-deep;
   overflow: hidden;
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: $ink-1;
 }
 
-/* ── Sidebar ── */
+// ── Sidebar ──
 .dash-sidebar {
-  width: 240px;
-  min-width: 240px;
-  height: 100%;
-  background-color: var(--bg-1);
-  border-right: 1px solid var(--separator);
+  width: 200px;
+  min-width: 200px;
+  background: $bg-deep;
+  border-right: 1px solid $border;
   display: flex;
   flex-direction: column;
-  padding: 12px 8px;
+  padding: 8px;
 }
-
 .sidebar-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 16px 12px 20px;
+  gap: 8px;
+  padding: 14px 10px 18px;
 }
-
-.sidebar-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--ink-1);
-}
-
+.header-icon { color: $accent; }
+.sidebar-title { font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }
 .sidebar-nav-item {
-  border-radius: 8px;
-  min-height: 40px;
-  margin-bottom: 2px;
-  color: var(--ink-1);
-
-  .q-item__section--avatar {
-    padding-right: 0;
-  }
+  border-radius: 6px;
+  min-height: 34px;
+  margin-bottom: 1px;
+  .q-item__section--avatar { padding-right: 0; }
 }
+.sidebar-item-active { background: rgba($accent, 0.12) !important; }
+.sidebar-item-active .nav-label { color: $accent !important; }
+.sidebar-item-active .q-icon { color: $accent !important; }
+.nav-label { font-size: 13px; color: $ink-2; }
+.nav-badge { font-size: 10px; color: $ink-3; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 8px; font-family: monospace; }
+.sidebar-footer { margin-top: auto; padding: 12px 10px; }
+.sys-uptime { display: flex; align-items: center; gap: 6px; }
+.uptime-dot { width: 6px; height: 6px; border-radius: 50%; background: #29cc5f; box-shadow: 0 0 6px #29cc5f; }
+.uptime-text { font-size: 11px; color: $ink-3; font-family: monospace; }
 
-.sidebar-item-active {
-  background-color: var(--accent-soft) !important;
-}
-
-.text-accent-active {
-  color: var(--accent) !important;
-}
-
-.text-ink-1 {
-  color: var(--ink-1);
-}
-
-/* ── Main Content ── */
+// ── Content ──
 .dash-content {
   flex: 1;
-  height: 100%;
   overflow-y: auto;
-  padding: 24px 32px 40px;
+  padding: 20px 24px 40px;
+  scrollbar-width: thin;
+  scrollbar-color: #2a2d33 transparent;
 }
+.page-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
+.page-subtitle { font-size: 15px; font-weight: 500; margin: 24px 0 12px; color: $ink-2; }
 
-.dash-page-title {
-  font-size: 22px;
-  font-weight: 600;
-  color: var(--ink-1);
-  margin-bottom: 24px;
-}
-
-/* ── Resource Cards ── */
-.resource-cards {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 16px;
+// ── Resource Strip ──
+.resource-strip {
+  display: flex;
+  gap: 10px;
   margin-bottom: 16px;
 }
-
-.resource-card {
-  padding: 16px;
+.strip-card {
+  flex: 1;
+  background: $bg-card;
+  border: 1px solid $border;
+  border-radius: 8px;
+  padding: 10px 12px;
 }
+.strip-label { font-size: 10px; font-weight: 600; color: $ink-3; letter-spacing: 1px; text-transform: uppercase; }
+.strip-value { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin: 2px 0 6px; }
+.strip-bar-track { height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; }
+.strip-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
 
-.resource-card-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
-.resource-icon {
-  border-radius: 6px;
-  padding: 2px;
-}
-
-.resource-icon-cpu {
-  color: var(--accent);
-}
-
-.resource-icon-mem {
-  color: var(--positive);
-}
-
-.resource-icon-disk {
-  color: var(--warning);
-}
-
-.resource-icon-pods {
-  color: #b07fe0;
-}
-
-.resource-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink-2);
-}
-
-.resource-value {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--ink-1);
-  margin-bottom: 10px;
-}
-
-.resource-bar {
-  border-radius: 3px;
-}
-
-/* ── Info Row ── */
-.info-row {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
-}
-
-.info-chip {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
-  font-size: 13px;
-}
-
-.info-chip-label {
-  color: var(--ink-3);
-}
-
-.info-chip-value {
-  color: var(--ink-1);
-  font-weight: 500;
-}
-
-/* ── Charts ── */
-.charts-row {
+// ── Charts ──
+.charts-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 16px;
 }
-
-.chart-card {
-  padding: 16px;
+.chart-panel {
+  background: $bg-card;
+  border: 1px solid $border;
+  border-radius: 8px;
+  padding: 10px 12px;
 }
-
-.chart-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink-2);
-  margin-bottom: 8px;
-}
-
-.chart-canvas {
-  width: 100%;
-  height: 180px;
-  display: block;
-}
-
-/* ── Section Title ── */
-.section-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink-1);
-  margin-bottom: 12px;
-}
-
-/* ── GPU ── */
-.gpu-section {
-  margin-bottom: 24px;
-}
-
-.gpu-cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 12px;
-}
-
-.gpu-card {
-  padding: 14px;
-}
-
-.gpu-name {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--ink-1);
-  margin-bottom: 6px;
-}
-
-.gpu-details {
+.chart-head {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 12px;
-  color: var(--ink-3);
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
 }
+.chart-title { font-size: 11px; font-weight: 600; color: $ink-3; text-transform: uppercase; letter-spacing: 0.5px; }
+.chart-live { font-size: 12px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.chart-canvas { width: 100%; height: 140px; display: block; }
 
-/* ── Pod Table ── */
-.pod-table-wrap {
+.full-chart-panel {
+  background: $bg-card;
+  border: 1px solid $border;
+  border-radius: 8px;
+  padding: 12px;
+}
+.chart-canvas-full { width: 100%; height: 280px; display: block; }
+
+// ── Bottom Row ──
+.bottom-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.cores-panel, .info-panel {
+  background: $bg-card;
+  border: 1px solid $border;
+  border-radius: 8px;
+  padding: 12px;
+}
+.panel-head { font-size: 11px; font-weight: 600; color: $ink-3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+.cores-list { max-height: 200px; overflow-y: auto; scrollbar-width: thin; }
+.core-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+.core-id { font-size: 10px; color: $ink-3; width: 16px; text-align: right; font-family: monospace; }
+.core-bar-track { flex: 1; height: 10px; background: rgba(255,255,255,0.04); border-radius: 2px; }
+.core-bar-fill { height: 100%; background: $accent; border-radius: 2px; transition: width 0.3s; }
+.core-val { font-size: 10px; color: $ink-2; width: 28px; text-align: right; font-family: monospace; }
+
+.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.info-item { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid $border; }
+.info-label { font-size: 12px; color: $ink-3; }
+.info-val { font-size: 12px; color: $ink-1; font-family: monospace; font-weight: 500; }
+
+// ── Stats ──
+.stat-row { display: flex; gap: 10px; margin-bottom: 16px; }
+.stat-box {
+  flex: 1;
+  background: $bg-card;
+  border: 1px solid $border;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+}
+.stat-label { font-size: 11px; color: $ink-3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.stat-val { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.stat-val.rx { color: #e0a040; }
+.stat-val.tx { color: #e07a50; }
+.stat-val.power-total { color: #c07ae0; }
+
+// ── Disk Bar ──
+.disk-usage-bar {
+  height: 20px;
+  background: rgba(255,255,255,0.04);
+  border-radius: 4px;
   margin-bottom: 24px;
   overflow: hidden;
 }
-
-.pod-table {
-  background: transparent !important;
-
-  :deep(thead th) {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--ink-3) !important;
-    background: var(--bg-3) !important;
-    border-bottom: 1px solid var(--separator);
-  }
-
-  :deep(tbody td) {
-    font-size: 13px;
-    color: var(--ink-1) !important;
-    border-bottom: 1px solid var(--separator);
-  }
-
-  :deep(.q-table__bottom) {
-    color: var(--ink-3) !important;
-    border-top: 1px solid var(--separator);
-  }
-
-  :deep(.q-field__native),
-  :deep(.q-field__control) {
-    color: var(--ink-1) !important;
-  }
-}
-
-.pod-status-badge {
-  font-size: 11px;
-  padding: 2px 8px;
+.disk-used {
+  height: 100%;
+  background: linear-gradient(90deg, #e0a040, #e07a50);
   border-radius: 4px;
-  text-transform: capitalize;
+  transition: width 0.4s;
 }
 
-.pod-status-running {
-  background: rgba(41, 204, 95, 0.15) !important;
-  color: var(--positive) !important;
-}
-
-.pod-status-succeeded {
-  background: rgba(41, 204, 95, 0.15) !important;
-  color: var(--positive) !important;
-}
-
-.pod-status-pending {
-  background: rgba(254, 190, 1, 0.15) !important;
-  color: var(--warning) !important;
-}
-
-.pod-status-failed {
-  background: rgba(255, 77, 77, 0.15) !important;
-  color: var(--negative) !important;
-}
-
-.pod-status-unknown {
-  background: rgba(255, 255, 255, 0.06) !important;
-  color: var(--ink-3) !important;
-}
-
-/* ── Node Info ── */
-.node-info {
-  margin-top: 12px;
-}
-
-.node-info-row {
+// ── Logs ──
+.logs-controls {
   display: flex;
-  justify-content: space-between;
-  padding: 4px 0;
-  font-size: 13px;
+  gap: 8px;
+  margin-bottom: 12px;
+  align-items: center;
 }
+.log-query-input { flex: 1; }
+.log-ns-select { width: 180px; }
+.log-fetch-btn { background: rgba($accent, 0.15); color: $accent; }
+.logs-output {
+  background: $bg-card;
+  border: 1px solid $border;
+  border-radius: 8px;
+  height: calc(100vh - 200px);
+  overflow-y: auto;
+  padding: 8px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  scrollbar-width: thin;
+}
+.logs-empty { color: $ink-3; padding: 40px; text-align: center; }
+.log-line { display: flex; gap: 8px; padding: 1px 4px; border-bottom: 1px solid rgba(255,255,255,0.02); }
+.log-line:hover { background: rgba(255,255,255,0.02); }
+.log-ts { color: $ink-3; white-space: nowrap; min-width: 70px; }
+.log-ns { color: $accent; white-space: nowrap; min-width: 100px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
+.log-msg { color: $ink-2; word-break: break-all; }
 
-.node-info-label {
-  color: var(--ink-3);
+// ── Pod Table ──
+.pod-table-wrap { overflow: hidden; border-radius: 8px; border: 1px solid $border; }
+.pod-table {
+  background: $bg-card !important;
+  :deep(thead th) { font-size: 11px; font-weight: 600; color: $ink-3 !important; background: $bg-deep !important; border-bottom: 1px solid $border; text-transform: uppercase; letter-spacing: 0.5px; }
+  :deep(tbody td) { font-size: 12px; color: $ink-1 !important; border-bottom: 1px solid $border; font-family: monospace; }
+  :deep(.q-table__bottom) { color: $ink-3 !important; border-top: 1px solid $border; }
+  :deep(.q-field__native), :deep(.q-field__control) { color: $ink-1 !important; }
 }
-
-.node-info-value {
-  color: var(--ink-1);
-  font-weight: 500;
-}
-
-/* ── Scrollbar ── */
-.dash-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.dash-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.dash-content::-webkit-scrollbar-thumb {
-  background: var(--bg-3);
-  border-radius: 3px;
-}
+.pod-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; }
+.dot-running { background: #29cc5f; box-shadow: 0 0 4px #29cc5f; }
+.dot-pending { background: #e0a040; }
+.dot-failed, .dot-crashloopbackoff, .dot-error { background: #e05050; }
+.dot-succeeded, .dot-completed { background: #29cc5f; }
 </style>
