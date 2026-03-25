@@ -3,7 +3,7 @@
     <div class="page-title">Network</div>
     <div class="page-scroll">
       <!-- Network Info -->
-      <div class="section-title">Network Configuration</div>
+      <div class="section-title">Configuration</div>
       <div class="settings-card">
         <div class="info-row">
           <span class="info-label">Server IP</span>
@@ -26,14 +26,14 @@
       <div class="settings-card">
         <div class="info-row">
           <span class="info-label">Status</span>
-          <q-badge
-            :color="tsStatus === 'connected' ? 'green-8' : tsStatus === 'not configured' ? 'grey-7' : 'orange-7'"
-            :label="tsStatus"
-          />
+          <span
+            class="status-badge"
+            :class="tsStatus === 'connected' ? 'status-connected' : tsStatus === 'connecting' ? 'status-connecting' : 'status-disconnected'"
+          >{{ tsStatus }}</span>
         </div>
         <q-separator class="card-separator" />
         <div class="input-row">
-          <span class="info-label">Auth Key</span>
+          <span class="input-label">Auth Key</span>
           <q-input
             v-model="tsAuthKey"
             dense dark outlined
@@ -44,17 +44,17 @@
         </div>
         <q-separator class="card-separator" />
         <div class="input-row">
-          <span class="info-label">Control URL</span>
+          <span class="input-label">Control URL</span>
           <q-input
             v-model="tsControlURL"
             dense dark outlined
-            placeholder="https://controlplane.tailscale.com (default)"
+            placeholder="https://controlplane.tailscale.com"
             class="setting-input"
           />
         </div>
         <q-separator class="card-separator" />
         <div class="input-row">
-          <span class="info-label">Hostname</span>
+          <span class="input-label">Hostname</span>
           <q-input
             v-model="tsHostname"
             dense dark outlined
@@ -64,10 +64,9 @@
         </div>
         <div class="action-row">
           <q-btn
-            flat dense
+            unelevated dense
             label="Save & Connect"
-            color="primary"
-            class="save-btn"
+            class="btn-primary"
             :loading="saving"
             @click="saveTailscale"
           />
@@ -80,17 +79,17 @@
       <div class="settings-card">
         <div class="info-row">
           <span class="info-label">HTTPS</span>
-          <span class="info-value">443</span>
+          <span class="info-value port-value">443</span>
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
           <span class="info-label">HTTP</span>
-          <span class="info-value">80</span>
+          <span class="info-value port-value">80</span>
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
           <span class="info-label">SMB</span>
-          <span class="info-value">30445</span>
+          <span class="info-value port-value">30445</span>
         </div>
       </div>
     </div>
@@ -119,7 +118,6 @@ onMounted(async () => {
     }
   } catch {}
 
-  // Load tailscale config from API
   try {
     const ts: any = await api.get('/api/settings/tailscale');
     tsAuthKey.value = ts?.auth_key || ts?.data?.auth_key || '';
@@ -132,7 +130,6 @@ onMounted(async () => {
     tsHostname.value = localStorage.getItem('ts_hostname') || 'packalares';
   }
 
-  // Detect IP from window
   const host = window.location.hostname;
   if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
     netInfo.value.ip = host;
@@ -150,7 +147,6 @@ async function saveTailscale() {
     });
     saveMsg.value = 'Saved. Tailscale restarting...';
     tsStatus.value = tsAuthKey.value ? 'connecting' : 'not configured';
-    // Re-fetch to confirm saved values
     try {
       const ts: any = await api.get('/api/settings/tailscale');
       tsAuthKey.value = ts?.auth_key || ts?.data?.auth_key || '';
@@ -166,18 +162,10 @@ async function saveTailscale() {
 </script>
 
 <style lang="scss" scoped>
-.settings-page { height: 100%; display: flex; flex-direction: column; }
-.page-title { font-size: 18px; font-weight: 600; color: var(--ink-1); padding: 16px 24px; height: 56px; display: flex; align-items: center; flex-shrink: 0; }
-.page-scroll { flex: 1; overflow-y: auto; padding: 0 24px 24px; }
-.section-title { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-.settings-card { background: var(--bg-2); border-radius: 12px; border: 1px solid var(--separator); overflow: hidden; }
-.info-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; }
-.info-label { font-size: 14px; color: var(--ink-1); font-weight: 500; white-space: nowrap; min-width: 120px; }
-.info-value { font-size: 13px; color: var(--ink-2); font-family: 'JetBrains Mono', monospace; }
-.card-separator { background: var(--separator); margin: 0 20px; }
-.input-row { display: flex; align-items: center; padding: 10px 20px; gap: 12px; }
-.setting-input { flex: 1; }
-.action-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; }
-.save-btn { background: rgba(76, 159, 231, 0.15); }
-.save-msg { font-size: 12px; }
+.port-value {
+  background: var(--bg-3);
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+}
 </style>

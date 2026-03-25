@@ -3,14 +3,16 @@
     <div class="page-title">Account</div>
     <div class="page-scroll">
       <!-- Profile -->
-      <div class="settings-card">
+      <div class="settings-card profile-card">
         <div class="profile-header">
-          <q-avatar size="72px" color="grey-8" text-color="white" icon="sym_r_person" />
+          <div class="profile-avatar">
+            <q-icon name="sym_r_person" size="28px" color="white" />
+          </div>
           <div class="profile-info">
             <div class="profile-name">{{ userInfo.name || 'admin' }}</div>
-            <div class="profile-email">{{ userInfo.email || '--' }}</div>
-            <q-badge color="blue-8" :label="userInfo.role || 'admin'" />
+            <div class="profile-email">{{ userInfo.email || 'Local administrator' }}</div>
           </div>
+          <span class="role-badge">{{ userInfo.role || 'admin' }}</span>
         </div>
       </div>
 
@@ -30,7 +32,7 @@
           <q-input v-model="confirmPassword" dense dark outlined type="password" class="setting-input" />
         </div>
         <div class="action-row">
-          <q-btn flat dense label="Change Password" color="primary" :loading="changingPw" @click="changePassword" />
+          <q-btn unelevated dense label="Change Password" class="btn-primary" :loading="changingPw" @click="changePassword" />
           <span v-if="pwMsg" class="save-msg" :class="pwMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ pwMsg }}</span>
         </div>
       </div>
@@ -40,35 +42,41 @@
       <div class="settings-card">
         <div class="info-row">
           <span class="info-label">TOTP Authenticator</span>
-          <q-badge :color="totpEnabled ? 'green-8' : 'grey-7'" :label="totpEnabled ? 'Enabled' : 'Disabled'" />
+          <span
+            class="status-badge"
+            :class="totpEnabled ? 'status-connected' : 'status-disconnected'"
+          >{{ totpEnabled ? 'Enabled' : 'Disabled' }}</span>
         </div>
         <template v-if="!totpEnabled">
           <q-separator class="card-separator" />
           <div class="totp-setup" v-if="totpURI">
-            <div class="totp-instructions">Scan this QR code with your authenticator app, then enter the code below:</div>
+            <div class="totp-instructions">Scan this QR code with your authenticator app, then enter the 6-digit code below.</div>
             <div class="totp-qr">
-              <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(totpURI)" alt="TOTP QR" />
+              <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(totpURI)" alt="TOTP QR" />
             </div>
-            <div class="totp-secret-display">Secret: <code>{{ totpSecret }}</code></div>
+            <div class="totp-secret-display">
+              <span class="totp-secret-label">Secret</span>
+              <code class="totp-secret-code">{{ totpSecret }}</code>
+            </div>
             <div class="input-row">
               <span class="input-label">Code</span>
               <q-input v-model="totpCode" dense dark outlined placeholder="000000" maxlength="6" class="setting-input" @keyup.enter="verifyTOTP" />
             </div>
             <div class="action-row">
-              <q-btn flat dense label="Verify & Enable" color="positive" @click="verifyTOTP" />
-              <q-btn flat dense label="Cancel" color="grey" @click="totpURI = ''" />
+              <q-btn unelevated dense label="Verify & Enable" class="btn-primary" @click="verifyTOTP" />
+              <q-btn flat dense label="Cancel" class="btn-ghost" @click="totpURI = ''" />
             </div>
           </div>
           <div v-else class="action-row">
-            <q-btn flat dense label="Setup TOTP" color="primary" @click="setupTOTP" />
+            <q-btn unelevated dense label="Setup TOTP" class="btn-primary" @click="setupTOTP" />
           </div>
         </template>
         <template v-else>
           <div class="action-row">
-            <q-btn flat dense label="Disable TOTP" color="negative" @click="disableTOTP" />
+            <q-btn flat dense label="Disable TOTP" class="btn-danger" @click="disableTOTP" />
           </div>
         </template>
-        <span v-if="totpMsg" class="save-msg q-ml-md" :class="totpMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ totpMsg }}</span>
+        <span v-if="totpMsg" class="save-msg q-ml-md q-mb-sm" :class="totpMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ totpMsg }}</span>
       </div>
 
       <!-- Active Sessions -->
@@ -78,13 +86,15 @@
         <template v-for="(s, i) in sessions" :key="s.id">
           <div class="session-row">
             <div class="session-info">
-              <q-icon name="sym_r_devices" size="18px" class="q-mr-sm" style="color:var(--ink-3)" />
+              <div class="session-icon-wrap">
+                <q-icon name="sym_r_devices" size="16px" />
+              </div>
               <div>
                 <div class="session-id">{{ s.id }}</div>
                 <div class="session-time">Last active: {{ new Date(s.last_activity).toLocaleString() }}</div>
               </div>
             </div>
-            <q-btn flat dense icon="sym_r_block" color="negative" size="sm" @click="revokeSession(s.id)" />
+            <q-btn flat dense round icon="sym_r_close" size="xs" color="negative" @click="revokeSession(s.id)" />
           </div>
           <q-separator v-if="i < sessions.length - 1" class="card-separator" />
         </template>
@@ -94,7 +104,7 @@
       <div class="section-title">Session</div>
       <div class="settings-card">
         <div class="action-row">
-          <q-btn flat dense label="Logout" color="negative" icon="sym_r_logout" @click="logout" />
+          <q-btn flat dense label="Logout" class="btn-danger" icon="sym_r_logout" @click="logout" />
         </div>
       </div>
     </div>
@@ -126,13 +136,11 @@ onMounted(async () => {
     if (r) { userInfo.value = { name: r.name || r.username || 'admin', email: r.email || '', role: r.role || 'admin' }; }
   } catch {}
 
-  // Check TOTP status
   try {
     const s: any = await api.get('/api/auth/state');
     totpEnabled.value = s?.totp_enabled || s?.data?.totp_enabled || false;
   } catch {}
 
-  // Load sessions
   try {
     const s: any = await api.get('/api/auth/sessions');
     sessions.value = s?.sessions || [];
@@ -194,32 +202,138 @@ async function logout() {
 </script>
 
 <style lang="scss" scoped>
-.settings-page { height: 100%; display: flex; flex-direction: column; }
-.page-title { font-size: 18px; font-weight: 600; color: var(--ink-1); padding: 16px 24px; height: 56px; display: flex; align-items: center; flex-shrink: 0; }
-.page-scroll { flex: 1; overflow-y: auto; padding: 0 24px 24px; }
-.section-title { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-.settings-card { background: var(--bg-2); border-radius: 12px; border: 1px solid var(--separator); overflow: hidden; }
-.profile-header { display: flex; align-items: center; gap: 16px; padding: 24px 20px; }
-.profile-info { display: flex; flex-direction: column; gap: 4px; }
-.profile-name { font-size: 18px; font-weight: 600; color: var(--ink-1); }
-.profile-email { font-size: 13px; color: var(--ink-3); }
-.info-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; }
-.info-label { font-size: 14px; color: var(--ink-1); font-weight: 500; }
-.card-separator { background: var(--separator); margin: 0 20px; }
-.input-row { display: flex; align-items: center; padding: 8px 20px; gap: 12px; }
-.input-label { font-size: 13px; color: var(--ink-1); font-weight: 500; min-width: 80px; }
-.setting-input { flex: 1; }
-.action-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; }
-.save-msg { font-size: 12px; }
-.totp-setup { padding: 0 20px 12px; }
-.totp-instructions { font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
-.totp-qr { display: flex; justify-content: center; margin-bottom: 12px; }
-.totp-qr img { border-radius: 8px; }
-.totp-secret-display { font-size: 12px; color: var(--ink-3); text-align: center; margin-bottom: 12px; }
-.totp-secret-display code { color: var(--ink-1); background: var(--bg-3); padding: 2px 8px; border-radius: 4px; font-family: monospace; }
-.empty-state { padding: 20px; color: var(--ink-3); font-size: 13px; text-align: center; }
-.session-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; }
-.session-info { display: flex; align-items: center; }
-.session-id { font-size: 13px; font-weight: 500; color: var(--ink-1); font-family: monospace; }
-.session-time { font-size: 11px; color: var(--ink-3); }
+.profile-card {
+  margin-top: 4px;
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 20px;
+}
+
+.profile-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.profile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink-1);
+}
+
+.profile-email {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+
+.role-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
+  padding: 4px 10px;
+  border-radius: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.totp-setup {
+  padding: 16px 20px;
+}
+
+.totp-instructions {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.totp-qr {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+
+  img {
+    border-radius: 12px;
+    background: white;
+    padding: 8px;
+  }
+}
+
+.totp-secret-display {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.totp-secret-label {
+  font-size: 11px;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.totp-secret-code {
+  font-size: 13px;
+  color: var(--ink-1);
+  background: var(--bg-3);
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+  letter-spacing: 1px;
+}
+
+.session-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+}
+
+.session-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.session-icon-wrap {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--glass);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+}
+
+.session-id {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-1);
+  font-family: 'SF Mono', 'JetBrains Mono', monospace;
+}
+
+.session-time {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 1px;
+}
 </style>

@@ -3,7 +3,7 @@
     <div class="page-title">System</div>
     <div class="page-scroll">
       <!-- System Information -->
-      <div class="section-title">System Information</div>
+      <div class="section-title">Information</div>
       <div class="settings-card">
         <div class="info-row">
           <span class="info-label">Hostname</span>
@@ -32,23 +32,23 @@
         <q-separator class="card-separator" />
         <div class="info-row">
           <span class="info-label">Uptime</span>
-          <span class="info-value">{{ formatUptime(sysInfo.uptime) }}</span>
+          <span class="info-value uptime-value">{{ formatUptime(sysInfo.uptime) }}</span>
         </div>
       </div>
 
       <!-- CPU -->
-      <div class="section-title">CPU</div>
+      <div class="section-title">Processor</div>
       <div class="settings-card">
         <div class="metric-row">
           <div class="metric-header">
-            <span class="info-label">Usage</span>
+            <span class="info-label">CPU Usage</span>
             <span class="metric-value" :class="usageColor(sysInfo.cpu_usage)">{{ sysInfo.cpu_usage.toFixed(1) }}%</span>
           </div>
-          <q-linear-progress :value="sysInfo.cpu_usage / 100" :color="usageQColor(sysInfo.cpu_usage)" track-color="grey-9" rounded size="8px" class="q-mt-sm" />
+          <q-linear-progress :value="sysInfo.cpu_usage / 100" :color="usageQColor(sysInfo.cpu_usage)" track-color="grey-9" rounded size="6px" class="q-mt-sm" />
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
-          <span class="info-label">Load Averages</span>
+          <span class="info-label">Load Average</span>
           <span class="info-value">{{ fmtLoad(sysInfo.load) }}</span>
         </div>
       </div>
@@ -58,26 +58,28 @@
       <div class="settings-card">
         <div class="metric-row">
           <div class="metric-header">
-            <span class="info-label">RAM</span>
+            <span class="info-label">RAM Usage</span>
             <span class="metric-value" :class="usageColor(memPct)">
-              {{ formatBytes(sysInfo.mem_used) }} / {{ formatBytes(sysInfo.mem_total) }} ({{ memPct.toFixed(1) }}%)
+              {{ formatBytes(sysInfo.mem_used) }} / {{ formatBytes(sysInfo.mem_total) }}
             </span>
           </div>
-          <q-linear-progress :value="memPct / 100" :color="usageQColor(memPct)" track-color="grey-9" rounded size="8px" class="q-mt-sm" />
+          <q-linear-progress :value="memPct / 100" :color="usageQColor(memPct)" track-color="grey-9" rounded size="6px" class="q-mt-sm" />
+          <div class="metric-sub">{{ memPct.toFixed(1) }}% used</div>
         </div>
       </div>
 
       <!-- Disk -->
-      <div class="section-title">Disk</div>
+      <div class="section-title">Storage</div>
       <div class="settings-card">
         <div class="metric-row">
           <div class="metric-header">
-            <span class="info-label">Storage</span>
+            <span class="info-label">Disk Usage</span>
             <span class="metric-value" :class="usageColor(diskPct)">
-              {{ formatBytes(sysInfo.disk_used) }} / {{ formatBytes(sysInfo.disk_total) }} ({{ diskPct.toFixed(1) }}%)
+              {{ formatBytes(sysInfo.disk_used) }} / {{ formatBytes(sysInfo.disk_total) }}
             </span>
           </div>
-          <q-linear-progress :value="diskPct / 100" :color="usageQColor(diskPct)" track-color="grey-9" rounded size="8px" class="q-mt-sm" />
+          <q-linear-progress :value="diskPct / 100" :color="usageQColor(diskPct)" track-color="grey-9" rounded size="6px" class="q-mt-sm" />
+          <div class="metric-sub">{{ diskPct.toFixed(1) }}% used</div>
         </div>
       </div>
     </div>
@@ -114,7 +116,7 @@ function formatUptime(s: number) {
   return d > 0 ? `${d}d ${h}h ${m}m` : h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-function fmtLoad(l: number[]) { return l.map(v => v.toFixed(2)).join(' / '); }
+function fmtLoad(l: number[]) { return l.map(v => v.toFixed(2)).join('  /  '); }
 
 let timer: ReturnType<typeof setInterval> | null = null;
 
@@ -146,16 +148,19 @@ onUnmounted(() => { if (timer) clearInterval(timer); });
 </script>
 
 <style lang="scss" scoped>
-.settings-page { height: 100%; display: flex; flex-direction: column; }
-.page-title { font-size: 18px; font-weight: 600; color: var(--ink-1); padding: 16px 24px; height: 56px; display: flex; align-items: center; flex-shrink: 0; }
-.page-scroll { flex: 1; overflow-y: auto; padding: 0 24px 24px; }
-.section-title { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
-.settings-card { background: var(--bg-2); border-radius: 12px; border: 1px solid var(--separator); overflow: hidden; }
-.info-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; }
-.info-label { font-size: 14px; color: var(--ink-1); font-weight: 500; }
-.info-value { font-size: 13px; color: var(--ink-2); font-family: 'JetBrains Mono', monospace; }
-.metric-row { padding: 16px 20px; }
-.metric-header { display: flex; justify-content: space-between; align-items: center; }
-.metric-value { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
-.card-separator { background: var(--separator); margin: 0 20px; }
+.uptime-value {
+  background: var(--positive-soft);
+  color: var(--positive);
+  padding: 2px 10px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.metric-sub {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 6px;
+  text-align: right;
+}
 </style>
