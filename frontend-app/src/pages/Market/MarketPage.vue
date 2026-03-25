@@ -224,7 +224,7 @@
                 disable
               />
               <q-btn
-                v-else
+                v-else-if="app.hasChart"
                 flat
                 dense
                 no-caps
@@ -232,6 +232,7 @@
                 class="app-btn-install"
                 @click.stop="installApp(app)"
               />
+              <span v-else class="app-no-chart">Not synced</span>
             </div>
           </div>
         </div>
@@ -330,8 +331,11 @@
                 <span>{{ appStates[detailApp.name] === 'downloading' ? 'Downloading...' : 'Installing...' }}</span>
               </q-btn>
             </template>
-            <template v-else>
+            <template v-else-if="detailApp.hasChart">
               <q-btn unelevated no-caps label="Install" class="detail-btn-install" icon="sym_r_download" @click="installApp(detailApp)" />
+            </template>
+            <template v-else>
+              <span class="detail-no-chart">Chart not synced — run Sync first</span>
             </template>
           </div>
         </div>
@@ -441,6 +445,7 @@ interface MarketApp {
   requiredCpu?: string;
   requiredDisk?: string;
   requiredGpu?: string;
+  hasChart?: boolean;
 }
 
 interface Category {
@@ -1095,6 +1100,18 @@ onUnmounted(() => {
   font-size: 10px;
   padding: 1px 6px;
   white-space: nowrap;
+}
+
+.app-no-chart {
+  font-size: 11px;
+  color: var(--ink-3);
+  padding: 2px 8px;
+}
+
+.detail-no-chart {
+  font-size: 13px;
+  color: var(--ink-3);
+  padding: 8px 0;
 }
 
 .app-btn-install {
