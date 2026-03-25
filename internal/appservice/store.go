@@ -24,27 +24,29 @@ type AppStore struct {
 
 // AppRecord is an installed app's persisted state.
 type AppRecord struct {
-	Name        string                  `json:"name"`
-	AppID       string                  `json:"appID"`
-	Namespace   string                  `json:"namespace"`
-	Owner       string                  `json:"owner"`
-	Icon        string                  `json:"icon,omitempty"`
-	Title       string                  `json:"title,omitempty"`
-	Description string                  `json:"description,omitempty"`
-	Version     string                  `json:"version,omitempty"`
-	ChartRef    string                  `json:"chartRef,omitempty"`
-	RepoURL     string                  `json:"repoURL,omitempty"`
-	Source      string                  `json:"source"`
-	State       ApplicationManagerState `json:"state"`
-	OpType      OpType                  `json:"opType,omitempty"`
-	OpID        string                  `json:"opID,omitempty"`
-	ReleaseName string                  `json:"releaseName"`
-	Entrances   []Entrance              `json:"entrances,omitempty"`
-	Values      map[string]string       `json:"values,omitempty"`
-	CreatedAt   time.Time               `json:"createdAt"`
-	UpdatedAt   time.Time               `json:"updatedAt"`
-	IsSysApp    bool                    `json:"isSysApp"`
-	RawAppName  string                  `json:"rawAppName,omitempty"`
+	Name            string                  `json:"name"`
+	AppID           string                  `json:"appID"`
+	Namespace       string                  `json:"namespace"`
+	Owner           string                  `json:"owner"`
+	Icon            string                  `json:"icon,omitempty"`
+	Title           string                  `json:"title,omitempty"`
+	Description     string                  `json:"description,omitempty"`
+	Version         string                  `json:"version,omitempty"`
+	ChartRef        string                  `json:"chartRef,omitempty"`
+	RepoURL         string                  `json:"repoURL,omitempty"`
+	Source          string                  `json:"source"`
+	State           ApplicationManagerState `json:"state"`
+	OpType          OpType                  `json:"opType,omitempty"`
+	OpID            string                  `json:"opID,omitempty"`
+	ReleaseName     string                  `json:"releaseName"`
+	Entrances       []Entrance              `json:"entrances,omitempty"`
+	SharedEntrances []SharedEntrance        `json:"sharedEntrances,omitempty"`
+	Permission      *Permission             `json:"permission,omitempty"`
+	Values          map[string]string       `json:"values,omitempty"`
+	CreatedAt       time.Time               `json:"createdAt"`
+	UpdatedAt       time.Time               `json:"updatedAt"`
+	IsSysApp        bool                    `json:"isSysApp"`
+	RawAppName      string                  `json:"rawAppName,omitempty"`
 }
 
 // NewAppStore creates or loads the store from disk.

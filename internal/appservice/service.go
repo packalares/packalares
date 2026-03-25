@@ -278,6 +278,14 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		if rec.Version == "" {
 			rec.Version = manifest.Metadata.Version
 		}
+
+		// Store sharedEntrances from the manifest
+		if len(manifest.SharedEntrances) > 0 {
+			rec.SharedEntrances = manifest.SharedEntrances
+		}
+
+		// Store permission from the manifest (includes sysData and provider)
+		rec.Permission = &manifest.Permission
 	}
 	if rec.Version == "" && appVersion != "" {
 		rec.Version = appVersion

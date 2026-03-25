@@ -23,14 +23,16 @@ import (
 
 // Server is the system server that manages apps, permissions, and reverse proxying.
 type Server struct {
-	cfg        *Config
-	perms      *PermissionManager
-	kubeClient kubernetes.Interface
-	dynClient  dynamic.Interface
-	apps       map[string]*Application // keyed by namespace/name
-	appsMu     sync.RWMutex
-	ctx        context.Context
-	cancel     context.CancelFunc
+	cfg         *Config
+	perms       *PermissionManager
+	providerReg *ProviderRegistry
+	reconciler  *ConsumerReconciler
+	kubeClient  kubernetes.Interface
+	dynClient   dynamic.Interface
+	apps        map[string]*Application // keyed by namespace/name
+	appsMu      sync.RWMutex
+	ctx         context.Context
+	cancel      context.CancelFunc
 }
 
 func NewServer(cfg *Config) (*Server, error) {
@@ -51,14 +53,19 @@ func NewServer(cfg *Config) (*Server, error) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 
+	providerReg := NewProviderRegistry()
+	reconciler := NewConsumerReconciler(kubeClient, providerReg)
+
 	return &Server{
-		cfg:        cfg,
-		perms:      NewPermissionManager(),
-		kubeClient: kubeClient,
-		dynClient:  dynClient,
-		apps:       make(map[string]*Application),
-		ctx:        ctx,
-		cancel:     cancel,
+		cfg:         cfg,
+		perms:       NewPermissionManager(),
+		providerReg: providerReg,
+		reconciler:  reconciler,
+		kubeClient:  kubeClient,
+		dynClient:   dynClient,
+		apps:        make(map[string]*Application),
+		ctx:         ctx,
+		cancel:      cancel,
 	}, nil
 }
 
@@ -84,6 +91,8 @@ func (s *Server) Run() error {
 	mux.HandleFunc("/api/v1/apps/", s.handleGetApp)
 	mux.HandleFunc("/api/v1/permissions", s.handleListPermissions)
 	mux.HandleFunc("/api/v1/permissions/check", s.handleCheckPermission)
+	mux.HandleFunc("/api/v1/providers", s.handleListProviders)
+	mux.HandleFunc("/api/v1/providers/", s.handleGetProviders)
 	mux.HandleFunc("/api/v1/settings", s.handleSettings)
 	mux.HandleFunc("/healthz", s.handleHealth)
 	// Default handler: reverse proxy to installed apps based on Host header
@@ -199,7 +208,7 @@ func (s *Server) parseApplication(obj *unstructured.Unstructured) (*Application,
 
 func (s *Server) handleAppCreateOrUpdate(app *Application) {
 	key := app.Namespace + "/" + app.Name
-	log.Printf("app create/update: %s (entrances=%d)", key, len(app.Spec.Entrances))
+	log.Printf("app create/update: %s (entrances=%d, sharedEntrances=%d)", key, len(app.Spec.Entrances), len(app.Spec.SharedEntrances))
 
 	s.appsMu.Lock()
 	s.apps[key] = app
@@ -210,6 +219,33 @@ func (s *Server) handleAppCreateOrUpdate(app *Application) {
 		s.perms.Register(app.Spec.Name, app.Spec.Permissions)
 	}
 
+	// Register provider if app has sharedEntrances
+	if len(app.Spec.SharedEntrances) > 0 {
+		s.providerReg.RegisterProvider(app)
+
+		// Notify consumers that depend on this provider's groups
+		s.appsMu.RLock()
+		appsCopy := make(map[string]*Application, len(s.apps))
+		for k, v := range s.apps {
+			appsCopy[k] = v
+		}
+		s.appsMu.RUnlock()
+
+		s.reconciler.OnProviderChanged(app, appsCopy)
+	}
+
+	// If this app is a consumer, reconcile it now to pick up existing providers
+	if app.Spec.Permission != nil && len(app.Spec.Permission.SysData) > 0 {
+		s.appsMu.RLock()
+		appsCopy := make(map[string]*Application, len(s.apps))
+		for k, v := range s.apps {
+			appsCopy[k] = v
+		}
+		s.appsMu.RUnlock()
+
+		s.reconciler.Reconcile(app, appsCopy)
+	}
+
 	// Note: No nginx config generation needed. The Go reverse proxy
 	// (handleAppProxy) routes requests based on Host header, which
 	// replaces the per-app nginx server blocks entirely.
@@ -218,6 +254,22 @@ func (s *Server) handleAppCreateOrUpdate(app *Application) {
 func (s *Server) handleAppDelete(app *Application) {
 	key := app.Namespace + "/" + app.Name
 	log.Printf("app delete: %s", key)
+
+	// Unregister provider before removing from apps map so consumers
+	// can still be found.
+	if len(app.Spec.SharedEntrances) > 0 {
+		s.providerReg.UnregisterProvider(app.Spec.Name)
+
+		// Reconcile consumers that depended on this provider
+		s.appsMu.RLock()
+		appsCopy := make(map[string]*Application, len(s.apps))
+		for k, v := range s.apps {
+			appsCopy[k] = v
+		}
+		s.appsMu.RUnlock()
+
+		s.reconciler.OnProviderChanged(app, appsCopy)
+	}
 
 	s.appsMu.Lock()
 	delete(s.apps, key)
@@ -343,6 +395,55 @@ func (s *Server) handleCheckPermission(w http.ResponseWriter, r *http.Request) {
 	writeJSONResponse(w, http.StatusOK, map[string]interface{}{
 		"code":    0,
 		"message": "allowed",
+	})
+}
+
+// handleListProviders returns all registered providers grouped by group name.
+// GET /api/v1/providers
+func (s *Server) handleListProviders(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]interface{}{"error": "method not allowed"})
+		return
+	}
+
+	// Only handle the exact path /api/v1/providers, not /api/v1/providers/{group}
+	if r.URL.Path != "/api/v1/providers" {
+		s.handleGetProviders(w, r)
+		return
+	}
+
+	providers := s.providerReg.GetAllProviders()
+
+	writeJSONResponse(w, http.StatusOK, map[string]interface{}{
+		"code": 0,
+		"data": providers,
+	})
+}
+
+// handleGetProviders returns providers for a specific group.
+// GET /api/v1/providers/{group}
+func (s *Server) handleGetProviders(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]interface{}{"error": "method not allowed"})
+		return
+	}
+
+	// Extract group from path: /api/v1/providers/{group}
+	group := strings.TrimPrefix(r.URL.Path, "/api/v1/providers/")
+	group = strings.TrimSuffix(group, "/")
+	if group == "" {
+		writeJSONResponse(w, http.StatusBadRequest, map[string]interface{}{"error": "group name required"})
+		return
+	}
+
+	providers := s.providerReg.GetProviders(group)
+	if providers == nil {
+		providers = []ProviderEndpoint{}
+	}
+
+	writeJSONResponse(w, http.StatusOK, map[string]interface{}{
+		"code": 0,
+		"data": providers,
 	})
 }
 

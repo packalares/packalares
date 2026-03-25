@@ -273,6 +273,93 @@ func buildApplicationObject(rec *AppRecord) *unstructured.Unstructured {
 		specEntrances = append(specEntrances, entry)
 	}
 
+	// Build spec.sharedEntrances as a list of maps
+	specSharedEntrances := make([]interface{}, 0, len(rec.SharedEntrances))
+	for _, se := range rec.SharedEntrances {
+		entry := map[string]interface{}{
+			"name": se.Name,
+			"host": se.Host,
+			"port": int64(se.Port),
+		}
+		if se.Title != "" {
+			entry["title"] = se.Title
+		}
+		if se.Icon != "" {
+			entry["icon"] = se.Icon
+		}
+		if se.AuthLevel != "" {
+			entry["authLevel"] = se.AuthLevel
+		}
+		if se.Invisible {
+			entry["invisible"] = true
+		}
+		specSharedEntrances = append(specSharedEntrances, entry)
+	}
+
+	spec := map[string]interface{}{
+		"name":        rec.Name,
+		"appid":       rec.AppID,
+		"namespace":   rec.Namespace,
+		"owner":       rec.Owner,
+		"isSysApp":    rec.IsSysApp,
+		"icon":        rec.Icon,
+		"description": rec.Description,
+		"entrances":   specEntrances,
+	}
+
+	// Include sharedEntrances if present
+	if len(specSharedEntrances) > 0 {
+		spec["sharedEntrances"] = specSharedEntrances
+	}
+
+	// Include permission if present
+	if rec.Permission != nil {
+		permMap := map[string]interface{}{
+			"appData":  rec.Permission.AppData,
+			"appCache": rec.Permission.AppCache,
+		}
+		if len(rec.Permission.UserData) > 0 {
+			ud := make([]interface{}, len(rec.Permission.UserData))
+			for i, v := range rec.Permission.UserData {
+				ud[i] = v
+			}
+			permMap["userData"] = ud
+		}
+		if len(rec.Permission.SysData) > 0 {
+			sd := make([]interface{}, 0, len(rec.Permission.SysData))
+			for _, s := range rec.Permission.SysData {
+				entry := map[string]interface{}{
+					"dataType": s.DataType,
+					"appName":  s.AppName,
+					"svc":      s.Svc,
+					"port":     int64(s.Port),
+					"group":    s.Group,
+					"version":  s.Version,
+				}
+				if len(s.Ops) > 0 {
+					ops := make([]interface{}, len(s.Ops))
+					for i, o := range s.Ops {
+						ops[i] = o
+					}
+					entry["ops"] = ops
+				}
+				sd = append(sd, entry)
+			}
+			permMap["sysData"] = sd
+		}
+		if len(rec.Permission.Provider) > 0 {
+			pv := make([]interface{}, 0, len(rec.Permission.Provider))
+			for _, p := range rec.Permission.Provider {
+				pv = append(pv, map[string]interface{}{
+					"appName":      p.AppName,
+					"providerName": p.ProviderName,
+				})
+			}
+			permMap["provider"] = pv
+		}
+		spec["permission"] = permMap
+	}
+
 	obj := &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": "app." + config.APIGroup() + "/v1alpha1",
@@ -292,16 +379,7 @@ func buildApplicationObject(rec *AppRecord) *unstructured.Unstructured {
 					"applications.app." + config.APIGroup() + "/source":    rec.Source,
 				},
 			},
-			"spec": map[string]interface{}{
-				"name":        rec.Name,
-				"appid":       rec.AppID,
-				"namespace":   rec.Namespace,
-				"owner":       rec.Owner,
-				"isSysApp":    rec.IsSysApp,
-				"icon":        rec.Icon,
-				"description": rec.Description,
-				"entrances":   specEntrances,
-			},
+			"spec": spec,
 			"status": map[string]interface{}{
 				"state": rec.State.String(),
 			},

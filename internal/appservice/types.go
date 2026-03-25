@@ -65,6 +65,17 @@ type Entrance struct {
 	OpenMethod string `json:"openMethod,omitempty" yaml:"openMethod,omitempty"`
 }
 
+// SharedEntrance describes a shared API endpoint exposed by a provider app.
+type SharedEntrance struct {
+	Name      string `json:"name" yaml:"name"`
+	Host      string `json:"host" yaml:"host"`
+	Port      int32  `json:"port" yaml:"port"`
+	Title     string `json:"title,omitempty" yaml:"title,omitempty"`
+	Icon      string `json:"icon,omitempty" yaml:"icon,omitempty"`
+	AuthLevel string `json:"authLevel,omitempty" yaml:"authLevel,omitempty"`
+	Invisible bool   `json:"invisible,omitempty" yaml:"invisible,omitempty"`
+}
+
 // ServicePort defines an exposed port for an app.
 type ServicePort struct {
 	Name       string `json:"name" yaml:"name"`
@@ -76,15 +87,16 @@ type ServicePort struct {
 
 // AppConfiguration is the Olares-compatible app manifest (OlaresManifest.yaml).
 type AppConfiguration struct {
-	ConfigVersion string        `json:"olaresManifest.version" yaml:"olaresManifest.version"`
-	ConfigType    string        `json:"olaresManifest.type" yaml:"olaresManifest.type"`
-	APIVersion    string        `json:"apiVersion" yaml:"apiVersion"`
-	Metadata      AppMetaData   `json:"metadata" yaml:"metadata"`
-	Entrances     []Entrance    `json:"entrances" yaml:"entrances"`
-	Ports         []ServicePort `json:"ports" yaml:"ports"`
-	Spec          AppSpec       `json:"spec" yaml:"spec"`
-	Permission    Permission    `json:"permission" yaml:"permission"`
-	Options       Options       `json:"options" yaml:"options"`
+	ConfigVersion   string           `json:"olaresManifest.version" yaml:"olaresManifest.version"`
+	ConfigType      string           `json:"olaresManifest.type" yaml:"olaresManifest.type"`
+	APIVersion      string           `json:"apiVersion" yaml:"apiVersion"`
+	Metadata        AppMetaData      `json:"metadata" yaml:"metadata"`
+	Entrances       []Entrance       `json:"entrances" yaml:"entrances"`
+	SharedEntrances []SharedEntrance `json:"sharedEntrances,omitempty" yaml:"sharedEntrances,omitempty"`
+	Ports           []ServicePort    `json:"ports" yaml:"ports"`
+	Spec            AppSpec          `json:"spec" yaml:"spec"`
+	Permission      Permission       `json:"permission" yaml:"permission"`
+	Options         Options          `json:"options" yaml:"options"`
 }
 
 // AppMetaData holds descriptive metadata for an app chart.
@@ -118,9 +130,28 @@ type AppSpec struct {
 
 // Permission describes what an app needs access to.
 type Permission struct {
-	AppData  bool     `json:"appData" yaml:"appData"`
-	AppCache bool     `json:"appCache" yaml:"appCache"`
-	UserData []string `json:"userData" yaml:"userData"`
+	AppData  bool           `json:"appData" yaml:"appData"`
+	AppCache bool           `json:"appCache" yaml:"appCache"`
+	UserData []string       `json:"userData" yaml:"userData"`
+	SysData  []SysDataEntry `json:"sysData,omitempty" yaml:"sysData,omitempty"`
+	Provider []ProviderEntry `json:"provider,omitempty" yaml:"provider,omitempty"`
+}
+
+// SysDataEntry describes a system data dependency (e.g. consuming an API provider).
+type SysDataEntry struct {
+	DataType string   `json:"dataType" yaml:"dataType"`
+	AppName  string   `json:"appName" yaml:"appName"`
+	Svc      string   `json:"svc" yaml:"svc"`
+	Port     int      `json:"port" yaml:"port"`
+	Group    string   `json:"group" yaml:"group"`
+	Version  string   `json:"version" yaml:"version"`
+	Ops      []string `json:"ops" yaml:"ops"`
+}
+
+// ProviderEntry describes a provider dependency.
+type ProviderEntry struct {
+	AppName      string `json:"appName" yaml:"appName"`
+	ProviderName string `json:"providerName" yaml:"providerName"`
 }
 
 // Options holds optional app behaviour flags.
