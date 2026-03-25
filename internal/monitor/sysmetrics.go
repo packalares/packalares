@@ -22,6 +22,12 @@ type SystemMetrics struct {
 	Power    PowerMetrics  `json:"power"`
 	Uptime   float64       `json:"uptime"`
 	Load     [3]float64    `json:"load"`
+	Hostname string        `json:"hostname,omitempty"`
+	OSVersion string       `json:"os_version,omitempty"`
+	Kernel   string        `json:"kernel,omitempty"`
+	Arch     string        `json:"arch,omitempty"`
+	CPUModel string        `json:"cpu_model,omitempty"`
+	CPUCount int           `json:"cpu_count,omitempty"`
 }
 
 // MemoryMetrics reports used and total memory in bytes.
@@ -87,16 +93,24 @@ func CollectSystemMetrics() (*SystemMetrics, error) {
 		return nil, fmt.Errorf("load: %w", err)
 	}
 
+	sysInfo := readSystemInfo()
+
 	return &SystemMetrics{
-		CPUUsage: cpuUsage,
-		CPUCores: cpuCores,
-		Memory:   MemoryMetrics{Used: memUsed, Total: memTotal},
-		Disk:     DiskMetrics{Used: diskUsed, Total: diskTotal},
-		DiskIO:   diskIO,
-		Network:  net,
-		Power:    power,
-		Uptime:   uptime,
-		Load:     load,
+		CPUUsage:  cpuUsage,
+		CPUCores:  cpuCores,
+		Memory:    MemoryMetrics{Used: memUsed, Total: memTotal},
+		Disk:      DiskMetrics{Used: diskUsed, Total: diskTotal},
+		DiskIO:    diskIO,
+		Network:   net,
+		Power:     power,
+		Uptime:    uptime,
+		Load:      load,
+		Hostname:  sysInfo.hostname,
+		OSVersion: sysInfo.osVersion,
+		Kernel:    sysInfo.kernel,
+		Arch:      sysInfo.arch,
+		CPUModel:  sysInfo.cpuModel,
+		CPUCount:  len(cpuCores),
 	}, nil
 }
 
@@ -423,4 +437,70 @@ func execCommand(name string, args ...string) (string, error) {
 	cmd := exec.Command(name, args...)
 	out, err := cmd.Output()
 	return string(out), err
+}
+
+// --- System Info (cached, read once) ---
+
+type sysInfoCache struct {
+	hostname  string
+	osVersion string
+	kernel    string
+	arch      string
+	cpuModel  string
+}
+
+var cachedSysInfo *sysInfoCache
+
+func readSystemInfo() sysInfoCache {
+	if cachedSysInfo != nil {
+		return *cachedSysInfo
+	}
+
+	info := sysInfoCache{}
+
+	// Hostname
+	if data, err := os.ReadFile("/proc/sys/kernel/hostname"); err == nil {
+		info.hostname = strings.TrimSpace(string(data))
+	}
+
+	// OS version from /etc/os-release
+	if f, err := os.Open("/etc/os-release"); err == nil {
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.HasPrefix(line, "PRETTY_NAME=") {
+				info.osVersion = strings.Trim(strings.TrimPrefix(line, "PRETTY_NAME="), "\"")
+			}
+		}
+	}
+
+	// Kernel version
+	if out, err := execCommand("uname", "-r"); err == nil {
+		info.kernel = strings.TrimSpace(out)
+	}
+
+	// Architecture
+	if out, err := execCommand("uname", "-m"); err == nil {
+		info.arch = strings.TrimSpace(out)
+	}
+
+	// CPU model from /proc/cpuinfo
+	if f, err := os.Open("/proc/cpuinfo"); err == nil {
+		defer f.Close()
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			line := scanner.Text()
+			if strings.HasPrefix(line, "model name") {
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					info.cpuModel = strings.TrimSpace(parts[1])
+					break
+				}
+			}
+		}
+	}
+
+	cachedSysInfo = &info
+	return info
 }
