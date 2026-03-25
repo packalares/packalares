@@ -105,46 +105,43 @@ func (s *OlaresSource) FetchCatalog(ctx context.Context) (*EnrichedCatalog, erro
 		enUS := topic.Data.EnUS
 		topicAppsMapping[topicKey] = &enUS
 
-		// The "apps" field in topics maps display name -> chart name(s), comma-separated
-		if enUS.Apps != nil {
-			for _, chartNames := range enUS.Apps {
-				for _, chartName := range strings.Split(chartNames, ",") {
-					chartName = strings.TrimSpace(chartName)
-					if chartName == "" {
-						continue
+		// The "apps" field is a comma-separated string of chart names
+		if enUS.Apps != "" {
+			for _, chartName := range strings.Split(enUS.Apps, ",") {
+				chartName = strings.TrimSpace(chartName)
+				if chartName == "" {
+					continue
+				}
+				if _, exists := appMap[chartName]; !exists {
+					// New app discovered from topic — create a stub
+					app := &MarketApp{
+						Name:      chartName,
+						ChartName: chartName,
+						Source:    "olares",
+						Status:   "active",
+						Type:     "app",
+						CfgType:  "app",
 					}
-					if _, exists := appMap[chartName]; !exists {
-						// New app discovered from topic — create a stub
-						app := &MarketApp{
-							Name:      chartName,
-							ChartName: chartName,
-							Source:    "olares",
-							Status:   "active",
-							Type:     "app",
-							CfgType:  "app",
-						}
-						// Enrich from topic metadata
-						if enUS.Title != "" {
-							app.Title = enUS.Title
-						}
-						if enUS.Des != "" {
-							app.Description = enUS.Des
-						}
-						if enUS.IconImg != "" {
-							app.FeaturedImage = enUS.IconImg
-						}
-						appMap[chartName] = app
-						klog.V(2).Infof("olares: discovered app %q from topic %q", chartName, topicKey)
-					} else {
-						// App already exists — enrich it with topic metadata
-						existing := appMap[chartName]
-						if existing.FeaturedImage == "" && enUS.IconImg != "" {
-							existing.FeaturedImage = enUS.IconImg
-						}
-						if existing.Title == existing.Name && enUS.Title != "" {
-							// Topic has a nicer display title
-							existing.Title = enUS.Title
-						}
+					// Enrich from topic metadata
+					if enUS.Title != "" {
+						app.Title = enUS.Title
+					}
+					if enUS.Des != "" {
+						app.Description = enUS.Des
+					}
+					if enUS.IconImg != "" {
+						app.FeaturedImage = enUS.IconImg
+					}
+					appMap[chartName] = app
+					klog.V(2).Infof("olares: discovered app %q from topic %q", chartName, topicKey)
+				} else {
+					// App already exists — enrich it with topic metadata
+					existing := appMap[chartName]
+					if existing.FeaturedImage == "" && enUS.IconImg != "" {
+						existing.FeaturedImage = enUS.IconImg
+					}
+					if existing.Title == existing.Name && enUS.Title != "" {
+						existing.Title = enUS.Title
 					}
 				}
 			}
@@ -251,8 +248,10 @@ func (s *OlaresSource) FetchCatalog(ctx context.Context) (*EnrichedCatalog, erro
 			klog.V(3).Infof("olares: skip tag %s: parse error: %v", tagKey, err)
 			continue
 		}
+		// Strip version suffixes like "_v112" from tag names
+		tagName := catVersionSuffix.ReplaceAllString(tag.Name, "")
 		cat := Category{
-			Name: tag.Name,
+			Name: tagName,
 			Icon: tag.Icon,
 			Sort: tag.Sort,
 		}
@@ -627,12 +626,12 @@ type olaresTopicEntry struct {
 }
 
 type olaresTopicData struct {
-	Title     string            `json:"title"`
-	Des       string            `json:"des"`
-	IconImg   string            `json:"iconimg"`
-	DetailImg string            `json:"detailimg"`
-	Apps      map[string]string `json:"apps"` // display name -> chart name(s), comma-separated
-	RichText  string            `json:"richtext"`
+	Title     string `json:"title"`
+	Des       string `json:"des"`
+	IconImg   string `json:"iconimg"`
+	DetailImg string `json:"detailimg"`
+	Apps      string `json:"apps"` // comma-separated chart names (e.g. "vllmqwen330ba3binstruct4bitv2")
+	RichText  string `json:"richtext"`
 }
 
 // Recommend-related types for parsing data.recommends
