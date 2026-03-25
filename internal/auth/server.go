@@ -86,6 +86,13 @@ func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If TOTP is enabled, require second factor
+	hasTOTP, _ := s.hasTOTPConfigured(r.Context(), session.Username)
+	if hasTOTP && session.AuthLevel < 2 {
+		s.sendUnauthorizedRedirect(w, r)
+		return
+	}
+
 	// Refresh session TTL on activity
 	sessionID := s.getSessionIDFromCookie(r)
 	if sessionID != "" {
@@ -191,7 +198,22 @@ func (s *Server) handleFirstFactor(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("user %q authenticated successfully (first factor)", req.Username)
 
-	// Redirect to wherever the user was trying to go, or desktop
+	// Check if user has TOTP enabled — require second factor
+	hasTOTP, _ := s.hasTOTPConfigured(r.Context(), req.Username)
+	if hasTOTP {
+		log.Printf("user %q has TOTP enabled, requiring second factor", req.Username)
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"status":          "OK",
+			"data": map[string]interface{}{
+				"token":    jwt,
+				"redirect": "",
+			},
+			"requires_totp": true,
+		})
+		return
+	}
+
+	// No TOTP — redirect to desktop
 	redirect := "/desktop/"
 	if rd := r.URL.Query().Get("rd"); rd != "" {
 		redirect = rd
@@ -274,10 +296,16 @@ func (s *Server) handleSecondFactorTOTP(w http.ResponseWriter, r *http.Request) 
 
 	log.Printf("user %q completed second factor (TOTP)", session.Username)
 
+	redirect := "/desktop/"
+	if rd := r.URL.Query().Get("rd"); rd != "" {
+		redirect = rd
+	}
+
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"status": "OK",
 		"data": map[string]interface{}{
-			"token": jwt,
+			"token":    jwt,
+			"redirect": redirect,
 		},
 	})
 }

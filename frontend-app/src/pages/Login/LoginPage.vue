@@ -322,7 +322,7 @@ async function onLogin() {
 
     if (body?.status === 'OK' || body?.token || body?.redirect) {
       // Check if 2FA is required
-      if (body?.fa2 || body?.second_factor) {
+      if (body?.fa2 || body?.second_factor || body?.requires_totp) {
         firstFactorToken = body.token || '';
         currentView.value = 'totp';
         updateTimerProgress();
