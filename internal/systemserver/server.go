@@ -442,10 +442,24 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The public host for this app (e.g. ipfs.admin.olares.local)
+	publicHost := appName + "." + s.cfg.UserZone
+
 	proxy := httputil.NewSingleHostReverseProxy(target)
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("proxy error for %s: %v", appName, err)
 		http.Error(w, "upstream error", http.StatusBadGateway)
+	}
+	// Rewrite Location headers from internal hostnames to public subdomain
+	proxy.ModifyResponse = func(resp *http.Response) error {
+		loc := resp.Header.Get("Location")
+		if loc != "" {
+			// Replace internal service hostname with public hostname
+			loc = strings.Replace(loc, "http://"+svcHost, "https://"+publicHost, 1)
+			loc = strings.Replace(loc, "http://"+entrance.Host, "https://"+publicHost, 1)
+			resp.Header.Set("Location", loc)
+		}
+		return nil
 	}
 
 	r.Host = target.Host
