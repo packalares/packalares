@@ -297,7 +297,6 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 	// The middleware operator (separate pod) handles DB provisioning via CRDs that
 	// the chart's templates create -- we just need to supply connection info.
 	zone := config.UserZone()
-	domain := config.Domain()
 
 	pgHost := config.CitusHost()
 	pgPort := config.CitusPort()
@@ -322,6 +321,27 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		},
 	}
 
+	// Build domain map: each entrance name maps to its full domain
+	// e.g. domain.gitea = "gitea.admin.olares.local"
+	// Charts use: .Values.domain.<entranceName>
+	domainMap := map[string]interface{}{}
+	if manifest != nil {
+		for _, e := range manifest.Entrances {
+			eName := e.Name
+			if eName == "" {
+				eName = req.Name
+			}
+			domainMap[eName] = fmt.Sprintf("%s.%s", eName, zone)
+		}
+	}
+	// Always add a default entry with the app name
+	if _, ok := domainMap[req.Name]; !ok {
+		domainMap[req.Name] = fmt.Sprintf("%s.%s", req.Name, zone)
+	}
+
+	// Database name for the app (Olares pattern: app name as db name)
+	dbName := req.Name
+
 	err = injectValuesYaml(chartDir, map[string]interface{}{
 		"bfl": map[string]interface{}{
 			"username": s.owner,
@@ -330,8 +350,9 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		"user": map[string]interface{}{
 			"zone": zone,
 		},
-		"domain":    domain,
+		"domain":    domainMap,
 		"namespace": s.namespace,
+		"sysVersion": "1.12.0",
 		"userspace": map[string]interface{}{
 			"appData":  "/terminus/userdata/appdata",
 			"appCache": "/terminus/userdata/appcache",
@@ -344,12 +365,14 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 			"namespace":  s.namespace,
 			"middleware": middlewareBlock,
 		},
-		// Also set top-level postgres/redis for old charts
 		"postgres": map[string]interface{}{
 			"host":     pgHost,
 			"port":     pgPort,
 			"username": pgUser,
 			"password": pgPass,
+			"databases": map[string]interface{}{
+				dbName: dbName,
+			},
 		},
 		"redis": map[string]interface{}{
 			"host":     redisHost,

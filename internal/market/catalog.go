@@ -64,72 +64,44 @@ func NewCatalog(marketURL, localPath string) *Catalog {
 	return c
 }
 
-// Load fetches the catalog from all available sources in priority order:
-// 1. Local catalog JSON file (fastest, user-controlled)
-// 2. Olares appstore API (authoritative, 158+ apps with recommendations)
-// 3. GitHub beclab/apps repo (fallback, all apps)
-// 4. Built-in default catalog (always works, curated subset)
+// Load reads the catalog from local files only. No remote requests.
+// Use the sync API (POST /market/v1/sync) to fetch from external sources.
+// Priority: synced catalog → user-specified path → default paths → built-in fallback.
 func (c *Catalog) Load() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	// Try local catalog file first (user override)
-	if c.localPath != "" {
-		apps, err := c.loadLocal(c.localPath)
-		if err == nil && len(apps) > 0 {
-			c.setApps(apps)
-			klog.Infof("loaded %d apps from local file %s", len(apps), c.localPath)
-			return nil
-		}
-		if err != nil {
-			klog.V(2).Infof("local catalog %s: %v", c.localPath, err)
-		}
+	// Priority 1: synced catalog from chart sync manager
+	localPaths := []string{
+		"/data/market/catalog.json",
 	}
 
-	// Try default local paths
-	defaultPaths := []string{
+	// Priority 2: user-specified local path
+	if c.localPath != "" {
+		localPaths = append(localPaths, c.localPath)
+	}
+
+	// Priority 3: default paths
+	localPaths = append(localPaths,
 		"/etc/packalares/catalog.json",
 		"/app/catalog.json",
 		"/tmp/packalares-catalog.json",
 		"catalog.json",
-	}
-	for _, p := range defaultPaths {
+	)
+
+	for _, p := range localPaths {
 		apps, err := c.loadLocal(p)
 		if err == nil && len(apps) > 0 {
 			c.setApps(apps)
-			klog.Infof("loaded %d apps from default path %s", len(apps), p)
+			klog.Infof("loaded %d apps from local file %s", len(apps), p)
 			return nil
 		}
 	}
 
-	// Try fetching from Olares appstore API
-	apps, err := c.fetchFromAppstore()
-	if err == nil && len(apps) > 0 {
-		c.setApps(apps)
-		klog.Infof("loaded %d apps from Olares appstore API", len(apps))
-		c.saveCacheFile(apps)
-		return nil
-	}
-	if err != nil {
-		klog.Warningf("fetch from appstore: %v", err)
-	}
-
-	// Fall back to GitHub beclab/apps repo
-	apps, err = c.fetchFromGitHub()
-	if err == nil && len(apps) > 0 {
-		c.setApps(apps)
-		klog.Infof("loaded %d apps from GitHub beclab/apps", len(apps))
-		c.saveCacheFile(apps)
-		return nil
-	}
-	if err != nil {
-		klog.Warningf("fetch from GitHub: %v", err)
-	}
-
-	// Fall back to built-in catalog
-	apps = builtinCatalog()
+	// Final fallback: built-in catalog (no network)
+	apps := builtinCatalog()
 	c.setApps(apps)
-	klog.Infof("loaded %d apps from built-in catalog", len(apps))
+	klog.Infof("loaded %d apps from built-in catalog (run sync to populate)", len(apps))
 	return nil
 }
 
@@ -629,7 +601,8 @@ func (c *Catalog) saveCacheFile(apps []MarketApp) {
 	}
 }
 
-// Refresh re-fetches the catalog if cache has expired.
+// Refresh reloads the catalog from local files if cache has expired.
+// No remote requests — only reads local catalog.json.
 func (c *Catalog) Refresh() error {
 	c.mu.RLock()
 	expired := time.Since(c.lastFetch) > c.cacheTTL
