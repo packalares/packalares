@@ -104,7 +104,7 @@
 
     <!-- Main Content -->
     <div class="market-content">
-      <!-- Search Bar -->
+      <!-- Toolbar -->
       <div class="market-toolbar">
         <q-input
           v-model="searchQuery"
@@ -119,6 +119,26 @@
             <q-icon name="sym_r_search" size="20px" />
           </template>
         </q-input>
+        <q-space />
+        <div class="sync-area">
+          <div v-if="syncStatus.state === 'running'" class="sync-progress">
+            <q-spinner-dots size="16px" color="white" />
+            <span class="sync-text">Syncing {{ syncStatus.currentApp || '...' }} ({{ syncStatus.syncedApps }}/{{ syncStatus.totalApps }})</span>
+          </div>
+          <div v-else-if="syncStatus.lastSync" class="sync-last">
+            <q-icon name="sym_r_check_circle" size="14px" color="positive" />
+            <span class="sync-text">{{ syncStatus.totalApps }} apps synced</span>
+          </div>
+          <q-btn
+            flat dense no-caps
+            :label="syncStatus.state === 'running' ? 'Syncing...' : 'Sync'"
+            icon="sym_r_sync"
+            class="sync-btn"
+            :loading="syncStatus.state === 'running'"
+            :disable="syncStatus.state === 'running'"
+            @click="triggerSync"
+          />
+        </div>
       </div>
 
       <!-- Discover View -->
@@ -442,7 +462,17 @@ const detailLoading = ref(false);
 const installingSet = reactive(new Set<string>());
 const appStates = reactive<Record<string, string>>({});
 
+const syncStatus = reactive({
+  state: '' as string,
+  totalApps: 0,
+  syncedApps: 0,
+  currentApp: '',
+  lastSync: '',
+  errors: [] as string[],
+});
+
 let ws: WebSocket | null = null;
+let syncPollTimer: ReturnType<typeof setInterval> | null = null;
 
 const installedStatusMap = computed(() => {
   const map: Record<string, string> = {};
@@ -673,6 +703,50 @@ function connectWebSocket() {
   }
 }
 
+async function triggerSync() {
+  try {
+    await api.post('/api/market/sync', { source: 'olares' });
+    syncStatus.state = 'running';
+    startSyncPoll();
+  } catch (e: any) {
+    $q.notify({ type: 'negative', message: 'Sync failed: ' + (e?.message || 'unknown') });
+  }
+}
+
+async function fetchSyncStatus() {
+  try {
+    const r: any = await api.get('/api/market/sync/status');
+    const d = r?.data || r || {};
+    syncStatus.state = d.state || '';
+    syncStatus.totalApps = d.total_apps || 0;
+    syncStatus.syncedApps = d.synced_apps || 0;
+    syncStatus.currentApp = d.current_app || '';
+    syncStatus.lastSync = d.last_sync || '';
+    syncStatus.errors = d.errors || [];
+
+    if (d.state === 'done' || d.state === 'error' || d.state === '') {
+      stopSyncPoll();
+      if (d.state === 'done') {
+        // Reload catalog after sync completes
+        await Promise.all([fetchApps(), fetchCategories()]);
+        $q.notify({ type: 'positive', message: `Synced ${d.total_apps} apps` });
+      }
+    }
+  } catch {}
+}
+
+function startSyncPoll() {
+  if (syncPollTimer) return;
+  syncPollTimer = setInterval(fetchSyncStatus, 2000);
+}
+
+function stopSyncPoll() {
+  if (syncPollTimer) {
+    clearInterval(syncPollTimer);
+    syncPollTimer = null;
+  }
+}
+
 // Watch for detail panel close to clean up
 watch(detailApp, (val) => {
   if (!val) {
@@ -683,16 +757,18 @@ watch(detailApp, (val) => {
 
 onMounted(async () => {
   loading.value = true;
-  await Promise.all([fetchApps(), fetchCategories(), fetchInstalled()]);
+  await Promise.all([fetchApps(), fetchCategories(), fetchInstalled(), fetchSyncStatus()]);
   loading.value = false;
   connectWebSocket();
+  // If sync is running, start polling
+  if (syncStatus.state === 'running') {
+    startSyncPoll();
+  }
 });
 
 onUnmounted(() => {
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
+  if (ws) { ws.close(); ws = null; }
+  stopSyncPoll();
 });
 </script>
 
@@ -795,6 +871,35 @@ onUnmounted(() => {
 .market-toolbar {
   padding: 20px 32px 0;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sync-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sync-progress, .sync-last {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sync-text {
+  font-size: 12px;
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+
+.sync-btn {
+  background: var(--accent-soft) !important;
+  color: var(--accent) !important;
+  border-radius: var(--radius-sm) !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
 }
 
 .market-search {
