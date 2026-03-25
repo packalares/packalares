@@ -1,6 +1,8 @@
 package appservice
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -22,21 +24,31 @@ const (
 	defaultChartsRepo = "beclab/apps"
 	// chartCacheDir is where downloaded charts are stored.
 	chartCacheDir = "/tmp/charts"
+	// defaultLocalChartRepo is the in-cluster market-backend chart server.
+	defaultLocalChartRepo = "http://market-backend:6756"
 )
 
 // ChartDownloader fetches Helm charts from a GitHub repository that stores
 // raw chart directories (Chart.yaml, values.yaml, templates/, etc.).
+// It can also download pre-packaged .tgz charts from a local Helm repo
+// served by market-backend.
 type ChartDownloader struct {
-	githubAPI  string
-	repo       string
-	httpClient *http.Client
+	githubAPI      string
+	repo           string
+	httpClient     *http.Client
+	localChartRepo string
 }
 
 // NewChartDownloader creates a downloader targeting the beclab/apps GitHub repo.
 func NewChartDownloader() *ChartDownloader {
+	localRepo := os.Getenv("LOCAL_CHART_REPO")
+	if localRepo == "" {
+		localRepo = defaultLocalChartRepo
+	}
 	return &ChartDownloader{
-		githubAPI: defaultGitHubAPI,
-		repo:      defaultChartsRepo,
+		githubAPI:      defaultGitHubAPI,
+		repo:           defaultChartsRepo,
+		localChartRepo: localRepo,
 		httpClient: &http.Client{
 			Timeout: 2 * time.Minute,
 		},
@@ -52,11 +64,29 @@ type githubContent struct {
 	Size        int    `json:"size"`
 }
 
-// DownloadChart downloads an app's chart directory from GitHub and saves it
-// locally to /tmp/charts/{appname}/. Returns the local path to the chart.
+// DownloadChart downloads an app's chart. It first tries the local chart repo
+// (market-backend) for a pre-packaged .tgz, then falls back to downloading
+// the raw chart directory from GitHub. Returns the local path to the chart.
 func (d *ChartDownloader) DownloadChart(ctx context.Context, appName string) (string, error) {
 	destDir := filepath.Join(chartCacheDir, appName)
 
+	// Try local chart repo first
+	if d.localChartRepo != "" {
+		localPath, err := d.DownloadChartFromRepo(ctx, d.localChartRepo, appName, destDir)
+		if err == nil {
+			klog.Infof("chart for %s downloaded from local repo to %s", appName, localPath)
+			return localPath, nil
+		}
+		klog.V(2).Infof("local chart repo for %s: %v, falling back to GitHub", appName, err)
+	}
+
+	// Fall back to GitHub
+	return d.downloadChartFromGitHub(ctx, appName, destDir)
+}
+
+// downloadChartFromGitHub downloads an app's chart directory from GitHub and
+// saves it locally. Returns the local path to the chart.
+func (d *ChartDownloader) downloadChartFromGitHub(ctx context.Context, appName, destDir string) (string, error) {
 	// Clean up any previous download
 	_ = os.RemoveAll(destDir)
 	if err := os.MkdirAll(destDir, 0755); err != nil {
@@ -79,6 +109,220 @@ func (d *ChartDownloader) DownloadChart(ctx context.Context, appName string) (st
 
 	klog.Infof("chart for %s downloaded to %s", appName, destDir)
 	return destDir, nil
+}
+
+// DownloadChartFromRepo downloads a pre-packaged .tgz chart from a Helm chart
+// repository and unpacks it into destDir. It first fetches the repo's index.yaml
+// to find the chart URL, then downloads and extracts the .tgz.
+// Returns the path to the unpacked chart directory.
+func (d *ChartDownloader) DownloadChartFromRepo(ctx context.Context, chartRepoURL, appName, destDir string) (string, error) {
+	// Clean up any previous download
+	_ = os.RemoveAll(destDir)
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return "", fmt.Errorf("create chart dir %s: %w", destDir, err)
+	}
+
+	// Fetch index.yaml to find the chart URL
+	chartURL, err := d.findChartInIndex(ctx, chartRepoURL, appName)
+	if err != nil {
+		_ = os.RemoveAll(destDir)
+		return "", fmt.Errorf("find chart %s in repo index: %w", appName, err)
+	}
+
+	// If the chartURL is relative, make it absolute
+	if !strings.HasPrefix(chartURL, "http") {
+		chartURL = strings.TrimSuffix(chartRepoURL, "/") + "/charts/" + chartURL
+	}
+
+	// Download the .tgz
+	tgzPath := filepath.Join(destDir, appName+".tgz")
+	if err := d.downloadSingleFile(ctx, chartURL, tgzPath); err != nil {
+		_ = os.RemoveAll(destDir)
+		return "", fmt.Errorf("download chart tgz %s: %w", appName, err)
+	}
+
+	// Unpack the .tgz into destDir
+	if err := unpackTGZ(tgzPath, destDir); err != nil {
+		_ = os.RemoveAll(destDir)
+		return "", fmt.Errorf("unpack chart %s: %w", appName, err)
+	}
+
+	// Remove the .tgz after unpacking
+	_ = os.Remove(tgzPath)
+
+	// The unpacked chart is in destDir/{chartname}/
+	// Find the directory containing Chart.yaml
+	chartDir, err := findChartDir(destDir)
+	if err != nil {
+		_ = os.RemoveAll(destDir)
+		return "", fmt.Errorf("find chart dir for %s: %w", appName, err)
+	}
+
+	return chartDir, nil
+}
+
+// repoIndex is a minimal representation of a Helm repo index.yaml.
+type repoIndex struct {
+	Entries map[string][]repoChartVersion `yaml:"entries"`
+}
+
+// repoChartVersion is a single chart version entry in the index.
+type repoChartVersion struct {
+	Name    string   `yaml:"name"`
+	Version string   `yaml:"version"`
+	URLs    []string `yaml:"urls"`
+}
+
+// findChartInIndex fetches the repo's index.yaml and finds the URL for appName.
+func (d *ChartDownloader) findChartInIndex(ctx context.Context, repoURL, appName string) (string, error) {
+	indexURL := strings.TrimSuffix(repoURL, "/") + "/charts/index.yaml"
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, indexURL, nil)
+	if err != nil {
+		return "", err
+	}
+
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("fetch index.yaml: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("index.yaml returned %d", resp.StatusCode)
+	}
+
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 10<<20)) // 10MB limit
+	if err != nil {
+		return "", fmt.Errorf("read index.yaml: %w", err)
+	}
+
+	var idx repoIndex
+	if err := yaml.Unmarshal(body, &idx); err != nil {
+		return "", fmt.Errorf("parse index.yaml: %w", err)
+	}
+
+	// Look for the chart by name. Also try with version suffix since
+	// helm repo index names entries as "{name}-{version}" sometimes.
+	for entryName, versions := range idx.Entries {
+		// Match exact name or name prefix
+		if entryName == appName || strings.HasPrefix(entryName, appName+"-") {
+			if len(versions) > 0 && len(versions[0].URLs) > 0 {
+				return versions[0].URLs[0], nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("chart %q not found in repo index", appName)
+}
+
+// downloadSingleFile downloads a file from a URL to a local path.
+func (d *ChartDownloader) downloadSingleFile(ctx context.Context, url, destPath string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+
+	resp, err := d.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("fetch %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("download %s: status %d", url, resp.StatusCode)
+	}
+
+	f, err := os.Create(destPath)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", destPath, err)
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, resp.Body); err != nil {
+		return fmt.Errorf("write %s: %w", destPath, err)
+	}
+
+	return nil
+}
+
+// unpackTGZ extracts a .tgz file into destDir.
+func unpackTGZ(tgzPath, destDir string) error {
+	f, err := os.Open(tgzPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return fmt.Errorf("gzip reader: %w", err)
+	}
+	defer gz.Close()
+
+	tr := tar.NewReader(gz)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("tar read: %w", err)
+		}
+
+		// Sanitize the path to prevent directory traversal
+		target := filepath.Join(destDir, header.Name)
+		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(destDir)) {
+			continue // skip paths that escape destDir
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return err
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return err
+			}
+			outFile, err := os.Create(target)
+			if err != nil {
+				return err
+			}
+			if _, err := io.Copy(outFile, tr); err != nil {
+				outFile.Close()
+				return err
+			}
+			outFile.Close()
+		}
+	}
+
+	return nil
+}
+
+// findChartDir finds the subdirectory containing Chart.yaml in destDir.
+func findChartDir(destDir string) (string, error) {
+	// Check if Chart.yaml is directly in destDir
+	if _, err := os.Stat(filepath.Join(destDir, "Chart.yaml")); err == nil {
+		return destDir, nil
+	}
+
+	// Check subdirectories one level deep
+	entries, err := os.ReadDir(destDir)
+	if err != nil {
+		return "", err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			subDir := filepath.Join(destDir, entry.Name())
+			if _, err := os.Stat(filepath.Join(subDir, "Chart.yaml")); err == nil {
+				return subDir, nil
+			}
+		}
+	}
+
+	return "", fmt.Errorf("no Chart.yaml found in %s or its subdirectories", destDir)
 }
 
 // downloadDir recursively downloads all files from a GitHub directory.

@@ -31,10 +31,14 @@ spec:
               value: "/etc/packalares/catalog.json"
             - name: MARKET_LISTEN_ADDR
               value: ":6756"
+            - name: MARKET_DATA_DIR
+              value: "/data/market"
           volumeMounts:
             - name: catalog
               mountPath: /etc/packalares
               readOnly: true
+            - name: market-data
+              mountPath: /data/market
           livenessProbe:
             httpGet:
               path: /market/healthz
@@ -59,6 +63,24 @@ spec:
           configMap:
             name: market-catalog
             optional: true
+        - name: market-data
+          persistentVolumeClaim:
+            claimName: market-data
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: market-data
+  namespace: {{FRAMEWORK_NAMESPACE}}
+  labels:
+    app: market-backend
+    tier: framework
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
 ---
 apiVersion: v1
 kind: Service
