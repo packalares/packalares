@@ -93,7 +93,7 @@ http {
     location /icons/ { proxy_pass http://$desktop_up:80; }
     location /bg/    { proxy_pass http://$desktop_up:80; }
     location /avatar-default.png { proxy_pass http://$desktop_up:80; }
-    location ~ \.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
+    location ~ ^/(?!api/)[^/]*\.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
 
     # --- Login page (public) ---
     location /login { proxy_pass http://$desktop_up:80; }
@@ -229,7 +229,7 @@ http {
     location /icons/ { proxy_pass http://$desktop_up:80; }
     location /bg/    { proxy_pass http://$desktop_up:80; }
     location /avatar-default.png { proxy_pass http://$desktop_up:80; }
-    location ~ \.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
+    location ~ ^/(?!api/)[^/]*\.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
     location /       { auth_request /_auth; proxy_pass http://$desktop_up:80; }
   }
 
@@ -255,7 +255,7 @@ http {
     location /css/   { proxy_pass http://$desktop_up:80; }
     location /fonts/ { proxy_pass http://$desktop_up:80; }
     location /bg/    { proxy_pass http://$desktop_up:80; }
-    location ~ \.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
+    location ~ ^/(?!api/)[^/]*\.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
     location /       { auth_request /_auth; proxy_pass http://$desktop_up:80; }
   }
 
@@ -275,7 +275,7 @@ http {
     location /js/    { proxy_pass http://$desktop_up:80; }
     location /css/   { proxy_pass http://$desktop_up:80; }
     location /fonts/ { proxy_pass http://$desktop_up:80; }
-    location ~ \.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
+    location ~ ^/(?!api/)[^/]*\.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
     location = /     { rewrite ^ /login last; }
     location /api/   { proxy_pass http://$auth_up:9091; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
     location /       { proxy_pass http://$desktop_up:80; }
