@@ -332,6 +332,17 @@ func SeedAndStart(ctx context.Context, listenAddr string, initialSecrets map[str
 		srv.publicKey = result.PublicKey
 		srv.privateKey = result.PrivateKey
 		log.Printf("tapr: seeded user=%s org=%s session=%s", srv.userID, srv.orgID, srv.sessionID)
+
+		// Create workspace immediately so it's ready when services call
+		token, err := srv.issueToken()
+		if err == nil {
+			wsID, err := srv.getOrCreateDefaultWorkspace(token)
+			if err != nil {
+				log.Printf("tapr: warning: create workspace: %v", err)
+			} else {
+				log.Printf("tapr: workspace ready: %s", wsID)
+			}
+		}
 	}
 
 	// Store initial secrets if provided
