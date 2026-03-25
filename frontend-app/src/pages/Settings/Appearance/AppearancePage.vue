@@ -84,9 +84,12 @@ const wallpapers = [
 const selectedWallpaper = ref(localStorage.getItem('packalares_wallpaper') || '/bg/macos4.jpg');
 const selectedTheme = ref(localStorage.getItem('packalares_theme') || 'dark');
 
+const wpChannel = new BroadcastChannel('packalares_settings');
+
 function selectWallpaper(wp: string) {
   selectedWallpaper.value = wp;
   localStorage.setItem('packalares_wallpaper', wp);
+  wpChannel.postMessage({ type: 'wallpaper', value: wp });
 }
 
 function selectTheme(theme: string) {

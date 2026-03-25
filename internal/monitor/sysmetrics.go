@@ -458,9 +458,12 @@ func readSystemInfo() sysInfoCache {
 
 	info := sysInfoCache{}
 
-	// Hostname
-	if data, err := os.ReadFile("/proc/sys/kernel/hostname"); err == nil {
-		info.hostname = strings.TrimSpace(string(data))
+	// Hostname — prefer NODE_NAME env (from downward API) over container hostname
+	info.hostname = os.Getenv("NODE_NAME")
+	if info.hostname == "" {
+		if data, err := os.ReadFile("/proc/sys/kernel/hostname"); err == nil {
+			info.hostname = strings.TrimSpace(string(data))
+		}
 	}
 
 	// OS version from /etc/os-release

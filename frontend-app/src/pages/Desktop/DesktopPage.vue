@@ -303,6 +303,15 @@ const monitorStore = useMonitorStore();
 // ─── State ───────────────────────────────────────────────────
 
 const wallpaper = ref(localStorage.getItem('packalares_wallpaper') || '/bg/macos4.jpg');
+
+// Watch for wallpaper changes from Settings/Appearance (works across tabs and iframes)
+const wpChannel = new BroadcastChannel('packalares_settings');
+wpChannel.onmessage = (e) => {
+  if (e.data?.type === 'wallpaper' && e.data.value) {
+    wallpaper.value = e.data.value;
+  }
+};
+
 const clockTime = ref('');
 const weekDay = ref('');
 const dateStr = ref('');
