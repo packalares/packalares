@@ -43,6 +43,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Chart and icon file serving
 	mux.HandleFunc("/charts/", h.handleServeChart)
 	mux.HandleFunc("/icons/", h.handleServeIcon)
+	mux.HandleFunc("/market/v1/icons/", h.handleServeIcon)
 
 	// Health check
 	mux.HandleFunc("/market/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -340,7 +341,10 @@ func (h *Handler) handleServeIcon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	filename := strings.TrimPrefix(r.URL.Path, "/icons/")
+	// Handle both /icons/ and /market/v1/icons/ paths
+	filename := r.URL.Path
+	filename = strings.TrimPrefix(filename, "/market/v1/icons/")
+	filename = strings.TrimPrefix(filename, "/icons/")
 	filename = filepath.Base(filename) // prevent directory traversal
 
 	if filename == "" || filename == "." {
