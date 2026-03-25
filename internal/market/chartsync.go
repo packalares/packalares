@@ -577,7 +577,8 @@ func mergeManifestIntoCatalog(catalog, manifest *MarketApp) {
 	if catalog.Icon == "" && manifest.Icon != "" {
 		catalog.Icon = manifest.Icon
 	}
-	if catalog.Description == "" && manifest.Description != "" {
+	// Replace description if empty or if it's just the title (stub from topic)
+	if manifest.Description != "" && (catalog.Description == "" || catalog.Description == catalog.Title || catalog.Description == catalog.Name) {
 		catalog.Description = manifest.Description
 	}
 	if catalog.Title == "" && manifest.Title != "" {
