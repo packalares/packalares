@@ -46,8 +46,10 @@ func NewOlaresSource() *OlaresSource {
 
 func (s *OlaresSource) Name() string { return "olares" }
 
-// FetchCatalog fetches the full app catalog from the Olares appstore API.
-func (s *OlaresSource) FetchCatalog(ctx context.Context) ([]MarketApp, error) {
+// FetchCatalog fetches the full enriched catalog from the Olares appstore API.
+// It reads ALL sections: apps, topics, recommends, tags, tops, latest, pages,
+// topic_lists — and assembles the master app list from all of them.
+func (s *OlaresSource) FetchCatalog(ctx context.Context) (*EnrichedCatalog, error) {
 	req, err := http.NewRequestWithContext(ctx, "GET", s.appstoreURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("create request: %w", err)
@@ -80,17 +82,287 @@ func (s *OlaresSource) FetchCatalog(ctx context.Context) ([]MarketApp, error) {
 		return nil, fmt.Errorf("appstore returned 0 apps")
 	}
 
-	apps := make([]MarketApp, 0, len(storeResp.Data.Apps))
-	for _, sa := range storeResp.Data.Apps {
+	// Step 1: Build master app map starting with data.apps
+	appMap := make(map[string]*MarketApp, len(storeResp.Data.Apps))
+	for id, sa := range storeResp.Data.Apps {
 		app := convertOlaresSourceApp(sa)
-		apps = append(apps, app)
+		if app.Name == "" {
+			app.Name = id
+		}
+		appMap[app.Name] = &app
+	}
+	klog.Infof("olares: %d apps from data.apps", len(appMap))
+
+	// Step 2: Parse topics — extract app references and enrich with topic metadata
+	topicAppsMapping := make(map[string]*olaresTopicData) // topic key -> parsed topic data
+	for topicKey, topicRaw := range storeResp.Data.Topics {
+		var topic olaresTopicEntry
+		if err := json.Unmarshal(topicRaw, &topic); err != nil {
+			klog.V(3).Infof("olares: skip topic %s: parse error: %v", topicKey, err)
+			continue
+		}
+
+		enUS := topic.Data.EnUS
+		topicAppsMapping[topicKey] = &enUS
+
+		// The "apps" field in topics maps display name -> chart name(s), comma-separated
+		if enUS.Apps != nil {
+			for _, chartNames := range enUS.Apps {
+				for _, chartName := range strings.Split(chartNames, ",") {
+					chartName = strings.TrimSpace(chartName)
+					if chartName == "" {
+						continue
+					}
+					if _, exists := appMap[chartName]; !exists {
+						// New app discovered from topic — create a stub
+						app := &MarketApp{
+							Name:      chartName,
+							ChartName: chartName,
+							Source:    "olares",
+							Status:   "active",
+							Type:     "app",
+							CfgType:  "app",
+						}
+						// Enrich from topic metadata
+						if enUS.Title != "" {
+							app.Title = enUS.Title
+						}
+						if enUS.Des != "" {
+							app.Description = enUS.Des
+						}
+						if enUS.IconImg != "" {
+							app.FeaturedImage = enUS.IconImg
+						}
+						appMap[chartName] = app
+						klog.V(2).Infof("olares: discovered app %q from topic %q", chartName, topicKey)
+					} else {
+						// App already exists — enrich it with topic metadata
+						existing := appMap[chartName]
+						if existing.FeaturedImage == "" && enUS.IconImg != "" {
+							existing.FeaturedImage = enUS.IconImg
+						}
+						if existing.Title == existing.Name && enUS.Title != "" {
+							// Topic has a nicer display title
+							existing.Title = enUS.Title
+						}
+					}
+				}
+			}
+		}
 	}
 
+	// Step 3: Parse recommends — add any new app references
+	recommendations := make(map[string]RecommendGroup)
+	for recKey, recRaw := range storeResp.Data.Recommends {
+		var rec olaresRecommendEntry
+		if err := json.Unmarshal(recRaw, &rec); err != nil {
+			klog.V(3).Infof("olares: skip recommend %s: parse error: %v", recKey, err)
+			continue
+		}
+
+		var appIDs []string
+		if rec.Content != "" {
+			for _, name := range strings.Split(rec.Content, ",") {
+				name = strings.TrimSpace(name)
+				if name == "" {
+					continue
+				}
+				appIDs = append(appIDs, name)
+				if _, exists := appMap[name]; !exists {
+					appMap[name] = &MarketApp{
+						Name:      name,
+						ChartName: name,
+						Source:    "olares",
+						Status:   "active",
+						Type:     "app",
+						CfgType:  "app",
+					}
+					klog.V(2).Infof("olares: discovered app %q from recommend %q", name, recKey)
+				}
+			}
+		}
+
+		rg := RecommendGroup{
+			Name:        rec.Name,
+			Description: rec.Description,
+			AppIDs:      appIDs,
+		}
+		if rec.Data.Title.EnUS != "" || rec.Data.Title.ZhCN != "" {
+			rg.Title = make(map[string]string)
+			if rec.Data.Title.EnUS != "" {
+				rg.Title["en-US"] = rec.Data.Title.EnUS
+			}
+			if rec.Data.Title.ZhCN != "" {
+				rg.Title["zh-CN"] = rec.Data.Title.ZhCN
+			}
+		}
+		recommendations[recKey] = rg
+	}
+
+	// Step 4: Parse tops — add any new app IDs
+	var tops []TopApp
+	for _, topRaw := range storeResp.Data.Tops {
+		var top TopApp
+		if err := json.Unmarshal(topRaw, &top); err != nil {
+			continue
+		}
+		tops = append(tops, top)
+		if top.AppID != "" {
+			if _, exists := appMap[top.AppID]; !exists {
+				appMap[top.AppID] = &MarketApp{
+					Name:      top.AppID,
+					ChartName: top.AppID,
+					Source:    "olares",
+					Status:   "active",
+					Type:     "app",
+					CfgType:  "app",
+				}
+				klog.V(2).Infof("olares: discovered app %q from tops", top.AppID)
+			}
+		}
+	}
+
+	// Step 5: Parse latest — add any new app IDs
+	var latest []string
+	for _, latestRaw := range storeResp.Data.Latest {
+		var appID string
+		if err := json.Unmarshal(latestRaw, &appID); err != nil {
+			continue
+		}
+		latest = append(latest, appID)
+		if _, exists := appMap[appID]; !exists {
+			appMap[appID] = &MarketApp{
+				Name:      appID,
+				ChartName: appID,
+				Source:    "olares",
+				Status:   "active",
+				Type:     "app",
+				CfgType:  "app",
+			}
+			klog.V(2).Infof("olares: discovered app %q from latest", appID)
+		}
+	}
+
+	// Step 6: Build categories from data.tags (the 8 real sidebar categories)
+	var categories []Category
+	for tagKey, tagRaw := range storeResp.Data.Tags {
+		var tag olaresTagEntry
+		if err := json.Unmarshal(tagRaw, &tag); err != nil {
+			klog.V(3).Infof("olares: skip tag %s: parse error: %v", tagKey, err)
+			continue
+		}
+		cat := Category{
+			Name: tag.Name,
+			Icon: tag.Icon,
+			Sort: tag.Sort,
+		}
+		if tag.Title.EnUS != "" || tag.Title.ZhCN != "" {
+			cat.Title = make(map[string]string)
+			if tag.Title.EnUS != "" {
+				cat.Title["en-US"] = tag.Title.EnUS
+			}
+			if tag.Title.ZhCN != "" {
+				cat.Title["zh-CN"] = tag.Title.ZhCN
+			}
+		}
+		categories = append(categories, cat)
+	}
+	sort.Slice(categories, func(i, j int) bool {
+		return categories[i].Sort < categories[j].Sort
+	})
+
+	// Step 7: Parse topic_lists
+	topicLists := make(map[string]TopicListEntry)
+	for tlKey, tlRaw := range storeResp.Data.TopicLists {
+		var tl olaresTopicListEntry
+		if err := json.Unmarshal(tlRaw, &tl); err != nil {
+			klog.V(3).Infof("olares: skip topic_list %s: parse error: %v", tlKey, err)
+			continue
+		}
+		var topicIDs []string
+		if tl.Content != "" {
+			for _, id := range strings.Split(tl.Content, ",") {
+				id = strings.TrimSpace(id)
+				if id != "" {
+					topicIDs = append(topicIDs, id)
+				}
+			}
+		}
+		entry := TopicListEntry{
+			Name:        tl.Name,
+			Type:        tl.Type,
+			Description: tl.Description,
+			TopicIDs:    topicIDs,
+		}
+		if tl.Title.EnUS != "" || tl.Title.ZhCN != "" {
+			entry.Title = make(map[string]string)
+			if tl.Title.EnUS != "" {
+				entry.Title["en-US"] = tl.Title.EnUS
+			}
+			if tl.Title.ZhCN != "" {
+				entry.Title["zh-CN"] = tl.Title.ZhCN
+			}
+		}
+		topicLists[tlKey] = entry
+	}
+
+	// Step 8: Parse pages
+	pages := make(map[string]PageLayout)
+	for pageKey, pageRaw := range storeResp.Data.Pages {
+		var page olaresPageEntry
+		if err := json.Unmarshal(pageRaw, &page); err != nil {
+			klog.V(3).Infof("olares: skip page %s: parse error: %v", pageKey, err)
+			continue
+		}
+		pages[pageKey] = PageLayout{
+			Category: page.Category,
+			Content:  page.Content,
+		}
+	}
+
+	// Step 9: Convert map to sorted slice
+	apps := make([]MarketApp, 0, len(appMap))
+	for _, app := range appMap {
+		// Ensure defaults
+		if app.Title == "" {
+			app.Title = app.Name
+		}
+		if app.ChartName == "" {
+			app.ChartName = app.Name
+		}
+		if app.Description == "" {
+			app.Description = app.Title
+		}
+		apps = append(apps, *app)
+	}
 	sort.Slice(apps, func(i, j int) bool {
 		return apps[i].Name < apps[j].Name
 	})
 
-	return apps, nil
+	// Compute category counts from the app data
+	catCount := make(map[string]int)
+	for _, app := range apps {
+		for _, cat := range app.Categories {
+			catCount[cat]++
+		}
+	}
+	for i := range categories {
+		categories[i].Count = catCount[categories[i].Name]
+	}
+
+	klog.Infof("olares: total %d apps (%d from data.apps + %d discovered), %d categories, %d recommendations, %d tops, %d latest",
+		len(apps), len(storeResp.Data.Apps), len(apps)-len(storeResp.Data.Apps),
+		len(categories), len(recommendations), len(tops), len(latest))
+
+	return &EnrichedCatalog{
+		Apps:            apps,
+		Categories:      categories,
+		Recommendations: recommendations,
+		TopicLists:      topicLists,
+		Tops:            tops,
+		Latest:          latest,
+		Pages:           pages,
+	}, nil
 }
 
 // DownloadAll downloads the entire beclab/apps repository as a single tarball
@@ -285,12 +557,21 @@ type olaresGithubContent struct {
 	DownloadURL string `json:"download_url"`
 }
 
+// olaresSourceResponse is the top-level API response envelope.
 type olaresSourceResponse struct {
 	Data olaresSourceData `json:"data"`
 }
 
+// olaresSourceData holds ALL nested data fields from the appstore API.
 type olaresSourceData struct {
-	Apps map[string]olaresSourceApp `json:"apps"`
+	Apps       map[string]olaresSourceApp    `json:"apps"`
+	Topics     map[string]json.RawMessage    `json:"topics"`
+	Recommends map[string]json.RawMessage    `json:"recommends"`
+	Tags       map[string]json.RawMessage    `json:"tags"`
+	Pages      map[string]json.RawMessage    `json:"pages"`
+	TopicLists map[string]json.RawMessage    `json:"topic_lists"`
+	Tops       []json.RawMessage             `json:"tops"`
+	Latest     []json.RawMessage             `json:"latest"`
 }
 
 type olaresSourceApp struct {
@@ -335,6 +616,65 @@ type olaresSourceApp struct {
 	Entrances          []Entrance      `json:"entrances"`
 	Permission         *AppPermission  `json:"permission"`
 	Dependencies       []Dependency    `json:"dependencies"`
+}
+
+// Topic-related types for parsing data.topics
+type olaresTopicEntry struct {
+	Name string `json:"name"`
+	Data struct {
+		EnUS olaresTopicData `json:"en-US"`
+	} `json:"data"`
+}
+
+type olaresTopicData struct {
+	Title     string            `json:"title"`
+	Des       string            `json:"des"`
+	IconImg   string            `json:"iconimg"`
+	DetailImg string            `json:"detailimg"`
+	Apps      map[string]string `json:"apps"` // display name -> chart name(s), comma-separated
+	RichText  string            `json:"richtext"`
+}
+
+// Recommend-related types for parsing data.recommends
+type olaresRecommendEntry struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Content     string `json:"content"` // comma-separated app names
+	Data        struct {
+		Title struct {
+			EnUS string `json:"en-US"`
+			ZhCN string `json:"zh-CN"`
+		} `json:"title"`
+	} `json:"data"`
+}
+
+// Tag type for parsing data.tags (the real sidebar categories)
+type olaresTagEntry struct {
+	Name  string `json:"name"`
+	Title struct {
+		EnUS string `json:"en-US"`
+		ZhCN string `json:"zh-CN"`
+	} `json:"title"`
+	Icon string `json:"icon"`
+	Sort int    `json:"sort"`
+}
+
+// TopicList type for parsing data.topic_lists
+type olaresTopicListEntry struct {
+	Name        string `json:"name"`
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	Content     string `json:"content"` // comma-separated topic IDs
+	Title       struct {
+		EnUS string `json:"en-US"`
+		ZhCN string `json:"zh-CN"`
+	} `json:"title"`
+}
+
+// Page type for parsing data.pages
+type olaresPageEntry struct {
+	Category string          `json:"category"`
+	Content  json.RawMessage `json:"content"` // JSON array of {type, id}
 }
 
 func convertOlaresSourceApp(sa olaresSourceApp) MarketApp {

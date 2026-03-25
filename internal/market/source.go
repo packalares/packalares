@@ -8,8 +8,9 @@ type Source interface {
 	// Name returns the source identifier (e.g. "olares").
 	Name() string
 
-	// FetchCatalog retrieves the full app catalog from this source.
-	FetchCatalog(ctx context.Context) ([]MarketApp, error)
+	// FetchCatalog retrieves the full enriched catalog from this source.
+	// Returns all apps, categories, recommendations, topics, rankings, etc.
+	FetchCatalog(ctx context.Context) (*EnrichedCatalog, error)
 
 	// DownloadAll downloads all charts in bulk to destDir.
 	// For sources that support it this is a single tarball download

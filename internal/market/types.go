@@ -1,5 +1,7 @@
 package market
 
+import "encoding/json"
+
 // MarketApp represents an app in the marketplace catalog.
 // This structure is compatible with the Olares marketplace format
 // so existing marketplace apps work without modification.
@@ -48,6 +50,7 @@ type MarketApp struct {
 	InstallCount     int64         `json:"installCount,omitempty"`
 	LastUpdated      string        `json:"lastUpdated,omitempty"`
 	HasChart         bool          `json:"hasChart,omitempty"`
+	FeaturedImage    string        `json:"featuredImage,omitempty"`
 }
 
 // Entrance for marketplace app.
@@ -88,9 +91,48 @@ type License struct {
 }
 
 // Category represents an app category.
+// When populated from appstore tags, includes icon and sort order.
 type Category struct {
-	Name  string `json:"name"`
-	Count int    `json:"count,omitempty"`
+	Name  string            `json:"name"`
+	Title map[string]string `json:"title,omitempty"` // locale -> display title
+	Icon  string            `json:"icon,omitempty"`
+	Sort  int               `json:"sort,omitempty"`
+	Count int               `json:"count,omitempty"`
+}
+
+// RecommendGroup is a named recommendation group from the appstore API.
+type RecommendGroup struct {
+	Name        string            `json:"name"`
+	Description string            `json:"description,omitempty"`
+	AppIDs      []string          `json:"appIds"`
+	Title       map[string]string `json:"title,omitempty"` // locale -> display title
+}
+
+// TopicListEntry is a curated topic list section from the appstore API.
+type TopicListEntry struct {
+	Name        string            `json:"name"`
+	Type        string            `json:"type,omitempty"`
+	Description string            `json:"description,omitempty"`
+	TopicIDs    []string          `json:"topicIds"`
+	Title       map[string]string `json:"title,omitempty"` // locale -> display title
+}
+
+// PageLayout holds page layout data from the appstore API.
+type PageLayout struct {
+	Category string          `json:"category"`
+	Content  json.RawMessage `json:"content,omitempty"`
+}
+
+// EnrichedCatalog is the full catalog structure saved to catalog.json.
+// It includes all appstore metadata beyond just the app list.
+type EnrichedCatalog struct {
+	Apps            []MarketApp               `json:"apps"`
+	Categories      []Category                `json:"categories"`
+	Recommendations map[string]RecommendGroup `json:"recommendations,omitempty"`
+	TopicLists      map[string]TopicListEntry `json:"topicLists,omitempty"`
+	Tops            []TopApp                  `json:"tops,omitempty"`
+	Latest          []string                  `json:"latest,omitempty"`
+	Pages           map[string]PageLayout     `json:"pages,omitempty"`
 }
 
 // --- API response types ---
