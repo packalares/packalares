@@ -78,7 +78,12 @@ api.interceptors.response.use(
   (response) => response.data,
   (error) => {
     if (error.response?.status === 401) {
-      window.location.href = getAuthUrl(window.location.href);
+      // Don't redirect on auth/totp or login page requests
+      const url = error.config?.url || '';
+      const onLoginPage = window.location.pathname.startsWith('/login');
+      if (!url.includes('/auth/totp') && !url.includes('/auth/login') && !onLoginPage) {
+        window.location.href = getAuthUrl(window.location.href);
+      }
     }
     return Promise.reject(error);
   }
