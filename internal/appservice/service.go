@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -403,9 +404,42 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 	}
 
 	// --- Step 4b: Move subcharts into charts/ directory for Helm discovery ---
-	// Olares apps put subcharts at root level (e.g. appname/appname/, appname/appnameserver/)
-	// but Helm expects them under charts/. Move any subdirectories that contain Chart.yaml.
 	restructureSubcharts(chartDir)
+
+	// --- Step 4c: Inject values into subcharts too ---
+	// Helm subcharts don't inherit parent values unless explicitly passed.
+	// Inject the same values into each subchart's values.yaml.
+	chartsSubdir := filepath.Join(chartDir, "charts")
+	if subEntries, err := os.ReadDir(chartsSubdir); err == nil {
+		for _, entry := range subEntries {
+			if entry.IsDir() {
+				subValuesOverrides := map[string]interface{}{
+					"domain":    domainMap,
+					"admin":     s.owner,
+					"namespace": s.namespace,
+					"bfl":       map[string]interface{}{"username": s.owner},
+					"user":      map[string]interface{}{"zone": zone},
+					"userspace": map[string]interface{}{
+						"appData":  "/packalares/data/appdata",
+						"appCache": "/packalares/data/appcache",
+						"userData": "/packalares/data",
+					},
+					"postgres": map[string]interface{}{
+						"host": pgHost, "port": pgPort,
+						"username": pgUser, "password": pgPass,
+						"databases": map[string]interface{}{dbName: dbName},
+					},
+					"redis": map[string]interface{}{
+						"host": redisHost, "port": redisPort, "password": redisPass,
+					},
+				}
+				subDir := filepath.Join(chartsSubdir, entry.Name())
+				if err := injectValuesYaml(subDir, subValuesOverrides); err != nil {
+					klog.V(2).Infof("inject subchart values %s: %v", entry.Name(), err)
+				}
+			}
+		}
+	}
 
 	// --- Step 5: helm install ---
 	rec.State = StateInstalling
