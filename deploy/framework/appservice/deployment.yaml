@@ -48,6 +48,10 @@ spec:
               value: "http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080"
             - name: APP_OWNER
               value: "{{USERNAME}}"
+            - name: USERNAME
+              value: "{{USERNAME}}"
+            - name: USER_ZONE
+              value: "{{USER_ZONE}}"
             - name: CHART_REPO_URL
               value: "http://chart-repo-service.{{FRAMEWORK_NAMESPACE}}:82/"
             - name: LLDAP_HOST
