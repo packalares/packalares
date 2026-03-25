@@ -71,6 +71,25 @@
         <span v-if="totpMsg" class="save-msg q-ml-md" :class="totpMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ totpMsg }}</span>
       </div>
 
+      <!-- Active Sessions -->
+      <div class="section-title">Active Sessions</div>
+      <div class="settings-card">
+        <div v-if="sessions.length === 0" class="empty-state">No active sessions</div>
+        <template v-for="(s, i) in sessions" :key="s.id">
+          <div class="session-row">
+            <div class="session-info">
+              <q-icon name="sym_r_devices" size="18px" class="q-mr-sm" style="color:var(--ink-3)" />
+              <div>
+                <div class="session-id">{{ s.id }}</div>
+                <div class="session-time">Last active: {{ new Date(s.last_activity).toLocaleString() }}</div>
+              </div>
+            </div>
+            <q-btn flat dense icon="sym_r_block" color="negative" size="sm" @click="revokeSession(s.id)" />
+          </div>
+          <q-separator v-if="i < sessions.length - 1" class="card-separator" />
+        </template>
+      </div>
+
       <!-- Logout -->
       <div class="section-title">Session</div>
       <div class="settings-card">
@@ -94,6 +113,7 @@ const newPassword = ref('');
 const confirmPassword = ref('');
 const changingPw = ref(false);
 const pwMsg = ref('');
+const sessions = ref<{id: string; last_activity: string; auth_level: number}[]>([]);
 const totpEnabled = ref(false);
 const totpURI = ref('');
 const totpSecret = ref('');
@@ -110,6 +130,12 @@ onMounted(async () => {
   try {
     const s: any = await api.get('/api/auth/state');
     totpEnabled.value = s?.totp_enabled || false;
+  } catch {}
+
+  // Load sessions
+  try {
+    const s: any = await api.get('/api/auth/sessions');
+    sessions.value = s?.sessions || [];
   } catch {}
 });
 
@@ -129,9 +155,9 @@ async function changePassword() {
 async function setupTOTP() {
   totpMsg.value = '';
   try {
-    const r: any = await api.get('/api/auth/totp/setup');
-    totpURI.value = r?.uri || r?.data?.uri || '';
-    totpSecret.value = r?.secret || r?.data?.secret || '';
+    const r: any = await api.post('/api/auth/totp/setup', {});
+    totpURI.value = r?.data?.otpauth || r?.otpauth || '';
+    totpSecret.value = r?.data?.secret || r?.secret || '';
   } catch (e: any) { totpMsg.value = 'Error: ' + (e?.message || 'failed to generate'); }
 }
 
@@ -152,6 +178,13 @@ async function disableTOTP() {
     totpEnabled.value = false;
     totpMsg.value = 'TOTP disabled';
   } catch (e: any) { totpMsg.value = 'Error: ' + (e?.message || 'failed'); }
+}
+
+async function revokeSession(id: string) {
+  try {
+    await api.delete('/api/auth/sessions', { data: { session_id: id } });
+    sessions.value = sessions.value.filter(s => s.id !== id);
+  } catch {}
 }
 
 async function logout() {
@@ -184,4 +217,9 @@ async function logout() {
 .totp-qr img { border-radius: 8px; }
 .totp-secret-display { font-size: 12px; color: var(--ink-3); text-align: center; margin-bottom: 12px; }
 .totp-secret-display code { color: var(--ink-1); background: var(--bg-3); padding: 2px 8px; border-radius: 4px; font-family: monospace; }
+.empty-state { padding: 20px; color: var(--ink-3); font-size: 13px; text-align: center; }
+.session-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 20px; }
+.session-info { display: flex; align-items: center; }
+.session-id { font-size: 13px; font-weight: 500; color: var(--ink-1); font-family: monospace; }
+.session-time { font-size: 11px; color: var(--ink-3); }
 </style>

@@ -53,6 +53,12 @@ http {
     # --- Protected API (auth required) ---
     location /api/auth/verify   { auth_request /_auth; proxy_pass http://$auth_up:9091/api/verify; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
     location /api/auth/password { auth_request /_auth; proxy_pass http://$auth_up:9091/api/auth/password; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+    location /api/auth/ {
+      auth_request /_auth;
+      proxy_pass http://$auth_up:9091;
+      proxy_set_header Host $host;
+      proxy_set_header Cookie $http_cookie;
+    }
     location /api/market/       { auth_request /_auth; proxy_pass http://$market_up:6756/market/v1/; proxy_set_header Host $host; }
     location /api/apps/         { auth_request /_auth; proxy_pass http://$app_up:6755/app-service/v1/; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
     location /api/desktop/init      { auth_request /_auth; proxy_pass http://$app_up:6755/server/init; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
