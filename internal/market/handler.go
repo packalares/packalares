@@ -40,10 +40,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/market/v1/sync", h.handleSync)
 	mux.HandleFunc("/market/v1/sync/status", h.handleSyncStatus)
 
-	// Chart and icon file serving
+	// Chart, icon, and screenshot file serving
 	mux.HandleFunc("/charts/", h.handleServeChart)
 	mux.HandleFunc("/icons/", h.handleServeIcon)
 	mux.HandleFunc("/market/v1/icons/", h.handleServeIcon)
+	mux.HandleFunc("/market/v1/screenshots/", h.handleServeScreenshot)
 
 	// Health check
 	mux.HandleFunc("/market/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -58,6 +59,10 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/categories", h.handleCategories)
 	mux.HandleFunc("/api/v1/search", h.handleSearch)
 	mux.HandleFunc("/api/v1/recommendations", h.handleRecommendations)
+
+	// Screenshot serving under /api/ prefix too
+	mux.HandleFunc("/api/market/screenshots/", h.handleServeScreenshot)
+	mux.HandleFunc("/api/market/icons/", h.handleServeIcon)
 }
 
 // handleListApps handles GET /market/v1/apps
@@ -341,10 +346,14 @@ func (h *Handler) handleServeIcon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Handle both /icons/ and /market/v1/icons/ paths
+	// Handle multiple path prefixes
 	filename := r.URL.Path
-	filename = strings.TrimPrefix(filename, "/market/v1/icons/")
-	filename = strings.TrimPrefix(filename, "/icons/")
+	for _, prefix := range []string{"/api/market/icons/", "/market/v1/icons/", "/icons/"} {
+		if strings.HasPrefix(filename, prefix) {
+			filename = strings.TrimPrefix(filename, prefix)
+			break
+		}
+	}
 	filename = filepath.Base(filename) // prevent directory traversal
 
 	if filename == "" || filename == "." {
@@ -358,6 +367,43 @@ func (h *Handler) handleServeIcon(w http.ResponseWriter, r *http.Request) {
 	}
 
 	filePath := filepath.Join(dataDir, iconsSubdir, filename)
+	http.ServeFile(w, r, filePath)
+}
+
+// handleServeScreenshot serves cached screenshot files from the screenshots directory.
+// Path format: /api/market/screenshots/{appname}/{filename}
+// or /market/v1/screenshots/{appname}/{filename}
+func (h *Handler) handleServeScreenshot(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	// Extract the path after the prefix
+	pathSuffix := r.URL.Path
+	for _, prefix := range []string{"/api/market/screenshots/", "/market/v1/screenshots/"} {
+		if strings.HasPrefix(pathSuffix, prefix) {
+			pathSuffix = strings.TrimPrefix(pathSuffix, prefix)
+			break
+		}
+	}
+
+	// pathSuffix should be "appname/filename"
+	parts := strings.SplitN(pathSuffix, "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		writeError(w, http.StatusBadRequest, "path format: /screenshots/{appname}/{filename}")
+		return
+	}
+
+	appName := filepath.Base(parts[0]) // prevent traversal
+	filename := filepath.Base(parts[1]) // prevent traversal
+
+	dataDir := defaultDataDir
+	if h.syncMgr != nil {
+		dataDir = h.syncMgr.DataDir()
+	}
+
+	filePath := filepath.Join(dataDir, screenshotsSubdir, appName, filename)
 	http.ServeFile(w, r, filePath)
 }
 

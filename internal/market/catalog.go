@@ -31,11 +31,11 @@ type Catalog struct {
 	cacheTTL   time.Duration
 
 	// Appstore-provided curated data
-	recommendations map[string][]string // group name -> app IDs
-	topics          map[string][]string // topic name -> app IDs
-	tops            []TopApp            // ranked apps
-	latest          []string            // latest app IDs
-	pages           map[string][]string // category name -> app IDs
+	recommendations map[string]RecommendGroup
+	topicLists      map[string]TopicListEntry
+	tops            []TopApp
+	latest          []string
+	pages           map[string]PageLayout
 
 	// Detail cache: enriched app data fetched from GitHub
 	detailMu    sync.RWMutex
@@ -51,9 +51,9 @@ type Catalog struct {
 func NewCatalog(marketURL, localPath string) *Catalog {
 	c := &Catalog{
 		appsByName:      make(map[string]*MarketApp),
-		recommendations: make(map[string][]string),
-		topics:          make(map[string][]string),
-		pages:           make(map[string][]string),
+		recommendations: make(map[string]RecommendGroup),
+		topicLists:      make(map[string]TopicListEntry),
+		pages:           make(map[string]PageLayout),
 		detailCache:     make(map[string]*MarketApp),
 		cacheTTL:        30 * time.Minute,
 		marketURL:       marketURL,
@@ -66,7 +66,7 @@ func NewCatalog(marketURL, localPath string) *Catalog {
 
 // Load reads the catalog from local files only. No remote requests.
 // Use the sync API (POST /market/v1/sync) to fetch from external sources.
-// Priority: synced catalog → user-specified path → default paths → built-in fallback.
+// Priority: synced catalog -> user-specified path -> default paths -> built-in fallback.
 func (c *Catalog) Load() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -90,10 +90,10 @@ func (c *Catalog) Load() error {
 	)
 
 	for _, p := range localPaths {
-		apps, err := c.loadLocal(p)
-		if err == nil && len(apps) > 0 {
-			c.setApps(apps)
-			klog.Infof("loaded %d apps from local file %s", len(apps), p)
+		enriched, err := c.loadLocal(p)
+		if err == nil && len(enriched.Apps) > 0 {
+			c.setFromEnriched(enriched)
+			klog.Infof("loaded %d apps from local file %s", len(enriched.Apps), p)
 			return nil
 		}
 	}
@@ -105,16 +105,71 @@ func (c *Catalog) Load() error {
 	return nil
 }
 
+// setFromEnriched populates the catalog from an EnrichedCatalog.
+func (c *Catalog) setFromEnriched(ec *EnrichedCatalog) {
+	c.apps = ec.Apps
+	c.appsByName = make(map[string]*MarketApp, len(ec.Apps))
+	for i := range ec.Apps {
+		ec.Apps[i].Categories = cleanCategories(ec.Apps[i].Categories)
+		c.appsByName[ec.Apps[i].Name] = &ec.Apps[i]
+	}
+
+	// Use enriched categories if available, else derive from apps
+	if len(ec.Categories) > 0 {
+		c.categories = ec.Categories
+		// Update counts from actual app data
+		catCount := make(map[string]int)
+		for _, app := range ec.Apps {
+			for _, cat := range app.Categories {
+				catCount[cat]++
+			}
+		}
+		for i := range c.categories {
+			c.categories[i].Count = catCount[c.categories[i].Name]
+		}
+	} else {
+		c.deriveCategories()
+	}
+
+	// Set curated data
+	if ec.Recommendations != nil {
+		c.recommendations = ec.Recommendations
+	}
+	if ec.TopicLists != nil {
+		c.topicLists = ec.TopicLists
+	}
+	if ec.Tops != nil {
+		c.tops = ec.Tops
+	}
+	if ec.Latest != nil {
+		c.latest = ec.Latest
+	}
+	if ec.Pages != nil {
+		c.pages = ec.Pages
+	}
+
+	c.lastFetch = time.Now()
+}
+
 func (c *Catalog) setApps(apps []MarketApp) {
 	c.apps = apps
 	c.appsByName = make(map[string]*MarketApp, len(apps))
-	catCount := make(map[string]int)
 
 	for i := range apps {
 		// Ensure categories are clean (no version suffixes)
 		apps[i].Categories = cleanCategories(apps[i].Categories)
 		c.appsByName[apps[i].Name] = &apps[i]
-		for _, cat := range apps[i].Categories {
+	}
+
+	c.deriveCategories()
+	c.lastFetch = time.Now()
+}
+
+// deriveCategories builds the category list from app data.
+func (c *Catalog) deriveCategories() {
+	catCount := make(map[string]int)
+	for _, app := range c.apps {
+		for _, cat := range app.Categories {
 			catCount[cat]++
 		}
 	}
@@ -126,8 +181,6 @@ func (c *Catalog) setApps(apps []MarketApp) {
 	sort.Slice(c.categories, func(i, j int) bool {
 		return c.categories[i].Name < c.categories[j].Name
 	})
-
-	c.lastFetch = time.Now()
 }
 
 // appstoreResponse is the top-level JSON envelope from the Olares appstore API.
@@ -251,7 +304,7 @@ func (c *Catalog) fetchFromAppstore() ([]MarketApp, error) {
 	// Extract categories from pages and assign them to apps.
 	// The pages structure maps category names (possibly with version suffixes
 	// like "Productivity_v112") to lists of app IDs in that category.
-	c.pages = make(map[string][]string)
+	c.pages = make(map[string]PageLayout)
 	for catName, raw := range storeResp.Data.Pages {
 		clean := catVersionSuffix.ReplaceAllString(catName, "")
 
@@ -267,7 +320,7 @@ func (c *Catalog) fetchFromAppstore() ([]MarketApp, error) {
 			}
 		}
 
-		c.pages[clean] = appIDs
+		c.pages[clean] = PageLayout{Category: clean, Content: raw}
 
 		// Assign this category to each app that appears in the page
 		for _, id := range appIDs {
@@ -278,7 +331,7 @@ func (c *Catalog) fetchFromAppstore() ([]MarketApp, error) {
 	}
 
 	// Extract recommendation group names and resolve app IDs
-	c.recommendations = make(map[string][]string)
+	c.recommendations = make(map[string]RecommendGroup)
 	for groupName, raw := range storeResp.Data.Recommends {
 		var appIDs []string
 		if err := json.Unmarshal(raw, &appIDs); err != nil {
@@ -289,10 +342,13 @@ func (c *Catalog) fetchFromAppstore() ([]MarketApp, error) {
 				appIDs = group.Apps
 			}
 		}
-		c.recommendations[groupName] = appIDs
+		c.recommendations[groupName] = RecommendGroup{
+			Name:   groupName,
+			AppIDs: appIDs,
+		}
 	}
 
-	c.topics = make(map[string][]string)
+	c.topicLists = make(map[string]TopicListEntry)
 	for topicName, raw := range storeResp.Data.Topics {
 		var appIDs []string
 		if err := json.Unmarshal(raw, &appIDs); err != nil {
@@ -303,7 +359,10 @@ func (c *Catalog) fetchFromAppstore() ([]MarketApp, error) {
 				appIDs = topic.Apps
 			}
 		}
-		c.topics[topicName] = appIDs
+		c.topicLists[topicName] = TopicListEntry{
+			Name:     topicName,
+			TopicIDs: appIDs,
+		}
 	}
 	c.tops = storeResp.Data.Tops
 	c.latest = storeResp.Data.Latest
@@ -559,25 +618,35 @@ func (c *Catalog) fetchManifest(client *http.Client, appName string) (MarketApp,
 	return parseOlaresManifest(yamlData, appName)
 }
 
-func (c *Catalog) loadLocal(path string) ([]MarketApp, error) {
+// loadLocal loads a catalog from a local JSON file.
+// Supports both the enriched format and legacy flat array format.
+func (c *Catalog) loadLocal(path string) (*EnrichedCatalog, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var apps []MarketApp
-	if err := json.Unmarshal(data, &apps); err != nil {
-		// Try wrapped format
-		var wrapped struct {
-			Data []MarketApp `json:"data"`
-		}
-		if err := json.Unmarshal(data, &wrapped); err != nil {
-			return nil, err
-		}
-		return wrapped.Data, nil
+	// Try enriched format first (has "apps" key at top level)
+	var enriched EnrichedCatalog
+	if err := json.Unmarshal(data, &enriched); err == nil && len(enriched.Apps) > 0 {
+		return &enriched, nil
 	}
 
-	return apps, nil
+	// Try flat array of apps
+	var apps []MarketApp
+	if err := json.Unmarshal(data, &apps); err == nil && len(apps) > 0 {
+		return &EnrichedCatalog{Apps: apps}, nil
+	}
+
+	// Try wrapped format with "data" key
+	var wrapped struct {
+		Data []MarketApp `json:"data"`
+	}
+	if err := json.Unmarshal(data, &wrapped); err == nil && len(wrapped.Data) > 0 {
+		return &EnrichedCatalog{Apps: wrapped.Data}, nil
+	}
+
+	return nil, fmt.Errorf("unrecognized catalog format in %s", path)
 }
 
 // saveCacheFile writes the fetched apps to a local cache file so subsequent
@@ -639,9 +708,8 @@ func (c *Catalog) GetApp(name string) (*MarketApp, bool) {
 }
 
 // ListCategories returns all known categories.
-// Categories are always derived from actual app data to ensure correct counts.
-// The version suffixes (e.g. "_v112") are stripped during app ingestion so
-// categories like "Productivity_v112" merge into "Productivity".
+// Categories come from appstore tags when available (with icons and sort order),
+// or are derived from actual app data as a fallback.
 func (c *Catalog) ListCategories() []Category {
 	_ = c.Refresh()
 
@@ -663,9 +731,9 @@ func (c *Catalog) ListRecommendations() map[string][]MarketApp {
 	defer c.mu.RUnlock()
 
 	result := make(map[string][]MarketApp, len(c.recommendations))
-	for groupName, appIDs := range c.recommendations {
+	for groupName, rec := range c.recommendations {
 		var apps []MarketApp
-		for _, id := range appIDs {
+		for _, id := range rec.AppIDs {
 			if app, ok := c.appsByName[id]; ok {
 				apps = append(apps, *app)
 			}

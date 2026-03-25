@@ -21,11 +21,12 @@ import (
 
 const (
 	// defaultDataDir is the base directory for synced chart data.
-	defaultDataDir = "/data/market"
-	chartsSubdir   = "charts"
-	iconsSubdir    = "icons"
-	catalogFile    = "catalog.json"
-	statusFile     = "sync-status.json"
+	defaultDataDir   = "/data/market"
+	chartsSubdir     = "charts"
+	iconsSubdir      = "icons"
+	screenshotsSubdir = "screenshots"
+	catalogFile      = "catalog.json"
+	statusFile       = "sync-status.json"
 )
 
 // SyncStatus tracks the current sync state.
@@ -102,12 +103,13 @@ func (m *ChartSyncManager) IsRunning() bool {
 // Runs in the calling goroutine (caller should use `go` for background).
 //
 // The new flow for each source:
-//  1. FetchCatalog → get basic app list (names, icons, categories) from appstore API
-//  2. DownloadAll → download entire repo tarball in ONE HTTP request, extract to tmpDir
-//  3. Walk extracted app directories, parse OlaresManifest.yaml + Chart.yaml
-//  4. Merge manifest data into catalog apps (enriching with full descriptions, etc.)
-//  5. Package each chart into .tgz, cache icons, generate index.yaml
-//  6. Save enriched catalog.json with ALL data
+//  1. FetchCatalog -> get enriched catalog (apps, categories, recs, etc.) from appstore API
+//  2. DownloadAll -> download entire repo tarball in ONE HTTP request, extract to tmpDir
+//  3. Iterate over CATALOG apps (not directory listing), check for matching chart dirs
+//  4. Parse OlaresManifest.yaml + Chart.yaml for apps that have chart directories
+//  5. Merge manifest data into catalog apps (enriching with full descriptions, etc.)
+//  6. Package each chart into .tgz, cache icons and screenshots, generate index.yaml
+//  7. Save enriched catalog.json with ALL metadata
 func (m *ChartSyncManager) SyncAll(ctx context.Context, sourceNames []string) {
 	if m.IsRunning() {
 		klog.Warning("chart sync already running, skipping")
@@ -124,8 +126,10 @@ func (m *ChartSyncManager) SyncAll(ctx context.Context, sourceNames []string) {
 	// Ensure directories exist
 	chartsDir := filepath.Join(m.dataDir, chartsSubdir)
 	iconsDir := filepath.Join(m.dataDir, iconsSubdir)
+	screenshotsDir := filepath.Join(m.dataDir, screenshotsSubdir)
 	_ = os.MkdirAll(chartsDir, 0755)
 	_ = os.MkdirAll(iconsDir, 0755)
+	_ = os.MkdirAll(screenshotsDir, 0755)
 
 	m.mu.Lock()
 	m.status.State = "running"
@@ -137,20 +141,21 @@ func (m *ChartSyncManager) SyncAll(ctx context.Context, sourceNames []string) {
 	m.status.FinishedAt = ""
 	m.mu.Unlock()
 
-	var allApps []MarketApp
+	var finalCatalog *EnrichedCatalog
 
 	for _, src := range srcs {
 		if ctx.Err() != nil {
 			break
 		}
 
-		apps, err := m.syncSource(ctx, src, chartsDir, iconsDir)
+		enriched, err := m.syncSource(ctx, src, chartsDir, iconsDir, screenshotsDir)
 		if err != nil {
 			m.addError(fmt.Sprintf("sync source %s: %v", src.Name(), err))
 			continue
 		}
 
-		allApps = append(allApps, apps...)
+		// Use the last successful enriched catalog
+		finalCatalog = enriched
 
 		m.mu.Lock()
 		m.status.LastSync[src.Name()] = time.Now().UTC().Format(time.RFC3339)
@@ -160,15 +165,17 @@ func (m *ChartSyncManager) SyncAll(ctx context.Context, sourceNames []string) {
 	// Generate helm repo index
 	m.generateIndex(chartsDir)
 
-	// Save catalog.json
-	m.saveCatalog(allApps)
+	// Save enriched catalog.json
+	if finalCatalog != nil && len(finalCatalog.Apps) > 0 {
+		m.saveCatalog(finalCatalog)
 
-	// Update the in-memory catalog
-	if m.catalog != nil && len(allApps) > 0 {
-		m.catalog.mu.Lock()
-		m.catalog.setApps(allApps)
-		m.catalog.mu.Unlock()
-		klog.Infof("chart sync: updated in-memory catalog with %d apps", len(allApps))
+		// Update the in-memory catalog
+		if m.catalog != nil {
+			m.catalog.mu.Lock()
+			m.catalog.setFromEnriched(finalCatalog)
+			m.catalog.mu.Unlock()
+			klog.Infof("chart sync: updated in-memory catalog with %d apps", len(finalCatalog.Apps))
+		}
 	}
 
 	m.mu.Lock()
@@ -184,19 +191,20 @@ func (m *ChartSyncManager) SyncAll(ctx context.Context, sourceNames []string) {
 }
 
 // syncSource runs the full sync for a single source using the bulk tarball flow.
-func (m *ChartSyncManager) syncSource(ctx context.Context, src Source, chartsDir, iconsDir string) ([]MarketApp, error) {
-	// Step 1: Fetch catalog from appstore API (basic app list)
+// It is catalog-driven: iterates over catalog apps, not directory listings.
+func (m *ChartSyncManager) syncSource(ctx context.Context, src Source, chartsDir, iconsDir, screenshotsDir string) (*EnrichedCatalog, error) {
+	// Step 1: Fetch enriched catalog from appstore API (all apps + metadata)
 	klog.Infof("chart sync: fetching catalog from source %q", src.Name())
-	catalogApps, err := src.FetchCatalog(ctx)
+	enriched, err := src.FetchCatalog(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("fetch catalog: %w", err)
 	}
-	klog.Infof("chart sync: got %d apps from %s catalog", len(catalogApps), src.Name())
+	klog.Infof("chart sync: got %d apps from %s catalog", len(enriched.Apps), src.Name())
 
-	// Build lookup map: app name -> catalog MarketApp
-	catalogMap := make(map[string]*MarketApp, len(catalogApps))
-	for i := range catalogApps {
-		catalogMap[catalogApps[i].Name] = &catalogApps[i]
+	// Build lookup map: app name -> index in enriched.Apps
+	catalogIndex := make(map[string]int, len(enriched.Apps))
+	for i := range enriched.Apps {
+		catalogIndex[enriched.Apps[i].Name] = i
 	}
 
 	// Step 2: Bulk download all charts via tarball
@@ -218,67 +226,67 @@ func (m *ChartSyncManager) syncSource(ctx context.Context, src Source, chartsDir
 	}
 	klog.Infof("chart sync: extracted root is %s", extractedRoot)
 
-	// Step 4: Walk app directories, parse manifests, merge, package
-	appDirs, err := os.ReadDir(extractedRoot)
-	if err != nil {
-		return nil, fmt.Errorf("read extracted root: %w", err)
-	}
-
 	m.mu.Lock()
-	m.status.TotalApps = len(appDirs)
+	m.status.TotalApps = len(enriched.Apps)
 	m.mu.Unlock()
 
-	var resultApps []MarketApp
-
-	for _, entry := range appDirs {
+	// Step 4: Iterate over CATALOG apps (not directory listing)
+	// For each catalog app, check if a matching chart directory exists
+	for i := range enriched.Apps {
 		if ctx.Err() != nil {
 			break
 		}
 
-		// Skip hidden dirs and non-directories
-		if !entry.IsDir() || strings.HasPrefix(entry.Name(), ".") {
-			continue
-		}
-
-		appName := entry.Name()
+		app := &enriched.Apps[i]
+		appName := app.Name
 		appDir := filepath.Join(extractedRoot, appName)
-
-		// Skip non-chart dirs (no Chart.yaml)
-		chartYamlPath := filepath.Join(appDir, "Chart.yaml")
-		if _, err := os.Stat(chartYamlPath); os.IsNotExist(err) {
-			klog.V(3).Infof("chart sync: skipping %s (no Chart.yaml)", appName)
-			continue
-		}
 
 		m.mu.Lock()
 		m.status.CurrentApp = appName
 		m.mu.Unlock()
 
-		klog.V(2).Infof("chart sync: processing %s", appName)
+		// Check if chart directory exists in the tarball
+		chartYamlPath := filepath.Join(appDir, "Chart.yaml")
+		hasChartDir := false
+		if _, err := os.Stat(chartYamlPath); err == nil {
+			hasChartDir = true
+		}
 
-		// Parse OlaresManifest.yaml (or TerminusManifest.yaml)
-		manifestApp := m.parseManifestFromDir(appDir, appName)
+		if hasChartDir {
+			klog.V(2).Infof("chart sync: processing %s (has chart)", appName)
 
-		// Parse Chart.yaml for chartVersion and appVersion
-		chartVersion, appVersion := m.parseChartYaml(appDir)
+			// Parse OlaresManifest.yaml
+			manifestApp := m.parseManifestFromDir(appDir, appName)
 
-		// Start with the catalog entry if it exists, otherwise use the manifest data
-		var app MarketApp
-		if catalogEntry, ok := catalogMap[appName]; ok {
-			app = *catalogEntry
+			// Parse Chart.yaml for chartVersion and appVersion
+			chartVersion, appVersion := m.parseChartYaml(appDir)
+
 			// Enrich catalog data with manifest data where the catalog is missing info
-			mergeManifestIntoCatalog(&app, &manifestApp)
-		} else {
-			// App exists in repo but not in appstore API — use manifest data entirely
-			app = manifestApp
-		}
+			mergeManifestIntoCatalog(app, &manifestApp)
 
-		// Set chart version info from Chart.yaml
-		if chartVersion != "" && app.Version == "" {
-			app.Version = chartVersion
-		}
-		if appVersion != "" && app.VersionName == "" {
-			app.VersionName = appVersion
+			// Set chart version info from Chart.yaml
+			if chartVersion != "" && app.Version == "" {
+				app.Version = chartVersion
+			}
+			if appVersion != "" && app.VersionName == "" {
+				app.VersionName = appVersion
+			}
+
+			// Package the chart
+			existingTgz := m.findExistingChart(chartsDir, appName)
+			if existingTgz != "" {
+				klog.V(2).Infof("chart sync: %s already cached at %s, skipping packaging", appName, existingTgz)
+				app.HasChart = true
+			} else {
+				if err := m.packageChart(appDir, chartsDir); err != nil {
+					klog.Warningf("chart sync: package %s: %v", appName, err)
+					m.addError(fmt.Sprintf("package chart %s: %v", appName, err))
+				} else {
+					app.HasChart = true
+				}
+			}
+		} else {
+			klog.V(3).Infof("chart sync: %s in catalog but no chart dir in repo", appName)
 		}
 
 		// Ensure source is set
@@ -299,50 +307,132 @@ func (m *ChartSyncManager) syncSource(ctx context.Context, src Source, chartsDir
 			}
 		}
 
-		// Check if chart .tgz already exists — skip packaging if so
-		existingTgz := m.findExistingChart(chartsDir, appName)
-		if existingTgz != "" {
-			klog.V(2).Infof("chart sync: %s already cached at %s, skipping packaging", appName, existingTgz)
-			app.HasChart = true
-		} else {
-			// Package the chart directory into a .tgz
-			if err := m.packageChart(appDir, chartsDir); err != nil {
-				klog.Warningf("chart sync: package %s: %v", appName, err)
-				m.addError(fmt.Sprintf("package chart %s: %v", appName, err))
-			} else {
-				app.HasChart = true
-			}
+		// Cache screenshots (promoteImage URLs) locally
+		if len(app.PromoteImage) > 0 {
+			app.PromoteImage = m.cacheScreenshots(ctx, appName, app.PromoteImage, screenshotsDir)
 		}
 
-		// Remove from catalogMap so we can track which catalog-only apps have no chart
-		delete(catalogMap, appName)
-
-		resultApps = append(resultApps, app)
+		// Cache featured image if present
+		if app.FeaturedImage != "" && strings.HasPrefix(app.FeaturedImage, "http") {
+			localFeatured := m.cacheFeaturedImage(ctx, appName, app.FeaturedImage, screenshotsDir)
+			if localFeatured != "" {
+				app.FeaturedImage = localFeatured
+			}
+		}
 
 		m.mu.Lock()
 		m.status.SyncedApps++
 		m.mu.Unlock()
 	}
 
-	// Add any remaining catalog apps that had no chart directory in the repo
-	// (they still appear in the catalog but without HasChart)
-	for _, catalogApp := range catalogMap {
-		// Cache icon
-		if catalogApp.Icon != "" && strings.HasPrefix(catalogApp.Icon, "http") {
-			iconPath := filepath.Join(iconsDir, catalogApp.Name+".png")
-			if _, err := os.Stat(iconPath); os.IsNotExist(err) {
-				localIcon := m.cacheIcon(ctx, catalogApp.Name, catalogApp.Icon, iconsDir)
-				if localIcon != "" {
-					catalogApp.Icon = localIcon
-				}
-			} else {
-				catalogApp.Icon = "/icons/" + catalogApp.Name + ".png"
-			}
+	return enriched, nil
+}
+
+// cacheScreenshots downloads promoteImage URLs and saves them locally.
+// Returns a new slice of URLs rewritten to local paths.
+func (m *ChartSyncManager) cacheScreenshots(ctx context.Context, appName string, urls []string, screenshotsDir string) []string {
+	appScreenDir := filepath.Join(screenshotsDir, appName)
+	_ = os.MkdirAll(appScreenDir, 0755)
+
+	result := make([]string, len(urls))
+	for i, url := range urls {
+		if !strings.HasPrefix(url, "http") {
+			// Already a local path
+			result[i] = url
+			continue
 		}
-		resultApps = append(resultApps, *catalogApp)
+
+		// Determine extension from URL
+		ext := ".webp"
+		if strings.Contains(url, ".png") {
+			ext = ".png"
+		} else if strings.Contains(url, ".jpg") || strings.Contains(url, ".jpeg") {
+			ext = ".jpg"
+		} else if strings.Contains(url, ".svg") {
+			ext = ".svg"
+		}
+
+		filename := fmt.Sprintf("%d%s", i+1, ext)
+		destPath := filepath.Join(appScreenDir, filename)
+
+		// Skip if already cached
+		if _, err := os.Stat(destPath); err == nil {
+			result[i] = fmt.Sprintf("/api/market/screenshots/%s/%s", appName, filename)
+			continue
+		}
+
+		// Download
+		if err := m.downloadToFile(ctx, url, destPath); err != nil {
+			klog.V(3).Infof("cache screenshot %s/%s: %v", appName, filename, err)
+			result[i] = url // keep original URL on failure
+			continue
+		}
+
+		result[i] = fmt.Sprintf("/api/market/screenshots/%s/%s", appName, filename)
 	}
 
-	return resultApps, nil
+	return result
+}
+
+// cacheFeaturedImage downloads a featured image and saves it locally.
+func (m *ChartSyncManager) cacheFeaturedImage(ctx context.Context, appName, url, screenshotsDir string) string {
+	appScreenDir := filepath.Join(screenshotsDir, appName)
+	_ = os.MkdirAll(appScreenDir, 0755)
+
+	ext := ".webp"
+	if strings.Contains(url, ".png") {
+		ext = ".png"
+	} else if strings.Contains(url, ".jpg") || strings.Contains(url, ".jpeg") {
+		ext = ".jpg"
+	}
+
+	filename := "featured" + ext
+	destPath := filepath.Join(appScreenDir, filename)
+
+	// Skip if already cached
+	if _, err := os.Stat(destPath); err == nil {
+		return fmt.Sprintf("/api/market/screenshots/%s/%s", appName, filename)
+	}
+
+	if err := m.downloadToFile(ctx, url, destPath); err != nil {
+		klog.V(3).Infof("cache featured image %s: %v", appName, err)
+		return ""
+	}
+
+	return fmt.Sprintf("/api/market/screenshots/%s/%s", appName, filename)
+}
+
+// downloadToFile downloads a URL to a local file path.
+func (m *ChartSyncManager) downloadToFile(ctx context.Context, url, destPath string) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("User-Agent", "packalares-market/1.0")
+
+	client := &http.Client{Timeout: 30 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("HTTP %d", resp.StatusCode)
+	}
+
+	f, err := os.Create(destPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	if _, err := io.Copy(f, io.LimitReader(resp.Body, 10<<20)); err != nil {
+		_ = os.Remove(destPath)
+		return err
+	}
+
+	return nil
 }
 
 // findExtractedRoot finds the single top-level directory inside the extraction dir.
@@ -696,10 +786,10 @@ func (m *ChartSyncManager) cacheIcon(ctx context.Context, appName, iconURL, icon
 	return "/api/market/icons/" + appName + ext
 }
 
-// saveCatalog writes the synced catalog to disk.
-func (m *ChartSyncManager) saveCatalog(apps []MarketApp) {
+// saveCatalog writes the enriched catalog to disk.
+func (m *ChartSyncManager) saveCatalog(enriched *EnrichedCatalog) {
 	path := filepath.Join(m.dataDir, catalogFile)
-	data, err := json.MarshalIndent(apps, "", "  ")
+	data, err := json.MarshalIndent(enriched, "", "  ")
 	if err != nil {
 		klog.Warningf("marshal catalog: %v", err)
 		return
@@ -708,7 +798,8 @@ func (m *ChartSyncManager) saveCatalog(apps []MarketApp) {
 		klog.Warningf("write catalog %s: %v", path, err)
 		return
 	}
-	klog.Infof("saved catalog (%d apps) to %s", len(apps), path)
+	klog.Infof("saved enriched catalog (%d apps, %d categories) to %s",
+		len(enriched.Apps), len(enriched.Categories), path)
 }
 
 // saveStatus persists sync status to disk.
