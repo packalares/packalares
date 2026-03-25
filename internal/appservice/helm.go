@@ -95,11 +95,11 @@ func (h *HelmClient) Upgrade(ctx context.Context, releaseName, chartRef string, 
 	return h.run(ctx, args...)
 }
 
-// ListReleases returns all helm releases in the configured namespace.
+// ListReleases returns all helm releases across all namespaces.
 func (h *HelmClient) ListReleases(ctx context.Context) ([]HelmRelease, error) {
 	args := []string{
 		"list",
-		"--namespace", h.Namespace,
+		"--all-namespaces",
 		"--output", "json",
 	}
 
