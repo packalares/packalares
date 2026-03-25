@@ -106,9 +106,13 @@ func parseOlaresManifest(data []byte, fallbackName string) (MarketApp, error) {
 
 	// Strip Go template directives ({{...}}) that break YAML parsing.
 	// OlaresManifest files are Helm templates with {{ .Values.* }} blocks.
-	// Replace directives with empty string, keep all lines (including blank ones
-	// which are significant for YAML block scalars like fullDescription).
-	cleaned := templateDirectiveRE.ReplaceAll(data, nil)
+	//
+	// First, remove {{ else }} ... {{ end }} blocks entirely so we keep only
+	// the admin/primary values (full resource requirements), not the lightweight
+	// reference-app fallback values.
+	cleaned := templateElseBlockRE.ReplaceAll(data, nil)
+	// Then strip remaining {{ ... }} directives
+	cleaned = templateDirectiveRE.ReplaceAll(cleaned, nil)
 
 	var m olaresManifest
 	_ = yaml.Unmarshal(cleaned, &m) // Ignore errors — duplicate keys from template conditionals are common
@@ -206,6 +210,10 @@ func parseOlaresManifest(data []byte, fallbackName string) (MarketApp, error) {
 
 	return app, nil
 }
+
+// templateElseBlockRE matches {{ else }} ... {{ end }} blocks (multiline).
+// We remove these so only the primary (admin) block remains.
+var templateElseBlockRE = regexp.MustCompile(`(?s)\{\{-?\s*else\s*-?\}\}.*?\{\{-?\s*end\s*-?\}\}`)
 
 // templateDirectiveRE matches Go/Helm template directives like {{ ... }}
 var templateDirectiveRE = regexp.MustCompile(`\{\{-?\s*.*?\s*-?\}\}`)
