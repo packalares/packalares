@@ -34,10 +34,32 @@ type olaresManifest struct {
 		OpenMethod string `yaml:"openMethod"`
 		Invisible  bool   `yaml:"invisible"`
 	} `yaml:"entrances"`
+	SharedEntrances []struct {
+		Name      string `yaml:"name"`
+		Host      string `yaml:"host"`
+		Port      int32  `yaml:"port"`
+		Title     string `yaml:"title"`
+		Icon      string `yaml:"icon"`
+		AuthLevel string `yaml:"authLevel"`
+		Invisible bool   `yaml:"invisible"`
+	} `yaml:"sharedEntrances"`
 	Permission *struct {
 		AppData  bool     `yaml:"appData"`
 		AppCache bool     `yaml:"appCache"`
 		UserData []string `yaml:"userData"`
+		SysData  []struct {
+			DataType string   `yaml:"dataType"`
+			AppName  string   `yaml:"appName"`
+			Svc      string   `yaml:"svc"`
+			Port     int      `yaml:"port"`
+			Group    string   `yaml:"group"`
+			Version  string   `yaml:"version"`
+			Ops      []string `yaml:"ops"`
+		} `yaml:"sysData"`
+		Provider []struct {
+			AppName      string `yaml:"appName"`
+			ProviderName string `yaml:"providerName"`
+		} `yaml:"provider"`
 	} `yaml:"permission"`
 	Spec struct {
 		VersionName        string   `yaml:"versionName"`

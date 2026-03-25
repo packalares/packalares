@@ -41,12 +41,15 @@ type ApplicationList struct {
 }
 
 type ApplicationSpec struct {
-	Name        string      `json:"name"`
-	Namespace   string      `json:"namespace"`
-	Owner       string      `json:"owner"`
-	Entrances   []Entrance  `json:"entrances,omitempty"`
-	Permissions []AppPermission `json:"permissions,omitempty"`
-	Settings    AppSettings `json:"settings,omitempty"`
+	Name            string             `json:"name"`
+	Namespace       string             `json:"namespace"`
+	Owner           string             `json:"owner"`
+	Entrances       []Entrance         `json:"entrances,omitempty"`
+	SharedEntrances []SharedEntrance   `json:"sharedEntrances,omitempty"`
+	Permissions     []AppPermission    `json:"permissions,omitempty"`
+	Permission      *AppPermissionSpec `json:"permission,omitempty"`
+	Options         *AppOptionsSpec    `json:"options,omitempty"`
+	Settings        AppSettings        `json:"settings,omitempty"`
 }
 
 type Entrance struct {
@@ -59,6 +62,16 @@ type Entrance struct {
 	Invisible  bool   `json:"invisible,omitempty"`
 }
 
+type SharedEntrance struct {
+	Name      string `json:"name"`
+	Host      string `json:"host"`
+	Port      int    `json:"port"`
+	Title     string `json:"title"`
+	Icon      string `json:"icon,omitempty"`
+	AuthLevel string `json:"authLevel,omitempty"`
+	Invisible bool   `json:"invisible,omitempty"`
+}
+
 type AppPermission struct {
 	Group    string   `json:"group"`
 	DataType string   `json:"dataType"`
@@ -66,8 +79,41 @@ type AppPermission struct {
 	Ops      []string `json:"ops"`
 }
 
+type AppPermissionSpec struct {
+	AppData  bool           `json:"appData,omitempty"`
+	AppCache bool           `json:"appCache,omitempty"`
+	UserData []string       `json:"userData,omitempty"`
+	SysData  []SysDataEntry `json:"sysData,omitempty"`
+	Provider []ProviderEntry `json:"provider,omitempty"`
+}
+
+type SysDataEntry struct {
+	DataType string   `json:"dataType"`
+	AppName  string   `json:"appName"`
+	Svc      string   `json:"svc"`
+	Port     int      `json:"port"`
+	Group    string   `json:"group"`
+	Version  string   `json:"version"`
+	Ops      []string `json:"ops"`
+}
+
+type ProviderEntry struct {
+	AppName      string `json:"appName"`
+	ProviderName string `json:"providerName"`
+}
+
+type AppOptionsSpec struct {
+	Dependencies []AppDependency `json:"dependencies,omitempty"`
+}
+
+type AppDependency struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"` // "system", "application"
+	Version string `json:"version"`
+}
+
 type AppSettings struct {
-	Analytics   bool `json:"analytics,omitempty"`
+	Analytics     bool `json:"analytics,omitempty"`
 	Clusterscoped bool `json:"clusterscoped,omitempty"`
 }
 
@@ -76,16 +122,16 @@ type ApplicationStatus struct {
 	UpdateTime *metav1.Time `json:"updateTime,omitempty"`
 }
 
-// ProviderRegistry represents a data provider registration.
-type ProviderRegistry struct {
+// ProviderRegistryCRD represents a data provider registration.
+type ProviderRegistryCRD struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   ProviderRegistrySpec   `json:"spec,omitempty"`
-	Status ProviderRegistryStatus `json:"status,omitempty"`
+	Spec   ProviderRegistryCRDSpec   `json:"spec,omitempty"`
+	Status ProviderRegistryCRDStatus `json:"status,omitempty"`
 }
 
-type ProviderRegistrySpec struct {
+type ProviderRegistryCRDSpec struct {
 	Group       string `json:"group"`
 	Kind        string `json:"kind"`
 	DataType    string `json:"dataType"`
@@ -96,7 +142,7 @@ type ProviderRegistrySpec struct {
 	Description string `json:"description,omitempty"`
 }
 
-type ProviderRegistryStatus struct {
+type ProviderRegistryCRDStatus struct {
 	State string `json:"state"`
 }
 
@@ -109,6 +155,30 @@ func (in *Application) DeepCopyObject() runtime.Object {
 	if in.Spec.Entrances != nil {
 		out.Spec.Entrances = make([]Entrance, len(in.Spec.Entrances))
 		copy(out.Spec.Entrances, in.Spec.Entrances)
+	}
+	if in.Spec.SharedEntrances != nil {
+		out.Spec.SharedEntrances = make([]SharedEntrance, len(in.Spec.SharedEntrances))
+		copy(out.Spec.SharedEntrances, in.Spec.SharedEntrances)
+	}
+	if in.Spec.Permission != nil {
+		permCopy := *in.Spec.Permission
+		out.Spec.Permission = &permCopy
+		if in.Spec.Permission.SysData != nil {
+			out.Spec.Permission.SysData = make([]SysDataEntry, len(in.Spec.Permission.SysData))
+			copy(out.Spec.Permission.SysData, in.Spec.Permission.SysData)
+		}
+		if in.Spec.Permission.Provider != nil {
+			out.Spec.Permission.Provider = make([]ProviderEntry, len(in.Spec.Permission.Provider))
+			copy(out.Spec.Permission.Provider, in.Spec.Permission.Provider)
+		}
+	}
+	if in.Spec.Options != nil {
+		optsCopy := *in.Spec.Options
+		out.Spec.Options = &optsCopy
+		if in.Spec.Options.Dependencies != nil {
+			out.Spec.Options.Dependencies = make([]AppDependency, len(in.Spec.Options.Dependencies))
+			copy(out.Spec.Options.Dependencies, in.Spec.Options.Dependencies)
+		}
 	}
 	return out
 }
