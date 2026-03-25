@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/packalares/packalares/internal/tapr/crypto"
 )
 
 // Server is the tapr secrets gateway. It sits alongside Infisical and provides
@@ -64,42 +63,6 @@ func (s *Server) issueToken() (string, error) {
 	return token.SignedString([]byte(s.jwtSecret))
 }
 
-// getProjectKey retrieves and decrypts the workspace/project key.
-func (s *Server) getProjectKey(token, workspaceID string) (string, error) {
-	url := fmt.Sprintf("%s/api/v2/workspace/%s/encrypted-key", s.infisicalURL, workspaceID)
-
-	req, _ := http.NewRequest("GET", url, nil)
-	req.Header.Set("Authorization", "Bearer "+token)
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("get workspace key: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
-		return "", fmt.Errorf("get workspace key: %d: %s", resp.StatusCode, string(body))
-	}
-
-	var result struct {
-		EncryptedKey string `json:"encryptedKey"`
-		Nonce        string `json:"nonce"`
-		Sender       struct {
-			PublicKey string `json:"publicKey"`
-		} `json:"sender"`
-	}
-	json.NewDecoder(resp.Body).Decode(&result)
-
-	// Decrypt with our private key
-	plainKey, err := crypto.DecryptAsymmetric(result.EncryptedKey, result.Nonce, result.Sender.PublicKey, s.privateKey)
-	if err != nil {
-		return "", fmt.Errorf("decrypt project key: %w", err)
-	}
-
-	return plainKey, nil
-}
-
 // Handler returns the HTTP handler for the tapr API.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -128,6 +91,7 @@ func (s *Server) handleSecrets(w http.ResponseWriter, r *http.Request) {
 
 	secrets, err := s.fetchAllSecrets()
 	if err != nil {
+		log.Printf("tapr: GET /secrets error: %v", err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -167,6 +131,7 @@ func (s *Server) handleStoreSecrets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := s.storeSecrets(secrets); err != nil {
+		log.Printf("tapr: POST /secrets error: %v", err)
 		http.Error(w, err.Error(), 500)
 		return
 	}
@@ -175,26 +140,19 @@ func (s *Server) handleStoreSecrets(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
-// fetchAllSecrets gets all secrets from the default project.
+// fetchAllSecrets gets all secrets from the default project using the raw API.
 func (s *Server) fetchAllSecrets() (map[string]string, error) {
 	token, err := s.issueToken()
 	if err != nil {
 		return nil, err
 	}
 
-	// Find the project
 	workspaceID, err := s.getDefaultWorkspace(token)
 	if err != nil {
 		return nil, err
 	}
 
-	projectKey, err := s.getProjectKey(token, workspaceID)
-	if err != nil {
-		return nil, err
-	}
-
-	// Fetch secrets
-	url := fmt.Sprintf("%s/api/v3/secrets?workspaceId=%s&environment=prod&secretPath=/", s.infisicalURL, workspaceID)
+	url := fmt.Sprintf("%s/api/v3/secrets/raw?workspaceId=%s&environment=prod&secretPath=/", s.infisicalURL, workspaceID)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -211,33 +169,21 @@ func (s *Server) fetchAllSecrets() (map[string]string, error) {
 
 	var result struct {
 		Secrets []struct {
-			SecretKeyCiphertext   string `json:"secretKeyCiphertext"`
-			SecretKeyIV           string `json:"secretKeyIV"`
-			SecretKeyTag          string `json:"secretKeyTag"`
-			SecretValueCiphertext string `json:"secretValueCiphertext"`
-			SecretValueIV         string `json:"secretValueIV"`
-			SecretValueTag        string `json:"secretValueTag"`
+			SecretKey   string `json:"secretKey"`
+			SecretValue string `json:"secretValue"`
 		} `json:"secrets"`
 	}
 	json.NewDecoder(resp.Body).Decode(&result)
 
 	secrets := make(map[string]string)
 	for _, s := range result.Secrets {
-		key, err := crypto.Decrypt(s.SecretKeyCiphertext, s.SecretKeyIV, s.SecretKeyTag, projectKey)
-		if err != nil {
-			continue
-		}
-		val, err := crypto.Decrypt(s.SecretValueCiphertext, s.SecretValueIV, s.SecretValueTag, projectKey)
-		if err != nil {
-			continue
-		}
-		secrets[key] = val
+		secrets[s.SecretKey] = s.SecretValue
 	}
 
 	return secrets, nil
 }
 
-// storeSecrets creates/updates secrets in the default project.
+// storeSecrets creates/updates secrets in the default project using the raw API.
 func (s *Server) storeSecrets(secrets map[string]string) error {
 	token, err := s.issueToken()
 	if err != nil {
@@ -249,35 +195,17 @@ func (s *Server) storeSecrets(secrets map[string]string) error {
 		return err
 	}
 
-	projectKey, err := s.getProjectKey(token, workspaceID)
-	if err != nil {
-		return err
-	}
-
 	for name, value := range secrets {
-		keyCipher, keyIV, keyTag, err := crypto.Encrypt(name, projectKey)
-		if err != nil {
-			return fmt.Errorf("encrypt key %s: %w", name, err)
-		}
-		valCipher, valIV, valTag, err := crypto.Encrypt(value, projectKey)
-		if err != nil {
-			return fmt.Errorf("encrypt value %s: %w", name, err)
-		}
-
 		body := map[string]interface{}{
-			"workspaceId":           workspaceID,
-			"environment":           "prod",
-			"type":                  "shared",
-			"secretKeyCiphertext":   keyCipher,
-			"secretKeyIV":           keyIV,
-			"secretKeyTag":          keyTag,
-			"secretValueCiphertext": valCipher,
-			"secretValueIV":         valIV,
-			"secretValueTag":        valTag,
+			"workspaceId": workspaceID,
+			"environment": "prod",
+			"secretPath":  "/",
+			"secretValue": value,
+			"type":        "shared",
 		}
 
 		bodyJSON, _ := json.Marshal(body)
-		url := fmt.Sprintf("%s/api/v3/secrets/%s", s.infisicalURL, name)
+		url := fmt.Sprintf("%s/api/v3/secrets/raw/%s", s.infisicalURL, name)
 
 		req, _ := http.NewRequest("POST", url, strings.NewReader(string(bodyJSON)))
 		req.Header.Set("Authorization", "Bearer "+token)
@@ -287,11 +215,18 @@ func (s *Server) storeSecrets(secrets map[string]string) error {
 		if err != nil {
 			return fmt.Errorf("store secret %s: %w", name, err)
 		}
+		respBody, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
 		resp.Body.Close()
 
 		if resp.StatusCode >= 400 {
 			// Try PATCH for update
-			req2, _ := http.NewRequest("PATCH", url, strings.NewReader(string(bodyJSON)))
+			patchBody, _ := json.Marshal(map[string]interface{}{
+				"workspaceId": workspaceID,
+				"environment": "prod",
+				"secretPath":  "/",
+				"secretValue": value,
+			})
+			req2, _ := http.NewRequest("PATCH", url, strings.NewReader(string(patchBody)))
 			req2.Header.Set("Authorization", "Bearer "+token)
 			req2.Header.Set("Content-Type", "application/json")
 			resp2, err := http.DefaultClient.Do(req2)
@@ -300,13 +235,14 @@ func (s *Server) storeSecrets(secrets map[string]string) error {
 			}
 			resp2.Body.Close()
 		}
+		_ = respBody
 	}
 
 	return nil
 }
 
 func (s *Server) getDefaultWorkspace(token string) (string, error) {
-	url := fmt.Sprintf("%s/api/v2/organizations/%s/workspaces", s.infisicalURL, s.orgID)
+	url := fmt.Sprintf("%s/api/v1/workspace", s.infisicalURL)
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
@@ -315,6 +251,11 @@ func (s *Server) getDefaultWorkspace(token string) (string, error) {
 		return "", err
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return "", fmt.Errorf("list workspaces: %d: %s", resp.StatusCode, string(body))
+	}
 
 	var result struct {
 		Workspaces []struct {
