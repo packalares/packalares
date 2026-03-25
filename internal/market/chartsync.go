@@ -258,11 +258,22 @@ func (m *ChartSyncManager) syncSource(ctx context.Context, src Source, chartsDir
 			// Parse OlaresManifest.yaml
 			manifestApp := m.parseManifestFromDir(appDir, appName)
 
+			klog.Infof("chart sync: %s manifest: icon=%q desc=%q cats=%v dev=%q fullDesc=%d",
+				appName, manifestApp.Icon[:min(len(manifestApp.Icon), 40)],
+				manifestApp.Description[:min(len(manifestApp.Description), 40)],
+				manifestApp.Categories, manifestApp.Developer,
+				len(manifestApp.FullDescription))
+
 			// Parse Chart.yaml for chartVersion and appVersion
 			chartVersion, appVersion := m.parseChartYaml(appDir)
 
 			// Enrich catalog data with manifest data where the catalog is missing info
 			mergeManifestIntoCatalog(app, &manifestApp)
+
+			klog.Infof("chart sync: %s after merge: icon=%q desc=%q cats=%v",
+				appName, app.Icon[:min(len(app.Icon), 40)],
+				app.Description[:min(len(app.Description), 40)],
+				app.Categories)
 
 			// Set chart version info from Chart.yaml
 			if chartVersion != "" && app.Version == "" {
