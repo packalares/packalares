@@ -118,9 +118,7 @@ func parseOlaresManifest(data []byte, fallbackName string) (MarketApp, error) {
 	cleaned = []byte(strings.Join(lines, "\n"))
 
 	var m olaresManifest
-	if err := yaml.Unmarshal(cleaned, &m); err != nil {
-		return MarketApp{}, fmt.Errorf("parse yaml: %w", err)
-	}
+	_ = yaml.Unmarshal(cleaned, &m) // Ignore errors — duplicate keys from template conditionals are common
 
 	name := m.Metadata.Name
 	if name == "" {
