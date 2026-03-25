@@ -158,7 +158,6 @@ spec:
                       type: string
                     authLevel:
                       type: string
-                      enum: ["public", "one_factor", "two_factor"]
                     invisible:
                       type: boolean
               permissions:
