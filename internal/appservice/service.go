@@ -362,9 +362,9 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		"namespace": s.namespace,
 		"sysVersion": "1.12.0",
 		"userspace": map[string]interface{}{
-			"appData":  "/terminus/userdata/appdata",
-			"appCache": "/terminus/userdata/appcache",
-			"userData": "/userdata",
+			"appData":  "/packalares/data/appdata",
+			"appCache": "/packalares/data/appcache",
+			"userData": "/packalares/data",
 		},
 		"os": map[string]interface{}{
 			"appKey": rec.AppID,
