@@ -310,7 +310,10 @@ func (s *Server) handleSecondFactorTOTP(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// handleTOTPRegister registers a TOTP secret for the current user.
+// handleTOTPRegister generates or removes TOTP for the current user.
+// POST: generates a new pending secret (stored with 5min TTL, not active until verified)
+// PUT:  verifies a code against the pending secret and activates TOTP
+// DELETE: removes active TOTP
 func (s *Server) handleTOTPRegister(w http.ResponseWriter, r *http.Request) {
 	session, err := s.getSession(r)
 	if err != nil || session == nil || session.AuthLevel < 1 {
@@ -323,7 +326,7 @@ func (s *Server) handleTOTPRegister(w http.ResponseWriter, r *http.Request) {
 
 	switch r.Method {
 	case http.MethodPost:
-		// Generate new TOTP secret
+		// Generate new TOTP secret — store as PENDING only
 		secret, uri, err := GenerateTOTPSecret(session.Username, s.cfg.TOTPIssuer)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
@@ -333,11 +336,10 @@ func (s *Server) handleTOTPRegister(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// Store pending secret (not yet verified)
-		if err := s.storeTOTPSecret(r.Context(), session.Username, secret); err != nil {
+		if err := s.storePendingTOTP(r.Context(), session.Username, secret); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
 				"status": "error",
-				"message": "failed to store TOTP secret",
+				"message": "failed to store pending TOTP",
 			})
 			return
 		}
@@ -345,13 +347,58 @@ func (s *Server) handleTOTPRegister(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"status": "OK",
 			"data": map[string]interface{}{
-				"secret":   secret,
-				"otpauth":  uri,
+				"secret":  secret,
+				"otpauth": uri,
 			},
 		})
 
+	case http.MethodPut:
+		// Verify code against pending secret, then activate
+		var req struct {
+			Token string `json:"token"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Token == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"status": "error",
+				"message": "token required",
+			})
+			return
+		}
+
+		pending, err := s.getPendingTOTP(r.Context(), session.Username)
+		if err != nil || pending == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{
+				"status": "error",
+				"message": "no pending TOTP setup — call POST first",
+			})
+			return
+		}
+
+		if !ValidateTOTPCode(pending, req.Token) {
+			writeJSON(w, http.StatusUnauthorized, map[string]interface{}{
+				"status": "error",
+				"message": "invalid code — try again",
+			})
+			return
+		}
+
+		// Code valid — promote pending to active
+		if err := s.storeTOTPSecret(r.Context(), session.Username, pending); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
+				"status": "error",
+				"message": "failed to activate TOTP",
+			})
+			return
+		}
+		_ = s.deletePendingTOTP(r.Context(), session.Username)
+
+		log.Printf("TOTP enabled for user %q", session.Username)
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"status": "OK",
+			"message": "TOTP enabled",
+		})
+
 	case http.MethodDelete:
-		// Remove TOTP secret
 		if err := s.deleteTOTPSecret(r.Context(), session.Username); err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{
 				"status": "error",
@@ -359,6 +406,8 @@ func (s *Server) handleTOTPRegister(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
+		_ = s.deletePendingTOTP(r.Context(), session.Username)
+		log.Printf("TOTP disabled for user %q", session.Username)
 		writeJSON(w, http.StatusOK, map[string]interface{}{
 			"status": "OK",
 		})
@@ -538,6 +587,33 @@ func (s *Server) deleteTOTPSecret(ctx context.Context, username string) error {
 	}
 	defer conn.Close()
 	return redisCmd(conn, "DEL", "packalares:totp:"+username)
+}
+
+func (s *Server) storePendingTOTP(ctx context.Context, username, secret string) error {
+	conn, err := s.sessions.redisConn(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return redisCmd(conn, "SETEX", "packalares:totp:pending:"+username, "300", secret) // 5 min TTL
+}
+
+func (s *Server) getPendingTOTP(ctx context.Context, username string) (string, error) {
+	conn, err := s.sessions.redisConn(ctx)
+	if err != nil {
+		return "", err
+	}
+	defer conn.Close()
+	return redisGetCmd(conn, "packalares:totp:pending:"+username)
+}
+
+func (s *Server) deletePendingTOTP(ctx context.Context, username string) error {
+	conn, err := s.sessions.redisConn(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Close()
+	return redisCmd(conn, "DEL", "packalares:totp:pending:"+username)
 }
 
 func (s *Server) hasTOTPConfigured(ctx context.Context, username string) (bool, error) {

@@ -172,7 +172,7 @@ async function setupTOTP() {
 async function verifyTOTP() {
   if (!totpCode.value || totpCode.value.length !== 6) { totpMsg.value = 'Error: enter 6-digit code'; return; }
   try {
-    await api.post('/api/auth/totp', { token: totpCode.value });
+    await api.put('/api/auth/totp/setup', { token: totpCode.value });
     totpEnabled.value = true;
     totpURI.value = '';
     totpCode.value = '';
