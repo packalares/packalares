@@ -302,7 +302,7 @@ const monitorStore = useMonitorStore();
 
 // ─── State ───────────────────────────────────────────────────
 
-const wallpaper = ref('/bg/macos4.jpg');
+const wallpaper = ref(localStorage.getItem('packalares_wallpaper') || '/bg/macos4.jpg');
 const clockTime = ref('');
 const weekDay = ref('');
 const dateStr = ref('');
@@ -638,11 +638,7 @@ async function loadInit() {
       userStore.terminusName = data.terminus.terminusName || '';
       userStore.avatar = data.terminus.avatar || '';
     }
-    if (data?.config) {
-      if (data.config.bgIndex !== undefined) {
-        wallpaper.value = `/bg/${data.config.bgIndex}.jpg`;
-      }
-    }
+    // Wallpaper is persisted in localStorage, not from API
   } catch {
     // Init endpoint may not be available; use defaults
   }
