@@ -99,8 +99,26 @@ type olaresManifest struct {
 
 // parseOlaresManifest parses an OlaresManifest.yaml into a MarketApp.
 func parseOlaresManifest(data []byte, fallbackName string) (MarketApp, error) {
+	// Strip UTF-8 BOM if present
+	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
+		data = data[3:]
+	}
+
+	// Strip Go template directives ({{...}}) that break YAML parsing.
+	// OlaresManifest files are Helm templates with {{ .Values.* }} blocks.
+	cleaned := templateDirectiveRE.ReplaceAll(data, nil)
+	// Also remove lines that are now empty or whitespace-only after stripping
+	var lines []string
+	for _, line := range strings.Split(string(cleaned), "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed != "" && trimmed != "---" || strings.Contains(line, ":") {
+			lines = append(lines, line)
+		}
+	}
+	cleaned = []byte(strings.Join(lines, "\n"))
+
 	var m olaresManifest
-	if err := yaml.Unmarshal(data, &m); err != nil {
+	if err := yaml.Unmarshal(cleaned, &m); err != nil {
 		return MarketApp{}, fmt.Errorf("parse yaml: %w", err)
 	}
 
@@ -197,6 +215,9 @@ func parseOlaresManifest(data []byte, fallbackName string) (MarketApp, error) {
 
 	return app, nil
 }
+
+// templateDirectiveRE matches Go/Helm template directives like {{ ... }}
+var templateDirectiveRE = regexp.MustCompile(`\{\{-?\s*.*?\s*-?\}\}`)
 
 // categoryVersionSuffix matches version suffixes like "_v112", "_v2", "_v10".
 var categoryVersionSuffix = regexp.MustCompile(`_v\d+$`)
