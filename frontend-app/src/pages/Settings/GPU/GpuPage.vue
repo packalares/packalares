@@ -108,53 +108,19 @@ onMounted(async () => {
 
 <style lang="scss" scoped>
 .empty-state-full {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 80px 20px;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; padding: 80px 20px;
 }
-
 .empty-icon-wrap {
-  width: 72px;
-  height: 72px;
-  border-radius: 20px;
-  background: var(--bg-2);
-  border: 1px solid var(--separator);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 64px; height: 64px; border-radius: 16px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-card);
 }
-
-.empty-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink-1);
-  margin-top: 16px;
-}
-
-.empty-text {
-  font-size: 13px;
-  color: var(--ink-3);
-  margin-top: 6px;
-  text-align: center;
-  max-width: 280px;
-}
-
-.metric-sub {
-  font-size: 11px;
-  color: var(--ink-3);
-  margin-top: 6px;
-  text-align: right;
-}
-
-.temp-value {
-  padding: 2px 10px;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 12px;
-}
-
+.empty-title { font-size: 15px; font-weight: 600; color: var(--ink-1); margin-top: 16px; }
+.empty-text { font-size: 13px; color: var(--ink-3); margin-top: 4px; text-align: center; max-width: 260px; line-height: 1.5; }
+.metric-sub { font-size: 11px; color: var(--ink-3); margin-top: 6px; text-align: right; }
+.temp-value { padding: 3px 10px; border-radius: var(--radius-xs); font-weight: 600; font-size: 12px; }
 .temp-cool { background: var(--positive-soft); color: var(--positive); }
 .temp-warm { background: var(--warning-soft); color: var(--warning); }
 .temp-hot { background: var(--negative-soft); color: var(--negative); }

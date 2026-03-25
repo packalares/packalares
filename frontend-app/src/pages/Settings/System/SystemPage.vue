@@ -151,16 +151,10 @@ onUnmounted(() => { if (timer) clearInterval(timer); });
 .uptime-value {
   background: var(--positive-soft);
   color: var(--positive);
-  padding: 2px 10px;
-  border-radius: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-xs);
   font-weight: 600;
   font-size: 12px;
 }
-
-.metric-sub {
-  font-size: 11px;
-  color: var(--ink-3);
-  margin-top: 6px;
-  text-align: right;
-}
+.metric-sub { font-size: 11px; color: var(--ink-3); margin-top: 6px; text-align: right; }
 </style>

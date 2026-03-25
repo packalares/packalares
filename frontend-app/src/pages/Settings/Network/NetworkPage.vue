@@ -164,8 +164,9 @@ async function saveTailscale() {
 <style lang="scss" scoped>
 .port-value {
   background: var(--bg-3);
-  padding: 2px 10px;
-  border-radius: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-xs);
   font-size: 12px;
+  font-weight: 500;
 }
 </style>
