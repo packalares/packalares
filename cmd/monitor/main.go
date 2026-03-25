@@ -18,9 +18,10 @@ import (
 func main() {
 	secrets.MustLoadSecrets()
 	prometheusURL := envOr("PROMETHEUS_URL", config.PrometheusURL())
+	lokiURL := envOr("LOKI_URL", "http://loki-svc."+config.MonitoringNamespace()+":3100")
 	port := envOr("PORT", "8000")
 
-	handler := monitor.NewHandler(prometheusURL)
+	handler := monitor.NewHandler(prometheusURL, lokiURL)
 
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)

@@ -13,13 +13,15 @@ import (
 
 // Handler serves monitoring metrics to the frontend.
 type Handler struct {
-	prom *PrometheusClient
+	prom    *PrometheusClient
+	lokiURL string
 }
 
-// NewHandler creates a monitoring handler connected to Prometheus.
-func NewHandler(prometheusURL string) *Handler {
+// NewHandler creates a monitoring handler connected to Prometheus and Loki.
+func NewHandler(prometheusURL, lokiURL string) *Handler {
 	return &Handler{
-		prom: NewPrometheusClient(prometheusURL),
+		prom:    NewPrometheusClient(prometheusURL),
+		lokiURL: lokiURL,
 	}
 }
 
@@ -34,6 +36,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/monitoring/gpu", h.handleGPU)
 	mux.HandleFunc("/api/gpu", h.handleGPUList)
 	mux.HandleFunc("/api/gpu/list", h.handleGPUList)
+
+	// Log endpoints (Loki proxy)
+	h.RegisterLogRoutes(mux)
 
 	// KubeSphere-compatible endpoints
 	mux.HandleFunc("/kapis/monitoring.kubesphere.io/v1alpha3/cluster", h.handleKSCluster)
