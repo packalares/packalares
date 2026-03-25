@@ -1,6 +1,8 @@
 package market
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,17 +11,25 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"k8s.io/klog/v2"
 )
 
+const (
+	// olaresRepoTarballURL is the single tarball download for the entire apps repo.
+	// This avoids per-file GitHub API calls and their rate limits.
+	olaresRepoTarballURL = "https://github.com/beclab/apps/archive/refs/heads/main.tar.gz"
+)
+
 // OlaresSource fetches catalog and charts from the upstream Olares ecosystem:
-// appstore API for catalog, GitHub beclab/apps for charts.
+// appstore API for catalog, GitHub beclab/apps tarball for charts.
 type OlaresSource struct {
 	appstoreURL string
 	githubAPI   string
 	repo        string
+	tarballURL  string
 	httpClient  *http.Client
 }
 
@@ -29,7 +39,8 @@ func NewOlaresSource() *OlaresSource {
 		appstoreURL: "https://appstore-server-prod.bttcdn.com/api/v1/appstore/info?version=1.12.0",
 		githubAPI:   "https://api.github.com",
 		repo:        "beclab/apps",
-		httpClient:  &http.Client{Timeout: 2 * time.Minute},
+		tarballURL:  olaresRepoTarballURL,
+		httpClient:  &http.Client{Timeout: 5 * time.Minute},
 	}
 }
 
@@ -82,7 +93,85 @@ func (s *OlaresSource) FetchCatalog(ctx context.Context) ([]MarketApp, error) {
 	return apps, nil
 }
 
-// DownloadChart downloads a chart directory from the GitHub beclab/apps repo.
+// DownloadAll downloads the entire beclab/apps repository as a single tarball
+// and extracts it into destDir. This creates destDir/apps-main/ with all app
+// directories inside. One HTTP request, no API rate limiting.
+func (s *OlaresSource) DownloadAll(ctx context.Context, destDir string) error {
+	if err := os.MkdirAll(destDir, 0755); err != nil {
+		return fmt.Errorf("create dest dir %s: %w", destDir, err)
+	}
+
+	klog.Infof("olares: downloading repo tarball from %s", s.tarballURL)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, s.tarballURL, nil)
+	if err != nil {
+		return fmt.Errorf("create tarball request: %w", err)
+	}
+	req.Header.Set("User-Agent", "packalares-market/1.0")
+
+	resp, err := s.httpClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("download tarball: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 1024))
+		return fmt.Errorf("tarball download returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	// Stream-extract the tarball directly (no temp file needed)
+	gz, err := gzip.NewReader(resp.Body)
+	if err != nil {
+		return fmt.Errorf("gzip reader: %w", err)
+	}
+	defer gz.Close()
+
+	tr := tar.NewReader(gz)
+	fileCount := 0
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("tar read: %w", err)
+		}
+
+		// Sanitize path to prevent directory traversal
+		target := filepath.Join(destDir, header.Name)
+		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(destDir)) {
+			continue
+		}
+
+		switch header.Typeflag {
+		case tar.TypeDir:
+			if err := os.MkdirAll(target, 0755); err != nil {
+				return fmt.Errorf("create dir %s: %w", target, err)
+			}
+		case tar.TypeReg:
+			if err := os.MkdirAll(filepath.Dir(target), 0755); err != nil {
+				return fmt.Errorf("create parent dir for %s: %w", target, err)
+			}
+			outFile, err := os.Create(target)
+			if err != nil {
+				return fmt.Errorf("create file %s: %w", target, err)
+			}
+			if _, err := io.Copy(outFile, tr); err != nil {
+				outFile.Close()
+				return fmt.Errorf("write file %s: %w", target, err)
+			}
+			outFile.Close()
+			fileCount++
+		}
+	}
+
+	klog.Infof("olares: extracted %d files from tarball into %s", fileCount, destDir)
+	return nil
+}
+
+// DownloadChart downloads a single chart directory from the GitHub beclab/apps repo.
+// This is the per-app fallback — prefer DownloadAll for bulk sync.
 func (s *OlaresSource) DownloadChart(ctx context.Context, appName string, destDir string) error {
 	_ = os.RemoveAll(destDir)
 	if err := os.MkdirAll(destDir, 0755); err != nil {
