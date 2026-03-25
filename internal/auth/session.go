@@ -104,6 +104,57 @@ func (s *SessionStore) Delete(ctx context.Context, sessionID string) error {
 	return s.redisDel(ctx, key)
 }
 
+// List returns all active sessions for a user.
+func (s *SessionStore) List(ctx context.Context, username string) ([]SessionInfo, error) {
+	conn, err := s.redisConn(ctx)
+	if err != nil {
+		return nil, err
+	}
+	defer conn.Close()
+
+	// Get all session keys via KEYS command
+	pattern := s.prefix + "*"
+	fmt.Fprintf(conn, "*2\r\n$4\r\nKEYS\r\n$%d\r\n%s\r\n", len(pattern), pattern)
+	keys, err := readRedisArray(conn)
+	if err != nil {
+		return nil, err
+	}
+
+	var sessions []SessionInfo
+	for _, key := range keys {
+		if key == "" {
+			continue
+		}
+		sessionID := strings.TrimPrefix(key, s.prefix)
+		data, err := s.Get(ctx, sessionID)
+		if err != nil || data == nil {
+			continue
+		}
+		if username != "" && data.Username != username {
+			continue
+		}
+		sessions = append(sessions, SessionInfo{
+			ID:           sessionID[:8] + "...",
+			FullID:       sessionID,
+			Username:     data.Username,
+			CreatedAt:    data.CreatedAt,
+			LastActivity: data.LastActivity,
+			AuthLevel:    data.AuthLevel,
+		})
+	}
+	return sessions, nil
+}
+
+// SessionInfo is the public representation of a session.
+type SessionInfo struct {
+	ID           string    `json:"id"`
+	FullID       string    `json:"-"`
+	Username     string    `json:"username"`
+	CreatedAt    time.Time `json:"created_at"`
+	LastActivity time.Time `json:"last_activity"`
+	AuthLevel    int       `json:"auth_level"`
+}
+
 // Touch updates the session TTL without changing data.
 func (s *SessionStore) Touch(ctx context.Context, sessionID string, ttl time.Duration) error {
 	key := s.prefix + sessionID
@@ -336,6 +387,29 @@ func readRESPBulkString(r io.Reader) (string, error) {
 	default:
 		return "", fmt.Errorf("unexpected response type: %c", line[0])
 	}
+}
+
+func readRedisArray(r io.Reader) ([]string, error) {
+	line, err := readLine(r)
+	if err != nil {
+		return nil, err
+	}
+	if len(line) == 0 || line[0] != '*' {
+		return nil, fmt.Errorf("expected array, got: %s", line)
+	}
+	count, _ := strconv.Atoi(line[1:])
+	if count <= 0 {
+		return nil, nil
+	}
+	var result []string
+	for i := 0; i < count; i++ {
+		s, err := readRESPBulkString(r)
+		if err != nil {
+			return result, err
+		}
+		result = append(result, s)
+	}
+	return result, nil
 }
 
 func readLine(r io.Reader) (string, error) {

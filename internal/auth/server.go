@@ -41,6 +41,7 @@ func (s *Server) setupRoutes() {
 	s.mux.HandleFunc("/api/auth/password", s.handlePasswordChange)
 	s.mux.HandleFunc("/api/auth/totp/setup", s.handleTOTPRegister)
 	s.mux.HandleFunc("/api/auth/totp/validate", s.handleSecondFactorTOTP)
+	s.mux.HandleFunc("/api/auth/sessions", s.handleSessions)
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -439,6 +440,47 @@ func (s *Server) cookieDomainForRequest(r *http.Request) string {
 func (s *Server) sendUnauthorizedRedirect(w http.ResponseWriter, r *http.Request) {
 	// For nginx auth_request, return 401. The proxy handles the redirect to /login/.
 	w.WriteHeader(http.StatusUnauthorized)
+}
+
+// handleSessions lists or revokes sessions.
+func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
+	session, err := s.getSession(r)
+	if err != nil || session == nil || session.AuthLevel < 1 {
+		writeJSON(w, http.StatusUnauthorized, map[string]interface{}{"status": "error", "message": "authentication required"})
+		return
+	}
+
+	switch r.Method {
+	case http.MethodGet:
+		sessions, err := s.sessions.List(r.Context(), session.Username)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"status": "error", "message": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"status": "OK", "sessions": sessions})
+
+	case http.MethodDelete:
+		// Revoke a session by ID prefix
+		var req struct {
+			SessionID string `json:"session_id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.SessionID == "" {
+			writeJSON(w, http.StatusBadRequest, map[string]interface{}{"status": "error", "message": "session_id required"})
+			return
+		}
+		// Find full session ID by prefix
+		sessions, _ := s.sessions.List(r.Context(), session.Username)
+		for _, sess := range sessions {
+			if sess.ID == req.SessionID || sess.FullID == req.SessionID {
+				_ = s.sessions.Delete(r.Context(), sess.FullID)
+				break
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"status": "OK"})
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 // TOTP secret storage in Redis
