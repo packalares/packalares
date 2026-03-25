@@ -460,6 +460,7 @@ interface InstalledApp {
 
 const loading = ref(true);
 const searchQuery = ref('');
+const userZone = ref('');
 const activeTab = ref<'discover' | 'installed'>('discover');
 const activeCategory = ref('all');
 const apps = ref<MarketApp[]>([]);
@@ -530,13 +531,18 @@ function selectCategory(name: string) {
 }
 
 function appUrl(name: string): string {
+  // Always use subdomain: https://{appname}.{userzone}
   const host = window.location.hostname;
-  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) return '/' + name + '/';
   const parts = host.split('.');
+  // If on subdomain (e.g. desktop.admin.olares.local), use the zone part
   if (parts.length >= 3) {
     return 'https://' + name + '.' + parts.slice(1).join('.');
   }
-  return '/' + name + '/';
+  // If on IP, get zone from userInfo or fallback
+  if (userZone.value) {
+    return 'https://' + name + '.' + userZone.value;
+  }
+  return 'https://' + name + '.' + host;
 }
 
 function openApp(name: string) {
@@ -793,6 +799,11 @@ watch(detailApp, (val) => {
 
 onMounted(async () => {
   loading.value = true;
+  // Fetch user zone for app URLs
+  try {
+    const r: any = await api.get('/api/user/info');
+    userZone.value = r?.zone || r?.terminusName || '';
+  } catch {}
   await Promise.all([fetchApps(), fetchCategories(), fetchInstalled(), fetchSyncStatus()]);
   loading.value = false;
   connectWebSocket();

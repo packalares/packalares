@@ -134,6 +134,19 @@ http {
     # --- Root redirect ---
     location = / { auth_request /_auth; return 302 /desktop; }
 
+    # --- Installed apps (path-based): /apps/{appname}/ → system-server ---
+    location ~ ^/apps/([a-z0-9][a-z0-9-]*)(/.*)?$ {
+      auth_request /_auth;
+      rewrite ^/apps/[^/]+(/.*)$ $1 break;
+      rewrite ^/apps/[^/]+$ / break;
+      proxy_pass http://$ss_up:8080;
+      proxy_set_header Host $1.{{USER_ZONE}};
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection $connection_upgrade;
+    }
+
     # --- SPA catch-all ---
     location / { auth_request /_auth; proxy_pass http://$desktop_up:80; proxy_set_header Host $host; }
   }
