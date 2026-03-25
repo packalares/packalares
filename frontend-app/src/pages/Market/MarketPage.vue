@@ -203,26 +203,10 @@
                 class="app-btn-open"
                 @click.stop="openApp(app.name)"
               />
-              <q-btn
-                v-else-if="appStates[app.name] === 'downloading'"
-                flat
-                dense
-                no-caps
-                label="Downloading..."
-                class="app-btn-installing"
-                loading
-                disable
-              />
-              <q-btn
-                v-else-if="appStates[app.name] === 'installing' || installingSet.has(app.name)"
-                flat
-                dense
-                no-caps
-                label="Installing..."
-                class="app-btn-installing"
-                loading
-                disable
-              />
+              <div v-else-if="appStates[app.name] === 'downloading' || appStates[app.name] === 'installing' || installingSet.has(app.name)" class="app-install-progress">
+                <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.2" color="indigo-4" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="!installProgress[app.name]" />
+                <span class="app-progress-text">{{ installProgress[app.name]?.detail || (appStates[app.name] === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
+              </div>
               <q-btn
                 v-else-if="app.hasChart"
                 flat
@@ -327,9 +311,10 @@
               <q-btn flat no-caps label="Uninstall" class="detail-btn-uninstall" @click="confirmUninstall(detailApp)" />
             </template>
             <template v-else-if="appStates[detailApp.name] === 'downloading' || appStates[detailApp.name] === 'installing' || installingSet.has(detailApp.name)">
-              <q-btn unelevated no-caps class="detail-btn-install" loading disable>
-                <span>{{ appStates[detailApp.name] === 'downloading' ? 'Downloading...' : 'Installing...' }}</span>
-              </q-btn>
+              <div class="detail-install-progress">
+                <q-linear-progress :value="installProgress[detailApp.name] ? installProgress[detailApp.name].step / installProgress[detailApp.name].totalSteps : 0.2" color="indigo-4" track-color="grey-9" rounded size="6px" :indeterminate="!installProgress[detailApp.name]" style="width:200px" />
+                <span class="detail-progress-text">{{ installProgress[detailApp.name]?.detail || (appStates[detailApp.name] === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
+              </div>
             </template>
             <template v-else-if="detailApp.hasChart">
               <q-btn unelevated no-caps label="Install" class="detail-btn-install" icon="sym_r_download" @click="installApp(detailApp)" />
@@ -472,6 +457,7 @@ const detailLoading = ref(false);
 const previewImg = ref('');
 const installingSet = reactive(new Set<string>());
 const appStates = reactive<Record<string, string>>({});
+const installProgress = reactive<Record<string, { step: number; totalSteps: number; detail: string }>>({});
 
 const syncStatus = reactive({
   state: '' as string,
@@ -710,16 +696,25 @@ function connectWebSocket() {
         if (msg.type === 'app_state' && msg.data) {
           const { name, state } = msg.data as { name: string; state: string };
           if (state === 'running') {
-            // App is ready
             installingSet.delete(name);
             delete appStates[name];
+            delete installProgress[name];
             fetchInstalled();
           } else if (state === 'failed') {
             installingSet.delete(name);
             delete appStates[name];
+            delete installProgress[name];
             $q.notify({ type: 'negative', message: `${name} installation failed.` });
           } else {
             appStates[name] = state;
+          }
+        }
+        if (msg.type === 'install_progress' && msg.data) {
+          const d = msg.data as { name: string; step: number; totalSteps: number; detail: string; state: string };
+          if (d.state === 'running') {
+            delete installProgress[d.name];
+          } else {
+            installProgress[d.name] = { step: d.step, totalSteps: d.totalSteps, detail: d.detail };
           }
         }
       } catch {
@@ -1110,6 +1105,37 @@ onUnmounted(() => {
   font-size: 10px;
   padding: 1px 6px;
   white-space: nowrap;
+}
+
+.app-install-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 100px;
+  max-width: 140px;
+}
+
+.app-progress-bar {
+  border-radius: 2px;
+}
+
+.app-progress-text {
+  font-size: 10px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail-install-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.detail-progress-text {
+  font-size: 13px;
+  color: var(--ink-2);
 }
 
 .app-no-chart {
