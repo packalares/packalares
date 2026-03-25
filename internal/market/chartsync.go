@@ -295,7 +295,7 @@ func (m *ChartSyncManager) syncSource(ctx context.Context, src Source, chartsDir
 					app.Icon = localIcon
 				}
 			} else {
-				app.Icon = "/icons/" + appName + ".png"
+				app.Icon = "/api/market/icons/" + appName + ".png"
 			}
 		}
 
@@ -693,7 +693,7 @@ func (m *ChartSyncManager) cacheIcon(ctx context.Context, appName, iconURL, icon
 		return ""
 	}
 
-	return "/icons/" + appName + ext
+	return "/api/market/icons/" + appName + ext
 }
 
 // saveCatalog writes the synced catalog to disk.
