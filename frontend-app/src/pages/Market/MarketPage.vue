@@ -531,14 +531,13 @@ function selectCategory(name: string) {
 }
 
 function appUrl(name: string): string {
-  // Always use subdomain: https://{appname}.{userzone}
   const host = window.location.hostname;
-  const parts = host.split('.');
-  // If on subdomain (e.g. desktop.admin.olares.local), use the zone part
-  if (parts.length >= 3) {
-    return 'https://' + name + '.' + parts.slice(1).join('.');
+  const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+  // On subdomain (e.g. market.admin.olares.local), replace first part with app name
+  if (!isIP && host.split('.').length >= 3) {
+    return 'https://' + name + '.' + host.split('.').slice(1).join('.');
   }
-  // If on IP, get zone from userInfo or fallback
+  // On IP or short hostname, use userZone
   if (userZone.value) {
     return 'https://' + name + '.' + userZone.value;
   }
