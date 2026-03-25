@@ -394,6 +394,10 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 			"port":     redisPort,
 			"password": redisPass,
 		},
+		"olaresEnv": map[string]interface{}{
+			"OLARES_USER_HUGGINGFACE_SERVICE": os.Getenv("OLARES_USER_HUGGINGFACE_SERVICE"),
+			"OLARES_USER_HUGGINGFACE_TOKEN":   os.Getenv("OLARES_USER_HUGGINGFACE_TOKEN"),
+		},
 	})
 	if err != nil {
 		klog.Errorf("inject values.yaml for %s: %v", req.Name, err)
@@ -431,6 +435,10 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 					},
 					"redis": map[string]interface{}{
 						"host": redisHost, "port": redisPort, "password": redisPass,
+					},
+					"olaresEnv": map[string]interface{}{
+						"OLARES_USER_HUGGINGFACE_SERVICE": os.Getenv("OLARES_USER_HUGGINGFACE_SERVICE"),
+						"OLARES_USER_HUGGINGFACE_TOKEN":   os.Getenv("OLARES_USER_HUGGINGFACE_TOKEN"),
 					},
 				}
 				subDir := filepath.Join(chartsSubdir, entry.Name())
