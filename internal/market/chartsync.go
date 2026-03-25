@@ -162,40 +162,54 @@ func (m *ChartSyncManager) SyncAll(ctx context.Context, sourceNames []string) {
 
 			klog.V(2).Infof("chart sync: processing %s", app.Name)
 
-			// Download chart to temp dir
-			tmpDir, err := os.MkdirTemp("", "chartsync-"+app.Name+"-")
-			if err != nil {
-				m.addError(fmt.Sprintf("create temp dir for %s: %v", app.Name, err))
-				continue
-			}
+			// Check if chart .tgz already exists locally — skip download if so
+			existingTgz := m.findExistingChart(chartsDir, app.Name)
+			if existingTgz != "" {
+				klog.V(2).Infof("chart sync: %s already cached at %s, skipping download", app.Name, existingTgz)
+			} else {
+				// Download chart to temp dir
+				tmpDir, err := os.MkdirTemp("", "chartsync-"+app.Name+"-")
+				if err != nil {
+					m.addError(fmt.Sprintf("create temp dir for %s: %v", app.Name, err))
+					allApps = append(allApps, *app)
+					m.mu.Lock()
+					m.status.SyncedApps++
+					m.mu.Unlock()
+					continue
+				}
 
-			chartDir := filepath.Join(tmpDir, app.Name)
-			err = src.DownloadChart(ctx, app.Name, chartDir)
-			if err != nil {
-				klog.V(2).Infof("chart sync: skip %s: %v", app.Name, err)
+				chartDir := filepath.Join(tmpDir, app.Name)
+				err = src.DownloadChart(ctx, app.Name, chartDir)
+				if err != nil {
+					klog.V(2).Infof("chart sync: skip %s: %v", app.Name, err)
+					_ = os.RemoveAll(tmpDir)
+					m.addError(fmt.Sprintf("download chart %s: %v", app.Name, err))
+					allApps = append(allApps, *app)
+					m.mu.Lock()
+					m.status.SyncedApps++
+					m.mu.Unlock()
+					continue
+				}
+
+				// Package the chart into a .tgz
+				if err := m.packageChart(chartDir, chartsDir); err != nil {
+					klog.Warningf("chart sync: package %s: %v", app.Name, err)
+					m.addError(fmt.Sprintf("package chart %s: %v", app.Name, err))
+				}
+
 				_ = os.RemoveAll(tmpDir)
-				m.addError(fmt.Sprintf("download chart %s: %v", app.Name, err))
-				m.mu.Lock()
-				m.status.SyncedApps++
-				m.mu.Unlock()
-				// Still add app to catalog even if chart download fails
-				allApps = append(allApps, *app)
-				continue
 			}
 
-			// Package the chart into a .tgz
-			if err := m.packageChart(chartDir, chartsDir); err != nil {
-				klog.Warningf("chart sync: package %s: %v", app.Name, err)
-				m.addError(fmt.Sprintf("package chart %s: %v", app.Name, err))
-			}
-
-			_ = os.RemoveAll(tmpDir)
-
-			// Cache icon
+			// Cache icon if not already cached
 			if app.Icon != "" && strings.HasPrefix(app.Icon, "http") {
-				localIcon := m.cacheIcon(ctx, app.Name, app.Icon, iconsDir)
-				if localIcon != "" {
-					app.Icon = localIcon
+				iconPath := filepath.Join(iconsDir, app.Name+".png")
+				if _, err := os.Stat(iconPath); os.IsNotExist(err) {
+					localIcon := m.cacheIcon(ctx, app.Name, app.Icon, iconsDir)
+					if localIcon != "" {
+						app.Icon = localIcon
+					}
+				} else {
+					app.Icon = "/icons/" + app.Name + ".png"
 				}
 			}
 
@@ -516,6 +530,21 @@ func (m *ChartSyncManager) addError(msg string) {
 // DataDir returns the configured data directory.
 func (m *ChartSyncManager) DataDir() string {
 	return m.dataDir
+}
+
+// findExistingChart checks if a .tgz for the given app already exists in chartsDir.
+func (m *ChartSyncManager) findExistingChart(chartsDir, appName string) string {
+	entries, err := os.ReadDir(chartsDir)
+	if err != nil {
+		return ""
+	}
+	prefix := appName + "-"
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasPrefix(e.Name(), prefix) && strings.HasSuffix(e.Name(), ".tgz") {
+			return filepath.Join(chartsDir, e.Name())
+		}
+	}
+	return ""
 }
 
 // GetStatus returns the current sync status (alias for Status).

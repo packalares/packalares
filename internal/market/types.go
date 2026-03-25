@@ -47,6 +47,7 @@ type MarketApp struct {
 	License          []License     `json:"license,omitempty"`
 	InstallCount     int64         `json:"installCount,omitempty"`
 	LastUpdated      string        `json:"lastUpdated,omitempty"`
+	HasChart         bool          `json:"hasChart,omitempty"`
 }
 
 // Entrance for marketplace app.
