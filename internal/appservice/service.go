@@ -241,10 +241,11 @@ func (s *Service) Install(ctx context.Context, req *InstallRequest) (*Installati
 func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 	bgCtx := context.Background()
 
-	// --- Step 1: Download chart from GitHub ---
+	// --- Step 1: Download chart ---
 	rec.State = StateDownloading
 	_ = s.store.Put(bgCtx, rec)
 	GetWSHub().BroadcastAppState(rec.Name, StateDownloading)
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateDownloading, 1, 5, "Downloading chart...", 0, 0)
 
 	chartDir, err := s.chartDL.DownloadChart(bgCtx, req.Name)
 	if err != nil {
@@ -252,9 +253,12 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		rec.State = StateInstallFailed
 		_ = s.store.Put(bgCtx, rec)
 		GetWSHub().BroadcastAppState(rec.Name, StateInstallFailed)
+		GetWSHub().BroadcastInstallProgress(rec.Name, StateInstallFailed, 1, 5, fmt.Sprintf("Download failed: %v", err), 0, 0)
 		return
 	}
 	defer CleanupChart(req.Name)
+
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateDownloading, 2, 5, "Parsing manifest...", 0, 0)
 
 	// --- Step 2: Parse OlaresManifest.yaml ---
 	manifest, err := ParseOlaresManifest(chartDir)
@@ -294,6 +298,8 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		rec.Version = chartVersion
 	}
 	_ = s.store.Put(bgCtx, rec)
+
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateDownloading, 3, 5, "Preparing namespace...", 0, 0)
 
 	// --- Step 3: Create namespace if needed ---
 	if err := s.k8s.CreateNamespace(bgCtx, s.namespace); err != nil {
@@ -396,22 +402,23 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		return
 	}
 
-	// --- Step 5: helm install -- NO --wait, NO --set ---
-	// Let the chart create MiddlewareRequest CRDs naturally.
-	// The middleware operator will provision databases.
+	// --- Step 5: helm install ---
 	rec.State = StateInstalling
 	_ = s.store.Put(bgCtx, rec)
 	GetWSHub().BroadcastAppState(rec.Name, StateInstalling)
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 4, 5, "Running helm install...", 0, 0)
 
 	if err := s.helm.InstallFromDir(bgCtx, rec.ReleaseName, chartDir, s.namespace); err != nil {
 		klog.Errorf("helm install %s: %v", req.Name, err)
 		rec.State = StateInstallFailed
 		_ = s.store.Put(bgCtx, rec)
 		GetWSHub().BroadcastAppState(rec.Name, StateInstallFailed)
+		GetWSHub().BroadcastInstallProgress(rec.Name, StateInstallFailed, 4, 5, fmt.Sprintf("Install failed: %v", err), 0, 0)
 		return
 	}
 
 	// --- Step 6: Create Application CRD ---
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 5, 5, "Registering app...", 0, 0)
 	rec.State = StateRunning
 	_ = s.store.Put(bgCtx, rec)
 
@@ -419,8 +426,9 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		klog.Errorf("apply Application CRD for %s: %v", req.Name, err)
 	}
 
-	// --- Step 7: Done ---
+	// --- Done ---
 	GetWSHub().BroadcastAppState(rec.Name, StateRunning)
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateRunning, 5, 5, "Installed successfully", 0, 0)
 	klog.Infof("app %s installed successfully (release=%s, namespace=%s)", req.Name, rec.ReleaseName, s.namespace)
 }
 

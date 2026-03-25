@@ -110,6 +110,22 @@ func (hub *WSHub) BroadcastAppState(name string, state ApplicationManagerState) 
 	})
 }
 
+// BroadcastInstallProgress broadcasts detailed install progress.
+func (hub *WSHub) BroadcastInstallProgress(name string, state ApplicationManagerState, step, totalSteps int, detail string, bytesDownloaded, bytesTotal int64) {
+	hub.Broadcast(WSMessage{
+		Type: "install_progress",
+		Data: map[string]interface{}{
+			"name":             name,
+			"state":            string(state),
+			"step":             step,
+			"totalSteps":       totalSteps,
+			"detail":           detail,
+			"bytesDownloaded":  bytesDownloaded,
+			"bytesTotal":       bytesTotal,
+		},
+	})
+}
+
 // BroadcastAlert broadcasts a system alert to all connected clients.
 func (hub *WSHub) BroadcastAlert(level, message string) {
 	hub.Broadcast(WSMessage{
