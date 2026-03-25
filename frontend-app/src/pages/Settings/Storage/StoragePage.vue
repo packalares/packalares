@@ -120,47 +120,13 @@ onMounted(() => { loadDisk(); loadMounts(); });
 </script>
 
 <style lang="scss" scoped>
-.metric-sub {
-  font-size: 11px;
-  color: var(--ink-3);
-  margin-top: 6px;
-  text-align: right;
-}
-
-.mount-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 20px;
-}
-
-.mount-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
+.metric-sub { font-size: 11px; color: var(--ink-3); margin-top: 6px; text-align: right; }
+.mount-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; }
+.mount-info { display: flex; align-items: center; gap: 10px; }
 .mount-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--glass);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-3);
+  width: 30px; height: 30px; border-radius: 8px;
+  background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; color: var(--ink-3);
 }
-
-.mount-name {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink-1);
-}
-
-.mount-path {
-  font-size: 11px;
-  color: var(--ink-3);
-  font-family: 'SF Mono', 'JetBrains Mono', monospace;
-  margin-top: 1px;
-}
+.mount-name { font-size: 13px; font-weight: 500; color: var(--ink-1); }
+.mount-path { font-size: 11px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
 </style>

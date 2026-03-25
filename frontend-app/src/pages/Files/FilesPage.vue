@@ -184,15 +184,15 @@ onMounted(() => loadFiles(currentPath.value));
 }
 
 .file-icon-wrap {
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
 
-  &.icon-folder { background: rgba(255, 204, 0, 0.12); color: #ffcc00; }
-  &.icon-file { background: var(--glass); color: var(--ink-3); }
+  &.icon-folder { background: rgba(251,191,36,0.10); color: #fbbf24; }
+  &.icon-file { background: rgba(255,255,255,0.04); color: var(--ink-3); }
 }
 
 .file-name { font-size: 11px; margin-top: 6px; text-align: center; word-break: break-all; max-width: 86px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; color: var(--ink-1); font-weight: 500; }

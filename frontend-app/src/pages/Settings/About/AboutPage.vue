@@ -93,64 +93,29 @@ const openLink = (url: string) => window.open(url, '_blank');
 
 <style lang="scss" scoped>
 .about-hero {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 40px 20px 28px;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 44px 20px 28px;
 }
-
 .about-logo {
-  width: 72px;
-  height: 72px;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #0a84ff 0%, #5e5ce6 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8px 24px rgba(10, 132, 255, 0.25);
+  width: 64px; height: 64px; border-radius: 18px;
+  background: linear-gradient(135deg, var(--accent-bold) 0%, #a78bfa 100%);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(99,102,241,0.3), inset 0 1px 0 rgba(255,255,255,0.15);
 }
-
-.about-name {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--ink-1);
-  margin-top: 16px;
-  letter-spacing: -0.3px;
-}
-
-.about-tagline {
-  font-size: 13px;
-  color: var(--ink-3);
-  margin-top: 4px;
-}
-
+.about-name { font-size: 20px; font-weight: 700; color: var(--ink-1); margin-top: 16px; letter-spacing: -0.02em; }
+.about-tagline { font-size: 13px; color: var(--ink-3); margin-top: 3px; }
 .version-badge {
-  margin-top: 8px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--accent);
-  background: var(--accent-soft);
-  padding: 3px 10px;
-  border-radius: 6px;
+  margin-top: 10px; font-size: 11px; font-weight: 600;
+  color: var(--accent); background: var(--accent-soft);
+  padding: 4px 12px; border-radius: var(--radius-xs);
 }
-
 .link-icon-wrap {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  background: var(--glass);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-3);
+  width: 28px; height: 28px; border-radius: 7px;
+  background: rgba(255,255,255,0.04); display: flex; align-items: center;
+  justify-content: center; color: var(--ink-3);
 }
-
 .about-footer {
-  text-align: center;
-  font-size: 11px;
-  color: var(--ink-3);
-  margin-top: 32px;
-  padding-bottom: 16px;
-  letter-spacing: 0.3px;
+  text-align: center; font-size: 11px; color: var(--ink-3);
+  margin-top: 36px; padding-bottom: 16px; letter-spacing: 0.03em;
 }
 </style>

@@ -174,17 +174,17 @@ function selectTheme(theme: string) {
 }
 
 .theme-dark {
-  .tp-sidebar { width: 36px; background: #141414; border-right: 1px solid rgba(255,255,255,0.06); }
-  .tp-content { flex: 1; background: #1c1c1e; padding: 8px; }
-  .tp-bar { height: 6px; background: #2c2c2e; border-radius: 3px; margin-bottom: 6px; }
-  .tp-card { height: 16px; background: #252525; border-radius: 4px; margin-bottom: 4px; &.short { width: 55%; } }
+  .tp-sidebar { width: 36px; background: #17171c; border-right: 1px solid rgba(255,255,255,0.05); }
+  .tp-content { flex: 1; background: #1e1f25; padding: 8px; }
+  .tp-bar { height: 6px; background: #262730; border-radius: 3px; margin-bottom: 6px; }
+  .tp-card { height: 16px; background: #2f3040; border-radius: 4px; margin-bottom: 4px; &.short { width: 55%; } }
 }
 
 .theme-light {
-  .tp-sidebar { width: 36px; background: #f2f2f7; border-right: 1px solid rgba(0,0,0,0.06); }
-  .tp-content { flex: 1; background: #ffffff; padding: 8px; }
-  .tp-bar { height: 6px; background: #e5e5ea; border-radius: 3px; margin-bottom: 6px; }
-  .tp-card { height: 16px; background: #f2f2f7; border-radius: 4px; margin-bottom: 4px; &.short { width: 55%; } }
+  .tp-sidebar { width: 36px; background: #f0f1f3; border-right: 1px solid rgba(0,0,0,0.05); }
+  .tp-content { flex: 1; background: #fafbfc; padding: 8px; }
+  .tp-bar { height: 6px; background: #e4e6ea; border-radius: 3px; margin-bottom: 6px; }
+  .tp-card { height: 16px; background: #edeef1; border-radius: 4px; margin-bottom: 4px; &.short { width: 55%; } }
 }
 
 .theme-label {
@@ -206,7 +206,8 @@ function selectTheme(theme: string) {
   transition: all 0.15s ease;
 
   &.checked {
-    border-color: var(--accent);
+    border-color: var(--accent-bold);
+    background: var(--accent-bold);
 
     &::after {
       content: '';
@@ -216,7 +217,7 @@ function selectTheme(theme: string) {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: var(--accent);
+      background: #fff;
     }
   }
 }

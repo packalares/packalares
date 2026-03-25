@@ -202,44 +202,28 @@ async function logout() {
 </script>
 
 <style lang="scss" scoped>
-.profile-card {
-  margin-top: 4px;
-}
-
 .profile-header {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 20px;
+  padding: 18px 20px;
 }
 
 .profile-avatar {
-  width: 48px;
-  height: 48px;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent-bold) 0%, #a78bfa 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(99,102,241,0.3);
 }
 
-.profile-info {
-  flex: 1;
-  min-width: 0;
-}
-
-.profile-name {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink-1);
-}
-
-.profile-email {
-  font-size: 12px;
-  color: var(--ink-3);
-  margin-top: 2px;
-}
+.profile-info { flex: 1; min-width: 0; }
+.profile-name { font-size: 15px; font-weight: 600; color: var(--ink-1); }
+.profile-email { font-size: 12px; color: var(--ink-3); margin-top: 1px; }
 
 .role-badge {
   font-size: 11px;
@@ -247,93 +231,37 @@ async function logout() {
   color: var(--accent);
   background: var(--accent-soft);
   padding: 4px 10px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.04em;
 }
 
-.totp-setup {
-  padding: 16px 20px;
-}
-
-.totp-instructions {
-  font-size: 13px;
-  color: var(--ink-2);
-  margin-bottom: 16px;
-  line-height: 1.5;
-}
-
+.totp-setup { padding: 16px 20px; }
+.totp-instructions { font-size: 13px; color: var(--ink-2); margin-bottom: 16px; line-height: 1.6; }
 .totp-qr {
   display: flex;
   justify-content: center;
   margin-bottom: 16px;
-
-  img {
-    border-radius: 12px;
-    background: white;
-    padding: 8px;
-  }
+  img { border-radius: var(--radius); background: #fff; padding: 8px; box-shadow: var(--shadow-card); }
 }
-
-.totp-secret-display {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.totp-secret-label {
-  font-size: 11px;
-  color: var(--ink-3);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
+.totp-secret-display { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
+.totp-secret-label { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; }
 .totp-secret-code {
   font-size: 13px;
   color: var(--ink-1);
   background: var(--bg-3);
-  padding: 4px 12px;
-  border-radius: 6px;
-  font-family: 'SF Mono', 'JetBrains Mono', monospace;
-  letter-spacing: 1px;
+  padding: 5px 14px;
+  border-radius: var(--radius-xs);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.08em;
 }
 
-.session-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 12px 20px;
-}
-
-.session-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
+.session-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; }
+.session-info { display: flex; align-items: center; gap: 10px; }
 .session-icon-wrap {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: var(--glass);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--ink-3);
+  width: 30px; height: 30px; border-radius: 8px;
+  background: var(--glass); display: flex; align-items: center; justify-content: center; color: var(--ink-3);
 }
-
-.session-id {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink-1);
-  font-family: 'SF Mono', 'JetBrains Mono', monospace;
-}
-
-.session-time {
-  font-size: 11px;
-  color: var(--ink-3);
-  margin-top: 1px;
-}
+.session-id { font-size: 12px; font-weight: 500; color: var(--ink-1); font-family: 'JetBrains Mono', monospace; }
+.session-time { font-size: 11px; color: var(--ink-3); margin-top: 1px; }
 </style>
