@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -69,11 +70,30 @@ func (h *Handler) handleListApps(w http.ResponseWriter, r *http.Request) {
 	category := r.URL.Query().Get("category")
 	var apps []MarketApp
 
+	// Build set of apps that have local charts
+	chartSet := make(map[string]bool)
+	if h.syncMgr != nil {
+		chartsDir := filepath.Join(h.syncMgr.DataDir(), chartsSubdir)
+		if entries, err := os.ReadDir(chartsDir); err == nil {
+			for _, e := range entries {
+				name := e.Name()
+				if strings.HasSuffix(name, ".tgz") {
+					// Extract app name from "appname-version.tgz"
+					idx := strings.LastIndex(name, "-")
+					if idx > 0 {
+						chartSet[name[:idx]] = true
+					}
+				}
+			}
+		}
+	}
+
 	if category != "" {
 		all := h.catalog.ListApps()
 		for _, app := range all {
 			for _, cat := range app.Categories {
 				if strings.EqualFold(cat, category) {
+					app.HasChart = chartSet[app.Name]
 					apps = append(apps, app)
 					break
 				}
@@ -81,6 +101,13 @@ func (h *Handler) handleListApps(w http.ResponseWriter, r *http.Request) {
 		}
 	} else {
 		apps = h.catalog.ListApps()
+	}
+
+	// Tag apps that have local charts
+	for i := range apps {
+		if chartSet[apps[i].Name] {
+			apps[i].HasChart = true
+		}
 	}
 
 	writeJSON(w, http.StatusOK, CatalogResponse{
