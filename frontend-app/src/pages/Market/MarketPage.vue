@@ -174,10 +174,10 @@
           >
             <div class="app-card-header">
               <img
-                :src="app.icon || `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="%232f3040"/><text x="64" y="76" text-anchor="middle" font-size="48" font-family="sans-serif" fill="%23636366">?</text></svg>')}`"
+                :src="app.icon || FALLBACK_ICON"
                 :alt="app.title"
                 class="app-icon"
-                @error="(e: Event) => ((e.target as HTMLImageElement).src = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="%232f3040"/><text x="64" y="76" text-anchor="middle" font-size="48" font-family="sans-serif" fill="%23636366">?</text></svg>')}`)"
+                @error="onIconError"
               />
               <div class="app-card-meta">
                 <div class="app-card-title">{{ app.title }}</div>
@@ -255,10 +255,10 @@
           >
             <div class="app-card-header">
               <img
-                :src="app.icon || `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="%232f3040"/><text x="64" y="76" text-anchor="middle" font-size="48" font-family="sans-serif" fill="%23636366">?</text></svg>')}`"
+                :src="app.icon || FALLBACK_ICON"
                 :alt="app.title"
                 class="app-icon"
-                @error="(e: Event) => ((e.target as HTMLImageElement).src = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="%232f3040"/><text x="64" y="76" text-anchor="middle" font-size="48" font-family="sans-serif" fill="%23636366">?</text></svg>')}`)"
+                @error="onIconError"
               />
               <div class="app-card-meta">
                 <div class="app-card-title">{{ app.title }}</div>
@@ -307,10 +307,10 @@
         <!-- Hero: icon + title + install -->
         <div class="detail-hero">
           <img
-            :src="detailApp.icon || `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="%232f3040"/><text x="64" y="76" text-anchor="middle" font-size="48" font-family="sans-serif" fill="%23636366">?</text></svg>')}`"
+            :src="detailApp.icon || FALLBACK_ICON"
             :alt="detailApp.title"
             class="detail-icon"
-            @error="(e: Event) => ((e.target as HTMLImageElement).src = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="%232f3040"/><text x="64" y="76" text-anchor="middle" font-size="48" font-family="sans-serif" fill="%23636366">?</text></svg>')}`)"
+            @error="onIconError"
           />
           <div class="detail-hero-info">
             <div class="detail-title">{{ detailData?.title || detailApp.title }}</div>
@@ -557,6 +557,15 @@ const categoryIcons: Record<string, string> = {
 
 function categoryIcon(name: string): string {
   return categoryIcons[name] || 'sym_r_category';
+}
+
+const FALLBACK_ICON = 'data:image/svg+xml;base64,' + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="128" height="128" rx="24" fill="#2f3040"/><text x="64" y="76" text-anchor="middle" font-size="48" font-family="sans-serif" fill="#636366">?</text></svg>');
+
+function onIconError(e: Event) {
+  const img = e.target as HTMLImageElement;
+  if (img.src !== FALLBACK_ICON) {
+    img.src = FALLBACK_ICON;
+  }
 }
 
 function renderMarkdown(text: string): string {

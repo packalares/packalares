@@ -162,6 +162,19 @@ func (m *ChartSyncManager) SyncAll(ctx context.Context, sourceNames []string) {
 
 			klog.V(2).Infof("chart sync: processing %s", app.Name)
 
+			// Cache icon first (CDN, not rate-limited like GitHub)
+			if app.Icon != "" && strings.HasPrefix(app.Icon, "http") {
+				iconPath := filepath.Join(iconsDir, app.Name+".png")
+				if _, err := os.Stat(iconPath); os.IsNotExist(err) {
+					localIcon := m.cacheIcon(ctx, app.Name, app.Icon, iconsDir)
+					if localIcon != "" {
+						app.Icon = localIcon
+					}
+				} else {
+					app.Icon = "/icons/" + app.Name + ".png"
+				}
+			}
+
 			// Check if chart .tgz already exists locally — skip download if so
 			existingTgz := m.findExistingChart(chartsDir, app.Name)
 			if existingTgz != "" {
@@ -181,9 +194,10 @@ func (m *ChartSyncManager) SyncAll(ctx context.Context, sourceNames []string) {
 				chartDir := filepath.Join(tmpDir, app.Name)
 				err = src.DownloadChart(ctx, app.Name, chartDir)
 				if err != nil {
-					klog.V(2).Infof("chart sync: skip %s: %v", app.Name, err)
+					klog.V(2).Infof("chart sync: skip chart %s: %v", app.Name, err)
 					_ = os.RemoveAll(tmpDir)
 					m.addError(fmt.Sprintf("download chart %s: %v", app.Name, err))
+					// Still add app to catalog (icon is cached, chart not)
 					allApps = append(allApps, *app)
 					m.mu.Lock()
 					m.status.SyncedApps++
@@ -198,19 +212,6 @@ func (m *ChartSyncManager) SyncAll(ctx context.Context, sourceNames []string) {
 				}
 
 				_ = os.RemoveAll(tmpDir)
-			}
-
-			// Cache icon if not already cached
-			if app.Icon != "" && strings.HasPrefix(app.Icon, "http") {
-				iconPath := filepath.Join(iconsDir, app.Name+".png")
-				if _, err := os.Stat(iconPath); os.IsNotExist(err) {
-					localIcon := m.cacheIcon(ctx, app.Name, app.Icon, iconsDir)
-					if localIcon != "" {
-						app.Icon = localIcon
-					}
-				} else {
-					app.Icon = "/icons/" + app.Name + ".png"
-				}
 			}
 
 			allApps = append(allApps, *app)
