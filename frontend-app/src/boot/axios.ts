@@ -34,7 +34,7 @@ export function getApiBase(): string {
     // On a subdomain — use api.zone for cross-origin API calls
     return 'https://api.' + parts.slice(1).join('.');
   }
-  // On the zone itself or auth subdomain — same origin
+  // On the zone itself or IP — same origin
   return '';
 }
 
