@@ -2,377 +2,186 @@
   <div class="settings-page">
     <div class="page-title">Account</div>
     <div class="page-scroll">
-      <!-- Profile Card -->
-      <div class="section-title">Profile</div>
+      <!-- Profile -->
       <div class="settings-card">
         <div class="profile-header">
           <q-avatar size="72px" color="grey-8" text-color="white" icon="sym_r_person" />
           <div class="profile-info">
             <div class="profile-name">{{ userInfo.name || 'admin' }}</div>
-            <div class="profile-email">{{ userInfo.email || 'admin@packalares.local' }}</div>
-            <q-badge
-              :color="userInfo.role === 'admin' ? 'blue-8' : 'grey-7'"
-              :label="userInfo.role || 'admin'"
-              class="q-mt-xs"
-            />
+            <div class="profile-email">{{ userInfo.email || '--' }}</div>
+            <q-badge color="blue-8" :label="userInfo.role || 'admin'" />
           </div>
         </div>
       </div>
 
-      <!-- Password Change -->
-      <div class="section-title">Security</div>
+      <!-- Password -->
+      <div class="section-title">Change Password</div>
       <div class="settings-card">
-        <div class="form-row">
-          <label class="form-label">Current Password</label>
-          <q-input
-            v-model="currentPassword"
-            type="password"
-            dense
-            outlined
-            dark
-            class="form-input"
-            placeholder="Enter current password"
-          />
+        <div class="input-row">
+          <span class="input-label">Current</span>
+          <q-input v-model="currentPassword" dense dark outlined type="password" class="setting-input" />
         </div>
-        <q-separator class="card-separator" />
-        <div class="form-row">
-          <label class="form-label">New Password</label>
-          <q-input
-            v-model="newPassword"
-            type="password"
-            dense
-            outlined
-            dark
-            class="form-input"
-            placeholder="Enter new password"
-          />
+        <div class="input-row">
+          <span class="input-label">New</span>
+          <q-input v-model="newPassword" dense dark outlined type="password" class="setting-input" />
         </div>
-        <q-separator class="card-separator" />
-        <div class="form-row">
-          <label class="form-label">Confirm Password</label>
-          <q-input
-            v-model="confirmPassword"
-            type="password"
-            dense
-            outlined
-            dark
-            class="form-input"
-            placeholder="Confirm new password"
-          />
+        <div class="input-row">
+          <span class="input-label">Confirm</span>
+          <q-input v-model="confirmPassword" dense dark outlined type="password" class="setting-input" />
         </div>
-        <div class="form-actions">
-          <q-btn
-            label="Change Password"
-            no-caps
-            class="action-btn"
-            :loading="changingPassword"
-            @click="changePassword"
-          />
+        <div class="action-row">
+          <q-btn flat dense label="Change Password" color="primary" :loading="changingPw" @click="changePassword" />
+          <span v-if="pwMsg" class="save-msg" :class="pwMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ pwMsg }}</span>
         </div>
       </div>
 
-      <!-- Two-Factor Authentication -->
+      <!-- TOTP 2FA -->
       <div class="section-title">Two-Factor Authentication</div>
       <div class="settings-card">
-        <div class="form-row row items-center justify-between">
-          <div>
-            <div class="form-label" style="margin-bottom: 0">TOTP Authenticator</div>
-            <div class="form-hint">Use an authenticator app for two-factor verification</div>
-          </div>
-          <q-toggle
-            v-model="totpEnabled"
-            color="blue-8"
-            @update:model-value="toggleTotp"
-          />
+        <div class="info-row">
+          <span class="info-label">TOTP Authenticator</span>
+          <q-badge :color="totpEnabled ? 'green-8' : 'grey-7'" :label="totpEnabled ? 'Enabled' : 'Disabled'" />
         </div>
+        <template v-if="!totpEnabled">
+          <q-separator class="card-separator" />
+          <div class="totp-setup" v-if="totpURI">
+            <div class="totp-instructions">Scan this QR code with your authenticator app, then enter the code below:</div>
+            <div class="totp-qr">
+              <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(totpURI)" alt="TOTP QR" />
+            </div>
+            <div class="totp-secret-display">Secret: <code>{{ totpSecret }}</code></div>
+            <div class="input-row">
+              <span class="input-label">Code</span>
+              <q-input v-model="totpCode" dense dark outlined placeholder="000000" maxlength="6" class="setting-input" @keyup.enter="verifyTOTP" />
+            </div>
+            <div class="action-row">
+              <q-btn flat dense label="Verify & Enable" color="positive" @click="verifyTOTP" />
+              <q-btn flat dense label="Cancel" color="grey" @click="totpURI = ''" />
+            </div>
+          </div>
+          <div v-else class="action-row">
+            <q-btn flat dense label="Setup TOTP" color="primary" @click="setupTOTP" />
+          </div>
+        </template>
+        <template v-else>
+          <div class="action-row">
+            <q-btn flat dense label="Disable TOTP" color="negative" @click="disableTOTP" />
+          </div>
+        </template>
+        <span v-if="totpMsg" class="save-msg q-ml-md" :class="totpMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ totpMsg }}</span>
       </div>
 
       <!-- Logout -->
-      <div class="settings-card q-mt-lg">
-        <div class="form-row row items-center justify-between">
-          <div>
-            <div class="form-label" style="margin-bottom: 0; color: var(--negative)">
-              Sign Out
-            </div>
-            <div class="form-hint">End your current session</div>
-          </div>
-          <q-btn
-            flat
-            no-caps
-            label="Logout"
-            class="logout-btn"
-            @click="confirmLogout"
-          />
+      <div class="section-title">Session</div>
+      <div class="settings-card">
+        <div class="action-row">
+          <q-btn flat dense label="Logout" color="negative" icon="sym_r_logout" @click="logout" />
         </div>
       </div>
     </div>
-
-    <!-- Logout Confirm Dialog -->
-    <q-dialog v-model="showLogoutDialog">
-      <q-card class="dialog-card">
-        <q-card-section>
-          <div class="dialog-title">Sign Out</div>
-          <div class="dialog-message">Are you sure you want to sign out?</div>
-        </q-card-section>
-        <q-card-actions align="right" class="dialog-actions">
-          <q-btn flat no-caps label="Cancel" class="dialog-cancel" v-close-popup />
-          <q-btn
-            flat
-            no-caps
-            label="Sign Out"
-            class="dialog-confirm-danger"
-            :loading="loggingOut"
-            @click="logout"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted, reactive } from 'vue';
-import { useQuasar } from 'quasar';
+import { ref, onMounted } from 'vue';
 import { api } from 'boot/axios';
+import { useQuasar } from 'quasar';
 
 const $q = useQuasar();
-
-const userInfo = reactive({
-  name: '',
-  email: '',
-  role: 'admin',
-});
-
+const userInfo = ref({ name: '', email: '', role: 'admin' });
 const currentPassword = ref('');
 const newPassword = ref('');
 const confirmPassword = ref('');
-const changingPassword = ref(false);
+const changingPw = ref(false);
+const pwMsg = ref('');
 const totpEnabled = ref(false);
-const showLogoutDialog = ref(false);
-const loggingOut = ref(false);
+const totpURI = ref('');
+const totpSecret = ref('');
+const totpCode = ref('');
+const totpMsg = ref('');
 
 onMounted(async () => {
   try {
-    const res: any = await api.get('/api/user/info');
-    if (res) {
-      userInfo.name = res.name || res.username || 'admin';
-      userInfo.email = res.email || '';
-      userInfo.role = res.role || 'admin';
-    }
-  } catch {
-    userInfo.name = 'admin';
-    userInfo.role = 'admin';
-  }
+    const r: any = await api.get('/api/user/info');
+    if (r) { userInfo.value = { name: r.name || r.username || 'admin', email: r.email || '', role: r.role || 'admin' }; }
+  } catch {}
+
+  // Check TOTP status
+  try {
+    const s: any = await api.get('/api/auth/state');
+    totpEnabled.value = s?.totp_enabled || false;
+  } catch {}
 });
 
-const changePassword = async () => {
-  if (!currentPassword.value || !newPassword.value) {
-    $q.notify({ type: 'warning', message: 'Please fill in all password fields' });
-    return;
-  }
-  if (newPassword.value !== confirmPassword.value) {
-    $q.notify({ type: 'negative', message: 'New passwords do not match' });
-    return;
-  }
-  if (newPassword.value.length < 6) {
-    $q.notify({ type: 'warning', message: 'Password must be at least 6 characters' });
-    return;
-  }
-
-  changingPassword.value = true;
+async function changePassword() {
+  if (!currentPassword.value || !newPassword.value) { pwMsg.value = 'Error: fill all fields'; return; }
+  if (newPassword.value !== confirmPassword.value) { pwMsg.value = 'Error: passwords don\'t match'; return; }
+  if (newPassword.value.length < 6) { pwMsg.value = 'Error: min 6 characters'; return; }
+  changingPw.value = true; pwMsg.value = '';
   try {
-    await api.post('/api/auth/password', {
-      current_password: currentPassword.value,
-      new_password: newPassword.value,
-    });
-    $q.notify({ type: 'positive', message: 'Password changed successfully' });
-    currentPassword.value = '';
-    newPassword.value = '';
-    confirmPassword.value = '';
-  } catch (err: any) {
-    $q.notify({
-      type: 'negative',
-      message: err?.response?.data?.message || 'Failed to change password',
-    });
-  } finally {
-    changingPassword.value = false;
-  }
-};
+    await api.post('/api/auth/password', { current_password: currentPassword.value, new_password: newPassword.value });
+    pwMsg.value = 'Password changed';
+    currentPassword.value = ''; newPassword.value = ''; confirmPassword.value = '';
+  } catch (e: any) { pwMsg.value = 'Error: ' + (e?.response?.data?.message || 'failed'); }
+  changingPw.value = false;
+}
 
-const toggleTotp = async (val: boolean) => {
-  $q.notify({
-    type: 'info',
-    message: val ? 'TOTP setup is not yet implemented' : 'TOTP has been disabled',
-  });
-};
-
-const confirmLogout = () => {
-  showLogoutDialog.value = true;
-};
-
-const logout = async () => {
-  loggingOut.value = true;
+async function setupTOTP() {
+  totpMsg.value = '';
   try {
-    await api.post('/api/auth/logout');
-  } catch {
-    // proceed even on error
-  }
+    const r: any = await api.get('/api/auth/totp/setup');
+    totpURI.value = r?.uri || r?.data?.uri || '';
+    totpSecret.value = r?.secret || r?.data?.secret || '';
+  } catch (e: any) { totpMsg.value = 'Error: ' + (e?.message || 'failed to generate'); }
+}
+
+async function verifyTOTP() {
+  if (!totpCode.value || totpCode.value.length !== 6) { totpMsg.value = 'Error: enter 6-digit code'; return; }
+  try {
+    await api.post('/api/auth/totp', { token: totpCode.value });
+    totpEnabled.value = true;
+    totpURI.value = '';
+    totpCode.value = '';
+    totpMsg.value = 'TOTP enabled';
+  } catch (e: any) { totpMsg.value = 'Error: invalid code'; }
+}
+
+async function disableTOTP() {
+  try {
+    await api.delete('/api/auth/totp/setup');
+    totpEnabled.value = false;
+    totpMsg.value = 'TOTP disabled';
+  } catch (e: any) { totpMsg.value = 'Error: ' + (e?.message || 'failed'); }
+}
+
+async function logout() {
+  try { await api.post('/api/auth/logout'); } catch {}
   window.location.href = '/login';
-};
+}
 </script>
 
 <style lang="scss" scoped>
-.settings-page {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-}
-
-.page-title {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--ink-1);
-  padding: 16px 24px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  flex-shrink: 0;
-}
-
-.page-scroll {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 24px 24px;
-}
-
-.section-title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink-2);
-  margin-top: 20px;
-  margin-bottom: 8px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.settings-card {
-  background: var(--bg-2);
-  border-radius: 12px;
-  border: 1px solid var(--separator);
-  overflow: hidden;
-}
-
-.profile-header {
-  display: flex;
-  align-items: center;
-  padding: 20px;
-  gap: 16px;
-}
-
-.profile-info {
-  flex: 1;
-}
-
-.profile-name {
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--ink-1);
-}
-
-.profile-email {
-  font-size: 13px;
-  color: var(--ink-2);
-  margin-top: 2px;
-}
-
-.form-row {
-  padding: 14px 20px;
-}
-
-.form-label {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--ink-1);
-  margin-bottom: 6px;
-  display: block;
-}
-
-.form-hint {
-  font-size: 12px;
-  color: var(--ink-3);
-  margin-top: 2px;
-}
-
-.form-input {
-  :deep(.q-field__control) {
-    background: var(--bg-1);
-    border-color: var(--separator);
-  }
-  :deep(.q-field__native) {
-    color: var(--ink-1);
-  }
-}
-
-.card-separator {
-  background: var(--separator);
-  margin: 0 20px;
-}
-
-.form-actions {
-  padding: 12px 20px 16px;
-  display: flex;
-  justify-content: flex-end;
-}
-
-.action-btn {
-  background: var(--accent) !important;
-  color: #fff !important;
-  border-radius: 8px;
-  font-size: 13px;
-  padding: 6px 16px;
-}
-
-.logout-btn {
-  color: var(--negative) !important;
-  border: 1px solid var(--negative);
-  border-radius: 8px;
-  font-size: 13px;
-}
-
-.dialog-card {
-  background: var(--bg-2);
-  border-radius: 12px;
-  min-width: 360px;
-  border: 1px solid var(--separator);
-}
-
-.dialog-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--ink-1);
-}
-
-.dialog-message {
-  font-size: 13px;
-  color: var(--ink-2);
-  margin-top: 8px;
-}
-
-.dialog-actions {
-  padding: 8px 16px 16px;
-}
-
-.dialog-cancel {
-  color: var(--ink-2) !important;
-  border: 1px solid var(--separator);
-  border-radius: 8px;
-  font-size: 13px;
-}
-
-.dialog-confirm-danger {
-  color: #fff !important;
-  background: var(--negative) !important;
-  border-radius: 8px;
-  font-size: 13px;
-}
+.settings-page { height: 100%; display: flex; flex-direction: column; }
+.page-title { font-size: 18px; font-weight: 600; color: var(--ink-1); padding: 16px 24px; height: 56px; display: flex; align-items: center; flex-shrink: 0; }
+.page-scroll { flex: 1; overflow-y: auto; padding: 0 24px 24px; }
+.section-title { font-size: 13px; font-weight: 500; color: var(--ink-2); margin-top: 20px; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+.settings-card { background: var(--bg-2); border-radius: 12px; border: 1px solid var(--separator); overflow: hidden; }
+.profile-header { display: flex; align-items: center; gap: 16px; padding: 24px 20px; }
+.profile-info { display: flex; flex-direction: column; gap: 4px; }
+.profile-name { font-size: 18px; font-weight: 600; color: var(--ink-1); }
+.profile-email { font-size: 13px; color: var(--ink-3); }
+.info-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 20px; }
+.info-label { font-size: 14px; color: var(--ink-1); font-weight: 500; }
+.card-separator { background: var(--separator); margin: 0 20px; }
+.input-row { display: flex; align-items: center; padding: 8px 20px; gap: 12px; }
+.input-label { font-size: 13px; color: var(--ink-1); font-weight: 500; min-width: 80px; }
+.setting-input { flex: 1; }
+.action-row { display: flex; align-items: center; gap: 12px; padding: 12px 20px; }
+.save-msg { font-size: 12px; }
+.totp-setup { padding: 0 20px 12px; }
+.totp-instructions { font-size: 13px; color: var(--ink-2); margin-bottom: 12px; }
+.totp-qr { display: flex; justify-content: center; margin-bottom: 12px; }
+.totp-qr img { border-radius: 8px; }
+.totp-secret-display { font-size: 12px; color: var(--ink-3); text-align: center; margin-bottom: 12px; }
+.totp-secret-display code { color: var(--ink-1); background: var(--bg-3); padding: 2px 8px; border-radius: 4px; font-family: monospace; }
 </style>
