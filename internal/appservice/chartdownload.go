@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -443,9 +444,24 @@ func ParseOlaresManifest(chartDir string) (*AppConfiguration, error) {
 		return nil, fmt.Errorf("no OlaresManifest.yaml or TerminusManifest.yaml in %s", chartDir)
 	}
 
+	// Strip UTF-8 BOM
+	if len(data) >= 3 && data[0] == 0xEF && data[1] == 0xBB && data[2] == 0xBF {
+		data = data[3:]
+	}
+
+	// Strip Helm template directives that break YAML parsing.
+	// First remove {{ else }}...{{ end }} blocks (keep admin/primary values),
+	// then strip remaining {{ ... }} directives.
+	elseBlockRE := regexp.MustCompile(`(?s)\{\{-?\s*else\s*-?\}\}.*?\{\{-?\s*end\s*-?\}\}`)
+	directiveRE := regexp.MustCompile(`\{\{-?\s*.*?\s*-?\}\}`)
+	cleaned := elseBlockRE.ReplaceAll(data, nil)
+	cleaned = directiveRE.ReplaceAll(cleaned, nil)
+
 	var cfg AppConfiguration
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		return nil, fmt.Errorf("parse manifest: %w", err)
+	_ = yaml.Unmarshal(cleaned, &cfg) // Ignore duplicate key errors from template conditionals
+
+	if cfg.Metadata.Name == "" {
+		cfg.Metadata.Name = filepath.Base(chartDir)
 	}
 
 	return &cfg, nil

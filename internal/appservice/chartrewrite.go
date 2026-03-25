@@ -99,3 +99,52 @@ func toStringMap(v interface{}) (map[string]interface{}, bool) {
 		return nil, false
 	}
 }
+
+// restructureSubcharts moves subdirectories that contain Chart.yaml into a
+// charts/ subdirectory. Olares apps put subcharts at root level (e.g.
+// myapp/myapp/, myapp/myappserver/) but Helm expects them under charts/.
+func restructureSubcharts(chartDir string) {
+	entries, err := os.ReadDir(chartDir)
+	if err != nil {
+		return
+	}
+
+	var subcharts []string
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		name := entry.Name()
+		// Skip known non-subchart directories
+		if name == "templates" || name == "charts" || name == "crds" || name == "i18n" || name == "ci" {
+			continue
+		}
+		// Check if this directory has its own Chart.yaml
+		subChartYaml := filepath.Join(chartDir, name, "Chart.yaml")
+		if _, err := os.Stat(subChartYaml); err == nil {
+			subcharts = append(subcharts, name)
+		}
+	}
+
+	if len(subcharts) == 0 {
+		return
+	}
+
+	// Create charts/ directory
+	chartsSubdir := filepath.Join(chartDir, "charts")
+	if err := os.MkdirAll(chartsSubdir, 0755); err != nil {
+		klog.Warningf("create charts/ dir: %v", err)
+		return
+	}
+
+	// Move each subchart
+	for _, name := range subcharts {
+		src := filepath.Join(chartDir, name)
+		dst := filepath.Join(chartsSubdir, name)
+		if err := os.Rename(src, dst); err != nil {
+			klog.Warningf("move subchart %s to charts/: %v", name, err)
+		} else {
+			klog.Infof("moved subchart %s → charts/%s", name, name)
+		}
+	}
+}

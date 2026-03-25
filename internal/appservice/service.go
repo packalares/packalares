@@ -402,6 +402,11 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		return
 	}
 
+	// --- Step 4b: Move subcharts into charts/ directory for Helm discovery ---
+	// Olares apps put subcharts at root level (e.g. appname/appname/, appname/appnameserver/)
+	// but Helm expects them under charts/. Move any subdirectories that contain Chart.yaml.
+	restructureSubcharts(chartDir)
+
 	// --- Step 5: helm install ---
 	rec.State = StateInstalling
 	_ = s.store.Put(bgCtx, rec)
