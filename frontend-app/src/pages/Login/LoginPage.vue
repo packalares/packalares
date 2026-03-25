@@ -319,11 +319,12 @@ async function onLogin() {
     });
 
     const body = res?.data ?? res;
+    const raw = res; // full response including requires_totp at root
 
-    if (body?.status === 'OK' || body?.token || body?.redirect) {
+    if (body?.status === 'OK' || body?.token || body?.redirect || raw?.status === 'OK') {
       // Check if 2FA is required
-      if (body?.fa2 || body?.second_factor || body?.requires_totp) {
-        firstFactorToken = body.token || '';
+      if (body?.fa2 || body?.second_factor || raw?.requires_totp || body?.requires_totp) {
+        firstFactorToken = body?.token || raw?.data?.token || '';
         currentView.value = 'totp';
         updateTimerProgress();
         await nextTick();
