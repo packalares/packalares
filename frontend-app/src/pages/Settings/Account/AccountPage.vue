@@ -129,7 +129,7 @@ onMounted(async () => {
   // Check TOTP status
   try {
     const s: any = await api.get('/api/auth/state');
-    totpEnabled.value = s?.totp_enabled || false;
+    totpEnabled.value = s?.totp_enabled || s?.data?.totp_enabled || false;
   } catch {}
 
   // Load sessions
