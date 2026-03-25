@@ -43,9 +43,7 @@ spec:
             - name: LISTEN_ADDR
               value: ":6755"
             - name: APP_NAMESPACE
-              valueFrom:
-                fieldRef:
-                  fieldPath: metadata.namespace
+              value: "user-space-{{USERNAME}}"
             - name: TAPR_URL
               value: "http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080"
             - name: APP_OWNER

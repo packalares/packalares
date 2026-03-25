@@ -67,7 +67,7 @@ spec:
         - name: USER_NAMESPACE
           value: "{{USER_NAMESPACE}}"
         - name: WATCH_NAMESPACE
-          value: "{{USER_NAMESPACE}}"
+          value: ""
         - name: NGINX_CONFIG_PATH
           value: "/etc/nginx/conf.d"
         - name: NGINX_RELOAD_CMD
