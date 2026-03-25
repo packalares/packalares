@@ -295,124 +295,128 @@
       </div>
     </div>
 
-    <!-- Detail Panel -->
-    <transition name="slide-panel">
-      <div v-if="detailApp" class="detail-overlay" @click.self="detailApp = null">
-        <div class="detail-panel card">
-          <div class="detail-close">
-            <q-btn flat round dense icon="close" @click="detailApp = null" />
-          </div>
+    <!-- App Detail Page (replaces content area) -->
+    <div v-if="detailApp" class="detail-page">
+      <div class="detail-page-scroll">
+        <!-- Back button -->
+        <div class="detail-back" @click="detailApp = null">
+          <q-icon name="sym_r_arrow_back" size="18px" />
+          <span>Back to Market</span>
+        </div>
 
-          <div class="detail-header">
-            <img
-              :src="detailApp.icon || '/icons/default-app.png'"
-              :alt="detailApp.title"
-              class="detail-icon"
-              @error="(e: Event) => ((e.target as HTMLImageElement).src = '/icons/default-app.png')"
-            />
-            <div class="detail-info">
-              <div class="detail-title">{{ detailApp.title }}</div>
-              <div class="detail-developer">{{ detailApp.developer || 'Unknown' }}</div>
-              <div class="detail-version">v{{ detailApp.version || '1.0.0' }}</div>
+        <!-- Hero: icon + title + install -->
+        <div class="detail-hero">
+          <img
+            :src="detailApp.icon || '/icons/default-app.png'"
+            :alt="detailApp.title"
+            class="detail-icon"
+            @error="(e: Event) => ((e.target as HTMLImageElement).src = '/icons/default-app.png')"
+          />
+          <div class="detail-hero-info">
+            <div class="detail-title">{{ detailData?.title || detailApp.title }}</div>
+            <div class="detail-developer">{{ detailData?.developer || detailApp.developer || 'Unknown developer' }}</div>
+            <div class="detail-meta-row">
+              <span class="detail-version">v{{ detailData?.version || detailApp.version || '1.0' }}</span>
+              <q-badge v-for="cat in (detailData?.categories || detailApp.categories || []).slice(0,3)" :key="cat" :label="cat" class="detail-cat-badge" />
             </div>
           </div>
-
-          <div class="detail-actions">
-            <template v-if="isInstalled(detailApp.name)">
-              <q-btn
-                no-caps
-                label="Open"
-                class="detail-btn-open"
-                @click="openApp(detailApp.name)"
-              />
-              <q-btn
-                flat
-                no-caps
-                label="Uninstall"
-                class="detail-btn-uninstall"
-                @click="confirmUninstall(detailApp)"
-              />
+          <div class="detail-hero-actions">
+            <template v-if="isInstalled(detailApp.name) && appStates[detailApp.name] !== 'installing' && appStates[detailApp.name] !== 'downloading'">
+              <q-btn unelevated no-caps label="Open" class="detail-btn-open" icon="sym_r_open_in_new" @click="openApp(detailApp.name)" />
+              <q-btn flat no-caps label="Uninstall" class="detail-btn-uninstall" @click="confirmUninstall(detailApp)" />
             </template>
-            <template v-else-if="appStates[detailApp.name] === 'downloading'">
-              <q-btn
-                no-caps
-                label="Downloading..."
-                class="detail-btn-install"
-                loading
-                disable
-              />
-            </template>
-            <template v-else-if="appStates[detailApp.name] === 'installing' || installingSet.has(detailApp.name)">
-              <q-btn
-                no-caps
-                label="Installing..."
-                class="detail-btn-install"
-                loading
-                disable
-              />
+            <template v-else-if="appStates[detailApp.name] === 'downloading' || appStates[detailApp.name] === 'installing' || installingSet.has(detailApp.name)">
+              <q-btn unelevated no-caps class="detail-btn-install" loading disable>
+                <span>{{ appStates[detailApp.name] === 'downloading' ? 'Downloading...' : 'Installing...' }}</span>
+              </q-btn>
             </template>
             <template v-else>
-              <q-btn
-                no-caps
-                label="Install"
-                class="detail-btn-install"
-                @click="installApp(detailApp)"
-              />
+              <q-btn unelevated no-caps label="Install" class="detail-btn-install" icon="sym_r_download" @click="installApp(detailApp)" />
             </template>
           </div>
+        </div>
 
-          <q-separator class="detail-sep" />
+        <!-- Requirements strip -->
+        <div class="detail-req-strip" v-if="detailData?.requiredMemory || detailData?.requiredCpu || detailData?.requiredDisk">
+          <div class="req-item" v-if="detailData?.requiredMemory"><span class="req-label">Memory</span><span class="req-value">{{ detailData.requiredMemory }}</span></div>
+          <div class="req-item" v-if="detailData?.requiredCpu"><span class="req-label">CPU</span><span class="req-value">{{ detailData.requiredCpu }}</span></div>
+          <div class="req-item" v-if="detailData?.requiredDisk"><span class="req-label">Disk</span><span class="req-value">{{ detailData.requiredDisk }}</span></div>
+          <div class="req-item" v-if="detailData?.requiredGpu"><span class="req-label">GPU</span><span class="req-value">{{ detailData.requiredGpu }}</span></div>
+        </div>
 
-          <!-- Screenshots -->
-          <div class="detail-section" v-if="detailData?.promoteImage?.length">
-            <div class="detail-section-title">Screenshots</div>
-            <div class="detail-screenshots">
-              <img
-                v-for="(img, idx) in detailData.promoteImage"
-                :key="idx"
-                :src="img"
-                class="detail-screenshot"
-                @error="(e: Event) => ((e.target as HTMLImageElement).style.display = 'none')"
-              />
-            </div>
+        <!-- Screenshots carousel -->
+        <div class="detail-screenshots-wrap" v-if="detailData?.promoteImage?.length">
+          <div class="detail-screenshots">
+            <img
+              v-for="(img, idx) in detailData.promoteImage"
+              :key="idx"
+              :src="img"
+              class="detail-screenshot"
+              @click="previewImg = img"
+              @error="(e: Event) => ((e.target as HTMLImageElement).style.display = 'none')"
+            />
           </div>
+        </div>
 
-          <div class="detail-section">
-            <div class="detail-section-title">Description</div>
+        <!-- Two-column layout: description + sidebar -->
+        <div class="detail-body">
+          <div class="detail-main">
+            <div class="detail-section-title">About this app</div>
             <div class="detail-description" v-if="detailLoading">
-              <q-skeleton type="text" width="100%" />
-              <q-skeleton type="text" width="90%" />
-              <q-skeleton type="text" width="80%" />
+              <q-skeleton v-for="n in 6" :key="n" type="text" :width="(100 - n * 5) + '%'" class="q-mb-xs" />
             </div>
-            <div class="detail-description" v-else>
-              {{ detailData?.fullDescription || detailData?.description || detailApp.description || 'No description available.' }}
-            </div>
+            <div class="detail-description" v-else v-html="renderMarkdown(detailData?.fullDescription || detailData?.description || detailApp.description || 'No description available.')" />
           </div>
 
-          <div class="detail-section" v-if="detailApp.categories?.length">
-            <div class="detail-section-title">Categories</div>
-            <div class="detail-tags">
-              <q-badge
-                v-for="cat in detailApp.categories"
-                :key="cat"
-                :label="cat"
-                class="detail-tag"
-              />
+          <div class="detail-sidebar">
+            <div class="detail-info-card">
+              <div class="info-item" v-if="detailData?.developer || detailApp.developer">
+                <span class="info-item-label">Developer</span>
+                <span class="info-item-value">{{ detailData?.developer || detailApp.developer }}</span>
+              </div>
+              <div class="info-item" v-if="detailData?.version || detailApp.version">
+                <span class="info-item-label">Version</span>
+                <span class="info-item-value">{{ detailData?.version || detailApp.version }}</span>
+              </div>
+              <div class="info-item" v-if="detailData?.lastUpdated">
+                <span class="info-item-label">Updated</span>
+                <span class="info-item-value">{{ detailData.lastUpdated }}</span>
+              </div>
+              <div class="info-item" v-if="detailData?.installCount">
+                <span class="info-item-label">Installs</span>
+                <span class="info-item-value">{{ detailData.installCount.toLocaleString() }}</span>
+              </div>
+              <div class="info-item" v-if="detailData?.supportArch?.length">
+                <span class="info-item-label">Architecture</span>
+                <span class="info-item-value">{{ detailData.supportArch.join(', ') }}</span>
+              </div>
             </div>
-          </div>
 
-          <div class="detail-section" v-if="detailData?.requiredMemory || detailData?.requiredCpu">
-            <div class="detail-section-title">Requirements</div>
-            <div class="detail-requirements">
-              <span v-if="detailData?.requiredMemory">Memory: {{ detailData.requiredMemory }}</span>
-              <span v-if="detailData?.requiredCpu">CPU: {{ detailData.requiredCpu }}</span>
-              <span v-if="detailData?.requiredDisk">Disk: {{ detailData.requiredDisk }}</span>
-              <span v-if="detailData?.requiredGpu">GPU: {{ detailData.requiredGpu }}</span>
+            <div class="detail-links" v-if="detailData?.website || detailData?.doc || detailData?.sourceCode">
+              <a v-if="detailData?.website" :href="detailData.website" target="_blank" class="detail-link">
+                <q-icon name="sym_r_language" size="14px" /><span>Website</span>
+              </a>
+              <a v-if="detailData?.doc" :href="detailData.doc" target="_blank" class="detail-link">
+                <q-icon name="sym_r_description" size="14px" /><span>Documentation</span>
+              </a>
+              <a v-if="detailData?.sourceCode" :href="detailData.sourceCode" target="_blank" class="detail-link">
+                <q-icon name="sym_r_code" size="14px" /><span>Source Code</span>
+              </a>
+            </div>
+
+            <div class="detail-license" v-if="detailData?.license?.length">
+              <span class="info-item-label">License</span>
+              <span class="info-item-value" v-for="l in detailData.license" :key="l.text">{{ l.text }}</span>
             </div>
           </div>
         </div>
       </div>
-    </transition>
+
+      <!-- Image preview overlay -->
+      <div v-if="previewImg" class="preview-overlay" @click="previewImg = ''">
+        <img :src="previewImg" class="preview-img" />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -459,6 +463,7 @@ const installedApps = ref<InstalledApp[]>([]);
 const detailApp = ref<MarketApp | null>(null);
 const detailData = ref<MarketApp | null>(null);
 const detailLoading = ref(false);
+const previewImg = ref('');
 const installingSet = reactive(new Set<string>());
 const appStates = reactive<Record<string, string>>({});
 
@@ -552,6 +557,23 @@ const categoryIcons: Record<string, string> = {
 
 function categoryIcon(name: string): string {
   return categoryIcons[name] || 'sym_r_category';
+}
+
+function renderMarkdown(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    .replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+    .replace(/^/, '<p>').replace(/$/, '</p>');
 }
 
 async function openDetail(app: MarketApp) {
@@ -1124,195 +1146,318 @@ onUnmounted(() => {
   color: var(--warning) !important;
 }
 
-/* -- Detail Panel -- */
-.detail-overlay {
+/* -- App Detail Page -- */
+.detail-page {
   position: absolute;
   top: 0;
+  left: 240px;
   right: 0;
   bottom: 0;
-  left: 240px;
-  z-index: 100;
-  background: rgba(0, 0, 0, 0.4);
+  background: var(--bg-1);
+  z-index: 50;
   display: flex;
-  justify-content: flex-end;
+  flex-direction: column;
 }
 
-.detail-panel {
-  width: 500px;
-  max-width: 100%;
-  height: 100%;
+.detail-page-scroll {
+  flex: 1;
   overflow-y: auto;
-  padding: 24px;
-  border-radius: 0;
-  border-left: 1px solid var(--separator);
-  background: var(--bg-2);
-  position: relative;
+  padding: 24px 40px 48px;
+  max-width: 960px;
 }
 
-.detail-close {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-  z-index: 2;
+.detail-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-3);
+  cursor: pointer;
+  padding: 4px 0;
+  margin-bottom: 20px;
+  transition: color 0.1s;
 
-  .q-btn {
-    color: var(--ink-3);
-
-    &:hover {
-      color: var(--ink-1);
-    }
-  }
+  &:hover { color: var(--ink-1); }
 }
 
-.detail-header {
+.detail-hero {
   display: flex;
   align-items: flex-start;
-  gap: 16px;
-  margin-bottom: 20px;
-  padding-right: 40px;
+  gap: 20px;
+  margin-bottom: 24px;
 }
 
 .detail-icon {
-  width: 80px;
-  height: 80px;
-  border-radius: 20px;
+  width: 88px;
+  height: 88px;
+  border-radius: 22px;
   object-fit: cover;
   flex-shrink: 0;
   background: var(--bg-3);
+  box-shadow: var(--shadow-card);
 }
 
-.detail-info {
+.detail-hero-info {
   flex: 1;
   min-width: 0;
+  padding-top: 4px;
 }
 
 .detail-title {
-  font-size: 22px;
-  font-weight: 600;
+  font-size: 24px;
+  font-weight: 700;
   color: var(--ink-1);
-  margin-bottom: 4px;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
 }
 
 .detail-developer {
   font-size: 14px;
-  color: var(--ink-3);
-  margin-bottom: 2px;
+  color: var(--ink-2);
+  margin-top: 4px;
+}
+
+.detail-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .detail-version {
-  font-size: 13px;
-  color: var(--accent);
-  font-weight: 500;
-}
-
-.detail-actions {
-  display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.detail-sep {
-  background-color: var(--separator);
-  margin: 16px 0;
-}
-
-.detail-section {
-  margin-bottom: 16px;
-}
-
-.detail-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-2);
-  text-transform: uppercase;
-  letter-spacing: 0.3px;
-  margin-bottom: 8px;
-}
-
-.detail-description {
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--ink-1);
-  white-space: pre-wrap;
-}
-
-.detail-screenshots {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding-bottom: 8px;
-
-  &::-webkit-scrollbar {
-    height: 4px;
-  }
-  &::-webkit-scrollbar-thumb {
-    background: var(--bg-3);
-    border-radius: 2px;
-  }
-}
-
-.detail-screenshot {
-  height: 200px;
-  border-radius: 8px;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-
-.detail-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.detail-tag {
-  background: var(--bg-3) !important;
-  color: var(--ink-2) !important;
-  border-radius: 4px;
   font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  background: var(--accent-soft);
   padding: 2px 8px;
+  border-radius: 5px;
 }
 
-.detail-requirements {
+.detail-cat-badge {
+  background: rgba(255,255,255,0.06) !important;
+  color: var(--ink-3) !important;
+  font-size: 11px !important;
+  border-radius: 4px !important;
+  padding: 2px 8px !important;
+}
+
+.detail-hero-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 13px;
-  color: var(--ink-2);
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-top: 4px;
 }
 
 .detail-btn-install {
-  background: var(--accent) !important;
+  background: var(--accent-bold) !important;
   color: #fff !important;
-  border-radius: 8px;
-  padding: 6px 32px;
-  font-weight: 500;
+  border-radius: var(--radius-sm) !important;
+  padding: 8px 28px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  box-shadow: 0 1px 3px rgba(99,102,241,0.35) !important;
 }
 
 .detail-btn-open {
   background: var(--positive) !important;
   color: #fff !important;
-  border-radius: 8px;
-  padding: 6px 32px;
-  font-weight: 500;
+  border-radius: var(--radius-sm) !important;
+  padding: 8px 28px !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
 }
 
 .detail-btn-uninstall {
-  background: rgba(255, 77, 77, 0.12) !important;
+  background: var(--negative-soft) !important;
   color: var(--negative) !important;
-  border-radius: 8px;
-  padding: 6px 32px;
+  border-radius: var(--radius-sm) !important;
+  font-size: 12px !important;
+}
+
+/* Requirements strip */
+.detail-req-strip {
+  display: flex;
+  gap: 20px;
+  padding: 14px 20px;
+  background: var(--bg-2);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  margin-bottom: 24px;
+}
+
+.req-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.req-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.req-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-1);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Screenshots */
+.detail-screenshots-wrap {
+  margin-bottom: 28px;
+}
+
+.detail-screenshots {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x mandatory;
+
+  &::-webkit-scrollbar { height: 4px; }
+  &::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+}
+
+.detail-screenshot {
+  height: 240px;
+  border-radius: var(--radius);
+  object-fit: cover;
+  flex-shrink: 0;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: var(--shadow-card);
+
+  &:hover {
+    transform: scale(1.02);
+    box-shadow: var(--shadow-elevated);
+  }
+}
+
+/* Two-column body */
+.detail-body {
+  display: flex;
+  gap: 32px;
+}
+
+.detail-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 12px;
+}
+
+.detail-description {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--ink-1);
+
+  :deep(h2) { font-size: 18px; font-weight: 700; margin: 20px 0 8px; color: var(--ink-1); }
+  :deep(h3) { font-size: 15px; font-weight: 600; margin: 16px 0 6px; color: var(--ink-1); }
+  :deep(h4) { font-size: 14px; font-weight: 600; margin: 12px 0 4px; color: var(--ink-2); }
+  :deep(strong) { font-weight: 600; color: var(--ink-1); }
+  :deep(code) { font-family: 'JetBrains Mono', monospace; font-size: 12px; background: var(--bg-3); padding: 1px 5px; border-radius: 3px; }
+  :deep(ul) { padding-left: 20px; margin: 8px 0; }
+  :deep(li) { margin-bottom: 4px; color: var(--ink-2); }
+  :deep(p) { margin: 8px 0; }
+}
+
+/* Sidebar */
+.detail-sidebar {
+  width: 240px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.detail-info-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.info-item-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.info-item-value {
+  font-size: 13px;
+  color: var(--ink-1);
   font-weight: 500;
 }
 
-/* -- Transitions -- */
-.slide-panel-enter-active,
-.slide-panel-leave-active {
-  transition: transform 0.25s ease;
+.detail-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-.slide-panel-enter-from,
-.slide-panel-leave-to {
-  transform: translateX(100%);
+.detail-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  transition: background 0.1s;
+
+  &:hover { background: var(--accent-soft); }
+}
+
+.detail-license {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 4px;
+}
+
+/* Image preview overlay */
+.preview-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.preview-img {
+  max-width: 90%;
+  max-height: 90%;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-elevated);
 }
 
 /* -- Scrollbar -- */
