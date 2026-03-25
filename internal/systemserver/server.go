@@ -419,9 +419,21 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 	}
 
 	entrance := app.Spec.Entrances[0]
-	// Build upstream URL: {servicename}.{namespace}.svc.cluster.local:{port}
-	upstream := fmt.Sprintf("http://%s.%s.svc.cluster.local:%d",
-		app.Spec.Name, app.Namespace, entrance.Port)
+	// Build upstream URL from the entrance host (which is the K8s service name)
+	// and the app's namespace
+	svcHost := entrance.Host
+	if svcHost == "" {
+		svcHost = app.Spec.Name
+	}
+	// If the host doesn't contain dots, it's a short service name — qualify it
+	ns := app.Namespace
+	if app.Spec.Namespace != "" {
+		ns = app.Spec.Namespace
+	}
+	if !strings.Contains(svcHost, ".") {
+		svcHost = fmt.Sprintf("%s.%s.svc.cluster.local", svcHost, ns)
+	}
+	upstream := fmt.Sprintf("http://%s:%d", svcHost, entrance.Port)
 
 	// Reverse proxy
 	target, err := url.Parse(upstream)
