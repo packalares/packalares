@@ -41,26 +41,19 @@ data:
     clients:
       - url: http://loki-svc.{{MONITORING_NAMESPACE}}:3100/loki/api/v1/push
     scrape_configs:
-      - job_name: kubernetes-pods
-        kubernetes_sd_configs:
-          - role: pod
-        relabel_configs:
-          - source_labels: [__meta_kubernetes_pod_node_name]
-            target_label: __host__
-          - action: labelmap
-            regex: __meta_kubernetes_pod_label_(.+)
-          - source_labels: [__meta_kubernetes_namespace]
-            target_label: namespace
-          - source_labels: [__meta_kubernetes_pod_name]
-            target_label: pod
-          - source_labels: [__meta_kubernetes_container_name]
-            target_label: container
-          - replacement: /var/log/pods/*$1/*.log
-            separator: /
-            source_labels:
-              - __meta_kubernetes_pod_uid
-              - __meta_kubernetes_pod_container_name
-            target_label: __path__
+      - job_name: pods
+        static_configs:
+          - targets: [localhost]
+            labels:
+              job: pods
+              __path__: /var/log/pods/**/*.log
+        pipeline_stages:
+          - regex:
+              expression: /var/log/pods/(?P<namespace>[^_]+)_(?P<pod>[^_]+)_[^/]+/(?P<container>[^/]+)/.*\.log
+          - labels:
+              namespace:
+              pod:
+              container:
 ---
 apiVersion: apps/v1
 kind: DaemonSet
