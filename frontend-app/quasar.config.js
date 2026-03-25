@@ -18,6 +18,7 @@ module.exports = configure(function () {
       },
     },
     framework: {
+      iconSet: 'material-symbols-rounded',
       plugins: ['Notify', 'Dialog', 'Loading'],
       config: {
         dark: true,
