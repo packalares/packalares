@@ -482,6 +482,8 @@ func (m *ChartSyncManager) parseManifestFromDir(appDir, appName string) MarketAp
 		}
 	}
 
+	klog.Infof("chart sync: %s manifest file: %d bytes, err=%v", appName, len(data), readErr)
+
 	if readErr != nil {
 		klog.V(3).Infof("chart sync: no manifest for %s: %v", appName, readErr)
 		return MarketApp{Name: appName, ChartName: appName, Source: "olares"}
