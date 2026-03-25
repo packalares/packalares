@@ -13,32 +13,48 @@
       <div class="files-toolbar">
         <q-btn flat dense icon="sym_r_arrow_back" :disable="historyIdx<=0" @click="goBack" />
         <q-btn flat dense icon="sym_r_arrow_forward" :disable="historyIdx>=history.length-1" @click="goForward" />
-        <q-btn flat dense icon="sym_r_arrow_upward" @click="goUp" />
-        <div class="breadcrumb"><span v-for="(c,i) in breadcrumbs" :key="i" class="crumb" @click="navigateTo(c.path)">{{c.name}}<span v-if="i<breadcrumbs.length-1" class="sep">/</span></span></div>
+        <q-btn flat dense icon="sym_r_arrow_upward" :disable="currentPath==='/'" @click="goUp" />
+        <div class="breadcrumb">
+          <span class="crumb" @click="navigateTo('/')">Root</span>
+          <template v-for="(c,i) in breadcrumbs" :key="i">
+            <span class="sep">/</span>
+            <span class="crumb" @click="navigateTo(c.path)">{{c.name}}</span>
+          </template>
+        </div>
         <q-space />
         <q-btn flat dense :icon="viewMode==='grid'?'sym_r_view_list':'sym_r_grid_view'" @click="viewMode=viewMode==='grid'?'list':'grid'" />
         <q-btn flat dense icon="sym_r_create_new_folder" @click="showNewFolder=true" />
         <q-btn flat dense icon="sym_r_upload_file" @click="triggerUpload" />
+        <q-btn flat dense icon="sym_r_delete" color="negative" :disable="selected<0 || !files[selected]" @click="deleteSelected" />
       </div>
       <div class="files-content" @click="selected=-1">
         <div v-if="viewMode==='grid'" class="file-grid">
-          <div v-for="(file,idx) in files" :key="file.name" class="file-card" :class="{selected:selected===idx}" @click.stop="selected=idx" @dblclick="openFile(file)">
+          <div v-for="(file,idx) in files" :key="file.name" class="file-card" :class="{selected:selected===idx}" @click.stop="selected=idx" @dblclick="openFile(file)" @contextmenu.prevent.stop="onContext($event, file, idx)">
             <q-icon :name="file.isDir?'sym_r_folder':fileIcon(file.name)" size="48px" :color="file.isDir?'amber':'grey'" />
             <div class="file-name">{{file.name}}</div>
             <div v-if="!file.isDir" class="file-meta">{{fmtSize(file.size)}}</div>
           </div>
         </div>
         <q-list v-else dense separator>
-          <q-item v-for="(file,idx) in files" :key="file.name" clickable :class="{'bg-blue-10':selected===idx}" @click.stop="selected=idx" @dblclick="openFile(file)">
+          <q-item v-for="(file,idx) in files" :key="file.name" clickable :class="{'bg-blue-10':selected===idx}" @click.stop="selected=idx" @dblclick="openFile(file)" @contextmenu.prevent.stop="onContext($event, file, idx)">
             <q-item-section avatar><q-icon :name="file.isDir?'sym_r_folder':fileIcon(file.name)" :color="file.isDir?'amber':'grey'" /></q-item-section>
             <q-item-section>{{file.name}}</q-item-section>
-            <q-item-section side>{{file.isDir?'':fmtSize(file.size)}}</q-item-section>
+            <q-item-section side style="min-width:80px;text-align:right">{{file.isDir ? (file.numFiles||0)+' files' : fmtSize(file.size)}}</q-item-section>
             <q-item-section side style="min-width:140px">{{fmtDate(file.modified)}}</q-item-section>
+            <q-item-section side style="min-width:40px">
+              <q-btn flat dense round icon="sym_r_delete" size="sm" color="negative" @click.stop="deleteFile(file)" />
+            </q-item-section>
           </q-item>
         </q-list>
         <div v-if="!files.length&&!loading" class="empty-state"><q-icon name="sym_r_folder_open" size="64px" color="grey-7" /><div>Empty folder</div></div>
       </div>
-      <div class="files-status">{{files.length}} items<span v-if="selected>=0"> — {{files[selected]?.name}}</span></div>
+      <div class="files-status">
+        {{files.length}} items
+        <span v-if="selected>=0"> — {{files[selected]?.name}}</span>
+        <span v-if="selected>=0 && !files[selected]?.isDir"> ({{fmtSize(files[selected]?.size)}})</span>
+        <q-space />
+        <span>{{currentPath}}</span>
+      </div>
     </div>
     <q-dialog v-model="showNewFolder"><q-card style="min-width:300px" class="bg-dark"><q-card-section class="text-h6">New Folder</q-card-section><q-card-section><q-input v-model="newFolderName" label="Name" dense dark autofocus @keydown.enter="createFolder" /></q-card-section><q-card-actions align="right"><q-btn flat label="Cancel" v-close-popup /><q-btn flat label="Create" color="primary" @click="createFolder" /></q-card-actions></q-card></q-dialog>
     <input ref="uploadRef" type="file" multiple style="display:none" @change="handleUpload" />
@@ -49,20 +65,25 @@ import { ref, computed, onMounted } from 'vue';
 import { api } from 'boot/axios';
 import { useQuasar } from 'quasar';
 const $q = useQuasar();
-const currentPath = ref('/Home');
+const currentPath = ref('/');
 const files = ref<any[]>([]);
 const loading = ref(false);
 const viewMode = ref<'grid'|'list'>('grid');
 const selected = ref(-1);
-const history = ref(['/Home']);
+const history = ref(['/']);
 const historyIdx = ref(0);
 const showNewFolder = ref(false);
 const newFolderName = ref('');
 const uploadRef = ref<HTMLInputElement|null>(null);
 const sidebarFolders = [
-  {path:'/Home',label:'Home',icon:'home'},{path:'/Home/Documents',label:'Documents',icon:'description'},
-  {path:'/Home/Downloads',label:'Downloads',icon:'download'},{path:'/Home/Pictures',label:'Pictures',icon:'image'},
-  {path:'/Home/Videos',label:'Videos',icon:'videocam'},{path:'/Home/Music',label:'Music',icon:'music_note'},
+  {path:'/',label:'All Files',icon:'folder'},
+  {path:'/Home',label:'Home',icon:'home'},
+  {path:'/Home/Documents',label:'Documents',icon:'description'},
+  {path:'/Home/Downloads',label:'Downloads',icon:'download'},
+  {path:'/Home/Pictures',label:'Pictures',icon:'image'},
+  {path:'/Home/Videos',label:'Videos',icon:'videocam'},
+  {path:'/Home/Music',label:'Music',icon:'music_note'},
+  {path:'/Mounts',label:'Mounts',icon:'lan'},
 ];
 const breadcrumbs = computed(() => {
   const p = currentPath.value.split('/').filter(Boolean);
@@ -70,26 +91,35 @@ const breadcrumbs = computed(() => {
 });
 async function loadFiles(path:string) {
   loading.value=true; selected.value=-1;
-  try { const d:any = await api.get('/api/files/resources'+path); files.value = (d.items||[]).sort((a:any,b:any) => a.isDir!==b.isDir?(a.isDir?-1:1):a.name.localeCompare(b.name)); }
-  catch { files.value=[]; }
+  try {
+    const d:any = await api.get('/api/files/resources'+path);
+    files.value = (d.items||[]).sort((a:any,b:any) => a.isDir!==b.isDir?(a.isDir?-1:1):a.name.localeCompare(b.name));
+  } catch { files.value=[]; }
   loading.value=false;
 }
 function navigateTo(p:string) { currentPath.value=p; history.value=history.value.slice(0,historyIdx.value+1); history.value.push(p); historyIdx.value=history.value.length-1; loadFiles(p); }
 function goBack() { if(historyIdx.value>0){historyIdx.value--;currentPath.value=history.value[historyIdx.value];loadFiles(currentPath.value);} }
 function goForward() { if(historyIdx.value<history.value.length-1){historyIdx.value++;currentPath.value=history.value[historyIdx.value];loadFiles(currentPath.value);} }
-function goUp() { const p=currentPath.value.split('/').filter(Boolean); if(p.length>1){p.pop();navigateTo('/'+p.join('/'));} }
-function openFile(f:any) { if(f.isDir) navigateTo(currentPath.value+'/'+f.name); else window.open('/api/files/raw'+currentPath.value+'/'+f.name,'_blank'); }
+function goUp() { if(currentPath.value==='/') return; const p=currentPath.value.split('/').filter(Boolean); p.pop(); navigateTo(p.length?'/'+p.join('/'):'/'); }
+function openFile(f:any) { if(f.isDir) navigateTo(currentPath.value==='/'?'/'+f.name:currentPath.value+'/'+f.name); else window.open('/api/files/raw'+(currentPath.value==='/'?'':currentPath.value)+'/'+f.name,'_blank'); }
 async function createFolder() { if(!newFolderName.value.trim()) return; try{await api.put('/api/files/resources'+currentPath.value+'/'+newFolderName.value.trim()+'/',{}); showNewFolder.value=false; newFolderName.value=''; loadFiles(currentPath.value);} catch{$q.notify({type:'negative',message:'Failed'});} }
 function triggerUpload() { uploadRef.value?.click(); }
 async function handleUpload(e:Event) { const i=e.target as HTMLInputElement; if(!i.files?.length) return; for(const f of Array.from(i.files)){const fd=new FormData();fd.append('file',f);try{await api.post('/api/files/resources'+currentPath.value+'/'+f.name,fd);}catch{}} i.value=''; loadFiles(currentPath.value); }
-function fileIcon(n:string) { const e=n.split('.').pop()?.toLowerCase()||''; const m:Record<string,string>={pdf:'sym_r_picture_as_pdf',doc:'sym_r_description',txt:'sym_r_article',png:'sym_r_image',jpg:'sym_r_image',jpeg:'sym_r_image',mp4:'sym_r_movie',mp3:'sym_r_audio_file',zip:'sym_r_folder_zip',js:'sym_r_code',ts:'sym_r_code',py:'sym_r_code',go:'sym_r_code',html:'sym_r_code'}; return m[e]||'sym_r_draft'; }
-function fmtSize(b:number) { if(!b)return''; const u=['B','KB','MB','GB']; let i=0; while(b>=1024&&i<3){b/=1024;i++;} return b.toFixed(i>0?1:0)+' '+u[i]; }
+async function deleteFile(f:any) {
+  $q.dialog({title:'Delete',message:`Delete ${f.name}?`,cancel:true,persistent:true,dark:true,ok:{label:'Delete',flat:true,color:'negative'}}).onOk(async()=>{
+    try{await api.delete('/api/files/resources'+currentPath.value+'/'+f.name);loadFiles(currentPath.value);}catch{$q.notify({type:'negative',message:'Delete failed'});}
+  });
+}
+function deleteSelected() { if(selected.value>=0&&files.value[selected.value]) deleteFile(files.value[selected.value]); }
+function onContext(e:Event, f:any, idx:number) { selected.value=idx; }
+function fileIcon(n:string) { const e=n.split('.').pop()?.toLowerCase()||''; const m:Record<string,string>={pdf:'sym_r_picture_as_pdf',doc:'sym_r_description',docx:'sym_r_description',txt:'sym_r_article',png:'sym_r_image',jpg:'sym_r_image',jpeg:'sym_r_image',gif:'sym_r_image',webp:'sym_r_image',svg:'sym_r_image',mp4:'sym_r_movie',mkv:'sym_r_movie',avi:'sym_r_movie',mp3:'sym_r_audio_file',flac:'sym_r_audio_file',wav:'sym_r_audio_file',zip:'sym_r_folder_zip',tar:'sym_r_folder_zip',gz:'sym_r_folder_zip','7z':'sym_r_folder_zip',rar:'sym_r_folder_zip',js:'sym_r_code',ts:'sym_r_code',py:'sym_r_code',go:'sym_r_code',html:'sym_r_code',css:'sym_r_code',json:'sym_r_code',yaml:'sym_r_code',yml:'sym_r_code',md:'sym_r_code',sh:'sym_r_terminal'}; return m[e]||'sym_r_draft'; }
+function fmtSize(b:number) { if(!b)return''; const u=['B','KB','MB','GB','TB']; let i=0; while(b>=1024&&i<4){b/=1024;i++;} return b.toFixed(i>0?1:0)+' '+u[i]; }
 function fmtDate(d:string) { return d?new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'}):''; }
 onMounted(() => loadFiles(currentPath.value));
 </script>
 <style scoped lang="scss">
 .files-page{display:flex;height:100vh;background:var(--bg-1)}
-.files-sidebar{width:240px;background:var(--bg-1);border-right:1px solid var(--separator);flex-shrink:0;padding:16px 0}
+.files-sidebar{width:220px;background:var(--bg-1);border-right:1px solid var(--separator);flex-shrink:0;padding:16px 0}
 .sidebar-header{display:flex;align-items:center;gap:10px;padding:0 20px 16px;font-size:16px;font-weight:600}
 .sidebar-active{background:var(--accent-soft)!important;color:var(--accent)!important}
 .files-main{flex:1;display:flex;flex-direction:column;min-width:0}

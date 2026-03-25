@@ -9,6 +9,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -92,6 +93,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/bfl/settings/v1alpha1/binding-zone", s.handleBindingZone)
 	s.mux.HandleFunc("/bfl/settings/v1alpha1/unbind-zone", s.handleUnbindZone)
 	s.mux.HandleFunc("/bfl/settings/v1alpha1/config-system", s.handleConfigSystem)
+	s.mux.HandleFunc("/api/settings/tailscale", s.handleTailscaleSettings)
 
 	// IAM v1alpha1
 	s.mux.HandleFunc("/bfl/iam/v1alpha1/users", s.handleListUsers)
@@ -532,6 +534,68 @@ func (s *Server) handleActivate(w http.ResponseWriter, r *http.Request) {
 
 	klog.Infof("system activated for user %s, zone=%s", s.K8s.Username, userZone)
 	respondSuccess(w)
+}
+
+func (s *Server) handleTailscaleSettings(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	ns := config.FrameworkNamespace()
+	secretName := "tailscale-config"
+
+	switch r.Method {
+	case http.MethodGet:
+		secret, err := s.K8s.Clientset.CoreV1().Secrets(ns).Get(ctx, secretName, metav1.GetOptions{})
+		if err != nil {
+			respondJSON(w, http.StatusOK, map[string]interface{}{"auth_key": "", "hostname": "packalares", "control_url": ""})
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"auth_key":    string(secret.Data["auth-key"]),
+			"hostname":    string(secret.Data["hostname"]),
+			"control_url": string(secret.Data["extra-args"]),
+		})
+
+	case http.MethodPost:
+		var req struct {
+			AuthKey    string `json:"auth_key"`
+			Hostname   string `json:"hostname"`
+			ControlURL string `json:"control_url"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondError(w, "invalid request")
+			return
+		}
+
+		secret, err := s.K8s.Clientset.CoreV1().Secrets(ns).Get(ctx, secretName, metav1.GetOptions{})
+		if err != nil {
+			respondError(w, "tailscale-config secret not found")
+			return
+		}
+
+		if secret.Data == nil {
+			secret.Data = make(map[string][]byte)
+		}
+		secret.Data["auth-key"] = []byte(req.AuthKey)
+		if req.Hostname != "" {
+			secret.Data["hostname"] = []byte(req.Hostname)
+		}
+		if req.ControlURL != "" {
+			secret.Data["extra-args"] = []byte("--login-server=" + req.ControlURL)
+		}
+
+		if _, err := s.K8s.Clientset.CoreV1().Secrets(ns).Update(ctx, secret, metav1.UpdateOptions{}); err != nil {
+			respondError(w, fmt.Sprintf("update secret: %v", err))
+			return
+		}
+
+		// Restart tailscale deployment to pick up new config
+		// This triggers a rollout with the new secret values
+		exec.CommandContext(ctx, "kubectl", "rollout", "restart", "deployment/tailscale", "-n", ns).Run()
+
+		respondJSON(w, http.StatusOK, map[string]interface{}{"status": "OK", "message": "Tailscale config updated, restarting..."})
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
 }
 
 func (s *Server) handleConfigSystem(w http.ResponseWriter, r *http.Request) {

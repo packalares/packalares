@@ -119,10 +119,18 @@ onMounted(async () => {
     }
   } catch {}
 
-  // Load saved tailscale config
-  tsAuthKey.value = localStorage.getItem('ts_auth_key') || '';
-  tsControlURL.value = localStorage.getItem('ts_control_url') || '';
-  tsHostname.value = localStorage.getItem('ts_hostname') || 'packalares';
+  // Load tailscale config from API
+  try {
+    const ts: any = await api.get('/api/settings/tailscale');
+    tsAuthKey.value = ts?.auth_key || ts?.data?.auth_key || '';
+    tsControlURL.value = ts?.control_url || ts?.data?.control_url || '';
+    tsHostname.value = ts?.hostname || ts?.data?.hostname || 'packalares';
+    tsStatus.value = tsAuthKey.value ? 'configured' : 'not configured';
+  } catch {
+    tsAuthKey.value = localStorage.getItem('ts_auth_key') || '';
+    tsControlURL.value = localStorage.getItem('ts_control_url') || '';
+    tsHostname.value = localStorage.getItem('ts_hostname') || 'packalares';
+  }
 
   // Detect IP from window
   const host = window.location.hostname;
@@ -135,15 +143,13 @@ async function saveTailscale() {
   saving.value = true;
   saveMsg.value = '';
   try {
-    // Save locally
-    localStorage.setItem('ts_auth_key', tsAuthKey.value);
-    localStorage.setItem('ts_control_url', tsControlURL.value);
-    localStorage.setItem('ts_hostname', tsHostname.value);
-
-    // TODO: POST to /api/settings/tailscale to update K8s Secret
-    // For now, just save locally
-    saveMsg.value = 'Saved locally (backend API not yet implemented)';
-    tsStatus.value = tsAuthKey.value ? 'pending restart' : 'not configured';
+    await api.post('/api/settings/tailscale', {
+      auth_key: tsAuthKey.value,
+      hostname: tsHostname.value,
+      control_url: tsControlURL.value,
+    });
+    saveMsg.value = 'Saved. Tailscale restarting...';
+    tsStatus.value = tsAuthKey.value ? 'connecting' : 'not configured';
   } catch (e: any) {
     saveMsg.value = 'Error: ' + (e.message || 'unknown');
   }
