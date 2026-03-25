@@ -3,6 +3,7 @@ package market
 import (
 	"encoding/json"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"k8s.io/klog/v2"
@@ -10,12 +11,18 @@ import (
 
 // Handler implements the HTTP API for the market backend.
 type Handler struct {
-	catalog *Catalog
+	catalog  *Catalog
+	syncMgr  *ChartSyncManager
 }
 
 // NewHandler creates a market HTTP handler.
 func NewHandler(catalog *Catalog) *Handler {
 	return &Handler{catalog: catalog}
+}
+
+// SetSyncManager attaches the chart sync manager for sync endpoints.
+func (h *Handler) SetSyncManager(mgr *ChartSyncManager) {
+	h.syncMgr = mgr
 }
 
 // RegisterRoutes adds all market routes to the mux.
@@ -26,6 +33,14 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/market/v1/categories", h.handleCategories)
 	mux.HandleFunc("/market/v1/search", h.handleSearch)
 	mux.HandleFunc("/market/v1/recommendations", h.handleRecommendations)
+
+	// Chart sync endpoints
+	mux.HandleFunc("/market/v1/sync", h.handleSync)
+	mux.HandleFunc("/market/v1/sync/status", h.handleSyncStatus)
+
+	// Chart and icon file serving
+	mux.HandleFunc("/charts/", h.handleServeChart)
+	mux.HandleFunc("/icons/", h.handleServeIcon)
 
 	// Health check
 	mux.HandleFunc("/market/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -185,6 +200,133 @@ func (h *Handler) handleRecommendations(w http.ResponseWriter, r *http.Request) 
 		Response: Response{Code: 200},
 		Data:     recs,
 	})
+}
+
+// syncRequest is the POST body for /market/v1/sync.
+// Supports both {"source": "olares"} (single) and {"sources": ["olares"]} (multiple).
+type syncRequest struct {
+	Source  string   `json:"source"`
+	Sources []string `json:"sources"`
+}
+
+// handleSync handles POST /market/v1/sync
+// Starts a background chart sync from the specified sources.
+// Body: {"source": "olares"} or {"source": "all"} or {"sources": ["olares"]}
+// Returns immediately with 200, sync runs in background.
+func (h *Handler) handleSync(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	if h.syncMgr == nil {
+		writeError(w, http.StatusServiceUnavailable, "sync manager not configured")
+		return
+	}
+
+	if h.syncMgr.IsRunning() {
+		writeJSON(w, http.StatusConflict, map[string]interface{}{
+			"code":    409,
+			"message": "sync already running",
+			"status":  h.syncMgr.Status(),
+		})
+		return
+	}
+
+	var req syncRequest
+	if r.Body != nil {
+		_ = json.NewDecoder(r.Body).Decode(&req)
+	}
+
+	// Build the source list from the request
+	var sourceNames []string
+	if req.Source == "all" || req.Source == "" {
+		// Sync all sources
+		sourceNames = nil
+	} else {
+		sourceNames = []string{req.Source}
+	}
+	// Merge in any sources from the array field
+	if len(req.Sources) > 0 {
+		sourceNames = req.Sources
+	}
+
+	// Start sync in background
+	go h.syncMgr.SyncAll(r.Context(), sourceNames)
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"code":    200,
+		"message": "sync started",
+	})
+}
+
+// handleSyncStatus handles GET /market/v1/sync/status
+func (h *Handler) handleSyncStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	if h.syncMgr == nil {
+		writeJSON(w, http.StatusOK, map[string]interface{}{
+			"code": 200,
+			"data": SyncStatus{State: "idle", LastSync: map[string]string{}},
+		})
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"code": 200,
+		"data": h.syncMgr.Status(),
+	})
+}
+
+// handleServeChart serves chart .tgz files from the charts directory.
+func (h *Handler) handleServeChart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	filename := strings.TrimPrefix(r.URL.Path, "/charts/")
+	filename = filepath.Base(filename) // prevent directory traversal
+
+	if filename == "" || filename == "." {
+		writeError(w, http.StatusBadRequest, "filename required")
+		return
+	}
+
+	dataDir := defaultDataDir
+	if h.syncMgr != nil {
+		dataDir = h.syncMgr.DataDir()
+	}
+
+	filePath := filepath.Join(dataDir, chartsSubdir, filename)
+	http.ServeFile(w, r, filePath)
+}
+
+// handleServeIcon serves cached icon files from the icons directory.
+func (h *Handler) handleServeIcon(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	filename := strings.TrimPrefix(r.URL.Path, "/icons/")
+	filename = filepath.Base(filename) // prevent directory traversal
+
+	if filename == "" || filename == "." {
+		writeError(w, http.StatusBadRequest, "filename required")
+		return
+	}
+
+	dataDir := defaultDataDir
+	if h.syncMgr != nil {
+		dataDir = h.syncMgr.DataDir()
+	}
+
+	filePath := filepath.Join(dataDir, iconsSubdir, filename)
+	http.ServeFile(w, r, filePath)
 }
 
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {

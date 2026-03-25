@@ -33,7 +33,17 @@ func main() {
 	done := make(chan struct{})
 	go catalog.StartRefreshLoop(done)
 
+	// Set up the chart sync manager with the Olares source
+	dataDir := os.Getenv("MARKET_DATA_DIR")
+	if dataDir == "" {
+		dataDir = "/data/market"
+	}
+	syncMgr := market.NewChartSyncManager(dataDir, catalog)
+	syncMgr.RegisterSource(market.NewOlaresSource())
+
 	handler := market.NewHandler(catalog)
+	handler.SetSyncManager(syncMgr)
+
 	mux := http.NewServeMux()
 	handler.RegisterRoutes(mux)
 
