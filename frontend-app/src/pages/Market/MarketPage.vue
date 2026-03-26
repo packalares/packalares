@@ -195,7 +195,7 @@
                 />
               </div>
               <q-btn
-                v-if="isInstalled(app.name) && appStates[app.name] !== 'installing' && appStates[app.name] !== 'downloading'"
+                v-if="isInstalled(app.name) && (appStates[app.name] === 'running' || (!appStates[app.name] && installedStatusMap[app.name] === 'running'))"
                 flat
                 dense
                 no-caps
@@ -203,20 +203,29 @@
                 class="app-btn-open"
                 @click.stop="openApp(app.name)"
               />
+              <div v-else-if="isInstalled(app.name) && (appStates[app.name] === 'starting' || appStates[app.name] === '' || (!appStates[app.name] && installedStatusMap[app.name] !== 'running' && installedStatusMap[app.name] !== 'failed' && installedStatusMap[app.name] !== 'uninstalling'))" class="app-install-progress">
+                <q-spinner-dots size="16px" color="indigo-4" />
+                <span class="app-progress-text">Starting...</span>
+              </div>
+              <span v-else-if="appStates[app.name] === 'failed'" class="app-state-failed">Failed</span>
+              <div v-else-if="appStates[app.name] === 'uninstalling'" class="app-install-progress">
+                <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.3" color="negative" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="!installProgress[app.name]" />
+                <span class="app-progress-text">{{ installProgress[app.name]?.detail || 'Removing...' }}</span>
+              </div>
               <div v-else-if="appStates[app.name] === 'downloading' || appStates[app.name] === 'installing' || installingSet.has(app.name)" class="app-install-progress">
                 <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.2" color="indigo-4" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="!installProgress[app.name]" />
                 <span class="app-progress-text">{{ installProgress[app.name]?.detail || (appStates[app.name] === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
               </div>
               <q-btn
-                v-else-if="app.hasChart"
+                v-else-if="app.hasChart && !isInstalled(app.name)"
                 flat
                 dense
                 no-caps
-                label="Install"
+                :label="app.requiredDisk ? 'Install \u00b7 ' + app.requiredDisk : 'Install'"
                 class="app-btn-install"
                 @click.stop="installApp(app)"
               />
-              <span v-else class="app-no-chart">Not synced</span>
+              <span v-else-if="!app.hasChart" class="app-no-chart">Not synced</span>
             </div>
           </div>
         </div>
@@ -256,7 +265,13 @@
                 :label="installedStatusMap[app.name] || 'running'"
                 :class="'status-badge status-' + (installedStatusMap[app.name] || 'running')"
               />
-              <div class="app-card-footer-actions">
+              <div class="app-card-footer-actions" v-if="appStates[app.name] === 'uninstalling'">
+                <div class="app-install-progress">
+                  <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.3" color="negative" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="!installProgress[app.name]" />
+                  <span class="app-progress-text">{{ installProgress[app.name]?.detail || 'Removing...' }}</span>
+                </div>
+              </div>
+              <div class="app-card-footer-actions" v-else>
                 <q-btn
                   flat
                   dense
@@ -306,7 +321,13 @@
             </div>
           </div>
           <div class="detail-hero-actions">
-            <template v-if="isInstalled(detailApp.name) && appStates[detailApp.name] !== 'installing' && appStates[detailApp.name] !== 'downloading'">
+            <template v-if="appStates[detailApp.name] === 'uninstalling'">
+              <div class="detail-install-progress">
+                <q-linear-progress :value="installProgress[detailApp.name] ? installProgress[detailApp.name].step / installProgress[detailApp.name].totalSteps : 0.3" color="negative" track-color="grey-9" rounded size="6px" :indeterminate="!installProgress[detailApp.name]" style="width:200px" />
+                <span class="detail-progress-text">{{ installProgress[detailApp.name]?.detail || 'Removing...' }}</span>
+              </div>
+            </template>
+            <template v-else-if="isInstalled(detailApp.name) && appStates[detailApp.name] !== 'installing' && appStates[detailApp.name] !== 'downloading'">
               <q-btn unelevated no-caps label="Open" class="detail-btn-open" icon="sym_r_open_in_new" @click="openApp(detailApp.name)" />
               <q-btn flat no-caps label="Uninstall" class="detail-btn-uninstall" @click="confirmUninstall(detailApp)" />
             </template>
@@ -318,6 +339,10 @@
             </template>
             <template v-else-if="detailApp.hasChart">
               <q-btn unelevated no-caps label="Install" class="detail-btn-install" icon="sym_r_download" @click="installApp(detailApp)" />
+              <div class="detail-req-hint" v-if="detailData?.requiredMemory || detailData?.requiredDisk">
+                <span v-if="detailData?.requiredMemory">Memory: {{ detailData.requiredMemory }}</span>
+                <span v-if="detailData?.requiredDisk">Disk: {{ detailData.requiredDisk }}</span>
+              </div>
             </template>
             <template v-else>
               <span class="detail-no-chart">Chart not synced — run Sync first</span>
@@ -666,12 +691,15 @@ function confirmUninstall(app: MarketApp) {
 
 async function uninstallApp(app: MarketApp) {
   try {
+    appStates[app.name] = 'uninstalling';
     await api.post('/api/apps/uninstall', { name: app.name });
-    detailApp.value = null;
-    await fetchInstalled();
-    $q.notify({ type: 'positive', message: app.title + ' uninstalled.' });
+    // WebSocket will update state to uninstalled; close detail panel
+    if (detailApp.value?.name === app.name) {
+      detailApp.value = null;
+    }
   } catch (e: any) {
     console.error('Uninstall failed:', e);
+    delete appStates[app.name];
     $q.notify({ type: 'negative', message: `Uninstall failed: ${e.message || 'unknown error'}` });
   }
 }
@@ -705,6 +733,14 @@ function connectWebSocket() {
             delete appStates[name];
             delete installProgress[name];
             $q.notify({ type: 'negative', message: `${name} installation failed.` });
+          } else if (state === 'uninstalling') {
+            appStates[name] = state;
+          } else if (state === 'uninstalled') {
+            delete appStates[name];
+            delete installProgress[name];
+            installingSet.delete(name);
+            installedApps.value = installedApps.value.filter((a) => a.name !== name);
+            fetchInstalled();
           } else {
             appStates[name] = state;
           }
@@ -1142,6 +1178,24 @@ onUnmounted(() => {
   font-size: 11px;
   color: var(--ink-3);
   padding: 2px 8px;
+}
+
+.app-state-failed {
+  font-size: 11px;
+  color: var(--negative);
+  font-weight: 600;
+  padding: 2px 8px;
+}
+
+.detail-req-hint {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--ink-3);
+
+  span {
+    white-space: nowrap;
+  }
 }
 
 .detail-no-chart {
