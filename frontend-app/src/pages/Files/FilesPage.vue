@@ -171,7 +171,7 @@
     <!-- Context Menu -->
     <teleport to="body">
     <div v-if="contextMenu.show" class="context-menu-overlay" @click="contextMenu.show=false" @contextmenu.prevent="contextMenu.show=false">
-    <div class="context-menu" :style="contextMenu.style" @click.stop>
+    <div class="context-menu" :style="contextMenu.style" @click="contextMenu.show=false">
       <q-list dense style="min-width:180px">
         <template v-if="contextMenu.type === 'file'">
           <q-item clickable @click="openFile(contextMenu.file!)">
