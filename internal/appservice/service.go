@@ -2,6 +2,7 @@ package appservice
 
 import (
 	"context"
+	"crypto/md5"
 	"fmt"
 	"os"
 	"os/exec"
@@ -376,7 +377,8 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 			"userData": "/packalares/data",
 		},
 		"os": map[string]interface{}{
-			"appKey": rec.AppID,
+			"appKey":    rec.AppID,
+			"appSecret": fmt.Sprintf("%x", md5.Sum([]byte(rec.AppID+"secret")))[:16],
 		},
 		"dep": map[string]interface{}{
 			"namespace":  s.namespace,
@@ -399,6 +401,30 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		"olaresEnv": map[string]interface{}{
 			"OLARES_USER_HUGGINGFACE_SERVICE": os.Getenv("OLARES_USER_HUGGINGFACE_SERVICE"),
 			"OLARES_USER_HUGGINGFACE_TOKEN":   os.Getenv("OLARES_USER_HUGGINGFACE_TOKEN"),
+		},
+		"sharedlib":      "/packalares/data/sharedlib",
+		"downloadCdnURL": "https://cdn.olares.com",
+		"gpu":            "",
+		"GPU":            map[string]interface{}{},
+		"mysql": map[string]interface{}{
+			"host": pgHost, "port": "3306",
+			"username": pgUser, "password": pgPass,
+			"databases": map[string]interface{}{dbName: dbName},
+		},
+		"mongodb": map[string]interface{}{
+			"host": "", "port": "27017",
+			"username": "", "password": "",
+			"databases": map[string]interface{}{dbName: dbName},
+		},
+		"mariadb": map[string]interface{}{
+			"host": pgHost, "port": "3306",
+			"username": pgUser, "password": pgPass,
+			"databases": map[string]interface{}{dbName: dbName},
+		},
+		"minio": map[string]interface{}{
+			"host": "", "port": "9000",
+			"username": "", "password": "",
+			"buckets": map[string]interface{}{dbName: dbName},
 		},
 	})
 	if err != nil {
@@ -441,6 +467,34 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 					"olaresEnv": map[string]interface{}{
 						"OLARES_USER_HUGGINGFACE_SERVICE": os.Getenv("OLARES_USER_HUGGINGFACE_SERVICE"),
 						"OLARES_USER_HUGGINGFACE_TOKEN":   os.Getenv("OLARES_USER_HUGGINGFACE_TOKEN"),
+					},
+					"sharedlib":      "/packalares/data/sharedlib",
+					"downloadCdnURL": "https://cdn.olares.com",
+					"gpu":            "",
+					"GPU":            map[string]interface{}{},
+					"os": map[string]interface{}{
+						"appKey":    rec.AppID,
+						"appSecret": fmt.Sprintf("%x", md5.Sum([]byte(rec.AppID+"secret")))[:16],
+					},
+					"mysql": map[string]interface{}{
+						"host": pgHost, "port": "3306",
+						"username": pgUser, "password": pgPass,
+						"databases": map[string]interface{}{dbName: dbName},
+					},
+					"mongodb": map[string]interface{}{
+						"host": "", "port": "27017",
+						"username": "", "password": "",
+						"databases": map[string]interface{}{dbName: dbName},
+					},
+					"mariadb": map[string]interface{}{
+						"host": pgHost, "port": "3306",
+						"username": pgUser, "password": pgPass,
+						"databases": map[string]interface{}{dbName: dbName},
+					},
+					"minio": map[string]interface{}{
+						"host": "", "port": "9000",
+						"username": "", "password": "",
+						"buckets": map[string]interface{}{dbName: dbName},
 					},
 				}
 				subDir := filepath.Join(chartsSubdir, entry.Name())
@@ -508,20 +562,25 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 	go func() {
 		bgCtx := context.Background()
 
+		GetWSHub().BroadcastAppState(rec.Name, StateUninstalling)
+		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 1, 3, "Removing helm release...", 0, 0)
+
 		if err := s.helm.Uninstall(bgCtx, rec.ReleaseName); err != nil {
 			klog.Errorf("helm uninstall %s: %v", req.Name, err)
 			rec.State = StateUninstallFailed
 			_ = s.store.Put(bgCtx, rec)
+			GetWSHub().BroadcastAppState(rec.Name, StateUninstallFailed)
 			return
 		}
+
+		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 2, 3, "Cleaning up...", 0, 0)
 
 		// Remove Application CRD
 		if err := s.k8s.DeleteApplicationCRD(bgCtx, rec.ReleaseName, rec.Namespace); err != nil {
 			klog.Errorf("delete Application CRD for %s: %v", req.Name, err)
 		}
 
-		rec.State = StateUninstalled
-		_ = s.store.Put(bgCtx, rec)
+		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 3, 3, "Pruning images...", 0, 0)
 
 		// Prune unused container images after uninstall
 		pruneCmd := exec.CommandContext(bgCtx, "crictl", "rmi", "--prune")
@@ -530,6 +589,11 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 		} else if len(out) > 0 {
 			klog.Infof("pruned images after uninstalling %s: %s", req.Name, strings.TrimSpace(string(out)))
 		}
+
+		rec.State = StateUninstalled
+		_ = s.store.Put(bgCtx, rec)
+		GetWSHub().BroadcastAppState(rec.Name, StateUninstalled)
+		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalled, 3, 3, "Uninstalled", 0, 0)
 
 		// Optionally remove the record entirely
 		if req.DeleteData {
