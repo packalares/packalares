@@ -140,8 +140,10 @@ func (s *Service) syncStatuses(ctx context.Context) {
 	for _, rec := range s.store.List(ctx) {
 		rel, ok := releaseMap[rec.ReleaseName]
 		if !ok {
-			// Release gone, mark as uninstalled if not already
-			if rec.State != StateUninstalled && rec.State != StateUninstalling {
+			// Release gone — mark as uninstalled, but preserve failed states
+			// so the user can see what went wrong
+			if rec.State != StateUninstalled && rec.State != StateUninstalling &&
+				rec.State != StateInstallFailed && rec.State != StateUninstallFailed {
 				rec.State = StateUninstalled
 				_ = s.store.Put(ctx, rec)
 			}

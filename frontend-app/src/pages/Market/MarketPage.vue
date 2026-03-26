@@ -734,9 +734,10 @@ function connectWebSocket() {
             fetchInstalled();
           } else if (state === 'failed') {
             installingSet.delete(name);
-            delete appStates[name];
-            delete installProgress[name];
-            $q.notify({ type: 'negative', message: `${name} installation failed.` });
+            appStates[name] = 'failed';
+            // Keep the error detail from install_progress if available
+            const errDetail = installProgress[name]?.detail || '';
+            $q.notify({ type: 'negative', message: `${name} failed: ${errDetail || 'installation error'}`, timeout: 10000 });
           } else if (state === 'uninstalling') {
             appStates[name] = state;
           } else if (state === 'uninstalled') {
