@@ -37,10 +37,11 @@
               <div class="update-name">{{ img.name }}</div>
               <div class="update-image-line">
                 <span class="update-image-name">{{ shortImage(img.currentImage) }}</span>
-                <span class="update-tag current-tag">{{ img.currentTag }}</span>
+                <span class="update-tag current-tag">:{{ img.currentTag }}</span>
+                <span class="update-digest">{{ img.currentDigest || '' }}</span>
                 <template v-if="img.updateAvailable">
                   <q-icon name="sym_r_arrow_forward" size="14px" class="update-arrow" />
-                  <span class="update-tag latest-tag">{{ img.latestTag }}</span>
+                  <span class="update-digest latest-digest">{{ img.remoteDigest || '' }}</span>
                 </template>
               </div>
             </div>
@@ -189,6 +190,17 @@ onMounted(() => {
 .latest-tag {
   background: var(--positive-soft, rgba(52, 211, 153, 0.1));
   color: var(--positive, #34d399);
+}
+
+.update-digest {
+  font-size: 10px;
+  color: var(--ink-3);
+  font-family: 'JetBrains Mono', monospace;
+  margin-left: 4px;
+}
+
+.latest-digest {
+  color: var(--positive);
 }
 
 .update-arrow {
