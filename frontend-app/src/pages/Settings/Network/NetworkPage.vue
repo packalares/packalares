@@ -21,6 +21,37 @@
         </div>
       </div>
 
+      <!-- SSH Access -->
+      <div class="section-title">SSH Access</div>
+      <div class="settings-card">
+        <div class="info-row">
+          <span class="info-label">Status</span>
+          <span
+            class="status-badge"
+            :class="sshStatus.enabled ? 'status-connected' : 'status-disconnected'"
+          >{{ sshStatus.enabled ? 'active' : 'inactive' }}</span>
+        </div>
+        <q-separator class="card-separator" />
+        <div class="info-row">
+          <span class="info-label">Port</span>
+          <span class="info-value port-value">{{ sshStatus.port }}</span>
+        </div>
+        <q-separator class="card-separator" />
+        <div class="info-row">
+          <span class="info-label">Enable / Disable</span>
+          <div class="ssh-toggle-wrap">
+            <q-toggle
+              :model-value="sshStatus.enabled"
+              disable
+              dense
+              color="primary"
+              class="ssh-toggle-disabled"
+            />
+            <span class="coming-soon-badge">Coming soon</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Tailscale -->
       <div class="section-title">VPN / Tailscale</div>
       <div class="settings-card">
@@ -89,7 +120,7 @@
         <q-separator class="card-separator" />
         <div class="info-row">
           <span class="info-label">SSH</span>
-          <span class="info-value port-value">22</span>
+          <span class="info-value port-value">{{ sshStatus.port }}</span>
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
@@ -107,7 +138,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { api } from 'boot/axios';
 
 const netInfo = ref({ ip: '--', domain: '--', zone: '--' });
@@ -117,6 +148,12 @@ const tsHostname = ref('packalares');
 const tsStatus = ref('not configured');
 const saving = ref(false);
 const saveMsg = ref('');
+
+const sshStatus = reactive({
+  enabled: false,
+  port: 22,
+  readOnly: true,
+});
 
 onMounted(async () => {
   try {
@@ -139,6 +176,19 @@ onMounted(async () => {
     tsAuthKey.value = localStorage.getItem('ts_auth_key') || '';
     tsControlURL.value = localStorage.getItem('ts_control_url') || '';
     tsHostname.value = localStorage.getItem('ts_hostname') || 'packalares';
+  }
+
+  // Load SSH status
+  try {
+    const ssh: any = await api.get('/api/settings/ssh');
+    const sshData = ssh?.data ?? ssh;
+    if (sshData) {
+      sshStatus.enabled = sshData.enabled ?? false;
+      sshStatus.port = sshData.port ?? 22;
+      sshStatus.readOnly = sshData.read_only ?? true;
+    }
+  } catch {
+    // SSH endpoint may not be available; keep defaults
   }
 
   const host = window.location.hostname;
@@ -179,5 +229,30 @@ async function saveTailscale() {
   border-radius: var(--radius-xs);
   font-size: 12px;
   font-weight: 500;
+}
+
+.ssh-toggle-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ssh-toggle-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.coming-soon-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--ink-3);
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 </style>

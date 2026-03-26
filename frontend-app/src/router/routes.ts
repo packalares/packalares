@@ -25,6 +25,7 @@ const routes: RouteRecordRaw[] = [
           { path: 'storage', component: () => import('pages/Settings/Storage/StoragePage.vue') },
           { path: 'gpu', component: () => import('pages/Settings/GPU/GpuPage.vue') },
           { path: 'appearance', component: () => import('pages/Settings/Appearance/AppearancePage.vue') },
+          { path: 'update', component: () => import('pages/Settings/Update/UpdatePage.vue') },
           { path: 'about', component: () => import('pages/Settings/About/AboutPage.vue') },
         ],
       },

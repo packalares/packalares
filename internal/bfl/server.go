@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -97,6 +98,9 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/bfl/settings/v1alpha1/unbind-zone", s.handleUnbindZone)
 	s.mux.HandleFunc("/bfl/settings/v1alpha1/config-system", s.handleConfigSystem)
 	s.mux.HandleFunc("/api/settings/tailscale", s.handleTailscaleSettings)
+	s.mux.HandleFunc("/api/settings/ssh", s.handleSSHSettings)
+	s.mux.HandleFunc("/api/settings/updates", s.handleUpdates)
+	s.mux.HandleFunc("/api/settings/updates/", s.handleUpdateRestart)
 
 	// IAM v1alpha1
 	s.mux.HandleFunc("/bfl/iam/v1alpha1/users", s.handleListUsers)
@@ -634,6 +638,214 @@ func (s *Server) handleTailscaleSettings(w http.ResponseWriter, r *http.Request)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+// ---------------------------------------------------------------------------
+// SSH Settings (read-only) — returns current SSH status from the host
+// ---------------------------------------------------------------------------
+
+func (s *Server) handleSSHSettings(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, "method not allowed")
+		return
+	}
+
+	// Read SSH port from sshd_config on the host via kubectl.
+	// Since BFL runs inside a K8s pod, we attempt to read the host config
+	// by exec-ing into a host-level pod or reading from a mounted path.
+	// Fallback: try /host/etc/ssh/sshd_config (if hostPath mounted) or default to 22.
+	port := 22
+	enabled := false
+
+	// Try reading from host-mounted sshd_config
+	sshdConfigPaths := []string{
+		"/host/etc/ssh/sshd_config",
+		"/etc/ssh/sshd_config",
+	}
+	for _, cfgPath := range sshdConfigPaths {
+		data, err := os.ReadFile(cfgPath)
+		if err != nil {
+			continue
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "#") {
+				continue
+			}
+			if strings.HasPrefix(line, "Port ") || strings.HasPrefix(line, "Port\t") {
+				fields := strings.Fields(line)
+				if len(fields) >= 2 {
+					if p, err := strconv.Atoi(fields[1]); err == nil {
+						port = p
+					}
+				}
+			}
+		}
+		// If we could read the config, assume SSH is available
+		enabled = true
+		break
+	}
+
+	// If we couldn't read the config, try probing the port to see if sshd is listening
+	if !enabled {
+		conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 2*time.Second)
+		if err == nil {
+			conn.Close()
+			enabled = true
+		}
+	}
+
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"enabled":   enabled,
+		"port":      port,
+		"read_only": true,
+	})
+}
+
+// ---------------------------------------------------------------------------
+// Update management — list deployments and check GHCR for latest tags
+// ---------------------------------------------------------------------------
+
+// DeploymentUpdateInfo represents a single deployment's update status.
+type DeploymentUpdateInfo struct {
+	Name            string `json:"name"`
+	Namespace       string `json:"namespace"`
+	CurrentImage    string `json:"currentImage"`
+	CurrentTag      string `json:"currentTag"`
+	LatestTag       string `json:"latestTag"`
+	UpdateAvailable bool   `json:"updateAvailable"`
+}
+
+func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+	ns := config.FrameworkNamespace()
+
+	deployments, err := s.K8s.Clientset.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{})
+	if err != nil {
+		respondError(w, fmt.Sprintf("list deployments: %v", err))
+		return
+	}
+
+	var results []DeploymentUpdateInfo
+	httpClient := &http.Client{Timeout: 10 * time.Second}
+
+	for _, dep := range deployments.Items {
+		for _, c := range dep.Spec.Template.Spec.Containers {
+			image := c.Image
+			// Only check ghcr.io/packalares/* images
+			if !strings.HasPrefix(image, "ghcr.io/packalares/") {
+				continue
+			}
+
+			// Parse image:tag
+			currentImage, currentTag := parseImageTag(image)
+			latestTag := currentTag
+			updateAvailable := false
+
+			// Extract the short image name from ghcr.io/packalares/{name}
+			shortName := strings.TrimPrefix(currentImage, "ghcr.io/packalares/")
+
+			// Query GHCR for tags
+			tagsURL := fmt.Sprintf("https://ghcr.io/v2/packalares/%s/tags/list", shortName)
+			req, err := http.NewRequestWithContext(ctx, http.MethodGet, tagsURL, nil)
+			if err == nil {
+				resp, err := httpClient.Do(req)
+				if err == nil {
+					defer resp.Body.Close()
+					if resp.StatusCode == http.StatusOK {
+						var tagsResp struct {
+							Tags []string `json:"tags"`
+						}
+						if json.NewDecoder(resp.Body).Decode(&tagsResp) == nil && len(tagsResp.Tags) > 0 {
+							// Sort tags and pick the latest (lexicographically highest)
+							sorted := make([]string, len(tagsResp.Tags))
+							copy(sorted, tagsResp.Tags)
+							sort.Strings(sorted)
+							latestTag = sorted[len(sorted)-1]
+							if latestTag != currentTag {
+								updateAvailable = true
+							}
+						}
+					}
+				}
+			}
+
+			results = append(results, DeploymentUpdateInfo{
+				Name:            dep.Name,
+				Namespace:       dep.Namespace,
+				CurrentImage:    currentImage,
+				CurrentTag:      currentTag,
+				LatestTag:       latestTag,
+				UpdateAvailable: updateAvailable,
+			})
+		}
+	}
+
+	if results == nil {
+		results = []DeploymentUpdateInfo{}
+	}
+
+	respondJSON(w, http.StatusOK, results)
+}
+
+func (s *Server) handleUpdateRestart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		respondError(w, "method not allowed")
+		return
+	}
+	ctx := r.Context()
+
+	// Parse deployment name from URL: /api/settings/updates/{name}
+	path := strings.TrimPrefix(r.URL.Path, "/api/settings/updates/")
+	name := strings.TrimSuffix(path, "/")
+	if name == "" {
+		respondError(w, "deployment name is required")
+		return
+	}
+
+	ns := config.FrameworkNamespace()
+
+	// Verify deployment exists
+	_, err := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
+	if err != nil {
+		respondError(w, fmt.Sprintf("deployment not found: %v", err))
+		return
+	}
+
+	// Trigger rolling restart via kubectl
+	out, err := exec.CommandContext(ctx, "kubectl", "rollout", "restart", "deployment/"+name, "-n", ns).CombinedOutput()
+	if err != nil {
+		respondError(w, fmt.Sprintf("rollout restart failed: %v: %s", err, string(out)))
+		return
+	}
+
+	klog.Infof("triggered rolling restart for deployment/%s in %s", name, ns)
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"name":    name,
+		"status":  "restarting",
+		"message": fmt.Sprintf("Rolling restart triggered for %s", name),
+	})
+}
+
+// parseImageTag splits "ghcr.io/packalares/foo:v1.2.3" into image and tag.
+func parseImageTag(image string) (string, string) {
+	// Handle digest references (image@sha256:...)
+	if idx := strings.Index(image, "@"); idx >= 0 {
+		return image[:idx], image[idx+1:]
+	}
+	// Handle tag references (image:tag)
+	if idx := strings.LastIndex(image, ":"); idx >= 0 {
+		// Make sure the colon is not part of the registry (e.g., ghcr.io:443/...)
+		candidate := image[idx+1:]
+		if !strings.Contains(candidate, "/") {
+			return image[:idx], candidate
+		}
+	}
+	return image, "latest"
 }
 
 func (s *Server) handleConfigSystem(w http.ResponseWriter, r *http.Request) {

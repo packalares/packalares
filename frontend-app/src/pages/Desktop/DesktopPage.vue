@@ -58,8 +58,7 @@
           @contextmenu.prevent.stop="onDockContextMenu($event, app)"
         >
           <div class="dock-app-icon" :class="{ 'dock-app-hover': true }">
-            <img v-if="app.icon && (app.icon.startsWith('/') || app.icon.startsWith('http'))" :src="app.icon" class="dock-icon-img" />
-            <q-icon v-else :name="'sym_r_' + (app.icon || 'web')" size="20px" color="white" />
+            <q-icon :name="'sym_r_' + app.icon" size="20px" color="white" />
           </div>
           <div
             v-if="isAppOpen(app.id)"
@@ -217,8 +216,7 @@
               @click.stop="onLaunchAppClick(app)"
             >
               <div class="launchpad-app-icon">
-                <img v-if="app.icon && (app.icon.startsWith('/') || app.icon.startsWith('http'))" :src="app.icon" class="launchpad-icon-img" />
-                <q-icon v-else :name="'sym_r_' + (app.icon || 'web')" size="34px" color="white" />
+                <q-icon :name="'sym_r_' + app.icon" size="34px" color="white" />
               </div>
               <div class="launchpad-app-name">{{ app.title }}</div>
             </div>
@@ -266,7 +264,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { api } from 'boot/axios';
 import { useUserStore } from 'stores/user';
 import { useMonitorStore } from 'stores/monitor';
@@ -296,6 +294,17 @@ interface WindowInfo {
   visible: boolean;
   maximized: boolean;
   prevRect?: { x: number; y: number; width: number; height: number };
+}
+
+// Serializable subset of WindowInfo for localStorage persistence
+interface SavedWindow {
+  appId: string;
+  url: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  visible: boolean;
 }
 
 // ─── Stores ──────────────────────────────────────────────────
@@ -376,6 +385,79 @@ const dragging = ref<string | null>(null);
 const resizing = ref<string | null>(null);
 const windowsLayerRef = ref<HTMLElement | null>(null);
 const dockAppsRef = ref<HTMLElement | null>(null);
+
+// ─── Window Persistence ──────────────────────────────────────
+
+const STORAGE_KEY = 'packalares_desktop_windows';
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+function saveWindowState() {
+  // Debounce: clear any pending save
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    const toSave: SavedWindow[] = windows.value.map((w) => ({
+      appId: w.appId,
+      url: w.url,
+      x: w.x,
+      y: w.y,
+      width: w.width,
+      height: w.height,
+      visible: w.visible,
+    }));
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    } catch {
+      // localStorage full or unavailable — silently skip
+    }
+  }, 500);
+}
+
+function restoreWindowState() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const saved: SavedWindow[] = JSON.parse(raw);
+    if (!Array.isArray(saved) || saved.length === 0) return;
+
+    // Build a set of known app IDs (system + loaded remote)
+    const knownIds = new Set(allApps.value.map((a) => a.id));
+
+    for (const sw of saved) {
+      // Skip windows for apps that no longer exist (uninstalled)
+      if (!knownIds.has(sw.appId)) continue;
+
+      // Skip if a window for this app is already open
+      if (windows.value.some((w) => w.appId === sw.appId)) continue;
+
+      const app = allApps.value.find((a) => a.id === sw.appId);
+      if (!app) continue;
+
+      const win: WindowInfo = {
+        id: sw.appId + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6),
+        appId: sw.appId,
+        title: app.title,
+        url: sw.url || app.url,
+        x: sw.x,
+        y: sw.y,
+        width: sw.width,
+        height: sw.height,
+        z: ++nextZ,
+        visible: sw.visible,
+        maximized: false,
+      };
+
+      windows.value.push(win);
+    }
+
+    // Set the topmost visible window as active
+    const visible = windows.value.filter((w) => w.visible);
+    if (visible.length > 0) {
+      activeWindowId.value = visible[visible.length - 1].id;
+    }
+  } catch {
+    // Corrupted state — ignore
+  }
+}
 
 // ─── Clock ───────────────────────────────────────────────────
 
@@ -459,6 +541,7 @@ function openWindow(app: AppInfo) {
   if (existing) {
     existing.visible = true;
     bringToFront(existing.id);
+    saveWindowState();
     return;
   }
 
@@ -485,6 +568,7 @@ function openWindow(app: AppInfo) {
 
   windows.value.push(win);
   activeWindowId.value = win.id;
+  saveWindowState();
 }
 
 function bringToFront(winId: string) {
@@ -499,6 +583,7 @@ function minimizeWindow(winId: string) {
   const win = windows.value.find((w) => w.id === winId);
   if (win) {
     win.visible = false;
+    saveWindowState();
   }
 }
 
@@ -518,11 +603,13 @@ function toggleMaximize(winId: string) {
     win.maximized = true;
   }
   bringToFront(winId);
+  saveWindowState();
 }
 
 function onWindowClose(winId: string | undefined) {
   if (!winId) return;
   windows.value = windows.value.filter((w) => w.id !== winId);
+  saveWindowState();
 }
 
 // ─── Drag Windows ───────────────────────────────────────────
@@ -557,6 +644,7 @@ function onDragEnd() {
   dragging.value = null;
   document.removeEventListener('mousemove', onDragMove);
   document.removeEventListener('mouseup', onDragEnd);
+  saveWindowState();
 }
 
 // ─── Resize Windows ─────────────────────────────────────────
@@ -590,6 +678,7 @@ function onResizeEnd() {
   resizing.value = null;
   document.removeEventListener('mousemove', onResizeMove);
   document.removeEventListener('mouseup', onResizeEnd);
+  saveWindowState();
 }
 
 // ─── Dock Interactions ──────────────────────────────────────
@@ -758,6 +847,10 @@ onMounted(async () => {
 
   await loadInit();
   await loadApps();
+
+  // Restore saved window state after apps are loaded
+  restoreWindowState();
+
   // WebSocket pushes metrics every 5s
   const wsStore = useWebSocketStore();
   wsStore.start();
@@ -765,6 +858,7 @@ onMounted(async () => {
 
 onUnmounted(() => {
   if (clockInterval) clearInterval(clockInterval);
+  if (saveTimer) clearTimeout(saveTimer);
   const wsStore = useWebSocketStore();
   wsStore.stop();
   window.removeEventListener('keydown', onKeydown);
@@ -965,18 +1059,6 @@ onUnmounted(() => {
 }
 .dock-app-icon:hover {
   transform: scale(1.08);
-}
-.dock-icon-img {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
-  object-fit: cover;
-}
-.launchpad-icon-img {
-  width: 36px;
-  height: 36px;
-  border-radius: 10px;
-  object-fit: cover;
 }
 .dock-icon-glyph {
   font-size: 20px;
