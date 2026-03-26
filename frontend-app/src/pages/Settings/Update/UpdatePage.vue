@@ -77,7 +77,10 @@
 
 <script lang="ts" setup>
 import { ref, reactive, onMounted } from 'vue';
+import { useQuasar } from 'quasar';
 import { api } from 'boot/axios';
+
+const $q = useQuasar();
 
 interface ImageInfo {
   name: string;
@@ -123,7 +126,9 @@ async function restartDeployment(img: ImageInfo) {
   const oldDigest = img.currentDigest;
   try {
     await api.post(`/api/settings/updates/${img.name}`);
-    // Poll until digest changes (pod restarted with new image) or timeout
+    // Wait for pod to restart then re-check
+    // First wait 5s for old pod to terminate, then poll for new pod with valid digest
+    await new Promise(r => setTimeout(r, 5000));
     let attempts = 0;
     const poll = setInterval(async () => {
       attempts++;
@@ -132,22 +137,26 @@ async function restartDeployment(img: ImageInfo) {
         const data = resp?.data ?? resp;
         if (Array.isArray(data)) {
           const updated = data.find((d: ImageInfo) => d.name === img.name);
-          if (updated && updated.currentDigest !== 'unknown' && updated.currentDigest !== oldDigest) {
-            // Digest changed — update complete
+          if (updated && updated.currentDigest !== 'unknown') {
+            // Pod has a valid digest — restart completed
             clearInterval(poll);
             restartingSet.delete(img.name);
             images.value = data;
             lastChecked.value = new Date().toLocaleTimeString();
+            if (updated.currentDigest === updated.remoteDigest) {
+              $q.notify({ type: 'positive', message: `${img.name} updated successfully` });
+            } else if (updated.currentDigest === oldDigest) {
+              $q.notify({ type: 'info', message: `${img.name} restarted (already latest)` });
+            }
           }
         }
       } catch {}
-      if (attempts >= 20) {
-        // Timeout after ~60s
+      if (attempts >= 15) {
         clearInterval(poll);
         restartingSet.delete(img.name);
         await checkUpdates();
       }
-    }, 3000);
+    }, 4000);
   } catch (e: any) {
     console.error('Failed to restart deployment:', e);
     restartingSet.delete(img.name);
