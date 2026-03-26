@@ -76,6 +76,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { api } from 'boot/axios';
+import { formatBytes } from 'src/utils/helpers';
 
 interface Mount { name: string; type: string; remote: string; local_path: string; }
 
@@ -86,13 +87,6 @@ const mounts = ref<Mount[]>([]);
 const adding = ref(false);
 const mountMsg = ref('');
 const newMount = ref({ type: 'smb', name: '', remote: '', username: '', password: '' });
-
-function formatBytes(b: number) {
-  if (!b) return '0 B';
-  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(b) / Math.log(1024));
-  return (b / Math.pow(1024, i)).toFixed(1) + ' ' + u[i];
-}
 
 async function loadDisk() {
   try { const r: any = await api.get('/api/monitor/metrics'); diskUsed.value = r?.disk?.used || 0; diskTotal.value = r?.disk?.total || 0; } catch {}
@@ -120,7 +114,6 @@ onMounted(() => { loadDisk(); loadMounts(); });
 </script>
 
 <style lang="scss" scoped>
-.metric-sub { font-size: 11px; color: var(--ink-3); margin-top: 6px; text-align: right; }
 .mount-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; }
 .mount-info { display: flex; align-items: center; gap: 10px; }
 .mount-icon-wrap {

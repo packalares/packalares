@@ -356,3 +356,166 @@ body {
   align-items: center;
   gap: 12px;
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// Quasar Notification (Toast) Overrides — Midnight Slate
+// ═══════════════════════════════════════════════════════════════════
+
+.q-notification {
+  background: var(--bg-3) !important;
+  color: var(--ink-1) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-elevated) !important;
+  backdrop-filter: blur(20px) saturate(1.4) !important;
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 10px 16px !important;
+  min-height: 40px !important;
+
+  .q-notification__message {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+  }
+
+  .q-notification__actions {
+    color: var(--ink-2) !important;
+  }
+
+  &.bg-positive {
+    background: rgba(52, 211, 153, 0.12) !important;
+    border-color: rgba(52, 211, 153, 0.18) !important;
+    color: var(--positive) !important;
+  }
+
+  &.bg-negative {
+    background: rgba(248, 113, 113, 0.12) !important;
+    border-color: rgba(248, 113, 113, 0.18) !important;
+    color: var(--negative) !important;
+  }
+
+  &.bg-warning {
+    background: rgba(251, 191, 36, 0.12) !important;
+    border-color: rgba(251, 191, 36, 0.18) !important;
+    color: var(--warning) !important;
+  }
+
+  &.bg-info {
+    background: rgba(129, 140, 248, 0.12) !important;
+    border-color: rgba(129, 140, 248, 0.18) !important;
+    color: var(--accent) !important;
+  }
+
+  .q-icon {
+    color: inherit !important;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Quasar Dialog Overrides — Midnight Slate
+// ═══════════════════════════════════════════════════════════════════
+
+.q-dialog__backdrop {
+  background: rgba(0, 0, 0, 0.55) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.q-dialog {
+  .q-card {
+    background: var(--bg-2) !important;
+    color: var(--ink-1) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow-elevated) !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+
+    .q-card__section {
+      color: var(--ink-1) !important;
+    }
+
+    .q-card__section--vert:first-child {
+      font-size: 15px !important;
+      font-weight: 600 !important;
+    }
+
+    .text-subtitle1 {
+      font-size: 15px !important;
+      font-weight: 600 !important;
+      color: var(--ink-1) !important;
+    }
+
+    .q-card__actions {
+      padding: 8px 16px 14px !important;
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Quasar Select/Menu Dropdown Overrides
+// ═══════════════════════════════════════════════════════════════════
+
+.q-menu {
+  background: var(--bg-2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius-sm) !important;
+  box-shadow: var(--shadow-elevated) !important;
+
+  .q-item {
+    color: var(--ink-1) !important;
+    min-height: 34px !important;
+
+    &:hover, &.q-manual-focusable--focused {
+      background: rgba(255, 255, 255, 0.05) !important;
+    }
+  }
+
+  .q-item__section--avatar {
+    min-width: 28px !important;
+    padding-right: 8px !important;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Shared Metric Sub-label (used in System, Storage, GPU)
+// ═══════════════════════════════════════════════════════════════════
+
+.metric-sub {
+  font-size: 11px;
+  color: var(--ink-3);
+  margin-top: 6px;
+  text-align: right;
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// Compact Context Menu (macOS Finder style)
+// ═══════════════════════════════════════════════════════════════════
+
+.context-menu {
+  .q-list {
+    padding: 3px 0 !important;
+  }
+
+  .q-item {
+    min-height: 26px !important;
+    padding: 2px 10px !important;
+    font-size: 12px !important;
+
+    .q-item__section--avatar {
+      min-width: 22px !important;
+      padding-right: 6px !important;
+
+      .q-icon {
+        font-size: 14px !important;
+      }
+    }
+
+    .q-item__section--side {
+      padding-left: 12px !important;
+    }
+  }
+
+  .q-separator {
+    margin: 3px 8px !important;
+  }
+}

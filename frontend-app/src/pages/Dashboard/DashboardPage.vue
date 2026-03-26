@@ -254,6 +254,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import { api, getWsUrl } from 'boot/axios';
+import { formatBytes, formatRate, formatUptime, fmtLoad } from 'src/utils/helpers';
 
 // ─── Types ───
 interface Metrics {
@@ -363,35 +364,6 @@ const podColumns = [
 ];
 
 // ─── Helpers ───
-function formatBytes(b?: number): string {
-  if (b == null) return '--';
-  if (b === 0) return '0 B';
-  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(b) / Math.log(1024));
-  return (b / Math.pow(1024, i)).toFixed(1) + ' ' + u[i];
-}
-
-function formatRate(bps?: number): string {
-  if (bps == null || bps === 0) return '0 B/s';
-  if (bps < 1024) return bps.toFixed(0) + ' B/s';
-  if (bps < 1024 * 1024) return (bps / 1024).toFixed(1) + ' KB/s';
-  return (bps / 1024 / 1024).toFixed(1) + ' MB/s';
-}
-
-function formatUptime(s?: number): string {
-  if (s == null) return '--';
-  const d = Math.floor(s / 86400);
-  const h = Math.floor((s % 86400) / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  if (d > 0) return `${d}d ${h}h`;
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
-}
-
-function fmtLoad(l: number[]): string {
-  return l.map(v => v.toFixed(2)).join('  ');
-}
-
 function pushHistory(arr: number[], val: number) {
   arr.push(val);
   if (arr.length > MAX_POINTS) arr.shift();
@@ -475,15 +447,15 @@ function drawLine(canvas: HTMLCanvasElement | null, data: number[], color: strin
   ctx.clearRect(0, 0, w, h);
 
   // Grid
-  ctx.font = '10px monospace';
+  ctx.font = '10px JetBrains Mono, monospace';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   for (let i = 0; i <= 4; i++) {
     const val = (maxVal * i) / 4;
     const y = pad.top + ch - (ch * i) / 4;
-    ctx.fillStyle = '#555';
+    ctx.fillStyle = '#9aa0a6';
     ctx.fillText(unit === '%' ? val.toFixed(0) + '%' : formatRate(val), pad.left - 4, y);
-    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(w - pad.right, y); ctx.stroke();
   }
 
@@ -595,7 +567,7 @@ $accent: #4c9fe7;
   height: 100vh;
   background: $bg-deep;
   overflow: hidden;
-  font-family: 'Inter', -apple-system, sans-serif;
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
   color: $ink-1;
 }
 
@@ -657,7 +629,7 @@ $accent: #4c9fe7;
   border-radius: 8px;
   padding: 10px 12px;
 }
-.strip-label { font-size: 10px; font-weight: 600; color: $ink-3; letter-spacing: 1px; text-transform: uppercase; }
+.strip-label { font-size: 10px; font-weight: 600; color: $ink-2; letter-spacing: 1px; text-transform: uppercase; }
 .strip-value { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin: 2px 0 6px; }
 .strip-bar-track { height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; }
 .strip-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
@@ -681,7 +653,7 @@ $accent: #4c9fe7;
   align-items: center;
   margin-bottom: 4px;
 }
-.chart-title { font-size: 11px; font-weight: 600; color: $ink-3; text-transform: uppercase; letter-spacing: 0.5px; }
+.chart-title { font-size: 11px; font-weight: 600; color: $ink-2; text-transform: uppercase; letter-spacing: 0.5px; }
 .chart-live { font-size: 12px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 .chart-canvas { width: 100%; height: 140px; display: block; }
 
@@ -705,7 +677,7 @@ $accent: #4c9fe7;
   border-radius: 8px;
   padding: 12px;
 }
-.panel-head { font-size: 11px; font-weight: 600; color: $ink-3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+.panel-head { font-size: 11px; font-weight: 600; color: $ink-2; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
 .cores-list { max-height: 200px; overflow-y: auto; scrollbar-width: thin; }
 .core-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
 .core-id { font-size: 10px; color: $ink-3; width: 16px; text-align: right; font-family: monospace; }
@@ -729,7 +701,7 @@ $accent: #4c9fe7;
   display: flex;
   flex-direction: column;
 }
-.stat-label { font-size: 11px; color: $ink-3; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+.stat-label { font-size: 11px; color: $ink-2; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
 .stat-val { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
 .stat-val.rx { color: #e0a040; }
 .stat-val.tx { color: #e07a50; }
@@ -783,12 +755,29 @@ $accent: #4c9fe7;
 .pod-table-wrap { overflow: hidden; border-radius: 8px; border: 1px solid $border; }
 .pod-table {
   background: $bg-card !important;
-  :deep(thead th) { font-size: 11px; font-weight: 600; color: $ink-3 !important; background: $bg-deep !important; border-bottom: 1px solid $border; text-transform: uppercase; letter-spacing: 0.5px; }
-  :deep(tbody td) { font-size: 12px; color: $ink-1 !important; border-bottom: 1px solid $border; font-family: monospace; }
-  :deep(.q-table__bottom) { color: $ink-3 !important; border-top: 1px solid $border; }
+  :deep(thead th) {
+    font-size: 11px;
+    font-weight: 600;
+    color: $ink-2 !important;
+    background: $bg-deep !important;
+    border-bottom: 1px solid $border;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 10px 14px !important;
+  }
+  :deep(tbody td) {
+    font-size: 12px;
+    color: $ink-1 !important;
+    border-bottom: 1px solid $border;
+    font-family: monospace;
+    padding: 8px 14px !important;
+    line-height: 1.5;
+  }
+  :deep(tbody tr:hover td) { background: rgba(255,255,255,0.02) !important; }
+  :deep(.q-table__bottom) { color: $ink-3 !important; border-top: 1px solid $border; padding: 8px 14px !important; }
   :deep(.q-field__native), :deep(.q-field__control) { color: $ink-1 !important; }
 }
-.pod-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; }
+.pod-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 8px; }
 .dot-running { background: #29cc5f; box-shadow: 0 0 4px #29cc5f; }
 .dot-pending { background: #e0a040; }
 .dot-failed, .dot-crashloopbackoff, .dot-error { background: #e05050; }

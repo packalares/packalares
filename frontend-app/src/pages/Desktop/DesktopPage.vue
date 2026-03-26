@@ -310,6 +310,9 @@ wpChannel.onmessage = (e) => {
   if (e.data?.type === 'wallpaper' && e.data.value) {
     wallpaper.value = e.data.value;
   }
+  if (e.data?.type === 'theme' && e.data.value) {
+    applyTheme(e.data.value);
+  }
 };
 
 const clockTime = ref('');
@@ -602,9 +605,10 @@ function onDockContextMenu(e: MouseEvent, app: AppInfo) {
 
 function onAvatarClick() {
   // If settings window is already open, just focus it
-  const existing = openWindows.value.find(w => w.id === 'settings');
+  const existing = windows.value.find(w => w.appId === 'settings');
   if (existing) {
-    focusWindow('settings');
+    existing.visible = true;
+    bringToFront(existing.id);
     return;
   }
   // Open settings — use the base URL, the router inside will redirect to /account
@@ -686,7 +690,58 @@ async function loadApps() {
 
 // ─── Lifecycle ───────────────────────────────────────────────
 
+// ─── Theme ────────────────────────────────────────────────────
+
+function applyTheme(theme: string) {
+  const root = document.documentElement;
+  if (theme === 'light') {
+    root.style.setProperty('--bg-0', '#e8eaee');
+    root.style.setProperty('--bg-1', '#f0f1f4');
+    root.style.setProperty('--bg-2', '#ffffff');
+    root.style.setProperty('--bg-3', '#f4f5f7');
+    root.style.setProperty('--bg-4', '#e9eaed');
+    root.style.setProperty('--ink-1', '#1a1c22');
+    root.style.setProperty('--ink-2', 'rgba(26,28,34,0.55)');
+    root.style.setProperty('--ink-3', 'rgba(26,28,34,0.32)');
+    root.style.setProperty('--separator', 'rgba(0,0,0,0.06)');
+    root.style.setProperty('--border', 'rgba(0,0,0,0.08)');
+    root.style.setProperty('--glass', 'rgba(0,0,0,0.03)');
+    root.style.setProperty('--glass-border', 'rgba(0,0,0,0.08)');
+    root.style.setProperty('--dock-bg', 'rgba(240,241,244,0.85)');
+    root.style.setProperty('--shadow-card', '0 1px 3px rgba(0,0,0,0.06), 0 4px 14px rgba(0,0,0,0.04)');
+    root.style.setProperty('--shadow-elevated', '0 2px 6px rgba(0,0,0,0.08), 0 12px 32px rgba(0,0,0,0.06)');
+    root.style.setProperty('--shadow-sm', '0 1px 2px rgba(0,0,0,0.04)');
+    root.style.setProperty('--input-bg', 'rgba(0,0,0,0.03)');
+    root.style.setProperty('--input-border', 'rgba(0,0,0,0.10)');
+    root.style.setProperty('--input-focus', 'rgba(99,102,241,0.18)');
+  } else {
+    root.style.setProperty('--bg-0', '#131316');
+    root.style.setProperty('--bg-1', '#17171c');
+    root.style.setProperty('--bg-2', '#1e1f25');
+    root.style.setProperty('--bg-3', '#262730');
+    root.style.setProperty('--bg-4', '#2f3040');
+    root.style.setProperty('--ink-1', '#e2e4ea');
+    root.style.setProperty('--ink-2', 'rgba(226,228,234,0.55)');
+    root.style.setProperty('--ink-3', 'rgba(226,228,234,0.32)');
+    root.style.setProperty('--separator', 'rgba(255,255,255,0.05)');
+    root.style.setProperty('--border', 'rgba(255,255,255,0.07)');
+    root.style.setProperty('--glass', 'rgba(255,255,255,0.04)');
+    root.style.setProperty('--glass-border', 'rgba(255,255,255,0.08)');
+    root.style.setProperty('--dock-bg', 'rgba(23,23,28,0.72)');
+    root.style.setProperty('--shadow-card', '0 1px 3px rgba(0,0,0,0.24), 0 4px 14px rgba(0,0,0,0.18)');
+    root.style.setProperty('--shadow-elevated', '0 2px 6px rgba(0,0,0,0.3), 0 12px 32px rgba(0,0,0,0.22)');
+    root.style.setProperty('--shadow-sm', '0 1px 2px rgba(0,0,0,0.2)');
+    root.style.setProperty('--input-bg', 'rgba(255,255,255,0.04)');
+    root.style.setProperty('--input-border', 'rgba(255,255,255,0.08)');
+    root.style.setProperty('--input-focus', 'rgba(129,140,248,0.25)');
+  }
+}
+
 onMounted(async () => {
+  // Apply saved theme
+  const savedTheme = localStorage.getItem('packalares_theme') || 'dark';
+  applyTheme(savedTheme);
+
   updateClock();
   clockInterval = setInterval(updateClock, 1000);
 
@@ -1005,7 +1060,7 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 .titlebar-title {
-  font-family: 'Inter', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 600;
   font-size: 14px;
   color: rgba(255, 255, 255, 0.85);
@@ -1169,7 +1224,7 @@ onUnmounted(() => {
 .launchpad-app-name {
   margin-top: 10px;
   font-size: 13px;
-  font-family: Roboto, sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
   font-weight: 500;
   color: #fff;
   text-align: center;

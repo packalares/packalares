@@ -72,6 +72,7 @@
 <script lang="ts" setup>
 import { ref, onMounted } from 'vue';
 import { api } from 'boot/axios';
+import { usageColor, usageQColor } from 'src/utils/helpers';
 
 interface GpuInfo {
   name: string; driver: string;
@@ -84,8 +85,6 @@ const gpus = ref<GpuInfo[]>([]);
 const loading = ref(true);
 
 const vramPercent = (g: GpuInfo) => g.vram_total_mb ? (g.vram_used_mb / g.vram_total_mb) * 100 : 0;
-const usageColor = (p: number) => p >= 80 ? 'text-red-5' : p >= 50 ? 'text-amber-7' : 'text-green-5';
-const usageQColor = (p: number) => p >= 80 ? 'red-6' : p >= 50 ? 'amber-7' : 'green-6';
 
 onMounted(async () => {
   try {
@@ -119,7 +118,6 @@ onMounted(async () => {
 }
 .empty-title { font-size: 15px; font-weight: 600; color: var(--ink-1); margin-top: 16px; }
 .empty-text { font-size: 13px; color: var(--ink-3); margin-top: 4px; text-align: center; max-width: 260px; line-height: 1.5; }
-.metric-sub { font-size: 11px; color: var(--ink-3); margin-top: 6px; text-align: right; }
 .temp-value { padding: 3px 10px; border-radius: var(--radius-xs); font-weight: 600; font-size: 12px; }
 .temp-cool { background: var(--positive-soft); color: var(--positive); }
 .temp-warm { background: var(--warning-soft); color: var(--warning); }
