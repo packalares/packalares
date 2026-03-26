@@ -58,7 +58,7 @@
           @contextmenu.prevent.stop="onDockContextMenu($event, app)"
         >
           <div class="dock-app-icon" :class="{ 'dock-app-hover': true }">
-            <img v-if="app.icon && (app.icon.startsWith('/') || app.icon.startsWith('http'))" :src="app.icon" style="width:22px;height:22px;border-radius:5px;object-fit:cover" />
+            <img v-if="app.icon && (app.icon.startsWith('/') || app.icon.startsWith('http'))" :src="resolveIconUrl(app.icon)" style="width:22px;height:22px;border-radius:5px;object-fit:cover" />
             <q-icon v-else :name="'sym_r_' + (app.icon || 'web')" size="20px" color="white" />
           </div>
           <div
@@ -217,7 +217,7 @@
               @click.stop="onLaunchAppClick(app)"
             >
               <div class="launchpad-app-icon">
-                <img v-if="app.icon && (app.icon.startsWith('/') || app.icon.startsWith('http'))" :src="app.icon" style="width:36px;height:36px;border-radius:10px;object-fit:cover" />
+                <img v-if="app.icon && (app.icon.startsWith('/') || app.icon.startsWith('http'))" :src="resolveIconUrl(app.icon)" style="width:36px;height:36px;border-radius:10px;object-fit:cover" />
                 <q-icon v-else :name="'sym_r_' + (app.icon || 'web')" size="34px" color="white" />
               </div>
               <div class="launchpad-app-name">{{ app.title }}</div>
@@ -256,7 +256,7 @@
               class="search-result-item"
               @click.stop="onSearchResultClick(app)"
             >
-              <img v-if="app.icon && (app.icon.startsWith('/') || app.icon.startsWith('http'))" :src="app.icon" style="width:20px;height:20px;border-radius:5px;object-fit:cover" class="q-mr-sm" />
+              <img v-if="app.icon && (app.icon.startsWith('/') || app.icon.startsWith('http'))" :src="resolveIconUrl(app.icon)" style="width:20px;height:20px;border-radius:5px;object-fit:cover" class="q-mr-sm" />
               <q-icon v-else :name="'sym_r_' + (app.icon || 'web')" size="20px" class="q-mr-sm" />
               {{ app.title }}
             </div>
@@ -333,6 +333,23 @@ wpChannel.onmessage = (e) => {
 const clockTime = ref('');
 const weekDay = ref('');
 const dateStr = ref('');
+
+// Resolve icon URL — on subdomain, /api/* paths need to go through the IP or API subdomain
+function resolveIconUrl(icon: string): string {
+  if (!icon) return '';
+  if (icon.startsWith('http')) return icon;
+  if (icon.startsWith('/api/')) {
+    const host = window.location.hostname;
+    if (isIP(host)) return icon; // relative works on IP
+    // On subdomain, route through the main IP or api subdomain
+    const parts = host.split('.');
+    if (parts.length >= 3) {
+      const zone = parts.slice(1).join('.');
+      return `https://api.${zone}${icon}`;
+    }
+  }
+  return icon;
+}
 
 // Build subdomain URLs dynamically from current hostname
 function isIP(host: string): boolean {
