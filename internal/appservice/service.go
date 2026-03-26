@@ -565,6 +565,9 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 		GetWSHub().BroadcastAppState(rec.Name, StateUninstalling)
 		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 1, 3, "Removing helm release...", 0, 0)
 
+		// Collect images used by the app BEFORE uninstalling (pods will be gone after)
+		appImages := s.k8s.GetImagesForApp(bgCtx, rec.ReleaseName, rec.Namespace)
+
 		if err := s.helm.Uninstall(bgCtx, rec.ReleaseName); err != nil {
 			klog.Errorf("helm uninstall %s: %v", req.Name, err)
 			rec.State = StateUninstallFailed
@@ -580,15 +583,20 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 			klog.Errorf("delete Application CRD for %s: %v", req.Name, err)
 		}
 
-		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 3, 3, "Pruning images...", 0, 0)
+		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 3, 3, "Removing images...", 0, 0)
 
-		// Prune unused container images after uninstall
-		pruneCmd := exec.CommandContext(bgCtx, "crictl", "rmi", "--prune")
-		if out, err := pruneCmd.CombinedOutput(); err != nil {
-			klog.V(2).Infof("image prune after uninstall %s: %v", req.Name, err)
-		} else if len(out) > 0 {
-			klog.Infof("pruned images after uninstalling %s: %s", req.Name, strings.TrimSpace(string(out)))
+		// Remove the app's container images explicitly
+		// crictl rmi --prune only removes untagged images, not tagged unused ones
+		for _, img := range appImages {
+			rmCmd := exec.CommandContext(bgCtx, "crictl", "rmi", img)
+			if out, err := rmCmd.CombinedOutput(); err != nil {
+				klog.V(2).Infof("remove image %s: %v", img, err)
+			} else {
+				klog.Infof("removed image %s after uninstalling %s: %s", img, req.Name, strings.TrimSpace(string(out)))
+			}
 		}
+		// Also prune any dangling images
+		exec.CommandContext(bgCtx, "crictl", "rmi", "--prune").Run()
 
 		rec.State = StateUninstalled
 		_ = s.store.Put(bgCtx, rec)

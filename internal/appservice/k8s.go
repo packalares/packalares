@@ -89,6 +89,41 @@ func (k *K8sClient) GetPodsForApp(ctx context.Context, releaseName, namespace st
 	return pods
 }
 
+// GetImagesForApp returns all container image references used by an app's pods.
+// Tries multiple label selectors since Olares charts use different labeling.
+func (k *K8sClient) GetImagesForApp(ctx context.Context, releaseName, namespace string) []string {
+	selectors := []string{
+		"app.kubernetes.io/instance=" + releaseName,
+		"app=" + releaseName,
+		"io.kompose.service=" + releaseName,
+	}
+
+	seen := make(map[string]bool)
+	for _, sel := range selectors {
+		cmd := exec.CommandContext(ctx, "kubectl", "get", "pods",
+			"--namespace", namespace,
+			"-l", sel,
+			"-o", "jsonpath={range .items[*]}{range .spec.containers[*]}{.image}{\"\\n\"}{end}{range .spec.initContainers[*]}{.image}{\"\\n\"}{end}{end}",
+		)
+		out, err := cmd.Output()
+		if err != nil {
+			continue
+		}
+		for _, img := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			img = strings.TrimSpace(img)
+			if img != "" && !seen[img] {
+				seen[img] = true
+			}
+		}
+	}
+
+	var images []string
+	for img := range seen {
+		images = append(images, img)
+	}
+	return images
+}
+
 // ScaleDeployment scales deployments in a namespace for an app.
 func (k *K8sClient) ScaleDeployment(ctx context.Context, namespace, labelSelector string, replicas int) error {
 	cmd := exec.CommandContext(ctx, "kubectl", "get", "deployments",
