@@ -30,9 +30,14 @@ type Server struct {
 
 // NewServer creates a tapr server.
 func NewServer() *Server {
+	jwtSecret := os.Getenv("JWT_AUTH_SECRET")
+	if len(jwtSecret) < 16 {
+		log.Printf("WARNING: JWT_AUTH_SECRET is too short (%d chars) — tokens may be forgeable. Set a secret of at least 32 characters.", len(jwtSecret))
+	}
+
 	return &Server{
 		infisicalURL: envOr("INFISICAL_URL", "http://localhost:4000"),
-		jwtSecret:    os.Getenv("JWT_AUTH_SECRET"),
+		jwtSecret:    jwtSecret,
 		userID:       os.Getenv("TAPR_USER_ID"),
 		orgID:        os.Getenv("TAPR_ORG_ID"),
 		publicKey:    os.Getenv("TAPR_PUBLIC_KEY"),
@@ -153,7 +158,10 @@ func (s *Server) fetchAllSecrets() (map[string]string, error) {
 	}
 
 	url := fmt.Sprintf("%s/api/v3/secrets/raw?workspaceId=%s&environment=prod&secretPath=/", s.infisicalURL, workspaceID)
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("create secrets request: %w", err)
+	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -173,7 +181,9 @@ func (s *Server) fetchAllSecrets() (map[string]string, error) {
 			SecretValue string `json:"secretValue"`
 		} `json:"secrets"`
 	}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Printf("decode secrets response: %v", err)
+	}
 
 	secrets := make(map[string]string)
 	for _, s := range result.Secrets {
@@ -207,7 +217,11 @@ func (s *Server) storeSecrets(secrets map[string]string) error {
 		bodyJSON, _ := json.Marshal(body)
 		url := fmt.Sprintf("%s/api/v3/secrets/raw/%s", s.infisicalURL, name)
 
-		req, _ := http.NewRequest("POST", url, strings.NewReader(string(bodyJSON)))
+		req, err := http.NewRequest("POST", url, strings.NewReader(string(bodyJSON)))
+		if err != nil {
+			log.Printf("create store secret request: %v", err)
+			continue
+		}
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("Content-Type", "application/json")
 
@@ -243,7 +257,10 @@ func (s *Server) storeSecrets(secrets map[string]string) error {
 
 func (s *Server) getDefaultWorkspace(token string) (string, error) {
 	url := fmt.Sprintf("%s/api/v1/workspace", s.infisicalURL)
-	req, _ := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("create workspace request: %w", err)
+	}
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	resp, err := http.DefaultClient.Do(req)
@@ -263,7 +280,9 @@ func (s *Server) getDefaultWorkspace(token string) (string, error) {
 			Name string `json:"name"`
 		} `json:"workspaces"`
 	}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Printf("decode workspaces response: %v", err)
+	}
 
 	for _, w := range result.Workspaces {
 		if w.Name == "packalares-system" {
@@ -283,7 +302,10 @@ func (s *Server) getOrCreateDefaultWorkspace(token string) (string, error) {
 	// Create workspace
 	body, _ := json.Marshal(map[string]string{"projectName": "packalares-system"})
 	url := fmt.Sprintf("%s/api/v2/workspace", s.infisicalURL)
-	req, _ := http.NewRequest("POST", url, strings.NewReader(string(body)))
+	req, err := http.NewRequest("POST", url, strings.NewReader(string(body)))
+	if err != nil {
+		return "", fmt.Errorf("create workspace request: %w", err)
+	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Content-Type", "application/json")
 
@@ -303,7 +325,9 @@ func (s *Server) getOrCreateDefaultWorkspace(token string) (string, error) {
 			ID string `json:"id"`
 		} `json:"project"`
 	}
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		log.Printf("decode project response: %v", err)
+	}
 
 	return result.Project.ID, nil
 }

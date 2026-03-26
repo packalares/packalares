@@ -73,7 +73,10 @@ func (h *Handler) handleLogLabels(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	var result json.RawMessage
-	json.NewDecoder(resp.Body).Decode(&result)
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		// Log but don't fail — partial data is better than no data
+		_ = err
+	}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(result)
 }
