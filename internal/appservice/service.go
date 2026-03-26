@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/packalares/packalares/pkg/config"
@@ -520,6 +522,14 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 
 		rec.State = StateUninstalled
 		_ = s.store.Put(bgCtx, rec)
+
+		// Prune unused container images after uninstall
+		pruneCmd := exec.CommandContext(bgCtx, "crictl", "rmi", "--prune")
+		if out, err := pruneCmd.CombinedOutput(); err != nil {
+			klog.V(2).Infof("image prune after uninstall %s: %v", req.Name, err)
+		} else if len(out) > 0 {
+			klog.Infof("pruned images after uninstalling %s: %s", req.Name, strings.TrimSpace(string(out)))
+		}
 
 		// Optionally remove the record entirely
 		if req.DeleteData {
