@@ -225,10 +225,12 @@ func mountSMB(cfg MountConfig, mountPoint string) error {
 
 	opts := []string{}
 	if cfg.User != "" {
-		opts = append(opts, fmt.Sprintf("username=%s", cfg.User))
+		// Escape commas in username to prevent mount option injection
+		opts = append(opts, fmt.Sprintf("username=%s", strings.ReplaceAll(cfg.User, ",", "\\,")))
 	}
 	if cfg.Password != "" {
-		opts = append(opts, fmt.Sprintf("password=%s", cfg.Password))
+		// Escape commas in password to prevent mount option injection
+		opts = append(opts, fmt.Sprintf("password=%s", strings.ReplaceAll(cfg.Password, ",", "\\,")))
 	}
 	if cfg.Options != "" {
 		opts = append(opts, cfg.Options)
