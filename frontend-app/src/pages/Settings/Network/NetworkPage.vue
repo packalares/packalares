@@ -32,23 +32,34 @@
           >{{ sshStatus.enabled ? 'active' : 'inactive' }}</span>
         </div>
         <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">Port</span>
-          <span class="info-value port-value">{{ sshStatus.port }}</span>
+        <div class="input-row">
+          <span class="input-label">Port</span>
+          <q-input
+            v-model.number="sshPort"
+            dense dark outlined
+            type="number"
+            :rules="[portRule]"
+            class="setting-input ssh-port-input"
+          />
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
           <span class="info-label">Enable / Disable</span>
-          <div class="ssh-toggle-wrap">
-            <q-toggle
-              :model-value="sshStatus.enabled"
-              disable
-              dense
-              color="primary"
-              class="ssh-toggle-disabled"
-            />
-            <span class="coming-soon-badge">Coming soon</span>
-          </div>
+          <q-toggle
+            v-model="sshEnabled"
+            dense
+            color="primary"
+          />
+        </div>
+        <div class="action-row">
+          <q-btn
+            unelevated dense
+            label="Apply"
+            class="btn-primary"
+            :loading="sshSaving"
+            @click="applySSH"
+          />
+          <span v-if="sshMsg" class="save-msg" :class="sshMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ sshMsg }}</span>
         </div>
       </div>
 
@@ -152,8 +163,17 @@ const saveMsg = ref('');
 const sshStatus = reactive({
   enabled: false,
   port: 22,
-  readOnly: true,
 });
+const sshEnabled = ref(false);
+const sshPort = ref(22);
+const sshSaving = ref(false);
+const sshMsg = ref('');
+
+function portRule(val: number): boolean | string {
+  if (val === 22) return true;
+  if (val >= 1024 && val <= 65535) return true;
+  return 'Port must be 22 or 1024-65535';
+}
 
 onMounted(async () => {
   try {
@@ -185,7 +205,8 @@ onMounted(async () => {
     if (sshData) {
       sshStatus.enabled = sshData.enabled ?? false;
       sshStatus.port = sshData.port ?? 22;
-      sshStatus.readOnly = sshData.read_only ?? true;
+      sshEnabled.value = sshStatus.enabled;
+      sshPort.value = sshStatus.port;
     }
   } catch {
     // SSH endpoint may not be available; keep defaults
@@ -196,6 +217,32 @@ onMounted(async () => {
     netInfo.value.ip = host;
   }
 });
+
+async function applySSH() {
+  sshSaving.value = true;
+  sshMsg.value = '';
+  try {
+    const resp: any = await api.post('/api/settings/ssh', {
+      enabled: sshEnabled.value,
+      port: sshPort.value,
+    });
+    const d = resp?.data ?? resp;
+    if (d && d.enabled !== undefined) {
+      sshStatus.enabled = d.enabled;
+      sshStatus.port = d.port;
+      sshEnabled.value = d.enabled;
+      sshPort.value = d.port;
+      sshMsg.value = 'Applied successfully';
+    } else if (resp?.code === 1) {
+      sshMsg.value = 'Error: ' + (resp?.message || 'unknown');
+    } else {
+      sshMsg.value = 'Applied successfully';
+    }
+  } catch (e: any) {
+    sshMsg.value = 'Error: ' + (e.message || 'unknown');
+  }
+  sshSaving.value = false;
+}
 
 async function saveTailscale() {
   saving.value = true;
@@ -231,28 +278,7 @@ async function saveTailscale() {
   font-weight: 500;
 }
 
-.ssh-toggle-wrap {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.ssh-toggle-disabled {
-  opacity: 0.4;
-  pointer-events: none;
-}
-
-.coming-soon-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--ink-3);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+.ssh-port-input {
+  max-width: 120px;
 }
 </style>

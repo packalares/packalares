@@ -2,6 +2,9 @@ package phases
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"os/exec"
@@ -66,11 +69,18 @@ func applyManifestFile(path string, opts *InstallOptions) error {
 // replaceConfigPlaceholders replaces all {{VARIABLE}} placeholders in a
 // manifest string with values from the centralized config.
 func replaceConfigPlaceholders(manifest string, opts *InstallOptions) string {
+	// Generate hostctl token (base64-encoded) for the K8s Secret
+	hostctlToken := os.Getenv("HOSTCTL_TOKEN")
+	hostctlTokenB64 := ""
+	if hostctlToken != "" {
+		hostctlTokenB64 = base64.StdEncoding.EncodeToString([]byte(hostctlToken))
+	}
+
 	replacements := map[string]string{
-		"{{API_GROUP}}":           config.APIGroup(),
-		"{{TLS_SECRET_NAME}}":    config.TLSSecretName(),
+		"{{API_GROUP}}":            config.APIGroup(),
+		"{{TLS_SECRET_NAME}}":     config.TLSSecretName(),
 		"{{PLATFORM_NAMESPACE}}":  config.PlatformNamespace(),
-		"{{FRAMEWORK_NAMESPACE}}":  config.FrameworkNamespace(),
+		"{{FRAMEWORK_NAMESPACE}}": config.FrameworkNamespace(),
 		"{{MONITORING_NAMESPACE}}": config.MonitoringNamespace(),
 		"{{USER_NAMESPACE}}":      config.UserNamespace(opts.Username),
 		"{{USERNAME}}":            config.Username(),
@@ -83,17 +93,28 @@ func replaceConfigPlaceholders(manifest string, opts *InstallOptions) string {
 		"{{SESSION_SECRET}}":      os.Getenv("SESSION_SECRET"),
 		"{{LLDAP_ADMIN_PASSWORD}}": os.Getenv("LLDAP_ADMIN_PASSWORD"),
 		"{{LLDAP_JWT_SECRET}}":    os.Getenv("LLDAP_JWT_SECRET"),
-		"{{ENCRYPTION_KEY}}":       os.Getenv("ENCRYPTION_KEY"),
-		"{{AUTH_SECRET}}":          os.Getenv("AUTH_SECRET"),
-		"{{SAMBA_PASSWORD}}":       os.Getenv("SAMBA_PASSWORD"),
-		"{{SERVER_IP}}":            os.Getenv("SERVER_IP"),
-		"{{COREDNS_CLUSTER_IP}}":   os.Getenv("COREDNS_CLUSTER_IP"),
+		"{{ENCRYPTION_KEY}}":      os.Getenv("ENCRYPTION_KEY"),
+		"{{AUTH_SECRET}}":         os.Getenv("AUTH_SECRET"),
+		"{{SAMBA_PASSWORD}}":      os.Getenv("SAMBA_PASSWORD"),
+		"{{SERVER_IP}}":           os.Getenv("SERVER_IP"),
+		"{{COREDNS_CLUSTER_IP}}":  os.Getenv("COREDNS_CLUSTER_IP"),
+		"{{HOSTCTL_TOKEN_B64}}":   hostctlTokenB64,
 	}
 
 	for placeholder, value := range replacements {
 		manifest = strings.ReplaceAll(manifest, placeholder, value)
 	}
 	return manifest
+}
+
+// generateHostctlToken generates a random 32-byte hex token for hostctl auth.
+func generateHostctlToken() string {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		// Fallback: should never happen
+		return "fallback-token-replace-me"
+	}
+	return hex.EncodeToString(b)
 }
 
 func deployCRDsAndNamespaces(opts *InstallOptions) error {
@@ -155,7 +176,15 @@ func deployPlatformCharts(opts *InstallOptions) error {
 }
 
 func deployFrameworkCharts(opts *InstallOptions) error {
+	// Generate hostctl token if not already set
+	if os.Getenv("HOSTCTL_TOKEN") == "" {
+		token := generateHostctlToken()
+		os.Setenv("HOSTCTL_TOKEN", token)
+		fmt.Println("  Generated hostctl authentication token")
+	}
+
 	manifests := []string{
+		"deploy/framework/hostctl.yaml",
 		"deploy/framework/auth.yaml",
 		"deploy/framework/bfl-deployment.yaml",
 		"deploy/framework/appservice/deployment.yaml",
