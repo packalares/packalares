@@ -438,7 +438,8 @@ interface Category {
 
 interface InstalledApp {
   name: string;
-  status: string;
+  state: string;
+  status?: string;
 }
 
 const loading = ref(true);
@@ -472,7 +473,7 @@ let syncPollTimer: ReturnType<typeof setInterval> | null = null;
 const installedStatusMap = computed(() => {
   const map: Record<string, string> = {};
   installedApps.value.forEach((a) => {
-    map[a.name] = a.status;
+    map[a.name] = a.state || a.status || 'running';
   });
   return map;
 });
