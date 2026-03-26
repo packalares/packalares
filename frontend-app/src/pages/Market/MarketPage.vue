@@ -194,38 +194,24 @@
                   class="app-tag"
                 />
               </div>
-              <q-btn
-                v-if="isInstalled(app.name) && (appStates[app.name] === 'running' || (!appStates[app.name] && installedStatusMap[app.name] === 'running'))"
-                flat
-                dense
-                no-caps
-                label="Open"
-                class="app-btn-open"
-                @click.stop="openApp(app.name)"
-              />
-              <div v-else-if="isInstalled(app.name) && (appStates[app.name] === 'starting' || appStates[app.name] === '' || (!appStates[app.name] && installedStatusMap[app.name] !== 'running' && installedStatusMap[app.name] !== 'failed' && installedStatusMap[app.name] !== 'uninstalling'))" class="app-install-progress">
+              <!-- Unified app state display -->
+              <q-btn v-if="getAppDisplayState(app.name, app.hasChart) === 'running'" flat dense no-caps label="Open" class="app-btn-open" @click.stop="openApp(app.name)" />
+              <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'starting'" class="app-install-progress">
                 <q-spinner-dots size="16px" color="indigo-4" />
                 <span class="app-progress-text">Starting...</span>
               </div>
-              <span v-else-if="appStates[app.name] === 'failed'" class="app-state-failed">Failed</span>
-              <div v-else-if="appStates[app.name] === 'uninstalling'" class="app-install-progress">
+              <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'failed'" class="app-state-failed">Failed</span>
+              <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'stopped'" class="app-state-failed">Stopped</span>
+              <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'uninstalling'" class="app-install-progress">
                 <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.3" color="negative" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="!installProgress[app.name]" />
                 <span class="app-progress-text">{{ installProgress[app.name]?.detail || 'Removing...' }}</span>
               </div>
-              <div v-else-if="appStates[app.name] === 'downloading' || appStates[app.name] === 'installing' || installingSet.has(app.name)" class="app-install-progress">
+              <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'downloading' || getAppDisplayState(app.name, app.hasChart) === 'installing'" class="app-install-progress">
                 <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.2" color="indigo-4" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="!installProgress[app.name]" />
-                <span class="app-progress-text">{{ installProgress[app.name]?.detail || (appStates[app.name] === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
+                <span class="app-progress-text">{{ installProgress[app.name]?.detail || (getAppDisplayState(app.name, app.hasChart) === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
               </div>
-              <q-btn
-                v-else-if="app.hasChart && !isInstalled(app.name)"
-                flat
-                dense
-                no-caps
-                :label="app.requiredDisk ? 'Install \u00b7 ' + app.requiredDisk : 'Install'"
-                class="app-btn-install"
-                @click.stop="installApp(app)"
-              />
-              <span v-else-if="!app.hasChart" class="app-no-chart">Not synced</span>
+              <q-btn v-else-if="getAppDisplayState(app.name, app.hasChart) === 'not_installed'" flat dense no-caps :label="app.requiredDisk ? 'Install \u00b7 ' + app.requiredDisk : 'Install'" class="app-btn-install" @click.stop="installApp(app)" />
+              <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'no_chart'" class="app-no-chart">Not synced</span>
             </div>
           </div>
         </div>
@@ -261,33 +247,20 @@
             </div>
             <div class="app-card-desc">{{ app.description }}</div>
             <div class="app-card-footer">
-              <q-badge
-                :label="installedStatusMap[app.name] || 'running'"
-                :class="'status-badge status-' + (installedStatusMap[app.name] || 'running')"
-              />
-              <div class="app-card-footer-actions" v-if="appStates[app.name] === 'uninstalling'">
-                <div class="app-install-progress">
-                  <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.3" color="negative" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="!installProgress[app.name]" />
+              <q-badge :label="getAppDisplayState(app.name)" :class="'status-badge status-' + getAppDisplayState(app.name)" />
+              <div class="app-card-footer-actions">
+                <template v-if="getAppDisplayState(app.name) === 'running'">
+                  <q-btn flat dense no-caps label="Open" class="app-btn-open" @click.stop="openApp(app.name)" />
+                  <q-btn flat dense no-caps label="Uninstall" class="app-btn-uninstall" @click.stop="confirmUninstall(app)" />
+                </template>
+                <div v-else-if="getAppDisplayState(app.name) === 'starting'" class="app-install-progress">
+                  <q-spinner-dots size="16px" color="indigo-4" /><span class="app-progress-text">Starting...</span>
+                </div>
+                <div v-else-if="getAppDisplayState(app.name) === 'uninstalling'" class="app-install-progress">
+                  <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.3" color="negative" track-color="grey-9" rounded size="4px" :indeterminate="!installProgress[app.name]" />
                   <span class="app-progress-text">{{ installProgress[app.name]?.detail || 'Removing...' }}</span>
                 </div>
-              </div>
-              <div class="app-card-footer-actions" v-else>
-                <q-btn
-                  flat
-                  dense
-                  no-caps
-                  label="Open"
-                  class="app-btn-open"
-                  @click.stop="openApp(app.name)"
-                />
-                <q-btn
-                  flat
-                  dense
-                  no-caps
-                  label="Uninstall"
-                  class="app-btn-uninstall"
-                  @click.stop="confirmUninstall(app)"
-                />
+                <span v-else-if="getAppDisplayState(app.name) === 'failed'" class="app-state-failed">Failed</span>
               </div>
             </div>
           </div>
@@ -503,6 +476,29 @@ const installedStatusMap = computed(() => {
   });
   return map;
 });
+
+// Single source of truth for app display state
+// Returns: 'downloading' | 'installing' | 'running' | 'starting' | 'failed' | 'uninstalling' | 'stopped' | 'not_installed' | 'no_chart'
+function getAppDisplayState(name: string, hasChart?: boolean): string {
+  // WebSocket/realtime state takes priority
+  const ws = appStates[name];
+  if (ws === 'downloading' || ws === 'installing' || ws === 'uninstalling' || ws === 'failed') return ws;
+  if (installingSet.has(name)) return 'installing';
+
+  // Check installed status
+  const installed = installedStatusMap.value[name];
+  if (installed) {
+    if (ws === 'running' || installed === 'running') return 'running';
+    if (installed === 'failed' || installed === 'install_failed') return 'failed';
+    if (installed === 'stopped') return 'stopped';
+    if (installed === 'uninstalling') return 'uninstalling';
+    return 'starting'; // installed but not running yet
+  }
+
+  // Not installed
+  if (hasChart === false) return 'no_chart';
+  return 'not_installed';
+}
 
 const installedAppsDetail = computed(() => {
   const names = new Set(installedApps.value.map((a) => a.name));
