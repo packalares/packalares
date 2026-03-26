@@ -78,18 +78,28 @@
       <div class="section-title">Exposed Ports</div>
       <div class="settings-card">
         <div class="info-row">
-          <span class="info-label">HTTPS</span>
+          <span class="info-label">HTTPS (Web UI)</span>
           <span class="info-value port-value">443</span>
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
-          <span class="info-label">HTTP</span>
+          <span class="info-label">HTTP (redirect)</span>
           <span class="info-value port-value">80</span>
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
-          <span class="info-label">SMB</span>
-          <span class="info-value port-value">30445</span>
+          <span class="info-label">SSH</span>
+          <span class="info-value port-value">22</span>
+        </div>
+        <q-separator class="card-separator" />
+        <div class="info-row">
+          <span class="info-label">K8s API</span>
+          <span class="info-value port-value">6443</span>
+        </div>
+        <q-separator class="card-separator" />
+        <div class="info-row">
+          <span class="info-label">Tailscale P2P</span>
+          <span class="info-value port-value">41641</span>
         </div>
       </div>
     </div>
@@ -111,9 +121,10 @@ const saveMsg = ref('');
 onMounted(async () => {
   try {
     const r: any = await api.get('/api/user/info');
-    if (r) {
-      netInfo.value.zone = r.zone || r.terminusName || '--';
-      const parts = (r.zone || '').split('.');
+    const d = r?.data ?? r;
+    if (d) {
+      netInfo.value.zone = d.zone || d.terminusName || '--';
+      const parts = (d.zone || '').split('.');
       netInfo.value.domain = parts.length >= 2 ? parts.slice(1).join('.') : '--';
     }
   } catch {}
