@@ -342,11 +342,15 @@ function appUrl(name: string, path = '/'): string {
   if (isIP(host)) {
     return `/${name}${path}`;
   }
-  // Subdomain access: use sibling subdomains
+  // Subdomain access: use sibling subdomains with full path
   const parts = host.split('.');
   if (parts.length >= 3) {
     const zone = parts.slice(1).join('.');
-    return `https://${name}.${zone}${path}`;
+    // System apps (settings, market, dashboard, files) need their route prefix
+    // because the Vue router expects /settings/*, /market, /files, /dashboard
+    const systemApps = ['settings', 'market', 'dashboard', 'files'];
+    const prefix = systemApps.includes(name) ? `/${name}` : '';
+    return `https://${name}.${zone}${prefix}${path}`;
   }
   return `/${name}${path}`;
 }
