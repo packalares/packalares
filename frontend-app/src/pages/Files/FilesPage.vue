@@ -25,7 +25,7 @@
         <!-- Sort -->
         <q-btn-dropdown flat dense icon="sym_r_sort" size="sm" no-caps class="toolbar-btn" dropdown-icon="none">
           <q-list dense style="min-width:160px">
-            <q-item v-for="s in sortOptions" :key="s.key" clickable v-close-popup @click="setSortBy(s.key)" :class="{'text-primary': sortBy === s.key}">
+            <q-item v-for="s in sortOptions" :key="s.key" clickable @click="setSortBy(s.key)" :class="{'text-primary': sortBy === s.key}">
               <q-item-section avatar style="min-width:28px">
                 <q-icon :name="sortBy === s.key ? (sortAsc ? 'sym_r_arrow_upward' : 'sym_r_arrow_downward') : ''" size="16px" />
               </q-item-section>
@@ -169,41 +169,37 @@
       </q-card>
     </q-dialog>
     <!-- Context Menu -->
-    <q-menu
-      v-model="contextMenu.show"
-      :target="false"
-      no-parent-event
-      :style="contextMenu.style"
-      class="context-menu"
-    >
+    <teleport to="body">
+    <div v-if="contextMenu.show" class="context-menu-overlay" @click="contextMenu.show=false" @contextmenu.prevent="contextMenu.show=false">
+    <div class="context-menu" :style="contextMenu.style" @click.stop>
       <q-list dense style="min-width:180px">
         <template v-if="contextMenu.type === 'file'">
-          <q-item clickable v-close-popup @click="openFile(contextMenu.file!)">
+          <q-item clickable @click="openFile(contextMenu.file!)">
             <q-item-section avatar style="min-width:28px"><q-icon name="sym_r_open_in_new" size="16px" /></q-item-section>
             <q-item-section><span class="ctx-label">Open</span></q-item-section>
           </q-item>
-          <q-item v-if="!contextMenu.file?.isDir" clickable v-close-popup @click="downloadFile(contextMenu.file!)">
+          <q-item v-if="!contextMenu.file?.isDir" clickable @click="downloadFile(contextMenu.file!)">
             <q-item-section avatar style="min-width:28px"><q-icon name="sym_r_download" size="16px" /></q-item-section>
             <q-item-section><span class="ctx-label">Download</span></q-item-section>
           </q-item>
           <q-separator />
-          <q-item clickable v-close-popup @click="startRename(contextMenu.fileIdx!)">
+          <q-item clickable @click="startRename(contextMenu.fileIdx!)">
             <q-item-section avatar style="min-width:28px"><q-icon name="sym_r_edit" size="16px" /></q-item-section>
             <q-item-section><span class="ctx-label">Rename</span></q-item-section>
             <q-item-section side><span class="ctx-shortcut">F2</span></q-item-section>
           </q-item>
-          <q-item clickable v-close-popup @click="clipboardCopy">
+          <q-item clickable @click="clipboardCopy">
             <q-item-section avatar style="min-width:28px"><q-icon name="sym_r_content_copy" size="16px" /></q-item-section>
             <q-item-section><span class="ctx-label">Copy</span></q-item-section>
             <q-item-section side><span class="ctx-shortcut">Ctrl+C</span></q-item-section>
           </q-item>
-          <q-item clickable v-close-popup @click="clipboardCut">
+          <q-item clickable @click="clipboardCut">
             <q-item-section avatar style="min-width:28px"><q-icon name="sym_r_content_cut" size="16px" /></q-item-section>
             <q-item-section><span class="ctx-label">Cut</span></q-item-section>
             <q-item-section side><span class="ctx-shortcut">Ctrl+X</span></q-item-section>
           </q-item>
           <q-separator />
-          <q-item clickable v-close-popup @click="deleteSelectedItems">
+          <q-item clickable @click="deleteSelectedItems">
             <q-item-section avatar style="min-width:28px"><q-icon name="sym_r_delete" size="16px" color="negative" /></q-item-section>
             <q-item-section><span class="ctx-label text-negative">Delete</span></q-item-section>
             <q-item-section side><span class="ctx-shortcut">Del</span></q-item-section>
@@ -211,27 +207,29 @@
         </template>
         <template v-else>
           <!-- Empty space context menu -->
-          <q-item clickable v-close-popup @click="showNewFolderDialog">
+          <q-item clickable @click="showNewFolderDialog">
             <q-item-section avatar style="min-width:28px"><q-icon name="sym_r_create_new_folder" size="16px" /></q-item-section>
             <q-item-section><span class="ctx-label">New Folder</span></q-item-section>
           </q-item>
-          <q-item clickable v-close-popup @click="triggerUpload">
+          <q-item clickable @click="triggerUpload">
             <q-item-section avatar style="min-width:28px"><q-icon name="sym_r_upload_file" size="16px" /></q-item-section>
             <q-item-section><span class="ctx-label">Upload File</span></q-item-section>
           </q-item>
-          <q-item clickable v-close-popup @click="triggerFolderUpload">
+          <q-item clickable @click="triggerFolderUpload">
             <q-item-section avatar style="min-width:28px"><q-icon name="sym_r_drive_folder_upload" size="16px" /></q-item-section>
             <q-item-section><span class="ctx-label">Upload Folder</span></q-item-section>
           </q-item>
           <q-separator v-if="clipboard.items.length" />
-          <q-item v-if="clipboard.items.length" clickable v-close-popup @click="clipboardPaste">
+          <q-item v-if="clipboard.items.length" clickable @click="clipboardPaste">
             <q-item-section avatar style="min-width:28px"><q-icon name="sym_r_content_paste" size="16px" /></q-item-section>
             <q-item-section><span class="ctx-label">Paste ({{clipboard.items.length}} items)</span></q-item-section>
             <q-item-section side><span class="ctx-shortcut">Ctrl+V</span></q-item-section>
           </q-item>
         </template>
       </q-list>
-    </q-menu>
+    </div>
+    </div>
+    </teleport>
     <input ref="uploadRef" type="file" multiple style="display:none" @change="handleUpload" />
     <input ref="folderUploadRef" type="file" multiple style="display:none" webkitdirectory @change="handleFolderUpload" />
   </div>
@@ -481,8 +479,13 @@ function onEmptyContext(e: MouseEvent) {
 }
 
 function showContextAt(e: MouseEvent) {
-  contextMenu.style = `position:fixed;left:${e.clientX}px;top:${e.clientY}px`;
+  contextMenu.style = `position:fixed;left:${e.clientX}px;top:${e.clientY}px;z-index:9999`;
   contextMenu.show = true;
+}
+
+function ctxAction(fn: () => void) {
+  contextMenu.show = false;
+  fn();
 }
 
 // ----- Sort -----
@@ -1249,7 +1252,19 @@ onMounted(() => {
 .status-clipboard { color: var(--accent); font-weight: 500; }
 
 // Context menu
+.context-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+}
+
 .context-menu {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--shadow-elevated);
+  z-index: 9999;
+
   .q-list {
     padding: 4px 0;
   }
@@ -1259,9 +1274,14 @@ onMounted(() => {
     padding: 4px 12px;
     border-radius: 4px;
     margin: 0 4px;
+    color: var(--ink-1);
+
+    &:hover {
+      background: var(--accent-soft);
+    }
   }
 }
 
 .ctx-label { font-size: 13px; font-weight: 500; }
-.ctx-shortcut { font-size: 10px; color: var(--ink-3); font-family: 'SF Mono', monospace; }
+.ctx-shortcut { font-size: 10px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
 </style>
