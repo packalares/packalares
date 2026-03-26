@@ -162,6 +162,7 @@
             <div v-if="dragging === win.id || resizing === win.id" class="iframe-overlay"></div>
             <iframe
               :src="win.url"
+              :data-app-id="win.appId"
               class="window-iframe"
               allow="web-share; clipboard-read; clipboard-write"
             ></iframe>
@@ -341,7 +342,7 @@ function appUrl(name: string, path = '/'): string {
 
 const systemApps: AppInfo[] = [
   { id: 'files', name: 'files', title: 'Files', icon: 'folder', url: appUrl('files'), status: 'running' },
-  { id: 'settings', name: 'settings', title: 'Settings', icon: 'settings', url: appUrl('settings'), status: 'running' },
+  { id: 'settings', name: 'settings', title: 'Settings', icon: 'settings', url: appUrl('settings', '/system'), status: 'running' },
   { id: 'market', name: 'market', title: 'Market', icon: 'storefront', url: appUrl('market'), status: 'running' },
   { id: 'dashboard', name: 'dashboard', title: 'Dashboard', icon: 'monitoring', url: appUrl('dashboard'), status: 'running' },
 ];
@@ -604,15 +605,21 @@ function onDockContextMenu(e: MouseEvent, app: AppInfo) {
 }
 
 function onAvatarClick() {
-  // If settings window is already open, just focus it
   const existing = windows.value.find(w => w.appId === 'settings');
   if (existing) {
     existing.visible = true;
     bringToFront(existing.id);
+    // Try to navigate the iframe to account page
+    try {
+      const iframe = document.querySelector(`iframe[data-app-id="settings"]`) as HTMLIFrameElement;
+      if (iframe?.contentWindow) {
+        iframe.contentWindow.location.hash = '';
+        iframe.contentWindow.location.href = appUrl('settings', '/account');
+      }
+    } catch {}
     return;
   }
-  // Open settings — use the base URL, the router inside will redirect to /account
-  onDockAppClick({ id: 'settings', name: 'settings', title: 'Settings', icon: 'settings', url: appUrl('settings'), status: 'running' });
+  onDockAppClick({ id: 'settings', name: 'settings', title: 'Settings', icon: 'settings', url: appUrl('settings', '/account'), status: 'running' });
 }
 
 function toggleLaunchPad() {
