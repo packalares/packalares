@@ -601,7 +601,14 @@ function onDockContextMenu(e: MouseEvent, app: AppInfo) {
 }
 
 function onAvatarClick() {
-  onDockAppClick({ id: 'settings', name: 'settings', title: 'Settings', icon: 'settings', url: appUrl('settings', '/account'), status: 'running' });
+  // If settings window is already open, just focus it
+  const existing = openWindows.value.find(w => w.id === 'settings');
+  if (existing) {
+    focusWindow('settings');
+    return;
+  }
+  // Open settings — use the base URL, the router inside will redirect to /account
+  onDockAppClick({ id: 'settings', name: 'settings', title: 'Settings', icon: 'settings', url: appUrl('settings'), status: 'running' });
 }
 
 function toggleLaunchPad() {
