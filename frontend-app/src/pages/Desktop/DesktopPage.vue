@@ -58,7 +58,8 @@
           @contextmenu.prevent.stop="onDockContextMenu($event, app)"
         >
           <div class="dock-app-icon" :class="{ 'dock-app-hover': true }">
-            <q-icon :name="'sym_r_' + app.icon" size="20px" color="white" />
+            <img v-if="app.icon && (app.icon.startsWith('/') || app.icon.startsWith('http'))" :src="app.icon" class="dock-icon-img" />
+            <q-icon v-else :name="'sym_r_' + (app.icon || 'web')" size="20px" color="white" />
           </div>
           <div
             v-if="isAppOpen(app.id)"
@@ -216,7 +217,8 @@
               @click.stop="onLaunchAppClick(app)"
             >
               <div class="launchpad-app-icon">
-                <q-icon :name="'sym_r_' + app.icon" size="34px" color="white" />
+                <img v-if="app.icon && (app.icon.startsWith('/') || app.icon.startsWith('http'))" :src="app.icon" class="launchpad-icon-img" />
+                <q-icon v-else :name="'sym_r_' + (app.icon || 'web')" size="34px" color="white" />
               </div>
               <div class="launchpad-app-name">{{ app.title }}</div>
             </div>
@@ -963,6 +965,18 @@ onUnmounted(() => {
 }
 .dock-app-icon:hover {
   transform: scale(1.08);
+}
+.dock-icon-img {
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  object-fit: cover;
+}
+.launchpad-icon-img {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  object-fit: cover;
 }
 .dock-icon-glyph {
   font-size: 20px;
