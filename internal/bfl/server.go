@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -712,7 +711,8 @@ type DeploymentUpdateInfo struct {
 	Namespace       string `json:"namespace"`
 	CurrentImage    string `json:"currentImage"`
 	CurrentTag      string `json:"currentTag"`
-	LatestTag       string `json:"latestTag"`
+	CurrentDigest   string `json:"currentDigest"`
+	RemoteDigest    string `json:"remoteDigest"`
 	UpdateAvailable bool   `json:"updateAvailable"`
 }
 
@@ -730,56 +730,64 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Get running pod image digests
+	pods, err := s.K8s.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
+	podDigests := make(map[string]string) // image name -> digest
+	if err == nil {
+		for _, pod := range pods.Items {
+			for _, cs := range pod.Status.ContainerStatuses {
+				// imageID is like "ghcr.io/packalares/auth@sha256:abc123..."
+				if strings.Contains(cs.ImageID, "@sha256:") {
+					parts := strings.SplitN(cs.ImageID, "@", 2)
+					podDigests[cs.Image] = parts[1]
+				}
+			}
+		}
+	}
+
 	var results []DeploymentUpdateInfo
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 
 	for _, dep := range deployments.Items {
 		for _, c := range dep.Spec.Template.Spec.Containers {
 			image := c.Image
-			// Only check ghcr.io/packalares/* images
 			if !strings.HasPrefix(image, "ghcr.io/packalares/") {
 				continue
 			}
 
-			// Parse image:tag
 			currentImage, currentTag := parseImageTag(image)
-			latestTag := currentTag
-			updateAvailable := false
-
-			// Extract the short image name from ghcr.io/packalares/{name}
 			shortName := strings.TrimPrefix(currentImage, "ghcr.io/packalares/")
 
-			// Query GHCR for tags
-			tagsURL := fmt.Sprintf("https://ghcr.io/v2/packalares/%s/tags/list", shortName)
-			req, err := http.NewRequestWithContext(ctx, http.MethodGet, tagsURL, nil)
+			// Get current running digest from pod status
+			currentDigest := podDigests[image]
+			if currentDigest == "" {
+				currentDigest = "unknown"
+			}
+
+			// Get remote digest from GHCR manifest API
+			remoteDigest := ""
+			manifestURL := fmt.Sprintf("https://ghcr.io/v2/packalares/%s/manifests/%s", shortName, currentTag)
+			req, err := http.NewRequestWithContext(ctx, http.MethodHead, manifestURL, nil)
 			if err == nil {
+				req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
 				resp, err := httpClient.Do(req)
 				if err == nil {
-					defer resp.Body.Close()
+					resp.Body.Close()
 					if resp.StatusCode == http.StatusOK {
-						var tagsResp struct {
-							Tags []string `json:"tags"`
-						}
-						if json.NewDecoder(resp.Body).Decode(&tagsResp) == nil && len(tagsResp.Tags) > 0 {
-							// Sort tags and pick the latest (lexicographically highest)
-							sorted := make([]string, len(tagsResp.Tags))
-							copy(sorted, tagsResp.Tags)
-							sort.Strings(sorted)
-							latestTag = sorted[len(sorted)-1]
-							if latestTag != currentTag {
-								updateAvailable = true
-							}
-						}
+						remoteDigest = resp.Header.Get("Docker-Content-Digest")
 					}
 				}
 			}
+
+			updateAvailable := remoteDigest != "" && currentDigest != "unknown" && remoteDigest != currentDigest
 
 			results = append(results, DeploymentUpdateInfo{
 				Name:            dep.Name,
 				Namespace:       dep.Namespace,
 				CurrentImage:    currentImage,
 				CurrentTag:      currentTag,
-				LatestTag:       latestTag,
+				CurrentDigest:   currentDigest[:min(len(currentDigest), 19)],
+				RemoteDigest:    remoteDigest[:min(len(remoteDigest), 19)],
 				UpdateAvailable: updateAvailable,
 			})
 		}
