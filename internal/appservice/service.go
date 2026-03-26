@@ -570,8 +570,17 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 		GetWSHub().BroadcastAppState(rec.Name, StateUninstalling)
 		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 1, 3, "Removing helm release...", 0, 0)
 
-		// Collect images used by the app BEFORE uninstalling (pods will be gone after)
+		// Collect images from running pods AND from helm manifest
 		appImages := s.k8s.GetImagesForApp(bgCtx, rec.ReleaseName, rec.Namespace)
+		// Also get images from helm manifest (in case pods are already gone)
+		manifestImages := s.helm.GetImagesFromManifest(bgCtx, rec.ReleaseName)
+		for _, img := range manifestImages {
+			found := false
+			for _, existing := range appImages {
+				if existing == img { found = true; break }
+			}
+			if !found { appImages = append(appImages, img) }
+		}
 
 		if err := s.helm.Uninstall(bgCtx, rec.ReleaseName); err != nil {
 			klog.Errorf("helm uninstall %s: %v", req.Name, err)

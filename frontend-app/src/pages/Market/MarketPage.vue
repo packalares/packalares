@@ -743,6 +743,7 @@ function connectWebSocket() {
             installingSet.delete(name);
             installedApps.value = installedApps.value.filter((a) => a.name !== name);
             fetchInstalled();
+            $q.notify({ type: 'positive', message: `${name} uninstalled` });
           } else {
             appStates[name] = state;
           }
