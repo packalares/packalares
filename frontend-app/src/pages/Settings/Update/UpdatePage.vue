@@ -84,7 +84,8 @@ interface ImageInfo {
   namespace: string;
   currentImage: string;
   currentTag: string;
-  latestTag: string;
+  currentDigest: string;
+  remoteDigest: string;
   updateAvailable: boolean;
 }
 
@@ -119,14 +120,34 @@ async function checkUpdates() {
 
 async function restartDeployment(img: ImageInfo) {
   restartingSet.add(img.name);
+  const oldDigest = img.currentDigest;
   try {
     await api.post(`/api/settings/updates/${img.name}`);
-    // Poll for completion — wait a bit then refresh
-    setTimeout(async () => {
-      restartingSet.delete(img.name);
-      // Re-check updates after restart
-      await checkUpdates();
-    }, 8000);
+    // Poll until digest changes (pod restarted with new image) or timeout
+    let attempts = 0;
+    const poll = setInterval(async () => {
+      attempts++;
+      try {
+        const resp: any = await api.get('/api/settings/updates');
+        const data = resp?.data ?? resp;
+        if (Array.isArray(data)) {
+          const updated = data.find((d: ImageInfo) => d.name === img.name);
+          if (updated && updated.currentDigest !== 'unknown' && updated.currentDigest !== oldDigest) {
+            // Digest changed — update complete
+            clearInterval(poll);
+            restartingSet.delete(img.name);
+            images.value = data;
+            lastChecked.value = new Date().toLocaleTimeString();
+          }
+        }
+      } catch {}
+      if (attempts >= 20) {
+        // Timeout after ~60s
+        clearInterval(poll);
+        restartingSet.delete(img.name);
+        await checkUpdates();
+      }
+    }, 3000);
   } catch (e: any) {
     console.error('Failed to restart deployment:', e);
     restartingSet.delete(img.name);
