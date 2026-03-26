@@ -764,12 +764,29 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 				currentDigest = "unknown"
 			}
 
-			// Get remote digest from GHCR manifest API
+			// Get remote digest from GHCR manifest API (requires token)
 			remoteDigest := ""
+			// First get an anonymous token
+			tokenURL := fmt.Sprintf("https://ghcr.io/token?scope=repository:packalares/%s:pull", shortName)
+			var ghcrToken string
+			if tokenReq, err := http.NewRequestWithContext(ctx, http.MethodGet, tokenURL, nil); err == nil {
+				if tokenResp, err := httpClient.Do(tokenReq); err == nil {
+					var tokenBody struct {
+						Token string `json:"token"`
+					}
+					json.NewDecoder(tokenResp.Body).Decode(&tokenBody)
+					tokenResp.Body.Close()
+					ghcrToken = tokenBody.Token
+				}
+			}
+
 			manifestURL := fmt.Sprintf("https://ghcr.io/v2/packalares/%s/manifests/%s", shortName, currentTag)
 			req, err := http.NewRequestWithContext(ctx, http.MethodHead, manifestURL, nil)
 			if err == nil {
 				req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
+				if ghcrToken != "" {
+					req.Header.Set("Authorization", "Bearer "+ghcrToken)
+				}
 				resp, err := httpClient.Do(req)
 				if err == nil {
 					resp.Body.Close()
