@@ -81,7 +81,8 @@ api.interceptors.response.use(
       // Don't redirect on auth/totp or login page requests
       const url = error.config?.url || '';
       const onLoginPage = window.location.pathname.startsWith('/login');
-      if (!url.includes('/auth/totp') && !url.includes('/auth/login') && !onLoginPage) {
+      const onWizardPage = window.location.pathname.startsWith('/wizard');
+      if (!url.includes('/auth/totp') && !url.includes('/auth/login') && !onLoginPage && !onWizardPage) {
         window.location.href = getAuthUrl(window.location.href);
       }
     }

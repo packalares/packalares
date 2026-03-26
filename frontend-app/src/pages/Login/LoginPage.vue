@@ -276,6 +276,16 @@ function getRedirectUrl(responseRedirect?: string): string {
 // ---------- Fetch user info ----------
 async function fetchUserInfo() {
   try {
+    // Check wizard status — redirect if not completed
+    const infoRes: any = await api.get('/bfl/info/v1/olares-info');
+    const infoData = infoRes?.data ?? infoRes;
+    if (infoData?.wizardStatus && infoData.wizardStatus !== 'completed') {
+      window.location.href = '/wizard';
+      return;
+    }
+  } catch {}
+
+  try {
     const res: any = await api.get('/api/user/info');
     const data = res?.data ?? res;
     if (data?.name) userName.value = data.name;
