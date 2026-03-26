@@ -82,6 +82,9 @@ jobs:
           - name: mdns
             dockerfile: build/Dockerfile.mdns
             context: .
+          - name: hostctl
+            dockerfile: build/Dockerfile.hostctl
+            context: .
 
     steps:
       - name: Checkout

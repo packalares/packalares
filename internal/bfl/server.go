@@ -640,65 +640,96 @@ func (s *Server) handleTailscaleSettings(w http.ResponseWriter, r *http.Request)
 }
 
 // ---------------------------------------------------------------------------
-// SSH Settings (read-only) — returns current SSH status from the host
+// SSH Settings — proxies to hostctl service for read/write SSH control
 // ---------------------------------------------------------------------------
 
 func (s *Server) handleSSHSettings(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		respondError(w, "method not allowed")
-		return
-	}
+	hostctlURL := envOrDefault("HOSTCTL_URL", "http://hostctl-svc:9199")
+	hostctlToken := os.Getenv("HOSTCTL_TOKEN")
 
-	// Read SSH port from sshd_config on the host via kubectl.
-	// Since BFL runs inside a K8s pod, we attempt to read the host config
-	// by exec-ing into a host-level pod or reading from a mounted path.
-	// Fallback: try /host/etc/ssh/sshd_config (if hostPath mounted) or default to 22.
-	port := 22
-	enabled := false
-
-	// Try reading from host-mounted sshd_config
-	sshdConfigPaths := []string{
-		"/host/etc/ssh/sshd_config",
-		"/etc/ssh/sshd_config",
-	}
-	for _, cfgPath := range sshdConfigPaths {
-		data, err := os.ReadFile(cfgPath)
+	switch r.Method {
+	case http.MethodGet:
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, hostctlURL+"/ssh/status", nil)
 		if err != nil {
-			continue
+			respondError(w, fmt.Sprintf("ssh status: %v", err))
+			return
 		}
-		for _, line := range strings.Split(string(data), "\n") {
-			line = strings.TrimSpace(line)
-			if strings.HasPrefix(line, "#") {
-				continue
-			}
-			if strings.HasPrefix(line, "Port ") || strings.HasPrefix(line, "Port\t") {
-				fields := strings.Fields(line)
-				if len(fields) >= 2 {
-					if p, err := strconv.Atoi(fields[1]); err == nil {
-						port = p
-					}
-				}
-			}
+		if hostctlToken != "" {
+			req.Header.Set("Authorization", "Bearer "+hostctlToken)
 		}
-		// If we could read the config, assume SSH is available
-		enabled = true
-		break
-	}
+		client := &http.Client{Timeout: 10 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			respondError(w, fmt.Sprintf("ssh status: hostctl unreachable: %v", err))
+			return
+		}
+		defer resp.Body.Close()
 
-	// If we couldn't read the config, try probing the port to see if sshd is listening
-	if !enabled {
-		conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 2*time.Second)
-		if err == nil {
-			conn.Close()
-			enabled = true
+		var status struct {
+			Enabled bool `json:"enabled"`
+			Port    int  `json:"port"`
 		}
-	}
+		if err := json.NewDecoder(resp.Body).Decode(&status); err != nil {
+			respondError(w, fmt.Sprintf("ssh status: decode: %v", err))
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"enabled":   status.Enabled,
+			"port":      status.Port,
+			"read_only": false,
+		})
 
-	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"enabled":   enabled,
-		"port":      port,
-		"read_only": true,
-	})
+	case http.MethodPost:
+		var body struct {
+			Enabled bool `json:"enabled"`
+			Port    int  `json:"port"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			respondError(w, fmt.Sprintf("ssh config: %v", err))
+			return
+		}
+
+		payload, _ := json.Marshal(body)
+		req, err := http.NewRequestWithContext(r.Context(), http.MethodPost, hostctlURL+"/ssh/config", bytes.NewReader(payload))
+		if err != nil {
+			respondError(w, fmt.Sprintf("ssh config: %v", err))
+			return
+		}
+		req.Header.Set("Content-Type", "application/json")
+		if hostctlToken != "" {
+			req.Header.Set("Authorization", "Bearer "+hostctlToken)
+		}
+		client := &http.Client{Timeout: 30 * time.Second}
+		resp, err := client.Do(req)
+		if err != nil {
+			respondError(w, fmt.Sprintf("ssh config: hostctl unreachable: %v", err))
+			return
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			respBody, _ := io.ReadAll(resp.Body)
+			respondError(w, fmt.Sprintf("ssh config: hostctl error: %s", string(respBody)))
+			return
+		}
+
+		var result struct {
+			Enabled bool `json:"enabled"`
+			Port    int  `json:"port"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			respondError(w, fmt.Sprintf("ssh config: decode: %v", err))
+			return
+		}
+		respondJSON(w, http.StatusOK, map[string]interface{}{
+			"enabled":   result.Enabled,
+			"port":      result.Port,
+			"read_only": false,
+		})
+
+	default:
+		respondError(w, "method not allowed")
+	}
 }
 
 // ---------------------------------------------------------------------------
@@ -730,10 +761,10 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get running pod image digests from ALL namespaces where our pods run
-	pods, podErr := s.K8s.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
+	// Get running pod image digests
+	pods, err := s.K8s.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 	podDigests := make(map[string]string) // image name -> digest
-	if podErr == nil {
+	if err == nil {
 		for _, pod := range pods.Items {
 			for _, cs := range pod.Status.ContainerStatuses {
 				// imageID is like "ghcr.io/packalares/auth@sha256:abc123..."
@@ -743,11 +774,6 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
-	}
-
-	klog.Infof("update check: found %d pod digests", len(podDigests))
-	for k, v := range podDigests {
-		klog.V(2).Infof("  %s → %s", k, v[:min(len(v), 19)])
 	}
 
 	var results []DeploymentUpdateInfo

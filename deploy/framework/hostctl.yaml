@@ -1,0 +1,89 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hostctl-secret
+  namespace: "{{FRAMEWORK_NAMESPACE}}"
+type: Opaque
+data:
+  token: "{{HOSTCTL_TOKEN_B64}}"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: hostctl
+  namespace: "{{FRAMEWORK_NAMESPACE}}"
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: hostctl
+  namespace: "{{FRAMEWORK_NAMESPACE}}"
+  labels:
+    app: hostctl
+spec:
+  selector:
+    matchLabels:
+      app: hostctl
+  template:
+    metadata:
+      labels:
+        app: hostctl
+    spec:
+      serviceAccountName: hostctl
+      hostPID: true
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+      priorityClassName: system-node-critical
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: hostctl
+          image: ghcr.io/packalares/hostctl:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 9199
+              protocol: TCP
+          env:
+            - name: HOSTCTL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hostctl-secret
+                  key: token
+          securityContext:
+            privileged: true
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9199
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 9199
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hostctl-svc
+  namespace: "{{FRAMEWORK_NAMESPACE}}"
+  labels:
+    app: hostctl
+spec:
+  selector:
+    app: hostctl
+  ports:
+    - name: http
+      port: 9199
+      targetPort: 9199
+      protocol: TCP
+  type: ClusterIP

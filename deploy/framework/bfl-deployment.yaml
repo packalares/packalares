@@ -27,6 +27,9 @@ rules:
   - apiGroups: ["app.{{API_GROUP}}"]
     resources: ["applications"]
     verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
   - apiGroups: ["apps"]
     resources: ["deployments"]
     verbs: ["get", "list", "create", "delete"]
@@ -84,6 +87,11 @@ spec:
               value: "{{DOMAIN}}"
             - name: OLARES_LOCAL_DOMAIN
               value: "{{DOMAIN}}"
+            - name: HOSTCTL_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: hostctl-secret
+                  key: token
           livenessProbe:
             httpGet:
               path: /healthz
