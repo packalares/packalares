@@ -872,10 +872,20 @@ func (s *Server) handleUpdateRestart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Trigger rolling restart via kubectl
-	out, err := exec.CommandContext(ctx, "kubectl", "rollout", "restart", "deployment/"+name, "-n", ns).CombinedOutput()
+	// Trigger rolling restart by patching the pod template annotation
+	// This is equivalent to "kubectl rollout restart" but uses the K8s API directly
+	dep, err := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		respondError(w, fmt.Sprintf("rollout restart failed: %v: %s", err, string(out)))
+		respondError(w, fmt.Sprintf("get deployment: %v", err))
+		return
+	}
+	if dep.Spec.Template.Annotations == nil {
+		dep.Spec.Template.Annotations = make(map[string]string)
+	}
+	dep.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
+	_, err = s.K8s.Clientset.AppsV1().Deployments(ns).Update(ctx, dep, metav1.UpdateOptions{})
+	if err != nil {
+		respondError(w, fmt.Sprintf("rollout restart failed: %v", err))
 		return
 	}
 
