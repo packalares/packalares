@@ -504,10 +504,15 @@ func BuildEntrancesFromManifest(manifest *AppConfiguration, appName, owner, name
 
 	entrances := make([]Entrance, 0, len(manifest.Entrances))
 	for _, e := range manifest.Entrances {
+		// Use locally cached icon instead of CDN URL
+		icon := e.Icon
+		if strings.HasPrefix(icon, "http") {
+			icon = "/api/market/icons/" + appName + ".png"
+		}
 		entrance := Entrance{
 			Name:       e.Name,
 			Port:       e.Port,
-			Icon:       e.Icon,
+			Icon:       icon,
 			Title:      e.Title,
 			AuthLevel:  e.AuthLevel,
 			Invisible:  e.Invisible,

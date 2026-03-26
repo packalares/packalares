@@ -282,7 +282,10 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 	// Populate record with metadata from the manifest
 	if manifest != nil {
 		rec.Title = manifest.Metadata.Title
-		rec.Icon = manifest.Metadata.Icon
+		// Use locally cached icon if available, otherwise keep CDN URL
+		if manifest.Metadata.Icon != "" {
+			rec.Icon = "/api/market/icons/" + req.Name + ".png"
+		}
 		rec.Description = manifest.Metadata.Description
 		rec.Entrances = BuildEntrancesFromManifest(manifest, req.Name, s.owner, s.namespace)
 		if rec.Version == "" {
