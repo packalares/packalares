@@ -6,8 +6,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 )
+
+// escapeGraphQL escapes special characters for use inside GraphQL string literals.
+// Prevents injection by escaping quotes and backslashes.
+func escapeGraphQL(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `"`, `\"`)
+	s = strings.ReplaceAll(s, "\n", `\n`)
+	s = strings.ReplaceAll(s, "\r", `\r`)
+	s = strings.ReplaceAll(s, "\t", `\t`)
+	return s
+}
 
 // LLDAPClient authenticates users against LLDAP's HTTP API.
 type LLDAPClient struct {
@@ -80,7 +92,12 @@ func (l *LLDAPClient) GetUserGroups(adminUser, adminPassword, username string) (
 	// Query GraphQL for user groups
 	url := fmt.Sprintf("http://%s:%d/api/graphql", l.host, l.port)
 
-	query := fmt.Sprintf(`{"query":"{ user(userId: \"%s\") { groups { displayName } } }"}`, username)
+	// Use json.Marshal to build the request body — prevents GraphQL injection
+	// by properly escaping quotes and special characters in the username
+	gqlBody, _ := json.Marshal(map[string]string{
+		"query": fmt.Sprintf(`{ user(userId: "%s") { groups { displayName } } }`, escapeGraphQL(username)),
+	})
+	query := string(gqlBody)
 
 	req, err := http.NewRequest("POST", url, bytes.NewReader([]byte(query)))
 	if err != nil {
@@ -129,7 +146,11 @@ func (l *LLDAPClient) ChangePassword(adminUser, adminPassword, username, newPass
 	}
 
 	url := fmt.Sprintf("http://%s:%d/api/graphql", l.host, l.port)
-	query := fmt.Sprintf(`{"query":"mutation { updateUser(user: {id: \"%s\", password: \"%s\"}) { ok } }"}`, username, newPassword)
+	// Use json.Marshal to prevent GraphQL injection in username/password
+	gqlBody, _ := json.Marshal(map[string]string{
+		"query": fmt.Sprintf(`mutation { updateUser(user: {id: "%s", password: "%s"}) { ok } }`, escapeGraphQL(username), escapeGraphQL(newPassword)),
+	})
+	query := string(gqlBody)
 
 	req, err := http.NewRequest("POST", url, bytes.NewReader([]byte(query)))
 	if err != nil {
