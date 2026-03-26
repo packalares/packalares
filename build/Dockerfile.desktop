@@ -1,4 +1,11 @@
+FROM node:20 AS build
+WORKDIR /app
+COPY frontend-app/package*.json ./
+RUN npm install --legacy-peer-deps
+COPY frontend-app/ .
+RUN npx quasar build
+
 FROM nginx:stable-alpine
-COPY frontend/ /usr/share/nginx/html/
+COPY --from=build /app/dist/spa/ /usr/share/nginx/html/
 COPY build/desktop-nginx.conf /etc/nginx/conf.d/default.conf
 EXPOSE 80
