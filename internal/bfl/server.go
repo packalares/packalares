@@ -730,10 +730,10 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get running pod image digests
-	pods, err := s.K8s.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
+	// Get running pod image digests from ALL namespaces where our pods run
+	pods, podErr := s.K8s.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
 	podDigests := make(map[string]string) // image name -> digest
-	if err == nil {
+	if podErr == nil {
 		for _, pod := range pods.Items {
 			for _, cs := range pod.Status.ContainerStatuses {
 				// imageID is like "ghcr.io/packalares/auth@sha256:abc123..."
@@ -743,6 +743,11 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 		}
+	}
+
+	klog.Infof("update check: found %d pod digests", len(podDigests))
+	for k, v := range podDigests {
+		klog.V(2).Infof("  %s → %s", k, v[:min(len(v), 19)])
 	}
 
 	var results []DeploymentUpdateInfo
