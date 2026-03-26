@@ -2,6 +2,7 @@ import { RouteRecordRaw } from 'vue-router';
 
 const routes: RouteRecordRaw[] = [
   { path: '/login', component: () => import('pages/Login/LoginPage.vue'), meta: { public: true } },
+  { path: '/wizard', component: () => import('pages/Wizard/WizardPage.vue'), meta: { public: true } },
   {
     path: '/desktop',
     component: () => import('layouts/DesktopLayout.vue'),
