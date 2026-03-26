@@ -51,17 +51,18 @@ func (p *PGProvisioner) CreateOrUpdateUser(ctx context.Context, username, passwo
 		return fmt.Errorf("check user exists: %w", err)
 	}
 
-	// Escape password for SQL (use quoting)
-	escapedPwd := strings.ReplaceAll(password, "'", "''")
+	// ALTER ROLE / CREATE ROLE don't support $1 for PASSWORD — must use a literal.
+	// Escape both backslash and single quote to prevent SQL injection.
+	escaped := escapePostgresLiteral(password)
 
 	if exists {
-		_, err = db.ExecContext(ctx, fmt.Sprintf("ALTER ROLE %s WITH PASSWORD '%s'", quoteIdent(username), escapedPwd))
+		_, err = db.ExecContext(ctx, fmt.Sprintf("ALTER ROLE %s WITH PASSWORD '%s'", quoteIdent(username), escaped))
 		if err != nil {
 			return fmt.Errorf("alter user password: %w", err)
 		}
 		log.Printf("updated password for PostgreSQL user %q", username)
 	} else {
-		_, err = db.ExecContext(ctx, fmt.Sprintf("CREATE ROLE %s WITH LOGIN PASSWORD '%s'", quoteIdent(username), escapedPwd))
+		_, err = db.ExecContext(ctx, fmt.Sprintf("CREATE ROLE %s WITH LOGIN PASSWORD '%s'", quoteIdent(username), escaped))
 		if err != nil {
 			return fmt.Errorf("create user: %w", err)
 		}
@@ -132,11 +133,11 @@ func (p *PGProvisioner) DropDatabase(ctx context.Context, appNamespace, dbName s
 
 	realName := GetDatabaseName(appNamespace, dbName)
 
-	// Terminate existing connections
-	_, _ = db.ExecContext(ctx, fmt.Sprintf(
-		"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '%s' AND pid <> pg_backend_pid()",
-		strings.ReplaceAll(realName, "'", "''"),
-	))
+	// Terminate existing connections — use parameterized query to prevent injection
+	_, _ = db.ExecContext(ctx,
+		"SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $1 AND pid <> pg_backend_pid()",
+		realName,
+	)
 
 	_, err = db.ExecContext(ctx, fmt.Sprintf("DROP DATABASE IF EXISTS %s", quoteIdent(realName)))
 	if err != nil {
@@ -204,4 +205,12 @@ func GetDatabaseName(appNamespace, dbName string) string {
 
 func quoteIdent(s string) string {
 	return `"` + strings.ReplaceAll(s, `"`, `""`) + `"`
+}
+
+// escapePostgresLiteral escapes a string for use inside a PostgreSQL single-quoted literal.
+// Handles both single quotes and backslashes to prevent SQL injection.
+func escapePostgresLiteral(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `'`, `''`)
+	return s
 }

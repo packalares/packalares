@@ -589,6 +589,10 @@ function onIconError(e: Event) {
   }
 }
 
+// renderMarkdown converts simple markdown to HTML for display.
+// SECURITY: HTML entities are escaped FIRST (line 1), so injected <script> etc. are safe.
+// Only safe tags are generated (h2-h4, strong, em, code, li, ul, p, br).
+// Do NOT add link/image rendering without XSS sanitization.
 function renderMarkdown(text: string): string {
   if (!text) return '';
   return text
