@@ -194,14 +194,20 @@ func (cr *ConsumerReconciler) patchDeploymentEnvVars(namespace, appName string, 
 		return fmt.Errorf("list deployments for %s: %w", appName, err)
 	}
 
-	if len(deployments.Items) == 0 {
-		// Try without the standard label, using app name directly
-		labelSelector = fmt.Sprintf("app=%s", appName)
+	// Try multiple label selectors (different charts use different labeling)
+	fallbackSelectors := []string{
+		fmt.Sprintf("app=%s", appName),
+		fmt.Sprintf("io.kompose.service=%s", appName),
+	}
+	for _, sel := range fallbackSelectors {
+		if len(deployments.Items) > 0 {
+			break
+		}
 		deployments, err = cr.kubeClient.AppsV1().Deployments(namespace).List(ctx, metav1.ListOptions{
-			LabelSelector: labelSelector,
+			LabelSelector: sel,
 		})
 		if err != nil {
-			return fmt.Errorf("list deployments for %s (fallback): %w", appName, err)
+			return fmt.Errorf("list deployments for %s (%s): %w", appName, sel, err)
 		}
 	}
 
