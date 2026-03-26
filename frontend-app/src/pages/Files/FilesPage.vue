@@ -157,7 +157,7 @@
     </div>
     <!-- New Folder Dialog -->
     <q-dialog v-model="showNewFolder">
-      <q-card style="min-width:320px;border-radius:14px" class="bg-dark">
+      <q-card style="min-width:320px" dark>
         <q-card-section class="text-subtitle1" style="font-weight:600">New Folder</q-card-section>
         <q-card-section>
           <q-input v-model="newFolderName" label="Folder name" dense dark outlined autofocus @keydown.enter="createFolder" />
@@ -1210,7 +1210,7 @@ onMounted(() => {
 .list-item-selected { background: var(--accent-soft) !important; }
 
 .list-name { font-size: 13px; font-weight: 500; color: var(--ink-1); }
-.list-meta { font-size: 11px; color: var(--ink-3); font-family: 'SF Mono', monospace; }
+.list-meta { font-size: 11px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
 
 .list-thumb {
   width: 24px;
@@ -1248,7 +1248,7 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.status-path { font-family: 'SF Mono', monospace; font-size: 10px; }
+.status-path { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
 .status-clipboard { color: var(--accent); font-weight: 500; }
 
 // Context menu
@@ -1266,12 +1266,12 @@ onMounted(() => {
   z-index: 9999;
 
   .q-list {
-    padding: 4px 0;
+    padding: 3px 0;
   }
 
   .q-item {
-    min-height: 32px;
-    padding: 4px 12px;
+    min-height: 26px;
+    padding: 2px 10px;
     border-radius: 4px;
     margin: 0 4px;
     color: var(--ink-1);
@@ -1279,9 +1279,24 @@ onMounted(() => {
     &:hover {
       background: var(--accent-soft);
     }
+
+    .q-item__section--avatar {
+      min-width: 22px !important;
+      padding-right: 6px;
+
+      .q-icon { font-size: 14px !important; }
+    }
+
+    .q-item__section--side {
+      padding-left: 12px;
+    }
+  }
+
+  .q-separator {
+    margin: 3px 8px !important;
   }
 }
 
-.ctx-label { font-size: 13px; font-weight: 500; }
+.ctx-label { font-size: 12px; font-weight: 500; }
 .ctx-shortcut { font-size: 10px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
 </style>

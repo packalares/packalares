@@ -89,6 +89,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { api } from 'boot/axios';
+import { formatBytes, formatUptime, usageColor, usageQColor } from 'src/utils/helpers';
 
 const sysInfo = ref({
   hostname: '--', os_version: '--', kernel: '--', arch: '--',
@@ -100,21 +101,6 @@ const sysInfo = ref({
 const memPct = computed(() => sysInfo.value.mem_total ? (sysInfo.value.mem_used / sysInfo.value.mem_total) * 100 : 0);
 const diskPct = computed(() => sysInfo.value.disk_total ? (sysInfo.value.disk_used / sysInfo.value.disk_total) * 100 : 0);
 
-function usageColor(pct: number) { return pct >= 80 ? 'text-red-5' : pct >= 50 ? 'text-amber-7' : 'text-green-5'; }
-function usageQColor(pct: number) { return pct >= 80 ? 'red-6' : pct >= 50 ? 'amber-7' : 'green-6'; }
-
-function formatBytes(b: number) {
-  if (!b) return '0 B';
-  const u = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(b) / Math.log(1024));
-  return (b / Math.pow(1024, i)).toFixed(1) + ' ' + u[i];
-}
-
-function formatUptime(s: number) {
-  if (!s) return '--';
-  const d = Math.floor(s / 86400), h = Math.floor((s % 86400) / 3600), m = Math.floor((s % 3600) / 60);
-  return d > 0 ? `${d}d ${h}h ${m}m` : h > 0 ? `${h}h ${m}m` : `${m}m`;
-}
 
 function fmtLoad(l: number[]) { return l.map(v => v.toFixed(2)).join('  /  '); }
 
@@ -156,5 +142,4 @@ onUnmounted(() => { if (timer) clearInterval(timer); });
   font-weight: 600;
   font-size: 12px;
 }
-.metric-sub { font-size: 11px; color: var(--ink-3); margin-top: 6px; text-align: right; }
 </style>
