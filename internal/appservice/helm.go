@@ -74,6 +74,35 @@ func (h *HelmClient) Uninstall(ctx context.Context, releaseName string) error {
 	return h.run(ctx, args...)
 }
 
+// GetImagesFromManifest extracts container image references from a helm release manifest.
+func (h *HelmClient) GetImagesFromManifest(ctx context.Context, releaseName string) []string {
+	cmd := exec.CommandContext(ctx, "helm", "get", "manifest", releaseName, "--namespace", h.Namespace)
+	cmd.Env = os.Environ()
+	out, err := cmd.Output()
+	if err != nil {
+		return nil
+	}
+	seen := make(map[string]bool)
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		// Match "image: xxx" lines
+		if strings.HasPrefix(line, "image:") || strings.HasPrefix(line, "- image:") {
+			img := strings.TrimPrefix(line, "- image:")
+			img = strings.TrimPrefix(img, "image:")
+			img = strings.TrimSpace(img)
+			img = strings.Trim(img, "\"'")
+			if img != "" && !seen[img] {
+				seen[img] = true
+			}
+		}
+	}
+	var images []string
+	for img := range seen {
+		images = append(images, img)
+	}
+	return images
+}
+
 // Upgrade upgrades a helm release in place.
 func (h *HelmClient) Upgrade(ctx context.Context, releaseName, chartRef string, values map[string]string, version string) error {
 	args := []string{
