@@ -55,6 +55,7 @@ const navItems: NavItem[] = [
   { icon: 'sym_r_storage', label: 'Storage', path: '/settings/storage' },
   { icon: 'sym_r_memory', label: 'GPU', path: '/settings/gpu' },
   { icon: 'sym_r_palette', label: 'Appearance', path: '/settings/appearance' },
+  { icon: 'sym_r_system_update', label: 'Update', path: '/settings/update' },
   { icon: 'sym_r_info', label: 'About', path: '/settings/about' },
 ];
 
