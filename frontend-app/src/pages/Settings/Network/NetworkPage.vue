@@ -1,18 +1,31 @@
 <template>
   <div class="settings-page">
-    <div class="page-title">Network</div>
+    <div class="page-header">
+      <div class="page-title">Network</div>
+      <div class="page-description">Manage network interfaces, VPN connections, SSH access, and exposed ports.</div>
+    </div>
     <div class="page-scroll">
-      <!-- Network Info -->
-      <div class="section-title">Configuration</div>
+
+      <!-- Network Configuration -->
       <div class="settings-card">
-        <div class="info-row">
-          <span class="info-label">Server IP</span>
-          <span class="info-value">{{ netInfo.ip }}</span>
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--network">
+            <q-icon name="sym_r_lan" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">Network Configuration</div>
+            <div class="card-header-subtitle">Server identity and routing information</div>
+          </div>
         </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">Domain</span>
-          <span class="info-value">{{ netInfo.domain }}</span>
+        <div class="info-grid-2col">
+          <div class="info-row">
+            <span class="info-label">Server IP</span>
+            <span class="info-value">{{ netInfo.ip }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Domain</span>
+            <span class="info-value">{{ netInfo.domain }}</span>
+          </div>
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
@@ -22,36 +35,45 @@
       </div>
 
       <!-- SSH Access -->
-      <div class="section-title">SSH Access</div>
-      <div class="settings-card">
-        <div class="info-row">
-          <span class="info-label">Status</span>
-          <span
-            class="status-badge"
-            :class="sshStatus.enabled ? 'status-connected' : 'status-disconnected'"
-          >{{ sshStatus.enabled ? 'active' : 'inactive' }}</span>
+      <div class="settings-card q-mt-lg">
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--security">
+            <q-icon name="sym_r_terminal" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">SSH Access</div>
+            <div class="card-header-subtitle">Secure shell login configuration</div>
+          </div>
+          <div class="card-header-actions">
+            <span
+              class="status-badge"
+              :class="sshStatus.enabled ? 'status-connected' : 'status-disconnected'"
+            >{{ sshStatus.enabled ? 'active' : 'inactive' }}</span>
+          </div>
         </div>
-        <q-separator class="card-separator" />
-        <div class="input-row">
-          <span class="input-label">Port</span>
-          <q-input
-            v-model.number="sshPort"
-            dense dark outlined
-            type="number"
-            :rules="[portRule]"
-            class="setting-input ssh-port-input"
-          />
-        </div>
-        <q-separator class="card-separator" />
         <div class="info-row">
-          <span class="info-label">Enable / Disable</span>
+          <span class="info-label">Enable SSH</span>
           <q-toggle
             v-model="sshEnabled"
             dense
             color="primary"
           />
         </div>
-        <div class="action-row">
+        <q-separator class="card-separator" />
+        <div class="form-grid cols-1">
+          <div class="form-group">
+            <label class="form-label">Port</label>
+            <q-input
+              v-model.number="sshPort"
+              dense dark outlined
+              type="number"
+              :rules="[portRule]"
+              style="max-width: 140px"
+            />
+          </div>
+        </div>
+        <div class="card-footer">
+          <span v-if="sshMsg" class="footer-msg" :class="sshMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ sshMsg }}</span>
           <q-btn
             unelevated dense
             label="Apply"
@@ -59,52 +81,55 @@
             :loading="sshSaving"
             @click="applySSH"
           />
-          <span v-if="sshMsg" class="save-msg" :class="sshMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ sshMsg }}</span>
         </div>
       </div>
 
-      <!-- Tailscale -->
-      <div class="section-title">VPN / Tailscale</div>
-      <div class="settings-card">
-        <div class="info-row">
-          <span class="info-label">Status</span>
-          <span
-            class="status-badge"
-            :class="tsStatus === 'connected' ? 'status-connected' : tsStatus === 'connecting' ? 'status-connecting' : 'status-disconnected'"
-          >{{ tsStatus }}</span>
+      <!-- Tailscale VPN -->
+      <div class="settings-card q-mt-lg">
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--vpn">
+            <q-icon name="sym_r_vpn_lock" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">VPN / Tailscale</div>
+            <div class="card-header-subtitle">Connect to your Tailscale network for secure remote access</div>
+          </div>
+          <div class="card-header-actions">
+            <span
+              class="status-badge"
+              :class="tsStatus === 'connected' ? 'status-connected' : tsStatus === 'connecting' ? 'status-connecting' : 'status-disconnected'"
+            >{{ tsStatus }}</span>
+          </div>
         </div>
-        <q-separator class="card-separator" />
-        <div class="input-row">
-          <span class="input-label">Auth Key</span>
-          <q-input
-            v-model="tsAuthKey"
-            dense dark outlined
-            placeholder="tskey-auth-..."
-            class="setting-input"
-            type="password"
-          />
+        <div class="form-grid cols-1">
+          <div class="form-group">
+            <label class="form-label">Auth Key</label>
+            <q-input
+              v-model="tsAuthKey"
+              dense dark outlined
+              placeholder="tskey-auth-..."
+              type="password"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Control URL</label>
+            <q-input
+              v-model="tsControlURL"
+              dense dark outlined
+              placeholder="https://controlplane.tailscale.com"
+            />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Hostname</label>
+            <q-input
+              v-model="tsHostname"
+              dense dark outlined
+              placeholder="packalares"
+            />
+          </div>
         </div>
-        <q-separator class="card-separator" />
-        <div class="input-row">
-          <span class="input-label">Control URL</span>
-          <q-input
-            v-model="tsControlURL"
-            dense dark outlined
-            placeholder="https://controlplane.tailscale.com"
-            class="setting-input"
-          />
-        </div>
-        <q-separator class="card-separator" />
-        <div class="input-row">
-          <span class="input-label">Hostname</span>
-          <q-input
-            v-model="tsHostname"
-            dense dark outlined
-            placeholder="packalares"
-            class="setting-input"
-          />
-        </div>
-        <div class="action-row">
+        <div class="card-footer">
+          <span v-if="saveMsg" class="footer-msg" :class="saveMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ saveMsg }}</span>
           <q-btn
             unelevated dense
             label="Save & Connect"
@@ -112,37 +137,56 @@
             :loading="saving"
             @click="saveTailscale"
           />
-          <span v-if="saveMsg" class="save-msg" :class="saveMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ saveMsg }}</span>
         </div>
       </div>
 
       <!-- Exposed Ports -->
-      <div class="section-title">Exposed Ports</div>
-      <div class="settings-card">
-        <div class="info-row">
-          <span class="info-label">HTTPS (Web UI)</span>
-          <span class="info-value port-value">443</span>
+      <div class="settings-card q-mt-lg">
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--ports">
+            <q-icon name="sym_r_swap_horiz" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">Exposed Ports</div>
+            <div class="card-header-subtitle">Services accessible from the network</div>
+          </div>
         </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">HTTP (redirect)</span>
-          <span class="info-value port-value">80</span>
-        </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">SSH</span>
-          <span class="info-value port-value">{{ sshStatus.port }}</span>
-        </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">K8s API</span>
-          <span class="info-value port-value">6443</span>
-        </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">Tailscale P2P</span>
-          <span class="info-value port-value">41641</span>
-        </div>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Service</th>
+              <th>Protocol</th>
+              <th style="text-align:right">Port</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-label">Web UI</td>
+              <td class="td-mono">HTTPS</td>
+              <td style="text-align:right"><span class="port-badge">443</span></td>
+            </tr>
+            <tr>
+              <td class="td-label">HTTP Redirect</td>
+              <td class="td-mono">HTTP</td>
+              <td style="text-align:right"><span class="port-badge">80</span></td>
+            </tr>
+            <tr>
+              <td class="td-label">SSH</td>
+              <td class="td-mono">TCP</td>
+              <td style="text-align:right"><span class="port-badge">{{ sshStatus.port }}</span></td>
+            </tr>
+            <tr>
+              <td class="td-label">Kubernetes API</td>
+              <td class="td-mono">HTTPS</td>
+              <td style="text-align:right"><span class="port-badge">6443</span></td>
+            </tr>
+            <tr>
+              <td class="td-label">Tailscale P2P</td>
+              <td class="td-mono">UDP</td>
+              <td style="text-align:right"><span class="port-badge">41641</span></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -212,8 +256,12 @@ onMounted(async () => {
     // SSH endpoint may not be available; keep defaults
   }
 
+  // Detect server IP from parent window or current host
   const host = window.location.hostname;
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
+  const parentHost = window.parent?.location?.hostname || '';
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(parentHost)) {
+    netInfo.value.ip = parentHost;
+  } else if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
     netInfo.value.ip = host;
   }
 });
@@ -270,15 +318,4 @@ async function saveTailscale() {
 </script>
 
 <style lang="scss" scoped>
-.port-value {
-  background: var(--bg-3);
-  padding: 3px 10px;
-  border-radius: var(--radius-xs);
-  font-size: 12px;
-  font-weight: 500;
-}
-
-.ssh-port-input {
-  max-width: 120px;
-}
 </style>

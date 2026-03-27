@@ -376,7 +376,7 @@ async function activate() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
   position: relative;
@@ -524,7 +524,7 @@ async function activate() {
   border: 1px solid var(--input-border, rgba(255,255,255,0.08));
   border-radius: 8px;
   color: var(--ink-1, #e2e4ea);
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 500;
   outline: none;
@@ -671,7 +671,7 @@ async function activate() {
   color: #fff;
   border: none;
   border-radius: 8px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -697,7 +697,7 @@ async function activate() {
   color: var(--ink-2, rgba(226,228,234,0.55));
   border: none;
   border-radius: 8px;
-  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;

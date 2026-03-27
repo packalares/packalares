@@ -111,13 +111,26 @@ func handleSSHStatus(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, status)
 }
 
+// sshServiceName returns "ssh" or "sshd" depending on what the host has.
+func sshServiceName() string {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	out, _ := exec.CommandContext(ctx, nsenterPrefix[0], append(nsenterPrefix[1:], "systemctl", "list-unit-files", "ssh.service")...).CombinedOutput()
+	if strings.Contains(string(out), "ssh.service") {
+		return "ssh"
+	}
+	return "sshd"
+}
+
 func getSSHStatus() SSHStatus {
 	status := SSHStatus{Port: 22, Enabled: false}
 
-	// Check if sshd is active
+	svcName := sshServiceName()
+
+	// Check if ssh/sshd is active
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
-	out, err := exec.CommandContext(ctx, nsenterPrefix[0], append(nsenterPrefix[1:], "systemctl", "is-active", "sshd")...).CombinedOutput()
+	out, err := exec.CommandContext(ctx, nsenterPrefix[0], append(nsenterPrefix[1:], "systemctl", "is-active", svcName)...).CombinedOutput()
 	if err == nil && strings.TrimSpace(string(out)) == "active" {
 		status.Enabled = true
 	}
@@ -179,27 +192,28 @@ func handleSSHConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Enable or disable sshd
+	// Enable or disable ssh
+	svcName := sshServiceName()
 	if req.Enabled {
-		if err := nsenterRun("systemctl", "enable", "sshd"); err != nil {
-			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to enable sshd: %v", err))
+		if err := nsenterRun("systemctl", "enable", svcName); err != nil {
+			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to enable %s: %v", svcName, err))
 			return
 		}
-		if err := nsenterRun("systemctl", "restart", "sshd"); err != nil {
-			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to restart sshd: %v", err))
+		if err := nsenterRun("systemctl", "restart", svcName); err != nil {
+			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to restart %s: %v", svcName, err))
 			return
 		}
-		log.Printf("[ssh-config] sshd enabled on port %d at %s", req.Port, time.Now().UTC().Format(time.RFC3339))
+		log.Printf("[ssh-config] %s enabled on port %d at %s", svcName, req.Port, time.Now().UTC().Format(time.RFC3339))
 	} else {
-		if err := nsenterRun("systemctl", "stop", "sshd"); err != nil {
-			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to stop sshd: %v", err))
+		if err := nsenterRun("systemctl", "stop", svcName); err != nil {
+			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to stop %s: %v", svcName, err))
 			return
 		}
-		if err := nsenterRun("systemctl", "disable", "sshd"); err != nil {
-			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to disable sshd: %v", err))
+		if err := nsenterRun("systemctl", "disable", svcName); err != nil {
+			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to disable %s: %v", svcName, err))
 			return
 		}
-		log.Printf("[ssh-config] sshd disabled at %s", time.Now().UTC().Format(time.RFC3339))
+		log.Printf("[ssh-config] %s disabled at %s", svcName, time.Now().UTC().Format(time.RFC3339))
 	}
 
 	// Return new status

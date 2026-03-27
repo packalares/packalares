@@ -247,7 +247,7 @@ const contentRef = ref<HTMLElement|null>(null);
 const currentPath = ref('/');
 const files = ref<any[]>([]);
 const loading = ref(false);
-const viewMode = ref<'grid'|'list'>('grid');
+const viewMode = ref<'grid'|'list'>('list');
 const selectedIndices = ref<Set<number>>(new Set());
 const lastClickedIdx = ref(-1);
 const history = ref(['/']);
@@ -1001,13 +1001,14 @@ onMounted(() => {
 .files-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
 .files-toolbar {
-  height: 44px;
+  height: 40px;
   display: flex;
   align-items: center;
   gap: 2px;
   padding: 0 10px;
   border-bottom: 1px solid var(--separator);
   flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.015);
 }
 
 .toolbar-btn {
@@ -1082,8 +1083,8 @@ onMounted(() => {
 
 .file-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 6px;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 4px;
 }
 
 .file-card {
@@ -1120,9 +1121,9 @@ onMounted(() => {
 }
 
 .file-thumb {
-  width: 64px;
-  height: 48px;
-  border-radius: 6px;
+  width: 68px;
+  height: 52px;
+  border-radius: 8px;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -1133,7 +1134,7 @@ onMounted(() => {
     max-width: 100%;
     max-height: 100%;
     object-fit: cover;
-    border-radius: 4px;
+    border-radius: 6px;
   }
 }
 
@@ -1185,20 +1186,21 @@ onMounted(() => {
 .list-view { padding: 0; }
 
 .list-header {
-  min-height: 30px;
+  min-height: 32px;
   border-bottom: 1px solid var(--separator);
+  background: rgba(255, 255, 255, 0.015);
   cursor: default;
   user-select: none;
 
-  &:hover { background: none !important; }
+  &:hover { background: rgba(255, 255, 255, 0.015) !important; }
 }
 
 .list-header-text {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--ink-3);
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 .list-item {

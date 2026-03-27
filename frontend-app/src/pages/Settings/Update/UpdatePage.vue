@@ -1,75 +1,96 @@
 <template>
   <div class="settings-page">
-    <div class="page-title">
-      Update
-      <q-btn
-        unelevated dense
-        :label="checking ? 'Checking...' : 'Check for Updates'"
-        class="btn-primary q-ml-md"
-        :loading="checking"
-        @click="checkUpdates"
-      />
+    <div class="page-header">
+      <div class="page-title">
+        Update
+        <q-btn
+          unelevated dense
+          :label="checking ? 'Checking...' : 'Check for Updates'"
+          class="btn-primary q-ml-md"
+          :loading="checking"
+          @click="checkUpdates"
+        />
+      </div>
+      <div class="page-description">Manage container image versions and apply updates to your system.</div>
     </div>
     <div class="page-scroll">
-      <div class="section-title">Container Images</div>
 
-      <!-- Loading state -->
-      <div v-if="loading && !images.length" class="settings-card">
-        <div class="info-row">
-          <span class="info-label">Loading deployment images...</span>
-          <q-spinner size="18px" color="grey-5" />
-        </div>
-      </div>
-
-      <!-- Empty state -->
-      <div v-else-if="!images.length" class="settings-card">
-        <div class="info-row">
-          <span class="info-label">No Packalares images found in the framework namespace.</span>
-        </div>
-      </div>
-
-      <!-- Image list -->
-      <div v-else class="settings-card">
-        <template v-for="(img, idx) in images" :key="img.name + img.currentImage">
-          <q-separator v-if="idx > 0" class="card-separator" />
-          <div class="update-row">
-            <div class="update-info">
-              <div class="update-name">{{ img.name }}</div>
-              <div class="update-image-line">
-                <span class="update-image-name">{{ shortImage(img.currentImage) }}</span>
-                <span class="update-tag current-tag">:{{ img.currentTag }}</span>
-                <span class="update-digest">{{ img.currentDigest || '' }}</span>
-                <template v-if="img.updateAvailable">
-                  <q-icon name="sym_r_arrow_forward" size="14px" class="update-arrow" />
-                  <span class="update-digest latest-digest">{{ img.remoteDigest || '' }}</span>
-                </template>
-              </div>
-            </div>
-            <div class="update-actions">
-              <span
-                v-if="!img.updateAvailable && !restartingSet.has(img.name)"
-                class="status-badge status-connected"
-              >up to date</span>
-              <span
-                v-else-if="restartingSet.has(img.name)"
-                class="status-badge status-connecting"
-              >restarting...</span>
-              <q-btn
-                v-else
-                unelevated dense
-                label="Update"
-                class="btn-primary btn-sm"
-                :loading="restartingSet.has(img.name)"
-                @click="restartDeployment(img)"
-              />
+      <!-- Container Images -->
+      <div class="settings-card">
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--update">
+            <q-icon name="sym_r_system_update_alt" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">Container Images</div>
+            <div class="card-header-subtitle">
+              {{ images.length ? images.length + ' images tracked' : 'Packalares framework images' }}
+              <span v-if="lastChecked" style="margin-left: 8px; opacity: 0.7">Last checked: {{ lastChecked }}</span>
             </div>
           </div>
-        </template>
-      </div>
+        </div>
 
-      <!-- Last checked -->
-      <div v-if="lastChecked" class="last-checked">
-        Last checked: {{ lastChecked }}
+        <!-- Loading state -->
+        <div v-if="loading && !images.length" class="empty-state">
+          <q-spinner-dots size="32px" color="grey-5" />
+          <div>Loading deployment images...</div>
+        </div>
+
+        <!-- Empty state -->
+        <div v-else-if="!images.length" class="empty-state">
+          <div class="empty-state-icon">
+            <q-icon name="sym_r_inventory_2" size="24px" color="grey-6" />
+          </div>
+          <div>No Packalares images found in the framework namespace.</div>
+        </div>
+
+        <!-- Image list as table -->
+        <table v-else class="data-table">
+          <thead>
+            <tr>
+              <th>Deployment</th>
+              <th>Image</th>
+              <th>Digest</th>
+              <th style="text-align:right">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="img in images" :key="img.name + img.currentImage">
+              <td>
+                <span class="update-name">{{ img.name }}</span>
+              </td>
+              <td>
+                <span class="update-image-name">{{ shortImage(img.currentImage) }}</span>
+                <span class="update-tag current-tag">:{{ img.currentTag }}</span>
+              </td>
+              <td>
+                <span class="update-digest">{{ img.currentDigest || '--' }}</span>
+                <template v-if="img.updateAvailable">
+                  <q-icon name="sym_r_arrow_forward" size="12px" class="update-arrow q-mx-xs" />
+                  <span class="update-digest latest-digest">{{ img.remoteDigest || '' }}</span>
+                </template>
+              </td>
+              <td style="text-align:right">
+                <span
+                  v-if="!img.updateAvailable && !restartingSet.has(img.name)"
+                  class="status-badge status-connected"
+                >up to date</span>
+                <span
+                  v-else-if="restartingSet.has(img.name)"
+                  class="status-badge status-connecting"
+                >restarting...</span>
+                <q-btn
+                  v-else
+                  unelevated dense
+                  label="Update"
+                  class="btn-primary btn-sm"
+                  :loading="restartingSet.has(img.name)"
+                  @click="restartDeployment(img)"
+                />
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -169,31 +190,10 @@ onMounted(() => {
 </script>
 
 <style lang="scss" scoped>
-.update-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 14px 20px;
-  gap: 16px;
-}
-
-.update-info {
-  flex: 1;
-  min-width: 0;
-}
-
 .update-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--ink-1);
-  margin-bottom: 4px;
-}
-
-.update-image-line {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
 }
 
 .update-image-name {
@@ -217,16 +217,10 @@ onMounted(() => {
   color: var(--ink-2);
 }
 
-.latest-tag {
-  background: var(--positive-soft, rgba(52, 211, 153, 0.1));
-  color: var(--positive, #34d399);
-}
-
 .update-digest {
   font-size: 10px;
   color: var(--ink-3);
   font-family: 'JetBrains Mono', monospace;
-  margin-left: 4px;
 }
 
 .latest-digest {
@@ -235,21 +229,5 @@ onMounted(() => {
 
 .update-arrow {
   color: var(--ink-3);
-}
-
-.update-actions {
-  flex-shrink: 0;
-}
-
-.btn-sm {
-  font-size: 12px !important;
-  padding: 4px 14px !important;
-}
-
-.last-checked {
-  margin-top: 16px;
-  font-size: 11px;
-  color: var(--ink-3);
-  text-align: right;
 }
 </style>

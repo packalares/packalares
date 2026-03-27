@@ -1,0 +1,297 @@
+// =====================================================================
+// Packalares Design System -- Quasar Component Overrides
+// =====================================================================
+
+// ─── Input Fields ───────────────────────────────────────────────────
+
+.q-field--outlined.q-field--dark,
+.q-field--outlined {
+  .q-field__control {
+    background: var(--input-bg) !important;
+    border-radius: var(--radius) !important;
+
+    &::before {
+      border-color: var(--input-border) !important;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    &:hover::before {
+      border-color: var(--border-hover) !important;
+    }
+  }
+
+  &.q-field--focused .q-field__control::before {
+    border-color: var(--accent) !important;
+    box-shadow: none !important;
+  }
+
+  .q-field__control {
+    min-height: 30px !important;
+    height: 30px !important;
+  }
+
+  .q-field__native,
+  .q-field__input {
+    color: var(--ink-1) !important;
+    font-family: 'Inter', sans-serif !important;
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  .q-field__native::placeholder {
+    color: var(--ink-3) !important;
+  }
+
+  .q-field__label {
+    color: var(--ink-3) !important;
+  }
+
+  .q-field__append {
+    color: var(--ink-3) !important;
+  }
+
+  // Fix select value alignment
+  .q-field__native[role="listbox"],
+  .q-field__native.q-placeholder {
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+  }
+
+  .q-field__marginal {
+    height: 30px !important;
+  }
+}
+
+// ─── Buttons ────────────────────────────────────────────────────────
+
+.q-btn--flat,
+.q-btn--unelevated {
+  text-transform: none !important;
+  font-family: 'Inter', sans-serif !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  min-height: 28px !important;
+  padding: 2px 12px !important;
+  transition: all 0.12s ease !important;
+}
+
+// ─── Badge ──────────────────────────────────────────────────────────
+
+.q-badge {
+  font-weight: 600 !important;
+  font-size: 11px !important;
+  border-radius: var(--radius-xs) !important;
+}
+
+// ─── Separator ──────────────────────────────────────────────────────
+
+.q-separator--dark {
+  background: var(--separator) !important;
+}
+
+// ─── Progress Bar ───────────────────────────────────────────────────
+
+.q-linear-progress {
+  border-radius: 99px !important;
+
+  .q-linear-progress__track {
+    opacity: 1 !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+  }
+}
+
+[data-theme="light"] .q-linear-progress {
+  .q-linear-progress__track {
+    background: rgba(0, 0, 0, 0.06) !important;
+  }
+}
+
+// ─── Toggle ─────────────────────────────────────────────────────────
+
+.q-toggle {
+  .q-toggle__inner {
+    font-size: 32px !important;
+    width: 36px !important;
+    min-width: 36px !important;
+    height: 20px !important;
+    padding: 0 !important;
+
+    .q-toggle__track {
+      opacity: 0.4;
+      height: 14px !important;
+      border-radius: 7px !important;
+    }
+
+    .q-toggle__thumb {
+      width: 16px !important;
+      height: 16px !important;
+      top: 2px !important;
+      left: 2px !important;
+
+      &:after {
+        width: 16px !important;
+        height: 16px !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+      }
+    }
+  }
+}
+
+// ─── Notifications (Toast) ──────────────────────────────────────────
+
+.q-notification {
+  background: var(--bg-3) !important;
+  color: var(--ink-1) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-elevated) !important;
+  backdrop-filter: blur(20px) saturate(1.4) !important;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 10px 16px !important;
+  min-height: 40px !important;
+  // Left border accent style (shadcn)
+  border-left: 3px solid var(--accent) !important;
+
+  .q-notification__message {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+  }
+
+  .q-notification__actions {
+    color: var(--ink-2) !important;
+  }
+
+  &.bg-positive {
+    background: rgba(52, 211, 153, 0.10) !important;
+    border-color: rgba(52, 211, 153, 0.15) !important;
+    border-left-color: var(--positive) !important;
+    color: var(--positive) !important;
+  }
+
+  &.bg-negative {
+    background: rgba(248, 113, 113, 0.10) !important;
+    border-color: rgba(248, 113, 113, 0.15) !important;
+    border-left-color: var(--negative) !important;
+    color: var(--negative) !important;
+  }
+
+  &.bg-warning {
+    background: rgba(251, 191, 36, 0.10) !important;
+    border-color: rgba(251, 191, 36, 0.15) !important;
+    border-left-color: var(--warning) !important;
+    color: var(--warning) !important;
+  }
+
+  &.bg-info {
+    background: rgba(129, 140, 248, 0.10) !important;
+    border-color: rgba(129, 140, 248, 0.15) !important;
+    border-left-color: var(--accent) !important;
+    color: var(--accent) !important;
+  }
+
+  .q-icon {
+    color: inherit !important;
+  }
+}
+
+// ─── Dialog ─────────────────────────────────────────────────────────
+
+.q-dialog__backdrop {
+  background: rgba(0, 0, 0, 0.55) !important;
+  backdrop-filter: blur(4px) !important;
+}
+
+.q-dialog {
+  .q-card {
+    background: var(--bg-2) !important;
+    color: var(--ink-1) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-lg) !important;
+    box-shadow: var(--shadow-elevated) !important;
+    font-family: 'Inter', sans-serif !important;
+
+    .q-card__section {
+      color: var(--ink-1) !important;
+    }
+
+    .q-card__section--vert:first-child {
+      font-size: 15px !important;
+      font-weight: 600 !important;
+    }
+
+    .text-subtitle1 {
+      font-size: 15px !important;
+      font-weight: 600 !important;
+      color: var(--ink-1) !important;
+    }
+
+    .q-card__actions {
+      padding: 8px 16px 14px !important;
+    }
+  }
+}
+
+// ─── Menu / Dropdown ────────────────────────────────────────────────
+
+.q-menu {
+  background: var(--bg-2) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--radius) !important;
+  box-shadow: var(--shadow-elevated) !important;
+
+  .q-item {
+    color: var(--ink-1) !important;
+    min-height: 34px !important;
+
+    &:hover,
+    &.q-manual-focusable--focused {
+      background: rgba(255, 255, 255, 0.05) !important;
+    }
+  }
+
+  .q-item__section--avatar {
+    min-width: 28px !important;
+    padding-right: 8px !important;
+  }
+}
+
+// ─── Table ──────────────────────────────────────────────────────────
+
+.q-table {
+  font-family: 'Inter', sans-serif !important;
+
+  thead th {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: var(--ink-3) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    border-bottom: 1px solid var(--separator) !important;
+    padding: 10px 14px !important;
+  }
+
+  tbody td {
+    font-size: 13px !important;
+    color: var(--ink-1) !important;
+    border-bottom: 1px solid var(--separator) !important;
+    padding: 8px 14px !important;
+  }
+
+  tbody tr:hover td {
+    background: rgba(255, 255, 255, 0.02) !important;
+  }
+
+  .q-table__bottom {
+    color: var(--ink-3) !important;
+    border-top: 1px solid var(--separator) !important;
+    padding: 8px 14px !important;
+  }
+}

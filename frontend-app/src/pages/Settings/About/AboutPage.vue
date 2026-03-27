@@ -1,7 +1,12 @@
 <template>
   <div class="settings-page">
-    <div class="page-title">About</div>
+    <div class="page-header">
+      <div class="page-title">About</div>
+      <div class="page-description">System information and project resources.</div>
+    </div>
     <div class="page-scroll">
+
+      <!-- Hero -->
       <div class="about-hero">
         <div class="about-logo">
           <q-icon name="sym_r_deployed_code" size="40px" color="white" />
@@ -11,26 +16,37 @@
         <span class="version-badge">v1.0.0</span>
       </div>
 
-      <div class="section-title">System</div>
+      <!-- System Info -->
       <div class="settings-card">
-        <div class="info-row">
-          <span class="info-label">Hostname</span>
-          <span class="info-value">{{ info.hostname }}</span>
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--system">
+            <q-icon name="sym_r_computer" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">System</div>
+            <div class="card-header-subtitle">Hardware and operating system details</div>
+          </div>
+        </div>
+        <div class="info-grid-2col">
+          <div class="info-row">
+            <span class="info-label">Hostname</span>
+            <span class="info-value">{{ info.hostname }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Architecture</span>
+            <span class="info-value">{{ info.arch }}</span>
+          </div>
         </div>
         <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">Operating System</span>
-          <span class="info-value">{{ info.os_version }}</span>
-        </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">Kernel</span>
-          <span class="info-value">{{ info.kernel }}</span>
-        </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">Architecture</span>
-          <span class="info-value">{{ info.arch }}</span>
+        <div class="info-grid-2col">
+          <div class="info-row">
+            <span class="info-label">Operating System</span>
+            <span class="info-value">{{ info.os_version }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Kernel</span>
+            <span class="info-value">{{ info.kernel }}</span>
+          </div>
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
@@ -39,8 +55,17 @@
         </div>
       </div>
 
-      <div class="section-title">Resources</div>
-      <div class="settings-card">
+      <!-- Resources -->
+      <div class="settings-card q-mt-lg">
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--network">
+            <q-icon name="sym_r_link" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">Resources</div>
+            <div class="card-header-subtitle">Source code, documentation, and issue tracker</div>
+          </div>
+        </div>
         <div class="link-row" @click="openLink('https://github.com/packalares')">
           <div class="link-info">
             <div class="link-icon-wrap">

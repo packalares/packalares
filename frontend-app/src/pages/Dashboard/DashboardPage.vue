@@ -43,8 +43,10 @@
         <!-- Top Resource Strip -->
         <div class="resource-strip">
           <div class="strip-card" v-for="r in resourceCards" :key="r.label">
-            <div class="strip-label">{{ r.label }}</div>
-            <div class="strip-value" :style="{ color: r.color }">{{ r.value }}</div>
+            <div class="strip-top">
+              <div class="strip-label">{{ r.label }}</div>
+              <div class="strip-value" :style="{ color: r.color }">{{ r.value }}</div>
+            </div>
             <div class="strip-bar-track">
               <div class="strip-bar-fill" :style="{ width: r.percent + '%', background: r.color }"></div>
             </div>
@@ -55,34 +57,46 @@
         <div class="charts-grid">
           <div class="chart-panel">
             <div class="chart-head">
-              <span class="chart-title">CPU</span>
+              <span class="chart-title">
+                <span class="chart-dot" style="background:#4c9fe7"></span>
+                CPU
+              </span>
               <span class="chart-live" :style="{ color: '#4c9fe7' }">{{ metrics.cpu_usage?.toFixed(1) ?? '0' }}%</span>
             </div>
             <canvas ref="cpuCanvas" class="chart-canvas"></canvas>
           </div>
           <div class="chart-panel">
             <div class="chart-head">
-              <span class="chart-title">Memory</span>
+              <span class="chart-title">
+                <span class="chart-dot" style="background:#29cc5f"></span>
+                Memory
+              </span>
               <span class="chart-live" :style="{ color: '#29cc5f' }">{{ memPercent.toFixed(1) }}%</span>
             </div>
             <canvas ref="memCanvas" class="chart-canvas"></canvas>
           </div>
           <div class="chart-panel">
             <div class="chart-head">
-              <span class="chart-title">Network</span>
+              <span class="chart-title">
+                <span class="chart-dot" style="background:#e0a040"></span>
+                Network
+              </span>
               <span class="chart-live" :style="{ color: '#e0a040' }">
-                <span style="font-size:10px">RX</span> {{ formatRate(metrics.network?.rx_bytes_per_sec) }}
-                <span style="font-size:10px;margin-left:6px">TX</span> {{ formatRate(metrics.network?.tx_bytes_per_sec) }}
+                <span class="chart-dir">RX</span> {{ formatRate(metrics.network?.rx_bytes_per_sec) }}
+                <span class="chart-dir" style="margin-left:6px">TX</span> {{ formatRate(metrics.network?.tx_bytes_per_sec) }}
               </span>
             </div>
             <canvas ref="netCanvas" class="chart-canvas"></canvas>
           </div>
           <div class="chart-panel">
             <div class="chart-head">
-              <span class="chart-title">Disk I/O</span>
+              <span class="chart-title">
+                <span class="chart-dot" style="background:#c07ae0"></span>
+                Disk I/O
+              </span>
               <span class="chart-live" :style="{ color: '#c07ae0' }">
-                <span style="font-size:10px">R</span> {{ formatRate(metrics.disk_io?.read_bytes_per_sec) }}
-                <span style="font-size:10px;margin-left:6px">W</span> {{ formatRate(metrics.disk_io?.write_bytes_per_sec) }}
+                <span class="chart-dir">R</span> {{ formatRate(metrics.disk_io?.read_bytes_per_sec) }}
+                <span class="chart-dir" style="margin-left:6px">W</span> {{ formatRate(metrics.disk_io?.write_bytes_per_sec) }}
               </span>
             </div>
             <canvas ref="diskIOCanvas" class="chart-canvas"></canvas>
@@ -92,7 +106,10 @@
         <!-- Per-Core CPU + System Info -->
         <div class="bottom-row">
           <div class="cores-panel">
-            <div class="panel-head">CPU Cores</div>
+            <div class="panel-head">
+              <span class="chart-dot" style="background:#4c9fe7"></span>
+              CPU Cores
+            </div>
             <div class="cores-list">
               <div class="core-row" v-for="(val, i) in (metrics.cpu_cores || [])" :key="i">
                 <span class="core-id">{{ i }}</span>
@@ -145,7 +162,7 @@
 
       <!-- ═══════ NETWORK ═══════ -->
       <template v-if="activeNav === 'network'">
-        <div class="page-title">Network</div>
+        <div class="page-header"><div class="page-title">Network</div></div>
         <div class="stat-row">
           <div class="stat-box"><span class="stat-label">Download</span><span class="stat-val rx">{{ formatRate(metrics.network?.rx_bytes_per_sec) }}</span></div>
           <div class="stat-box"><span class="stat-label">Upload</span><span class="stat-val tx">{{ formatRate(metrics.network?.tx_bytes_per_sec) }}</span></div>
@@ -157,7 +174,7 @@
 
       <!-- ═══════ STORAGE ═══════ -->
       <template v-if="activeNav === 'storage'">
-        <div class="page-title">Storage</div>
+        <div class="page-header"><div class="page-title">Storage</div></div>
         <div class="stat-row">
           <div class="stat-box"><span class="stat-label">Used</span><span class="stat-val">{{ formatBytes(metrics.disk?.used) }}</span></div>
           <div class="stat-box"><span class="stat-label">Total</span><span class="stat-val">{{ formatBytes(metrics.disk?.total) }}</span></div>
@@ -178,7 +195,7 @@
 
       <!-- ═══════ POWER ═══════ -->
       <template v-if="activeNav === 'power'">
-        <div class="page-title">Power Consumption</div>
+        <div class="page-header"><div class="page-title">Power Consumption</div></div>
         <div class="stat-row">
           <div class="stat-box"><span class="stat-label">CPU</span><span class="stat-val">{{ metrics.power?.cpu_watts?.toFixed(1) ?? '--' }} W</span></div>
           <div class="stat-box"><span class="stat-label">GPU</span><span class="stat-val">{{ metrics.power?.gpu_watts?.toFixed(1) ?? '--' }} W</span></div>
@@ -191,7 +208,7 @@
 
       <!-- ═══════ LOGS ═══════ -->
       <template v-if="activeNav === 'logs'">
-        <div class="page-title">Logs</div>
+        <div class="page-header"><div class="page-title">Logs</div></div>
         <div class="logs-controls">
           <q-input
             v-model="logQuery"
@@ -226,7 +243,7 @@
 
       <!-- ═══════ PODS ═══════ -->
       <template v-if="activeNav === 'pods'">
-        <div class="page-title">Pods ({{ pods.length }})</div>
+        <div class="page-header"><div class="page-title">Pods ({{ pods.length }})</div></div>
         <div class="pod-table-wrap">
           <q-table
             flat dense
@@ -552,31 +569,32 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
-$bg-deep: #0d0f12;
-$bg-card: #13161b;
-$bg-hover: #1a1d24;
-$border: rgba(255,255,255,0.06);
-$ink-1: #e8eaed;
-$ink-2: #9aa0a6;
-$ink-3: #5f6368;
+// Use CSS custom properties for theme-awareness
+$bg-deep: var(--bg-0);
+$bg-card: var(--bg-2);
+$bg-hover: var(--bg-3);
+$border: var(--border);
+$ink-1: var(--ink-1);
+$ink-2: var(--ink-2);
+$ink-3: var(--ink-3);
 $accent: #4c9fe7;
 
 .dash-root {
   display: flex;
   width: 100%;
   height: 100vh;
-  background: $bg-deep;
+  background: var(--bg-0);
   overflow: hidden;
-  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
-  color: $ink-1;
+  font-family: 'Inter', -apple-system, sans-serif;
+  color: var(--ink-1);
 }
 
 // ── Sidebar ──
 .dash-sidebar {
-  width: 200px;
-  min-width: 200px;
-  background: $bg-deep;
-  border-right: 1px solid $border;
+  width: 212px;
+  min-width: 212px;
+  background: var(--bg-1);
+  border-right: 1px solid var(--separator);
   display: flex;
   flex-direction: column;
   padding: 8px;
@@ -613,12 +631,13 @@ $accent: #4c9fe7;
   scrollbar-width: thin;
   scrollbar-color: #2a2d33 transparent;
 }
-.page-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; }
-.page-subtitle { font-size: 15px; font-weight: 500; margin: 24px 0 12px; color: $ink-2; }
+.page-header { margin-bottom: 16px; }
+.page-subtitle { font-size: 13px; font-weight: 500; margin: 20px 0 10px; color: $ink-2; }
 
 // ── Resource Strip ──
 .resource-strip {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 10px;
   margin-bottom: 16px;
 }
@@ -626,12 +645,13 @@ $accent: #4c9fe7;
   flex: 1;
   background: $bg-card;
   border: 1px solid $border;
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 10px;
+  padding: 12px 14px 10px;
 }
-.strip-label { font-size: 10px; font-weight: 600; color: $ink-2; letter-spacing: 1px; text-transform: uppercase; }
-.strip-value { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin: 2px 0 6px; }
-.strip-bar-track { height: 3px; background: rgba(255,255,255,0.05); border-radius: 2px; }
+.strip-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+.strip-label { font-size: 10px; font-weight: 600; color: $ink-3; letter-spacing: 0.08em; text-transform: uppercase; }
+.strip-value { font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
+.strip-bar-track { height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; }
 .strip-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
 
 // ── Charts ──
@@ -644,16 +664,18 @@ $accent: #4c9fe7;
 .chart-panel {
   background: $bg-card;
   border: 1px solid $border;
-  border-radius: 8px;
-  padding: 10px 12px;
+  border-radius: 10px;
+  padding: 12px 14px;
 }
 .chart-head {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
-.chart-title { font-size: 11px; font-weight: 600; color: $ink-2; text-transform: uppercase; letter-spacing: 0.5px; }
+.chart-title { font-size: 11px; font-weight: 600; color: $ink-2; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
+.chart-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.chart-dir { font-size: 9px; font-weight: 600; letter-spacing: 0.04em; opacity: 0.7; }
 .chart-live { font-size: 12px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
 .chart-canvas { width: 100%; height: 140px; display: block; }
 
@@ -674,10 +696,10 @@ $accent: #4c9fe7;
 .cores-panel, .info-panel {
   background: $bg-card;
   border: 1px solid $border;
-  border-radius: 8px;
-  padding: 12px;
+  border-radius: 10px;
+  padding: 14px;
 }
-.panel-head { font-size: 11px; font-weight: 600; color: $ink-2; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+.panel-head { font-size: 11px; font-weight: 600; color: $ink-2; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
 .cores-list { max-height: 200px; overflow-y: auto; scrollbar-width: thin; }
 .core-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
 .core-id { font-size: 10px; color: $ink-3; width: 16px; text-align: right; font-family: monospace; }
@@ -696,13 +718,13 @@ $accent: #4c9fe7;
   flex: 1;
   background: $bg-card;
   border: 1px solid $border;
-  border-radius: 8px;
-  padding: 14px;
+  border-radius: 10px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
 }
-.stat-label { font-size: 11px; color: $ink-2; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
-.stat-val { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.stat-label { font-size: 10px; color: $ink-3; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 6px; }
+.stat-val { font-size: 24px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
 .stat-val.rx { color: #e0a040; }
 .stat-val.tx { color: #e07a50; }
 .stat-val.power-total { color: #c07ae0; }

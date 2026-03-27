@@ -1,28 +1,76 @@
 <template>
   <div class="settings-page">
-    <div class="page-title">System</div>
+    <div class="page-header">
+      <div class="page-title">System</div>
+      <div class="page-description">Hardware metrics, resource utilization, and system information.</div>
+    </div>
     <div class="page-scroll">
+
+      <!-- Resource Overview Strip -->
+      <div class="stat-grid cols-3">
+        <div class="stat-card">
+          <span class="stat-card-label">CPU</span>
+          <span class="stat-card-value" :class="usageColor(sysInfo.cpu_usage)">{{ sysInfo.cpu_usage.toFixed(1) }}%</span>
+          <span class="stat-card-sub">{{ sysInfo.cpu_count }} cores</span>
+          <div class="stat-card-bar">
+            <div class="stat-card-bar-fill" :style="{ width: sysInfo.cpu_usage + '%', background: usageBarColor(sysInfo.cpu_usage) }"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card-label">Memory</span>
+          <span class="stat-card-value" :class="usageColor(memPct)">{{ memPct.toFixed(1) }}%</span>
+          <span class="stat-card-sub">{{ formatBytes(sysInfo.mem_used) }} / {{ formatBytes(sysInfo.mem_total) }}</span>
+          <div class="stat-card-bar">
+            <div class="stat-card-bar-fill" :style="{ width: memPct + '%', background: usageBarColor(memPct) }"></div>
+          </div>
+        </div>
+        <div class="stat-card">
+          <span class="stat-card-label">Storage</span>
+          <span class="stat-card-value" :class="usageColor(diskPct)">{{ diskPct.toFixed(1) }}%</span>
+          <span class="stat-card-sub">{{ formatBytes(sysInfo.disk_used) }} / {{ formatBytes(sysInfo.disk_total) }}</span>
+          <div class="stat-card-bar">
+            <div class="stat-card-bar-fill" :style="{ width: diskPct + '%', background: usageBarColor(diskPct) }"></div>
+          </div>
+        </div>
+      </div>
+
       <!-- System Information -->
-      <div class="section-title">Information</div>
       <div class="settings-card">
-        <div class="info-row">
-          <span class="info-label">Hostname</span>
-          <span class="info-value">{{ sysInfo.hostname }}</span>
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--system">
+            <q-icon name="sym_r_computer" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">System Information</div>
+            <div class="card-header-subtitle">Hardware and operating system details</div>
+          </div>
+          <div class="card-header-actions">
+            <span class="uptime-badge">
+              <span class="uptime-dot-sm"></span>
+              {{ formatUptime(sysInfo.uptime) }}
+            </span>
+          </div>
+        </div>
+        <div class="info-grid-2col">
+          <div class="info-row">
+            <span class="info-label">Hostname</span>
+            <span class="info-value">{{ sysInfo.hostname }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Architecture</span>
+            <span class="info-value">{{ sysInfo.arch }}</span>
+          </div>
         </div>
         <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">Operating System</span>
-          <span class="info-value">{{ sysInfo.os_version }}</span>
-        </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">Kernel</span>
-          <span class="info-value">{{ sysInfo.kernel }}</span>
-        </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">Architecture</span>
-          <span class="info-value">{{ sysInfo.arch }}</span>
+        <div class="info-grid-2col">
+          <div class="info-row">
+            <span class="info-label">Operating System</span>
+            <span class="info-value">{{ sysInfo.os_version }}</span>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Kernel</span>
+            <span class="info-value">{{ sysInfo.kernel }}</span>
+          </div>
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
@@ -31,55 +79,8 @@
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
-          <span class="info-label">Uptime</span>
-          <span class="info-value uptime-value">{{ formatUptime(sysInfo.uptime) }}</span>
-        </div>
-      </div>
-
-      <!-- CPU -->
-      <div class="section-title">Processor</div>
-      <div class="settings-card">
-        <div class="metric-row">
-          <div class="metric-header">
-            <span class="info-label">CPU Usage</span>
-            <span class="metric-value" :class="usageColor(sysInfo.cpu_usage)">{{ sysInfo.cpu_usage.toFixed(1) }}%</span>
-          </div>
-          <q-linear-progress :value="sysInfo.cpu_usage / 100" :color="usageQColor(sysInfo.cpu_usage)" track-color="grey-9" rounded size="6px" class="q-mt-sm" />
-        </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
           <span class="info-label">Load Average</span>
           <span class="info-value">{{ fmtLoad(sysInfo.load) }}</span>
-        </div>
-      </div>
-
-      <!-- Memory -->
-      <div class="section-title">Memory</div>
-      <div class="settings-card">
-        <div class="metric-row">
-          <div class="metric-header">
-            <span class="info-label">RAM Usage</span>
-            <span class="metric-value" :class="usageColor(memPct)">
-              {{ formatBytes(sysInfo.mem_used) }} / {{ formatBytes(sysInfo.mem_total) }}
-            </span>
-          </div>
-          <q-linear-progress :value="memPct / 100" :color="usageQColor(memPct)" track-color="grey-9" rounded size="6px" class="q-mt-sm" />
-          <div class="metric-sub">{{ memPct.toFixed(1) }}% used</div>
-        </div>
-      </div>
-
-      <!-- Disk -->
-      <div class="section-title">Storage</div>
-      <div class="settings-card">
-        <div class="metric-row">
-          <div class="metric-header">
-            <span class="info-label">Disk Usage</span>
-            <span class="metric-value" :class="usageColor(diskPct)">
-              {{ formatBytes(sysInfo.disk_used) }} / {{ formatBytes(sysInfo.disk_total) }}
-            </span>
-          </div>
-          <q-linear-progress :value="diskPct / 100" :color="usageQColor(diskPct)" track-color="grey-9" rounded size="6px" class="q-mt-sm" />
-          <div class="metric-sub">{{ diskPct.toFixed(1) }}% used</div>
         </div>
       </div>
     </div>
@@ -90,6 +91,12 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { api } from 'boot/axios';
 import { formatBytes, formatUptime, usageColor, usageQColor } from 'src/utils/helpers';
+
+function usageBarColor(pct: number): string {
+  if (pct > 80) return '#f87171';
+  if (pct > 50) return '#fbbf24';
+  return '#34d399';
+}
 
 const sysInfo = ref({
   hostname: '--', os_version: '--', kernel: '--', arch: '--',
@@ -134,12 +141,24 @@ onUnmounted(() => { if (timer) clearInterval(timer); });
 </script>
 
 <style lang="scss" scoped>
-.uptime-value {
+.uptime-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background: var(--positive-soft);
   color: var(--positive);
-  padding: 3px 10px;
-  border-radius: var(--radius-xs);
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
   font-weight: 600;
   font-size: 12px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.uptime-dot-sm {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--positive);
+  box-shadow: 0 0 6px var(--positive);
 }
 </style>

@@ -1,6 +1,9 @@
 <template>
   <div class="settings-page">
-    <div class="page-title">GPU</div>
+    <div class="page-header">
+      <div class="page-title">GPU</div>
+      <div class="page-description">GPU hardware details, VRAM utilization, temperature, and power draw.</div>
+    </div>
     <div class="page-scroll">
       <!-- Loading -->
       <div v-if="loading" class="empty-state-full">
@@ -20,21 +23,64 @@
       <!-- GPU Cards -->
       <template v-else>
         <div v-for="(gpu, idx) in gpus" :key="idx">
-          <div class="section-title">GPU {{ idx }}</div>
-          <div class="settings-card">
-            <div class="info-row">
-              <span class="info-label">Name</span>
-              <span class="info-value">{{ gpu.name }}</span>
+          <!-- GPU Stat Strip -->
+          <div class="stat-grid cols-4 q-mb-sm" v-if="idx === 0">
+            <div class="stat-card">
+              <span class="stat-card-label">Utilization</span>
+              <span class="stat-card-value" :class="usageColor(gpu.utilization)">{{ gpu.utilization }}%</span>
+              <div class="stat-card-bar">
+                <div class="stat-card-bar-fill" :style="{ width: gpu.utilization + '%', background: '#c07ae0' }"></div>
+              </div>
             </div>
-            <q-separator class="card-separator" />
-            <div class="info-row">
-              <span class="info-label">Driver</span>
-              <span class="info-value">{{ gpu.driver }}</span>
+            <div class="stat-card">
+              <span class="stat-card-label">VRAM</span>
+              <span class="stat-card-value" :class="usageColor(vramPercent(gpu))">{{ vramPercent(gpu).toFixed(0) }}%</span>
+              <span class="stat-card-sub">{{ gpu.vram_used_mb }} / {{ gpu.vram_total_mb }} MB</span>
+              <div class="stat-card-bar">
+                <div class="stat-card-bar-fill" :style="{ width: vramPercent(gpu) + '%', background: '#818cf8' }"></div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <span class="stat-card-label">Temperature</span>
+              <span class="stat-card-value" :class="gpu.temperature >= 80 ? 'text-red-5' : gpu.temperature >= 60 ? 'text-amber-7' : 'text-green-5'">{{ gpu.temperature }}&deg;C</span>
+            </div>
+            <div class="stat-card">
+              <span class="stat-card-label">Power</span>
+              <span class="stat-card-value">{{ gpu.power_draw }}W</span>
+              <span class="stat-card-sub">Limit: {{ gpu.power_limit }}W</span>
+            </div>
+          </div>
+
+          <!-- GPU Details Card -->
+          <div class="settings-card">
+            <div class="card-header">
+              <div class="card-header-icon card-header-icon--gpu">
+                <q-icon name="sym_r_memory" size="18px" />
+              </div>
+              <div class="card-header-text">
+                <div class="card-header-title">GPU {{ idx }} -- {{ gpu.name }}</div>
+                <div class="card-header-subtitle">Driver {{ gpu.driver }}</div>
+              </div>
+              <div class="card-header-actions">
+                <span class="temp-value" :class="gpu.temperature >= 80 ? 'temp-hot' : gpu.temperature >= 60 ? 'temp-warm' : 'temp-cool'">
+                  {{ gpu.temperature }}&deg;C
+                </span>
+              </div>
+            </div>
+            <div class="info-grid-2col">
+              <div class="info-row">
+                <span class="info-label">Name</span>
+                <span class="info-value">{{ gpu.name }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-label">Driver</span>
+                <span class="info-value">{{ gpu.driver }}</span>
+              </div>
             </div>
             <q-separator class="card-separator" />
             <div class="metric-row">
               <div class="metric-header">
-                <span class="info-label">VRAM</span>
+                <span class="info-label">VRAM Usage</span>
                 <span class="metric-value" :class="usageColor(vramPercent(gpu))">
                   {{ gpu.vram_used_mb }} / {{ gpu.vram_total_mb }} MB
                 </span>
@@ -45,21 +91,14 @@
             <q-separator class="card-separator" />
             <div class="metric-row">
               <div class="metric-header">
-                <span class="info-label">Utilization</span>
+                <span class="info-label">GPU Utilization</span>
                 <span class="metric-value" :class="usageColor(gpu.utilization)">{{ gpu.utilization }}%</span>
               </div>
               <q-linear-progress :value="gpu.utilization / 100" :color="usageQColor(gpu.utilization)" track-color="grey-9" rounded size="6px" class="q-mt-sm" />
             </div>
             <q-separator class="card-separator" />
             <div class="info-row">
-              <span class="info-label">Temperature</span>
-              <span class="info-value temp-value" :class="gpu.temperature >= 80 ? 'temp-hot' : gpu.temperature >= 60 ? 'temp-warm' : 'temp-cool'">
-                {{ gpu.temperature }}&deg;C
-              </span>
-            </div>
-            <q-separator class="card-separator" />
-            <div class="info-row">
-              <span class="info-label">Power</span>
+              <span class="info-label">Power Draw</span>
               <span class="info-value">{{ gpu.power_draw }}W / {{ gpu.power_limit }}W</span>
             </div>
           </div>

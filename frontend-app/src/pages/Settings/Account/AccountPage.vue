@@ -1,9 +1,13 @@
 <template>
   <div class="settings-page">
-    <div class="page-title">Account</div>
+    <div class="page-header">
+      <div class="page-title">Account</div>
+      <div class="page-description">Manage your profile, password, two-factor authentication, and sessions.</div>
+    </div>
     <div class="page-scroll">
-      <!-- Profile -->
-      <div class="settings-card profile-card">
+
+      <!-- Profile Card -->
+      <div class="settings-card">
         <div class="profile-header">
           <div class="profile-avatar">
             <q-icon name="sym_r_person" size="28px" color="white" />
@@ -16,39 +20,55 @@
         </div>
       </div>
 
-      <!-- Password -->
-      <div class="section-title">Change Password</div>
-      <div class="settings-card">
-        <div class="input-row">
-          <span class="input-label">Current</span>
-          <q-input v-model="currentPassword" dense dark outlined type="password" class="setting-input" />
+      <!-- Change Password -->
+      <div class="settings-card q-mt-lg">
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--security">
+            <q-icon name="sym_r_lock" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">Change Password</div>
+            <div class="card-header-subtitle">Update your account password</div>
+          </div>
         </div>
-        <div class="input-row">
-          <span class="input-label">New</span>
-          <q-input v-model="newPassword" dense dark outlined type="password" class="setting-input" />
+        <div class="form-grid cols-1">
+          <div class="form-group">
+            <label class="form-label">Current Password</label>
+            <q-input v-model="currentPassword" dense dark outlined type="password" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">New Password</label>
+            <q-input v-model="newPassword" dense dark outlined type="password" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Confirm New Password</label>
+            <q-input v-model="confirmPassword" dense dark outlined type="password" />
+          </div>
         </div>
-        <div class="input-row">
-          <span class="input-label">Confirm</span>
-          <q-input v-model="confirmPassword" dense dark outlined type="password" class="setting-input" />
-        </div>
-        <div class="action-row">
+        <div class="card-footer">
+          <span v-if="pwMsg" class="footer-msg" :class="pwMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ pwMsg }}</span>
           <q-btn unelevated dense label="Change Password" class="btn-primary" :loading="changingPw" @click="changePassword" />
-          <span v-if="pwMsg" class="save-msg" :class="pwMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ pwMsg }}</span>
         </div>
       </div>
 
       <!-- TOTP 2FA -->
-      <div class="section-title">Two-Factor Authentication</div>
-      <div class="settings-card">
-        <div class="info-row">
-          <span class="info-label">TOTP Authenticator</span>
-          <span
-            class="status-badge"
-            :class="totpEnabled ? 'status-connected' : 'status-disconnected'"
-          >{{ totpEnabled ? 'Enabled' : 'Disabled' }}</span>
+      <div class="settings-card q-mt-lg">
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--account">
+            <q-icon name="sym_r_security" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">Two-Factor Authentication</div>
+            <div class="card-header-subtitle">Add an extra layer of security with a TOTP authenticator</div>
+          </div>
+          <div class="card-header-actions">
+            <span
+              class="status-badge"
+              :class="totpEnabled ? 'status-connected' : 'status-disconnected'"
+            >{{ totpEnabled ? 'Enabled' : 'Disabled' }}</span>
+          </div>
         </div>
         <template v-if="!totpEnabled">
-          <q-separator class="card-separator" />
           <div class="totp-setup" v-if="totpURI">
             <div class="totp-instructions">Scan this QR code with your authenticator app, then enter the 6-digit code below.</div>
             <div class="totp-qr">
@@ -58,31 +78,47 @@
               <span class="totp-secret-label">Secret</span>
               <code class="totp-secret-code">{{ totpSecret }}</code>
             </div>
-            <div class="input-row">
-              <span class="input-label">Code</span>
-              <q-input v-model="totpCode" dense dark outlined placeholder="000000" maxlength="6" class="setting-input" @keyup.enter="verifyTOTP" />
+            <div class="form-grid cols-1" style="padding-top: 0">
+              <div class="form-group">
+                <label class="form-label">Verification Code</label>
+                <q-input v-model="totpCode" dense dark outlined placeholder="000000" maxlength="6" @keyup.enter="verifyTOTP" />
+              </div>
             </div>
-            <div class="action-row">
-              <q-btn unelevated dense label="Verify & Enable" class="btn-primary" @click="verifyTOTP" />
+            <div class="card-footer">
               <q-btn flat dense label="Cancel" class="btn-ghost" @click="totpURI = ''" />
+              <q-btn unelevated dense label="Verify & Enable" class="btn-primary" @click="verifyTOTP" />
             </div>
           </div>
-          <div v-else class="action-row">
+          <div v-else class="card-footer">
+            <span v-if="totpMsg" class="footer-msg" :class="totpMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ totpMsg }}</span>
             <q-btn unelevated dense label="Setup TOTP" class="btn-primary" @click="setupTOTP" />
           </div>
         </template>
         <template v-else>
-          <div class="action-row">
+          <div class="card-footer">
+            <span v-if="totpMsg" class="footer-msg" :class="totpMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ totpMsg }}</span>
             <q-btn flat dense label="Disable TOTP" class="btn-danger" @click="disableTOTP" />
           </div>
         </template>
-        <span v-if="totpMsg" class="save-msg q-ml-md q-mb-sm" :class="totpMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ totpMsg }}</span>
       </div>
 
       <!-- Active Sessions -->
-      <div class="section-title">Active Sessions</div>
-      <div class="settings-card">
-        <div v-if="sessions.length === 0" class="empty-state">No active sessions</div>
+      <div class="settings-card q-mt-lg">
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--system">
+            <q-icon name="sym_r_devices" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">Active Sessions</div>
+            <div class="card-header-subtitle">Manage devices logged into your account</div>
+          </div>
+        </div>
+        <div v-if="sessions.length === 0" class="empty-state">
+          <div class="empty-state-icon">
+            <q-icon name="sym_r_devices" size="24px" color="grey-6" />
+          </div>
+          No active sessions
+        </div>
         <template v-for="(s, i) in sessions" :key="s.id">
           <div class="session-row">
             <div class="session-info">
@@ -101,9 +137,17 @@
       </div>
 
       <!-- Logout -->
-      <div class="section-title">Session</div>
-      <div class="settings-card">
-        <div class="action-row">
+      <div class="settings-card q-mt-lg">
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--danger">
+            <q-icon name="sym_r_logout" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">Session</div>
+            <div class="card-header-subtitle">End your current session</div>
+          </div>
+        </div>
+        <div class="card-footer">
           <q-btn flat dense label="Logout" class="btn-danger" icon="sym_r_logout" @click="logout" />
         </div>
       </div>

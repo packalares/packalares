@@ -510,7 +510,7 @@ onUnmounted(() => {
   height: 100vh;
   overflow: hidden;
   position: relative;
-  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
 .bg-container {

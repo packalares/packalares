@@ -71,8 +71,8 @@ const navigateTo = (path: string) => router.push(path);
 }
 
 .settings-sidebar {
-  width: 216px;
-  min-width: 216px;
+  width: 212px;
+  min-width: 212px;
   height: 100%;
   background: var(--bg-1);
   border-right: 1px solid var(--separator);
@@ -85,12 +85,12 @@ const navigateTo = (path: string) => router.push(path);
   display: flex;
   align-items: center;
   padding: 8px 10px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   cursor: pointer;
   gap: 10px;
   transition: background 0.1s;
 
-  &:hover { background: rgba(255,255,255,0.03); }
+  &:hover { background: rgba(255, 255, 255, 0.03); }
   &.active {
     background: var(--accent-soft);
     .sidebar-user-name { color: var(--accent); }
@@ -102,8 +102,8 @@ const navigateTo = (path: string) => router.push(path);
 .user-avatar-wrap {
   width: 32px;
   height: 32px;
-  border-radius: 9px;
-  background: var(--bg-3);
+  border-radius: var(--radius);
+  background: var(--accent-bold);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -144,7 +144,7 @@ const navigateTo = (path: string) => router.push(path);
   align-items: center;
   gap: 10px;
   padding: 7px 10px;
-  border-radius: 7px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.1s;
 
@@ -152,7 +152,7 @@ const navigateTo = (path: string) => router.push(path);
   .nav-text { font-size: 13px; font-weight: 500; color: var(--ink-2); transition: color 0.1s; }
 
   &:hover {
-    background: rgba(255,255,255,0.03);
+    background: rgba(255, 255, 255, 0.03);
     .nav-icon { color: var(--ink-2); }
     .nav-text { color: var(--ink-1); }
   }
