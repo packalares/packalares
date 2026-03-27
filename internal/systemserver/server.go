@@ -519,7 +519,14 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Pick the best entrance: prefer non-internal, non-invisible ones (the user-facing web UI)
 	entrance := app.Spec.Entrances[0]
+	for _, e := range app.Spec.Entrances {
+		if e.AuthLevel != "internal" && !e.Invisible {
+			entrance = e
+			break
+		}
+	}
 	// Build upstream URL from the entrance host (which is the K8s service name)
 	// and the app's namespace
 	svcHost := entrance.Host
