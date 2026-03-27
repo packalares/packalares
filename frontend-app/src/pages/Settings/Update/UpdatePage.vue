@@ -199,7 +199,7 @@ onMounted(() => {
 .update-image-name {
   font-size: 12px;
   color: var(--ink-3);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', sans-serif;
 }
 
 .update-tag {
@@ -208,7 +208,7 @@ onMounted(() => {
   padding: 1px 6px;
   border-radius: 4px;
   font-size: 11px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', sans-serif;
   font-weight: 500;
 }
 
@@ -220,7 +220,7 @@ onMounted(() => {
 .update-digest {
   font-size: 10px;
   color: var(--ink-3);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', sans-serif;
 }
 
 .latest-digest {

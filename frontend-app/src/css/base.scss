@@ -3,7 +3,7 @@
 // Reset, typography, scrollbar, global defaults
 // =====================================================================
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 // ── Reset & Base ────────────────────────────────────────────────────
 
@@ -41,7 +41,7 @@ p { margin: 0; }
 a { color: var(--accent); text-decoration: none; }
 
 .mono {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', sans-serif;
 }
 
 // ── Scrollbar ───────────────────────────────────────────────────────
@@ -56,11 +56,11 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--scrollbar-thumb);
   border-radius: 99px;
 
   &:hover {
-    background: rgba(255, 255, 255, 0.14);
+    background: var(--scrollbar-hover);
   }
 }
 

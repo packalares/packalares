@@ -230,11 +230,12 @@ type AppInfo struct {
 	Title       string                  `json:"title,omitempty"`
 	Description string                  `json:"description,omitempty"`
 	Version     string                  `json:"version,omitempty"`
-	State       ApplicationManagerState `json:"state"`
-	Source      string                  `json:"source"`
-	Entrances   []Entrance              `json:"entrances,omitempty"`
-	CreatedAt   time.Time               `json:"createdAt"`
-	UpdatedAt   time.Time               `json:"updatedAt"`
+	State         ApplicationManagerState `json:"state"`
+	StatusMessage string                  `json:"statusMessage,omitempty"`
+	Source        string                  `json:"source"`
+	Entrances     []Entrance              `json:"entrances,omitempty"`
+	CreatedAt     time.Time               `json:"createdAt"`
+	UpdatedAt     time.Time               `json:"updatedAt"`
 }
 
 // AppListResponse is returned for GET /apps.

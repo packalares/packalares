@@ -117,6 +117,12 @@ http {
       proxy_pass http://$bfl_up:80;
       proxy_set_header Host $host;
     }
+    location = /api/logs {
+      auth_request /_auth;
+      proxy_pass http://$mon_up:80;
+      proxy_set_header Host $host;
+      proxy_set_header Cookie $http_cookie;
+    }
     location /api/logs/ {
       auth_request /_auth;
       rewrite ^/api/logs/(.*) /api/logs/$1 break;
@@ -294,6 +300,12 @@ http {
       auth_request /_auth;
       proxy_pass http://$bfl_up:80;
       proxy_set_header Host $host;
+    }
+    location = /api/logs {
+      auth_request /_auth;
+      proxy_pass http://$mon_up:80;
+      proxy_set_header Host $host;
+      proxy_set_header Cookie $http_cookie;
     }
     location /api/logs/ {
       auth_request /_auth;

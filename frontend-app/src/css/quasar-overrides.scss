@@ -52,13 +52,15 @@
     color: var(--ink-3) !important;
   }
 
-  // Fix select value alignment
-  .q-field__native[role="listbox"],
-  .q-field__native.q-placeholder {
+  // Fix select/input vertical alignment
+  .q-field__control-container {
     padding-top: 0 !important;
     padding-bottom: 0 !important;
-    display: flex !important;
-    align-items: center !important;
+  }
+
+  .q-field__native {
+    min-height: 30px !important;
+    line-height: 30px !important;
   }
 
   .q-field__marginal {
@@ -102,7 +104,7 @@
 
   .q-linear-progress__track {
     opacity: 1 !important;
-    background: rgba(255, 255, 255, 0.05) !important;
+    background: var(--track-bg) !important;
   }
 }
 
@@ -122,12 +124,20 @@
     .q-toggle__track {
       opacity: 0.35;
     }
+
+    .q-toggle__thumb:after {
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3), 0 0 0 0.5px rgba(0,0,0,0.1) !important;
+    }
   }
 
-  // Light theme: make unchecked track visible
-  [data-theme="light"] & .q-toggle__inner .q-toggle__track {
-    opacity: 0.25;
-    background: currentColor !important;
+  [data-theme="light"] & .q-toggle__inner {
+    .q-toggle__track {
+      opacity: 1 !important;
+      background: rgba(0,0,0,0.15) !important;
+    }
+    .q-toggle__thumb:after {
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 0 0 0.5px rgba(0,0,0,0.1) !important;
+    }
   }
 }
 
@@ -241,7 +251,7 @@
 
     &:hover,
     &.q-manual-focusable--focused {
-      background: rgba(255, 255, 255, 0.05) !important;
+      background: var(--track-bg) !important;
     }
   }
 
@@ -274,7 +284,7 @@
   }
 
   tbody tr:hover td {
-    background: rgba(255, 255, 255, 0.02) !important;
+    background: var(--subtle-bg) !important;
   }
 
   .q-table__bottom {

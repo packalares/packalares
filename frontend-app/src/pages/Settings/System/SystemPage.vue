@@ -151,7 +151,7 @@ onUnmounted(() => { if (timer) clearInterval(timer); });
   border-radius: var(--radius-sm);
   font-weight: 600;
   font-size: 12px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', sans-serif;
 }
 
 .uptime-dot-sm {

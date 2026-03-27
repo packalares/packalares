@@ -749,7 +749,34 @@ func (s *Service) ListApps(ctx context.Context) []AppInfo {
 		if rec.State == StateUninstalled {
 			continue // skip uninstalled apps
 		}
-		result = append(result, recordToInfo(rec))
+		info := recordToInfo(rec)
+
+		// Check actual pod status — override state if pod isn't ready
+		if info.State == "running" {
+			pods := s.k8s.GetPodsForApp(ctx, rec.ReleaseName, rec.Namespace)
+			if len(pods) == 0 {
+				info.State = "pending"
+				info.StatusMessage = "No pods found"
+			} else {
+				for _, p := range pods {
+					switch p.Status {
+					case "Pending":
+						info.State = "pending"
+						info.StatusMessage = "Pod pending (possibly insufficient resources)"
+					case "CrashLoopBackOff", "Error", "OOMKilled":
+						info.State = "failed"
+						info.StatusMessage = p.Status
+					case "ContainerCreating", "PodInitializing":
+						info.State = "starting"
+						info.StatusMessage = p.Status
+					case "Terminating":
+						info.State = "stopping"
+					}
+				}
+			}
+		}
+
+		result = append(result, info)
 	}
 
 	return result

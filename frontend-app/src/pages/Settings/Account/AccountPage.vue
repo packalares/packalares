@@ -125,20 +125,22 @@
         </div>
         <div v-else class="sessions-grid">
           <div v-for="s in sessions" :key="s.id" class="session-card">
-            <div class="session-info">
+            <div class="session-card-top">
               <div class="session-icon-wrap">
-                <q-icon name="sym_r_devices" size="16px" />
+                <q-icon name="sym_r_computer" size="16px" />
               </div>
-              <div>
+              <div class="session-meta">
                 <div class="session-id">{{ s.id }}</div>
                 <div class="session-time">{{ new Date(s.last_activity).toLocaleString() }}</div>
               </div>
             </div>
-            <q-btn flat dense round icon="sym_r_close" size="xs" color="negative" @click="revokeSession(s.id)" />
+            <div class="session-card-actions">
+              <q-btn flat dense no-caps label="Revoke" class="btn-danger" size="sm" @click="confirmRevokeSession(s.id)" />
+            </div>
           </div>
         </div>
         <div v-if="sessions.length > 1" class="card-footer">
-          <q-btn flat dense label="Logout All Other Devices" class="btn-danger" @click="confirmLogoutAll" />
+          <q-btn flat dense no-caps label="Revoke All Other Sessions" class="btn-danger" @click="confirmLogoutAll" />
         </div>
       </div>
 
@@ -238,11 +240,18 @@ async function disableTOTP() {
   } catch (e: any) { totpMsg.value = 'Error: ' + (e?.message || 'failed'); }
 }
 
-async function revokeSession(id: string) {
-  try {
-    await api.delete('/api/auth/sessions', { data: { session_id: id } });
-    sessions.value = sessions.value.filter(s => s.id !== id);
-  } catch {}
+function confirmRevokeSession(id: string) {
+  $q.dialog({
+    title: 'Revoke Session',
+    message: `End session ${id}? The device will be logged out.`,
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await api.delete('/api/auth/sessions', { data: { session_id: id } });
+      sessions.value = sessions.value.filter(s => s.id !== id);
+    } catch {}
+  });
 }
 
 function confirmLogout() {
@@ -336,29 +345,33 @@ function confirmLogoutAll() {
   background: var(--bg-3);
   padding: 4px 10px;
   border-radius: var(--radius-xs);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', sans-serif;
   letter-spacing: 0.06em;
 }
 
 .sessions-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1px;
-  padding: 8px 16px;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 12px 16px;
 }
 .session-card {
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  border-radius: 6px;
-  &:hover { background: rgba(255,255,255,0.02); }
+  flex-direction: column;
+  gap: 8px;
 }
-.session-info { display: flex; align-items: center; gap: 8px; }
+.session-card-top { display: flex; align-items: center; gap: 10px; }
+.session-meta { flex: 1; min-width: 0; }
+.session-card-actions { display: flex; justify-content: flex-end; }
 .session-icon-wrap {
-  width: 28px; height: 28px; border-radius: 6px;
-  background: var(--glass); display: flex; align-items: center; justify-content: center; color: var(--ink-3);
+  width: 32px; height: 32px; border-radius: 8px;
+  background: var(--hover-bg); display: flex; align-items: center; justify-content: center; color: var(--ink-3);
+  flex-shrink: 0;
 }
-.session-id { font-size: 11px; font-weight: 500; color: var(--ink-1); font-family: 'JetBrains Mono', monospace; }
-.session-time { font-size: 10px; color: var(--ink-3); margin-top: 1px; }
+.session-id { font-size: 11px; font-weight: 600; color: var(--ink-1); font-family: 'Inter', sans-serif; }
+.session-time { font-size: 10px; color: var(--ink-3); margin-top: 2px; }
 </style>

@@ -1,13 +1,28 @@
 <template>
-  <div class="files-page" @keydown="onKeydown" tabindex="0" ref="pageRef">
-    <div class="files-sidebar">
-      <div class="sidebar-header"><q-icon name="sym_r_folder" size="22px" color="blue" /><span>Files</span></div>
-      <q-list dense>
-        <q-item v-for="f in sidebarFolders" :key="f.path" clickable :active="currentPath===f.path" active-class="sidebar-active" @click="navigateTo(f.path)" class="sidebar-item">
-          <q-item-section avatar style="min-width:32px"><q-icon :name="'sym_r_' + f.icon" size="18px" /></q-item-section>
-          <q-item-section><span class="sidebar-label">{{ f.label }}</span></q-item-section>
-        </q-item>
-      </q-list>
+  <div class="iframe-root" @keydown="onKeydown" tabindex="0" ref="pageRef">
+    <div class="iframe-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon" style="background:var(--accent-bold)">
+          <q-icon name="sym_r_folder" size="18px" color="white" />
+        </div>
+        <div class="brand-info">
+          <div class="brand-title">Files</div>
+          <div class="brand-sub">File Manager</div>
+        </div>
+      </div>
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-nav">
+        <div
+          v-for="f in sidebarFolders"
+          :key="f.path"
+          class="nav-item"
+          :class="{ active: currentPath === f.path }"
+          @click="navigateTo(f.path)"
+        >
+          <q-icon :name="'sym_r_' + f.icon" size="17px" class="nav-icon" />
+          <span class="nav-text">{{ f.label }}</span>
+        </div>
+      </div>
     </div>
     <div class="files-main">
       <div class="files-toolbar">
@@ -963,40 +978,7 @@ onMounted(() => {
 });
 </script>
 <style scoped lang="scss">
-.files-page {
-  display: flex;
-  height: 100vh;
-  background: var(--bg-1);
-  outline: none;
-}
-
-.files-sidebar {
-  width: 200px;
-  background: var(--bg-1);
-  border-right: 1px solid var(--separator);
-  flex-shrink: 0;
-  padding: 16px 8px;
-}
-
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 0 12px 14px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink-1);
-}
-
-.sidebar-item {
-  border-radius: 8px;
-  min-height: 34px;
-  margin-bottom: 1px;
-}
-
-.sidebar-active { background: var(--accent-soft) !important; color: var(--accent) !important; }
-
-.sidebar-label { font-size: 13px; font-weight: 500; }
+// iframe-root, iframe-sidebar, sidebar-brand, sidebar-nav, nav-item from components.scss
 
 .files-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
 
@@ -1111,7 +1093,7 @@ onMounted(() => {
   justify-content: center;
 
   &.icon-folder { background: rgba(251,191,36,0.10); color: #fbbf24; }
-  &.icon-file { background: rgba(255,255,255,0.04); color: var(--ink-3); }
+  &.icon-file { background: var(--hover-bg); color: var(--ink-3); }
   &.icon-image { background: rgba(59, 130, 246, 0.08); color: #3b82f6; }
   &.icon-video { background: rgba(168, 85, 247, 0.08); color: #a855f7; }
   &.icon-audio { background: rgba(236, 72, 153, 0.08); color: #ec4899; }
@@ -1128,7 +1110,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255,255,255,0.03);
+  background: var(--subtle-bg);
 
   img {
     max-width: 100%;
@@ -1212,7 +1194,7 @@ onMounted(() => {
 .list-item-selected { background: var(--accent-soft) !important; }
 
 .list-name { font-size: 13px; font-weight: 500; color: var(--ink-1); }
-.list-meta { font-size: 11px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
+.list-meta { font-size: 11px; color: var(--ink-3); font-family: 'Inter', sans-serif; }
 
 .list-thumb {
   width: 24px;
@@ -1250,7 +1232,7 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
-.status-path { font-family: 'JetBrains Mono', monospace; font-size: 10px; }
+.status-path { font-family: 'Inter', sans-serif; font-size: 10px; }
 .status-clipboard { color: var(--accent); font-weight: 500; }
 
 // Context menu
@@ -1300,5 +1282,5 @@ onMounted(() => {
 }
 
 .ctx-label { font-size: 12px; font-weight: 500; }
-.ctx-shortcut { font-size: 10px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; }
+.ctx-shortcut { font-size: 10px; color: var(--ink-3); font-family: 'Inter', sans-serif; }
 </style>

@@ -577,7 +577,7 @@ async function activate() {
   font-size: 13px;
   font-weight: 600;
   color: var(--ink-1, #e2e4ea);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', sans-serif;
   word-break: break-all;
 }
 
@@ -649,7 +649,7 @@ async function activate() {
 .summary-value {
   font-size: 13px;
   color: var(--ink-1, #e2e4ea);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Inter', sans-serif;
   font-weight: 500;
 }
 

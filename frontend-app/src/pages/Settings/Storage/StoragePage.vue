@@ -152,5 +152,5 @@ onMounted(() => { loadDisk(); loadMounts(); });
   background: rgba(255,255,255,0.04); display: flex; align-items: center; justify-content: center; color: var(--ink-3);
 }
 .mount-name { font-size: 13px; font-weight: 500; color: var(--ink-1); }
-.mount-path { font-size: 11px; color: var(--ink-3); font-family: 'JetBrains Mono', monospace; margin-top: 1px; }
+.mount-path { font-size: 11px; color: var(--ink-3); font-family: 'Inter', sans-serif; margin-top: 1px; }
 </style>

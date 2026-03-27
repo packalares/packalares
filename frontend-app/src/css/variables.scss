@@ -6,7 +6,7 @@
 
 // ── Typography ──────────────────────────────────────────────────────
 $font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-$font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+$font-mono: 'Inter', -apple-system, sans-serif;
 
 $font-feature: 'ss01', 'cv01', 'cv11';
 
@@ -82,10 +82,10 @@ $info-row-height: 44px;
   --ink-3: rgba(228, 229, 233, 0.32);
 
   // ── Brand / Accent ─────────────────────────────────────────────
-  --accent: #818cf8;
-  --accent-bold: #6366f1;
-  --accent-soft: rgba(129, 140, 248, 0.10);
-  --accent-hover: rgba(129, 140, 248, 0.16);
+  --accent: #5b9fe0;
+  --accent-bold: #4c9fe7;
+  --accent-soft: rgba(76, 159, 231, 0.10);
+  --accent-hover: rgba(76, 159, 231, 0.16);
 
   // ── Semantic ───────────────────────────────────────────────────
   --positive: #34d399;
@@ -114,6 +114,14 @@ $info-row-height: 44px;
   --input-bg: rgba(255, 255, 255, 0.04);
   --input-border: rgba(255, 255, 255, 0.08);
   --input-focus: rgba(129, 140, 248, 0.25);
+
+  // ── Utility overlays (works on dark bg) ───────────────────────
+  --hover-bg: rgba(255, 255, 255, 0.04);
+  --active-bg: rgba(255, 255, 255, 0.06);
+  --subtle-bg: rgba(255, 255, 255, 0.03);
+  --track-bg: rgba(255, 255, 255, 0.05);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.08);
+  --scrollbar-hover: rgba(255, 255, 255, 0.14);
 
   // ── Shape shortcuts ────────────────────────────────────────────
   --radius: #{$radius};
@@ -150,5 +158,12 @@ $info-row-height: 44px;
 
   --input-bg: rgba(0, 0, 0, 0.03);
   --input-border: rgba(0, 0, 0, 0.10);
-  --input-focus: rgba(99, 102, 241, 0.18);
+  --input-focus: rgba(76, 159, 231, 0.18);
+
+  --hover-bg: rgba(0, 0, 0, 0.03);
+  --active-bg: rgba(0, 0, 0, 0.05);
+  --subtle-bg: rgba(0, 0, 0, 0.02);
+  --track-bg: rgba(0, 0, 0, 0.06);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
+  --scrollbar-hover: rgba(0, 0, 0, 0.2);
 }

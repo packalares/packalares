@@ -1,32 +1,30 @@
 <template>
-  <div class="dash-root">
+  <div class="iframe-root">
     <!-- Left Sidebar -->
-    <div class="dash-sidebar">
-      <div class="sidebar-header">
-        <q-icon name="sym_r_monitoring" size="26px" class="header-icon" />
-        <span class="sidebar-title">System</span>
+    <div class="iframe-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon">
+          <q-icon name="sym_r_monitoring" size="18px" color="white" />
+        </div>
+        <div class="brand-info">
+          <div class="brand-title">System</div>
+          <div class="brand-sub">Dashboard</div>
+        </div>
       </div>
-      <q-list dense class="sidebar-nav">
-        <q-item
+      <div class="sidebar-divider"></div>
+      <div class="sidebar-nav">
+        <div
           v-for="item in navItems"
           :key="item.key"
-          clickable
-          :active="activeNav === item.key"
-          active-class="sidebar-item-active"
-          class="sidebar-nav-item"
+          class="nav-item"
+          :class="{ active: activeNav === item.key }"
           @click="activeNav = item.key"
         >
-          <q-item-section avatar style="min-width: 32px">
-            <q-icon :name="item.icon" size="18px" />
-          </q-item-section>
-          <q-item-section>
-            <q-item-label class="nav-label">{{ item.label }}</q-item-label>
-          </q-item-section>
-          <q-item-section side v-if="item.badge">
-            <span class="nav-badge">{{ item.badge }}</span>
-          </q-item-section>
-        </q-item>
-      </q-list>
+          <q-icon :name="item.icon" size="17px" class="nav-icon" />
+          <span class="nav-text">{{ item.label }}</span>
+          <span v-if="item.badge" class="nav-badge">{{ item.badge }}</span>
+        </div>
+      </div>
       <div class="sidebar-footer">
         <div class="sys-uptime">
           <span class="uptime-dot"></span>
@@ -36,10 +34,12 @@
     </div>
 
     <!-- Main Content -->
-    <div class="dash-content">
+    <div class="iframe-content">
 
       <!-- ═══════ OVERVIEW ═══════ -->
       <template v-if="activeNav === 'overview'">
+        <div class="page-header"><div class="page-title">Overview</div></div>
+        <div class="page-scroll">
         <!-- Top Resource Strip -->
         <div class="resource-strip">
           <div class="strip-card" v-for="r in resourceCards" :key="r.label">
@@ -158,11 +158,13 @@
             </div>
           </div>
         </div>
+        </div>
       </template>
 
       <!-- ═══════ NETWORK ═══════ -->
       <template v-if="activeNav === 'network'">
         <div class="page-header"><div class="page-title">Network</div></div>
+        <div class="page-scroll">
         <div class="stat-row">
           <div class="stat-box"><span class="stat-label">Download</span><span class="stat-val rx">{{ formatRate(metrics.network?.rx_bytes_per_sec) }}</span></div>
           <div class="stat-box"><span class="stat-label">Upload</span><span class="stat-val tx">{{ formatRate(metrics.network?.tx_bytes_per_sec) }}</span></div>
@@ -170,11 +172,13 @@
         <div class="full-chart-panel">
           <canvas ref="netFullCanvas" class="chart-canvas-full"></canvas>
         </div>
+        </div>
       </template>
 
       <!-- ═══════ STORAGE ═══════ -->
       <template v-if="activeNav === 'storage'">
         <div class="page-header"><div class="page-title">Storage</div></div>
+        <div class="page-scroll">
         <div class="stat-row">
           <div class="stat-box"><span class="stat-label">Used</span><span class="stat-val">{{ formatBytes(metrics.disk?.used) }}</span></div>
           <div class="stat-box"><span class="stat-label">Total</span><span class="stat-val">{{ formatBytes(metrics.disk?.total) }}</span></div>
@@ -191,11 +195,13 @@
         <div class="full-chart-panel">
           <canvas ref="diskIOFullCanvas" class="chart-canvas-full"></canvas>
         </div>
+        </div>
       </template>
 
       <!-- ═══════ POWER ═══════ -->
       <template v-if="activeNav === 'power'">
         <div class="page-header"><div class="page-title">Power Consumption</div></div>
+        <div class="page-scroll">
         <div class="stat-row">
           <div class="stat-box"><span class="stat-label">CPU</span><span class="stat-val">{{ metrics.power?.cpu_watts?.toFixed(1) ?? '--' }} W</span></div>
           <div class="stat-box"><span class="stat-label">GPU</span><span class="stat-val">{{ metrics.power?.gpu_watts?.toFixed(1) ?? '--' }} W</span></div>
@@ -204,46 +210,79 @@
         <div class="full-chart-panel">
           <canvas ref="powerCanvas" class="chart-canvas-full"></canvas>
         </div>
+        </div>
       </template>
 
       <!-- ═══════ LOGS ═══════ -->
       <template v-if="activeNav === 'logs'">
         <div class="page-header"><div class="page-title">Logs</div></div>
-        <div class="logs-controls">
-          <q-input
-            v-model="logQuery"
-            dense dark outlined
-            placeholder='{namespace="os-system"}'
-            class="log-query-input"
-            @keyup.enter="fetchLogs"
-          >
-            <template #prepend>
-              <q-icon name="sym_r_search" size="18px" />
-            </template>
+        <div class="page-scroll">
+        <div class="logs-toolbar">
+          <q-select v-model="logNamespace" dense dark outlined :options="logNamespaceOptions" style="width:140px" @update:model-value="fetchLogs" />
+          <q-select v-model="logTimeRange" dense dark outlined :options="logTimeOptions" option-label="label" option-value="value" emit-value map-options style="width:120px" @update:model-value="fetchLogs" />
+          <q-input v-model="logSearch" dense dark outlined placeholder="Search..." style="flex:1;min-width:100px" @keyup.enter="fetchLogs">
+            <template #prepend><q-icon name="sym_r_search" size="14px" color="grey-6" /></template>
           </q-input>
-          <q-select
-            v-model="logNamespace"
-            dense dark outlined
-            :options="logNamespaceOptions"
-            label="Namespace"
-            class="log-ns-select"
-            @update:model-value="onNamespaceChange"
-          />
-          <q-btn flat dense label="Fetch" class="log-fetch-btn" @click="fetchLogs" />
+          <q-btn flat dense round icon="sym_r_refresh" size="sm" @click="fetchLogs" :loading="logLoading" />
+          <q-toggle v-model="logAutoRefresh" dense color="primary" />
+          <span style="font-size:11px;color:var(--ink-3)">Auto</span>
         </div>
-        <div class="logs-output" ref="logsContainer">
-          <div v-if="logEntries.length === 0" class="logs-empty">No logs. Enter a LogQL query and click Fetch.</div>
-          <div v-for="(entry, i) in logEntries" :key="i" class="log-line">
-            <span class="log-ts">{{ entry.ts }}</span>
-            <span class="log-ns">{{ entry.ns }}</span>
-            <span class="log-msg">{{ entry.msg }}</span>
-          </div>
+        <div class="log-table-wrap">
+          <q-table
+            flat dark
+            :rows="logEntries"
+            :columns="logColumns"
+            row-key="__idx"
+            :rows-per-page-options="[50, 100, 200, 0]"
+            v-model:pagination="logPagination"
+            :loading="logLoading"
+            class="log-table"
+            :no-data-label="logLoading ? 'Loading...' : 'No log entries found.'"
+            rows-per-page-label="Per page"
+          >
+            <template v-slot:body="props">
+              <q-tr :props="props" :class="{ 'log-row-zebra': props.rowIndex % 2 === 0 }">
+                <q-td key="ts" :props="props" class="log-cell-ts">
+                  <q-icon name="sym_r_schedule" size="12px" class="log-cell-icon" />
+                  {{ props.row.ts }}
+                </q-td>
+                <q-td key="level" :props="props" class="log-cell-level">
+                  <span class="log-level-badge" :class="'badge-' + props.row.level">{{ props.row.level }}</span>
+                </q-td>
+                <q-td key="ns" :props="props" class="log-cell-ns">
+                  <q-icon name="sym_r_folder" size="12px" class="log-cell-icon" />
+                  {{ props.row.ns }}
+                </q-td>
+                <q-td key="pod" :props="props" class="log-cell-pod">{{ props.row.pod }}</q-td>
+                <q-td key="msg" :props="props" class="log-cell-msg" :class="'log-msg-' + props.row.level">{{ props.row.msg }}</q-td>
+              </q-tr>
+            </template>
+            <template v-slot:bottom="scope">
+              <div class="log-bottom">
+                <span class="log-bottom-count">{{ logEntries.length }} entries</span>
+                <q-space />
+                <span class="log-bottom-label">Per page</span>
+                <q-select
+                  v-model="logPagination.rowsPerPage"
+                  dense dark outlined
+                  :options="[50, 100, 200]"
+                  style="width:70px"
+                  @update:model-value="saveLogPrefs"
+                />
+                <q-btn flat dense icon="sym_r_chevron_left" size="sm" :disable="scope.isFirstPage" @click="scope.prevPage" />
+                <span class="log-bottom-page">{{ scope.pagination.page }} / {{ scope.pagesNumber }}</span>
+                <q-btn flat dense icon="sym_r_chevron_right" size="sm" :disable="scope.isLastPage" @click="scope.nextPage" />
+              </div>
+            </template>
+          </q-table>
+        </div>
         </div>
       </template>
 
       <!-- ═══════ PODS ═══════ -->
       <template v-if="activeNav === 'pods'">
         <div class="page-header"><div class="page-title">Pods ({{ pods.length }})</div></div>
+        <div class="page-scroll">
         <div class="pod-table-wrap">
           <q-table
             flat dense
@@ -262,6 +301,7 @@
               </q-td>
             </template>
           </q-table>
+        </div>
         </div>
       </template>
     </div>
@@ -303,7 +343,7 @@ interface GpuData {
   driver_installed: boolean;
 }
 
-interface LogEntry { ts: string; ns: string; msg: string }
+interface LogEntry { ts: string; ns: string; pod: string; msg: string; level: string }
 
 // ─── State ───
 const activeNav = ref('overview');
@@ -343,12 +383,47 @@ let ws: WebSocket | null = null;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
 let animFrameId: number | null = null;
 
-// Logs
-const logQuery = ref('{namespace=~".+"}');
-const logNamespace = ref('All');
+// Logs — persist preferences
+function loadLogPrefs() {
+  try {
+    const s = localStorage.getItem('packalares_log_prefs');
+    if (s) return JSON.parse(s);
+  } catch {}
+  return {};
+}
+function saveLogPrefs() {
+  localStorage.setItem('packalares_log_prefs', JSON.stringify({
+    namespace: logNamespace.value,
+    timeRange: logTimeRange.value,
+    rowsPerPage: logPagination.value.rowsPerPage,
+  }));
+}
+const _logPrefs = loadLogPrefs();
+const logNamespace = ref(_logPrefs.namespace || 'All');
 const logNamespaceOptions = ['All', 'os-system', 'os-framework', 'monitoring', 'user-space-admin', 'kube-system'];
-const logEntries = ref<LogEntry[]>([]);
-const logsContainer = ref<HTMLElement | null>(null);
+const logSearch = ref('');
+const logTimeRange = ref(_logPrefs.timeRange || '15m');
+const logTimeOptions = [
+  { label: 'All time', value: 'all' },
+  { label: 'Last 5m', value: '5m' },
+  { label: 'Last 15m', value: '15m' },
+  { label: 'Last 1h', value: '1h' },
+  { label: 'Last 6h', value: '6h' },
+  { label: 'Last 24h', value: '24h' },
+];
+const logEntries = ref<(LogEntry & { __idx: number })[]>([]);
+const logLoading = ref(false);
+const logAutoRefresh = ref(false);
+const logPagination = ref({ rowsPerPage: _logPrefs.rowsPerPage || 100, page: 1, sortBy: null, descending: false });
+let logAutoTimer: ReturnType<typeof setInterval> | null = null;
+
+const logColumns = [
+  { name: 'ts', label: 'Time', field: 'ts', align: 'left' as const, style: 'width:80px;white-space:nowrap;color:var(--ink-3);font-size:11px' },
+  { name: 'level', label: 'Level', field: 'level', align: 'center' as const, style: 'width:50px' },
+  { name: 'ns', label: 'Namespace', field: 'ns', align: 'left' as const, style: 'width:110px;white-space:nowrap;color:var(--accent);font-size:11px' },
+  { name: 'pod', label: 'Pod', field: 'pod', align: 'left' as const, style: 'width:140px;white-space:nowrap;color:var(--ink-3);font-size:11px;overflow:hidden;text-overflow:ellipsis;max-width:140px' },
+  { name: 'msg', label: 'Message', field: 'msg', align: 'left' as const, style: 'font-size:11px;word-break:break-all' },
+];
 
 // ─── Computed ───
 const memPercent = computed(() => {
@@ -426,27 +501,59 @@ async function fetchGpu() {
   } catch { gpuData.value = { gpus: [], gpu_count: 0, driver_installed: false }; }
 }
 
-async function fetchLogs() {
-  try {
-    const q = logNamespace.value !== 'All'
-      ? `{namespace="${logNamespace.value}"}`
-      : logQuery.value;
-    const res: any = await api.get('/api/logs', { params: { query: q, limit: 200 } });
-    const streams = res?.data?.result || [];
-    const entries: LogEntry[] = [];
-    for (const s of streams) {
-      const ns = s.stream?.namespace || s.stream?.pod || '';
-      for (const v of (s.values || [])) {
-        const ts = new Date(Number(v[0]) / 1_000_000).toLocaleTimeString();
-        entries.push({ ts, ns, msg: v[1] });
-      }
-    }
-    logEntries.value = entries.reverse();
-    nextTick(() => { if (logsContainer.value) logsContainer.value.scrollTop = logsContainer.value.scrollHeight; });
-  } catch { logEntries.value = []; }
+function parseLogLevel(msg: string): string {
+  const m = msg.toLowerCase();
+  if (m.includes('level=error') || m.includes('"level":"error"') || m.includes(' error ') || m.includes('[error]')) return 'error';
+  if (m.includes('level=warn') || m.includes('"level":"warn"') || m.includes(' warn') || m.includes('[warn')) return 'warn';
+  if (m.includes('level=debug') || m.includes('"level":"debug"') || m.includes('[debug]')) return 'debug';
+  return 'info';
 }
 
-function onNamespaceChange() { fetchLogs(); }
+function timeRangeToNano(range: string): string {
+  const units: Record<string, number> = { m: 60, h: 3600, d: 86400 };
+  const match = range.match(/^(\d+)([mhd])$/);
+  if (!match) return '';
+  const secs = parseInt(match[1]) * (units[match[2]] || 60);
+  return String((Date.now() - secs * 1000) * 1_000_000);
+}
+
+async function fetchLogs() {
+  logLoading.value = true;
+  saveLogPrefs();
+  try {
+    let q = logNamespace.value !== 'All'
+      ? `{namespace="${logNamespace.value}"}`
+      : `{namespace=~".+"}`;
+    if (logSearch.value) q += ` |~ "${logSearch.value}"`;
+
+    const params: Record<string, string> = { query: q, limit: '500', direction: 'backward' };
+    if (logTimeRange.value !== 'all') {
+      const start = timeRangeToNano(logTimeRange.value);
+      if (start) params.start = start;
+    }
+
+    const res: any = await api.get('/api/logs', { params });
+    const streams = res?.data?.result || [];
+    const entries: (LogEntry & { __idx: number })[] = [];
+    let idx = 0;
+    for (const s of streams) {
+      const ns = s.stream?.namespace || '';
+      const pod = s.stream?.pod || '';
+      for (const v of (s.values || [])) {
+        const ts = new Date(Number(v[0]) / 1_000_000).toLocaleTimeString();
+        const msg = v[1];
+        entries.push({ ts, ns, pod, msg, level: parseLogLevel(msg), __idx: idx++ });
+      }
+    }
+    logEntries.value = entries;
+  } catch { logEntries.value = []; }
+  logLoading.value = false;
+}
+
+watch(logAutoRefresh, (on) => {
+  if (logAutoTimer) { clearInterval(logAutoTimer); logAutoTimer = null; }
+  if (on) logAutoTimer = setInterval(fetchLogs, 5000);
+});
 
 // ─── Chart Drawing ───
 function drawLine(canvas: HTMLCanvasElement | null, data: number[], color: string, gStart: string, gEnd: string, maxVal = 100, unit = '%') {
@@ -464,7 +571,7 @@ function drawLine(canvas: HTMLCanvasElement | null, data: number[], color: strin
   ctx.clearRect(0, 0, w, h);
 
   // Grid
-  ctx.font = '10px JetBrains Mono, monospace';
+  ctx.font = '10px Inter, sans-serif';
   ctx.textAlign = 'right';
   ctx.textBaseline = 'middle';
   for (let i = 0; i <= 4; i++) {
@@ -548,10 +655,13 @@ function renderCharts() {
 }
 
 // ─── Lifecycle ───
-watch(activeNav, () => {
+watch(activeNav, (nav) => {
   nextTick(() => {
     if (!animFrameId) animFrameId = requestAnimationFrame(renderCharts);
   });
+  if (nav === 'logs' && logEntries.value.length === 0) fetchLogs();
+  // Stop log auto-refresh when leaving logs tab
+  if (nav !== 'logs' && logAutoTimer) { clearInterval(logAutoTimer); logAutoTimer = null; logAutoRefresh.value = false; }
 });
 
 onMounted(async () => {
@@ -565,6 +675,7 @@ onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer);
   if (animFrameId) cancelAnimationFrame(animFrameId);
   if (ws) { ws.onclose = null; ws.close(); ws = null; }
+  if (logAutoTimer) clearInterval(logAutoTimer);
 });
 </script>
 
@@ -579,59 +690,11 @@ $ink-2: var(--ink-2);
 $ink-3: var(--ink-3);
 $accent: #4c9fe7;
 
-.dash-root {
-  display: flex;
-  width: 100%;
-  height: 100vh;
-  background: var(--bg-0);
-  overflow: hidden;
-  font-family: 'Inter', -apple-system, sans-serif;
-  color: var(--ink-1);
-}
-
-// ── Sidebar ──
-.dash-sidebar {
-  width: 212px;
-  min-width: 212px;
-  background: var(--bg-1);
-  border-right: 1px solid var(--separator);
-  display: flex;
-  flex-direction: column;
-  padding: 8px;
-}
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 10px 18px;
-}
-.header-icon { color: $accent; }
-.sidebar-title { font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }
-.sidebar-nav-item {
-  border-radius: 6px;
-  min-height: 34px;
-  margin-bottom: 1px;
-  .q-item__section--avatar { padding-right: 0; }
-}
-.sidebar-item-active { background: rgba($accent, 0.12) !important; }
-.sidebar-item-active .nav-label { color: $accent !important; }
-.sidebar-item-active .q-icon { color: $accent !important; }
-.nav-label { font-size: 13px; color: $ink-2; }
-.nav-badge { font-size: 10px; color: $ink-3; background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 8px; font-family: monospace; }
+// ── Dashboard-specific ──
 .sidebar-footer { margin-top: auto; padding: 12px 10px; }
 .sys-uptime { display: flex; align-items: center; gap: 6px; }
 .uptime-dot { width: 6px; height: 6px; border-radius: 50%; background: #29cc5f; box-shadow: 0 0 6px #29cc5f; }
-.uptime-text { font-size: 11px; color: $ink-3; font-family: monospace; }
-
-// ── Content ──
-.dash-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20px 24px 40px;
-  scrollbar-width: thin;
-  scrollbar-color: #2a2d33 transparent;
-}
-.page-header { margin-bottom: 16px; }
+.uptime-text { font-size: 11px; color: var(--ink-3); font-family: 'Inter', sans-serif; }
 .page-subtitle { font-size: 13px; font-weight: 500; margin: 20px 0 10px; color: $ink-2; }
 
 // ── Resource Strip ──
@@ -650,8 +713,8 @@ $accent: #4c9fe7;
 }
 .strip-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
 .strip-label { font-size: 10px; font-weight: 600; color: $ink-3; letter-spacing: 0.08em; text-transform: uppercase; }
-.strip-value { font-size: 20px; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; }
-.strip-bar-track { height: 4px; background: rgba(255,255,255,0.05); border-radius: 2px; }
+.strip-value { font-size: 20px; font-weight: 700; font-family: 'Inter', sans-serif; line-height: 1; }
+.strip-bar-track { height: 4px; background: var(--track-bg); border-radius: 2px; }
 .strip-bar-fill { height: 100%; border-radius: 2px; transition: width 0.4s ease; }
 
 // ── Charts ──
@@ -676,7 +739,7 @@ $accent: #4c9fe7;
 .chart-title { font-size: 11px; font-weight: 600; color: $ink-2; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; }
 .chart-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
 .chart-dir { font-size: 9px; font-weight: 600; letter-spacing: 0.04em; opacity: 0.7; }
-.chart-live { font-size: 12px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.chart-live { font-size: 12px; font-weight: 600; font-family: 'Inter', sans-serif; }
 .chart-canvas { width: 100%; height: 140px; display: block; }
 
 .full-chart-panel {
@@ -702,15 +765,15 @@ $accent: #4c9fe7;
 .panel-head { font-size: 11px; font-weight: 600; color: $ink-2; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
 .cores-list { max-height: 200px; overflow-y: auto; scrollbar-width: thin; }
 .core-row { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
-.core-id { font-size: 10px; color: $ink-3; width: 16px; text-align: right; font-family: monospace; }
-.core-bar-track { flex: 1; height: 10px; background: rgba(255,255,255,0.04); border-radius: 2px; }
+.core-id { font-size: 10px; color: $ink-3; width: 16px; text-align: right; font-family: 'Inter', sans-serif; }
+.core-bar-track { flex: 1; height: 10px; background: var(--hover-bg); border-radius: 2px; }
 .core-bar-fill { height: 100%; background: $accent; border-radius: 2px; transition: width 0.3s; }
-.core-val { font-size: 10px; color: $ink-2; width: 28px; text-align: right; font-family: monospace; }
+.core-val { font-size: 10px; color: $ink-2; width: 28px; text-align: right; font-family: 'Inter', sans-serif; }
 
 .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .info-item { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid $border; }
 .info-label { font-size: 12px; color: $ink-3; }
-.info-val { font-size: 12px; color: $ink-1; font-family: monospace; font-weight: 500; }
+.info-val { font-size: 12px; color: $ink-1; font-family: 'Inter', sans-serif; font-weight: 500; }
 
 // ── Stats ──
 .stat-row { display: flex; gap: 10px; margin-bottom: 16px; }
@@ -724,7 +787,7 @@ $accent: #4c9fe7;
   flex-direction: column;
 }
 .stat-label { font-size: 10px; color: $ink-3; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 6px; }
-.stat-val { font-size: 24px; font-weight: 700; font-family: 'JetBrains Mono', monospace; letter-spacing: -0.02em; }
+.stat-val { font-size: 24px; font-weight: 700; font-family: 'Inter', sans-serif; letter-spacing: -0.02em; }
 .stat-val.rx { color: #e0a040; }
 .stat-val.tx { color: #e07a50; }
 .stat-val.power-total { color: #c07ae0; }
@@ -732,7 +795,7 @@ $accent: #4c9fe7;
 // ── Disk Bar ──
 .disk-usage-bar {
   height: 20px;
-  background: rgba(255,255,255,0.04);
+  background: var(--hover-bg);
   border-radius: 4px;
   margin-bottom: 24px;
   overflow: hidden;
@@ -745,33 +808,73 @@ $accent: #4c9fe7;
 }
 
 // ── Logs ──
-.logs-controls {
+.logs-toolbar { display: flex; gap: 6px; margin-bottom: 10px; align-items: center; }
+.log-table-wrap { border-radius: 8px; border: 1px solid $border; overflow: visible; }
+.log-table {
+  background: var(--bg-2) !important;
+
+  :deep(thead th) {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: var(--ink-3) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.03em !important;
+    padding: 8px 10px !important;
+    background: var(--subtle-bg) !important;
+    border-bottom: 1px solid var(--separator) !important;
+  }
+
+  :deep(tbody td) {
+    font-size: 11px !important;
+    font-family: 'Inter', sans-serif !important;
+    padding: 6px 10px !important;
+    border-bottom: 1px solid var(--separator) !important;
+    vertical-align: top !important;
+    line-height: 1.5 !important;
+  }
+
+  :deep(.q-table__bottom) {
+    font-size: 12px !important;
+    border-top: 1px solid var(--separator) !important;
+    min-height: 40px !important;
+    color: var(--ink-2) !important;
+    padding: 4px 10px !important;
+  }
+
+  :deep(.q-table__bottom .q-table__control) {
+    font-size: 12px !important;
+  }
+
+  :deep(.q-table__separator) {
+    min-width: 8px !important;
+  }
+}
+
+.log-row-zebra td { background: var(--subtle-bg) !important; }
+
+.log-cell-icon { color: var(--ink-3); margin-right: 4px; vertical-align: middle; }
+.log-cell-ts { color: var(--ink-3) !important; white-space: nowrap; width: 90px; }
+.log-cell-level { width: 54px; text-align: center !important; }
+.log-cell-ns { color: var(--accent) !important; white-space: nowrap; width: 120px; }
+.log-cell-pod { color: var(--ink-3) !important; white-space: nowrap; width: 150px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+.log-cell-msg {
+  color: var(--ink-2) !important;
+  word-break: break-word !important;
+  white-space: pre-wrap !important;
+}
+.log-msg-error { color: #f87171 !important; }
+.log-msg-warn { color: #fbbf24 !important; }
+.log-bottom {
   display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
   align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 0;
+  font-size: 12px;
 }
-.log-query-input { flex: 1; }
-.log-ns-select { width: 180px; }
-.log-fetch-btn { background: rgba($accent, 0.15); color: $accent; }
-.logs-output {
-  background: $bg-card;
-  border: 1px solid $border;
-  border-radius: 8px;
-  height: calc(100vh - 200px);
-  overflow-y: auto;
-  padding: 8px;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 11px;
-  line-height: 1.6;
-  scrollbar-width: thin;
-}
-.logs-empty { color: $ink-3; padding: 40px; text-align: center; }
-.log-line { display: flex; gap: 8px; padding: 1px 4px; border-bottom: 1px solid rgba(255,255,255,0.02); }
-.log-line:hover { background: rgba(255,255,255,0.02); }
-.log-ts { color: $ink-3; white-space: nowrap; min-width: 70px; }
-.log-ns { color: $accent; white-space: nowrap; min-width: 100px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
-.log-msg { color: $ink-2; word-break: break-all; }
+.log-bottom-count { color: var(--ink-3); font-size: 11px; }
+.log-bottom-label { color: var(--ink-3); font-size: 11px; }
+.log-bottom-page { color: var(--ink-2); font-size: 11px; min-width: 40px; text-align: center; }
 
 // ── Pod Table ──
 .pod-table-wrap { overflow: hidden; border-radius: 8px; border: 1px solid $border; }
@@ -791,7 +894,7 @@ $accent: #4c9fe7;
     font-size: 12px;
     color: $ink-1 !important;
     border-bottom: 1px solid $border;
-    font-family: monospace;
+    font-family: 'Inter', sans-serif;
     padding: 8px 14px !important;
     line-height: 1.5;
   }
