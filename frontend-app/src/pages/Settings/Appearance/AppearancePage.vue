@@ -103,17 +103,23 @@ const selectedTheme = ref(localStorage.getItem('packalares_theme') || 'dark');
 
 const wpChannel = new BroadcastChannel('packalares_settings');
 
+function broadcast(msg: object) {
+  wpChannel.postMessage(msg);
+  // Also postMessage to parent for cross-origin iframe communication
+  try { window.parent.postMessage(msg, '*'); } catch {}
+}
+
 function selectWallpaper(wp: string) {
   selectedWallpaper.value = wp;
   localStorage.setItem('packalares_wallpaper', wp);
-  wpChannel.postMessage({ type: 'wallpaper', value: wp });
+  broadcast({ type: 'wallpaper', value: wp });
 }
 
 function selectTheme(theme: string) {
   selectedTheme.value = theme;
   localStorage.setItem('packalares_theme', theme);
   applyTheme(theme);
-  wpChannel.postMessage({ type: 'theme', value: theme });
+  broadcast({ type: 'theme', value: theme });
 }
 
 // Apply theme on load
@@ -123,9 +129,9 @@ applyTheme(selectedTheme.value);
 <style lang="scss" scoped>
 .wallpaper-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 8px;
-  padding: 14px;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 6px;
+  padding: 12px;
 }
 
 .wallpaper-item {

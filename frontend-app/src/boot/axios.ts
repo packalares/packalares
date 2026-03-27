@@ -83,7 +83,7 @@ api.interceptors.response.use(
       const url = error.config?.url || '';
       const onLoginPage = window.location.pathname.startsWith('/login');
       const onWizardPage = window.location.pathname.startsWith('/wizard');
-      if (!url.includes('/auth/totp') && !url.includes('/auth/login') && !onLoginPage && !onWizardPage) {
+      if (!url.includes('/auth/totp') && !url.includes('/auth/login') && !url.includes('/auth/password') && !url.includes('/auth/sessions') && !onLoginPage && !onWizardPage) {
         window.location.href = getAuthUrl(window.location.href);
       }
     }

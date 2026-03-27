@@ -36,12 +36,14 @@
             <label class="form-label">Current Password</label>
             <q-input v-model="currentPassword" dense dark outlined type="password" />
           </div>
+        </div>
+        <div class="form-grid cols-2">
           <div class="form-group">
             <label class="form-label">New Password</label>
             <q-input v-model="newPassword" dense dark outlined type="password" />
           </div>
           <div class="form-group">
-            <label class="form-label">Confirm New Password</label>
+            <label class="form-label">Confirm</label>
             <q-input v-model="confirmPassword" dense dark outlined type="password" />
           </div>
         </div>
@@ -70,18 +72,20 @@
         </div>
         <template v-if="!totpEnabled">
           <div class="totp-setup" v-if="totpURI">
-            <div class="totp-instructions">Scan this QR code with your authenticator app, then enter the 6-digit code below.</div>
-            <div class="totp-qr">
-              <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(totpURI)" alt="TOTP QR" />
-            </div>
-            <div class="totp-secret-display">
-              <span class="totp-secret-label">Secret</span>
-              <code class="totp-secret-code">{{ totpSecret }}</code>
-            </div>
-            <div class="form-grid cols-1" style="padding-top: 0">
-              <div class="form-group">
-                <label class="form-label">Verification Code</label>
-                <q-input v-model="totpCode" dense dark outlined placeholder="000000" maxlength="6" @keyup.enter="verifyTOTP" />
+            <div class="totp-layout">
+              <div class="totp-qr">
+                <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(totpURI)" alt="TOTP QR" />
+              </div>
+              <div class="totp-right">
+                <div class="totp-instructions">Scan this QR code with your authenticator app, then enter the 6-digit code below.</div>
+                <div class="totp-secret-display">
+                  <span class="totp-secret-label">Secret</span>
+                  <code class="totp-secret-code">{{ totpSecret }}</code>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Verification Code</label>
+                  <q-input v-model="totpCode" dense dark outlined placeholder="000000" maxlength="6" style="max-width: 160px" @keyup.enter="verifyTOTP" />
+                </div>
               </div>
             </div>
             <div class="card-footer">
@@ -119,21 +123,23 @@
           </div>
           No active sessions
         </div>
-        <template v-for="(s, i) in sessions" :key="s.id">
-          <div class="session-row">
+        <div v-else class="sessions-grid">
+          <div v-for="s in sessions" :key="s.id" class="session-card">
             <div class="session-info">
               <div class="session-icon-wrap">
                 <q-icon name="sym_r_devices" size="16px" />
               </div>
               <div>
                 <div class="session-id">{{ s.id }}</div>
-                <div class="session-time">Last active: {{ new Date(s.last_activity).toLocaleString() }}</div>
+                <div class="session-time">{{ new Date(s.last_activity).toLocaleString() }}</div>
               </div>
             </div>
             <q-btn flat dense round icon="sym_r_close" size="xs" color="negative" @click="revokeSession(s.id)" />
           </div>
-          <q-separator v-if="i < sessions.length - 1" class="card-separator" />
-        </template>
+        </div>
+        <div v-if="sessions.length > 1" class="card-footer">
+          <q-btn flat dense label="Logout All Other Devices" class="btn-danger" @click="confirmLogoutAll" />
+        </div>
       </div>
 
       <!-- Logout -->
@@ -148,7 +154,7 @@
           </div>
         </div>
         <div class="card-footer">
-          <q-btn flat dense label="Logout" class="btn-danger" icon="sym_r_logout" @click="logout" />
+          <q-btn flat dense label="Logout" class="btn-danger" icon="sym_r_logout" @click="confirmLogout" />
         </div>
       </div>
     </div>
@@ -239,9 +245,33 @@ async function revokeSession(id: string) {
   } catch {}
 }
 
-async function logout() {
-  try { await api.post('/api/auth/logout'); } catch {}
-  window.location.href = '/login';
+function confirmLogout() {
+  $q.dialog({
+    title: 'Logout',
+    message: 'Are you sure you want to logout?',
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    try { await api.post('/api/auth/logout'); } catch {}
+    window.location.href = '/login';
+  });
+}
+
+function confirmLogoutAll() {
+  $q.dialog({
+    title: 'Logout All Devices',
+    message: 'This will revoke all sessions except the current one. Continue?',
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    for (const s of sessions.value) {
+      try { await api.delete('/api/auth/sessions', { data: { session_id: s.id } }); } catch {}
+    }
+    try {
+      const r: any = await api.get('/api/auth/sessions');
+      sessions.value = r?.sessions || [];
+    } catch {}
+  });
 }
 </script>
 
@@ -280,32 +310,55 @@ async function logout() {
   letter-spacing: 0.04em;
 }
 
-.totp-setup { padding: 16px 20px; }
-.totp-instructions { font-size: 13px; color: var(--ink-2); margin-bottom: 16px; line-height: 1.6; }
-.totp-qr {
+.totp-setup { padding: 0; }
+.totp-layout {
   display: flex;
-  justify-content: center;
-  margin-bottom: 16px;
-  img { border-radius: var(--radius); background: #fff; padding: 8px; box-shadow: var(--shadow-card); }
+  gap: 20px;
+  padding: 16px;
+  align-items: flex-start;
 }
-.totp-secret-display { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 16px; }
+.totp-qr {
+  flex-shrink: 0;
+  img { border-radius: var(--radius); background: #fff; padding: 6px; width: 140px; height: 140px; }
+}
+.totp-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.totp-instructions { font-size: 12px; color: var(--ink-2); line-height: 1.5; }
+.totp-secret-display { display: flex; align-items: center; gap: 8px; }
 .totp-secret-label { font-size: 11px; color: var(--ink-3); text-transform: uppercase; letter-spacing: 0.05em; }
 .totp-secret-code {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--ink-1);
   background: var(--bg-3);
-  padding: 5px 14px;
+  padding: 4px 10px;
   border-radius: var(--radius-xs);
   font-family: 'JetBrains Mono', monospace;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
-.session-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 20px; }
-.session-info { display: flex; align-items: center; gap: 10px; }
+.sessions-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  padding: 8px 16px;
+}
+.session-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 6px;
+  &:hover { background: rgba(255,255,255,0.02); }
+}
+.session-info { display: flex; align-items: center; gap: 8px; }
 .session-icon-wrap {
-  width: 30px; height: 30px; border-radius: 8px;
+  width: 28px; height: 28px; border-radius: 6px;
   background: var(--glass); display: flex; align-items: center; justify-content: center; color: var(--ink-3);
 }
-.session-id { font-size: 12px; font-weight: 500; color: var(--ink-1); font-family: 'JetBrains Mono', monospace; }
-.session-time { font-size: 11px; color: var(--ink-3); margin-top: 1px; }
+.session-id { font-size: 11px; font-weight: 500; color: var(--ink-1); font-family: 'JetBrains Mono', monospace; }
+.session-time { font-size: 10px; color: var(--ink-3); margin-top: 1px; }
 </style>

@@ -116,30 +116,18 @@
 
 .q-toggle {
   .q-toggle__inner {
-    font-size: 32px !important;
-    width: 36px !important;
-    min-width: 36px !important;
-    height: 20px !important;
-    padding: 0 !important;
+    transform: scale(0.75);
+    transform-origin: center;
 
     .q-toggle__track {
-      opacity: 0.4;
-      height: 14px !important;
-      border-radius: 7px !important;
+      opacity: 0.35;
     }
+  }
 
-    .q-toggle__thumb {
-      width: 16px !important;
-      height: 16px !important;
-      top: 2px !important;
-      left: 2px !important;
-
-      &:after {
-        width: 16px !important;
-        height: 16px !important;
-        box-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
-      }
-    }
+  // Light theme: make unchecked track visible
+  [data-theme="light"] & .q-toggle__inner .q-toggle__track {
+    opacity: 0.25;
+    background: currentColor !important;
   }
 }
 

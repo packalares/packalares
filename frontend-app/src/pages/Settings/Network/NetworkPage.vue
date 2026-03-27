@@ -52,25 +52,19 @@
           </div>
         </div>
         <div class="info-row">
-          <span class="info-label">Enable SSH</span>
-          <q-toggle
-            v-model="sshEnabled"
-            dense
-            color="primary"
+          <span class="info-label">Port</span>
+          <q-input
+            v-model.number="sshPort"
+            dense dark outlined
+            type="number"
+            :rules="[portRule]"
+            style="max-width: 100px"
           />
         </div>
         <q-separator class="card-separator" />
-        <div class="form-grid cols-1">
-          <div class="form-group">
-            <label class="form-label">Port</label>
-            <q-input
-              v-model.number="sshPort"
-              dense dark outlined
-              type="number"
-              :rules="[portRule]"
-              style="max-width: 140px"
-            />
-          </div>
+        <div class="info-row">
+          <span class="info-label">Enable SSH</span>
+          <q-toggle v-model="sshEnabled" dense color="primary" />
         </div>
         <div class="card-footer">
           <span v-if="sshMsg" class="footer-msg" :class="sshMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ sshMsg }}</span>

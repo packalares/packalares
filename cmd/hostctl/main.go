@@ -127,12 +127,20 @@ func getSSHStatus() SSHStatus {
 
 	svcName := sshServiceName()
 
-	// Check if ssh/sshd is active
+	// Check if ssh/sshd is active (also check ssh.socket for socket-activated SSH)
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
 	out, err := exec.CommandContext(ctx, nsenterPrefix[0], append(nsenterPrefix[1:], "systemctl", "is-active", svcName)...).CombinedOutput()
 	if err == nil && strings.TrimSpace(string(out)) == "active" {
 		status.Enabled = true
+	}
+	if !status.Enabled {
+		ctx3, cancel3 := context.WithTimeout(context.Background(), cmdTimeout)
+		defer cancel3()
+		out3, _ := exec.CommandContext(ctx3, nsenterPrefix[0], append(nsenterPrefix[1:], "systemctl", "is-active", "ssh.socket")...).CombinedOutput()
+		if strings.TrimSpace(string(out3)) == "active" {
+			status.Enabled = true
+		}
 	}
 
 	// Parse port from sshd_config
@@ -192,28 +200,23 @@ func handleSSHConfig(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Enable or disable ssh
+	// Enable or disable ssh (handle both service and socket)
 	svcName := sshServiceName()
 	if req.Enabled {
-		if err := nsenterRun("systemctl", "enable", svcName); err != nil {
-			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to enable %s: %v", svcName, err))
-			return
-		}
+		// Enable and start the service
+		_ = nsenterRun("systemctl", "enable", svcName)
 		if err := nsenterRun("systemctl", "restart", svcName); err != nil {
 			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to restart %s: %v", svcName, err))
 			return
 		}
 		log.Printf("[ssh-config] %s enabled on port %d at %s", svcName, req.Port, time.Now().UTC().Format(time.RFC3339))
 	} else {
-		if err := nsenterRun("systemctl", "stop", svcName); err != nil {
-			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to stop %s: %v", svcName, err))
-			return
-		}
-		if err := nsenterRun("systemctl", "disable", svcName); err != nil {
-			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to disable %s: %v", svcName, err))
-			return
-		}
-		log.Printf("[ssh-config] %s disabled at %s", svcName, time.Now().UTC().Format(time.RFC3339))
+		// Stop and disable both service and socket (socket-activated SSH stays alive without this)
+		_ = nsenterRun("systemctl", "stop", "ssh.socket")
+		_ = nsenterRun("systemctl", "disable", "ssh.socket")
+		_ = nsenterRun("systemctl", "stop", svcName)
+		_ = nsenterRun("systemctl", "disable", svcName)
+		log.Printf("[ssh-config] %s + ssh.socket disabled at %s", svcName, time.Now().UTC().Format(time.RFC3339))
 	}
 
 	// Return new status

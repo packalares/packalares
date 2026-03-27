@@ -321,14 +321,31 @@ const wallpaper = ref(localStorage.getItem('packalares_wallpaper') || '/bg/macos
 
 // Watch for wallpaper changes from Settings/Appearance (works across tabs and iframes)
 const wpChannel = new BroadcastChannel('packalares_settings');
-wpChannel.onmessage = (e) => {
-  if (e.data?.type === 'wallpaper' && e.data.value) {
-    wallpaper.value = e.data.value;
+const currentDesktopTheme = ref(localStorage.getItem('packalares_theme') || 'dark');
+
+function broadcastToIframes(data: any) {
+  document.querySelectorAll('iframe').forEach((iframe) => {
+    try { (iframe as HTMLIFrameElement).contentWindow?.postMessage(data, '*'); } catch {}
+  });
+}
+
+function handleSettingsMsg(data: any) {
+  if (data?.type === 'wallpaper' && data.value) {
+    wallpaper.value = data.value;
   }
-  if (e.data?.type === 'theme' && e.data.value) {
-    applyTheme(e.data.value);
+  if (data?.type === 'theme' && data.value) {
+    currentDesktopTheme.value = data.value;
+    localStorage.setItem('packalares_theme', data.value);
+    applyTheme(data.value);
+    broadcastToIframes(data);
   }
-};
+  // Child iframe asking for current theme
+  if (data?.type === 'theme-query') {
+    broadcastToIframes({ type: 'theme', value: currentDesktopTheme.value });
+  }
+}
+wpChannel.onmessage = (e) => handleSettingsMsg(e.data);
+window.addEventListener('message', (e) => handleSettingsMsg(e.data));
 
 const clockTime = ref('');
 const weekDay = ref('');
