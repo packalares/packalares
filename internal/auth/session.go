@@ -8,20 +8,18 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // SessionStore manages sessions in Redis.
 type SessionStore struct {
-	addr     string
-	password string
-	db       int
-	prefix   string
+	rdb    *redis.Client
+	prefix string
 }
 
 // SessionData holds session information stored in Redis.
@@ -35,12 +33,20 @@ type SessionData struct {
 }
 
 func NewSessionStore(addr, password string, db int) *SessionStore {
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     addr,
+		Password: password,
+		DB:       db,
+	})
 	return &SessionStore{
-		addr:     addr,
-		password: password,
-		db:       db,
-		prefix:   "packalares:session:",
+		rdb:    rdb,
+		prefix: "packalares:session:",
 	}
+}
+
+// Redis returns the underlying redis client for shared use.
+func (s *SessionStore) Redis() *redis.Client {
+	return s.rdb
 }
 
 // Create stores a new session and returns the session ID.
@@ -59,7 +65,7 @@ func (s *SessionStore) Create(ctx context.Context, data *SessionData, ttl time.D
 	}
 
 	key := s.prefix + sessionID
-	if err := s.redisSetEx(ctx, key, string(encoded), int(ttl.Seconds())); err != nil {
+	if err := s.rdb.Set(ctx, key, string(encoded), ttl).Err(); err != nil {
 		return "", fmt.Errorf("redis set: %w", err)
 	}
 
@@ -69,12 +75,12 @@ func (s *SessionStore) Create(ctx context.Context, data *SessionData, ttl time.D
 // Get retrieves a session by ID.
 func (s *SessionStore) Get(ctx context.Context, sessionID string) (*SessionData, error) {
 	key := s.prefix + sessionID
-	val, err := s.redisGet(ctx, key)
+	val, err := s.rdb.Get(ctx, key).Result()
+	if err == redis.Nil {
+		return nil, fmt.Errorf("session not found")
+	}
 	if err != nil {
 		return nil, err
-	}
-	if val == "" {
-		return nil, fmt.Errorf("session not found")
 	}
 
 	var data SessionData
@@ -95,36 +101,23 @@ func (s *SessionStore) Update(ctx context.Context, sessionID string, data *Sessi
 	}
 
 	key := s.prefix + sessionID
-	return s.redisSetEx(ctx, key, string(encoded), int(ttl.Seconds()))
+	return s.rdb.Set(ctx, key, string(encoded), ttl).Err()
 }
 
 // Delete removes a session.
 func (s *SessionStore) Delete(ctx context.Context, sessionID string) error {
 	key := s.prefix + sessionID
-	return s.redisDel(ctx, key)
+	return s.rdb.Del(ctx, key).Err()
 }
 
 // List returns all active sessions for a user.
 func (s *SessionStore) List(ctx context.Context, username string) ([]SessionInfo, error) {
-	conn, err := s.redisConn(ctx)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.Close()
-
-	// Get all session keys via KEYS command
 	pattern := s.prefix + "*"
-	fmt.Fprintf(conn, "*2\r\n$4\r\nKEYS\r\n$%d\r\n%s\r\n", len(pattern), pattern)
-	keys, err := readRedisArray(conn)
-	if err != nil {
-		return nil, err
-	}
-
 	var sessions []SessionInfo
-	for _, key := range keys {
-		if key == "" {
-			continue
-		}
+
+	iter := s.rdb.Scan(ctx, 0, pattern, 100).Iterator()
+	for iter.Next(ctx) {
+		key := iter.Val()
 		sessionID := strings.TrimPrefix(key, s.prefix)
 		data, err := s.Get(ctx, sessionID)
 		if err != nil || data == nil {
@@ -142,6 +135,10 @@ func (s *SessionStore) List(ctx context.Context, username string) ([]SessionInfo
 			AuthLevel:    data.AuthLevel,
 		})
 	}
+	if err := iter.Err(); err != nil {
+		return nil, err
+	}
+
 	return sessions, nil
 }
 
@@ -158,7 +155,7 @@ type SessionInfo struct {
 // Touch updates the session TTL without changing data.
 func (s *SessionStore) Touch(ctx context.Context, sessionID string, ttl time.Duration) error {
 	key := s.prefix + sessionID
-	return s.redisExpire(ctx, key, int(ttl.Seconds()))
+	return s.rdb.Expire(ctx, key, ttl).Err()
 }
 
 func generateSessionID() (string, error) {
@@ -245,187 +242,4 @@ func VerifySessionID(signed, secret string) (string, bool) {
 	}
 
 	return parts[0], true
-}
-
-// Minimal Redis protocol client (no external dependency).
-// Supports AUTH, SELECT, GET, SET, SETEX, DEL, EXPIRE.
-
-func (s *SessionStore) redisConn(ctx context.Context) (net.Conn, error) {
-	var d net.Dialer
-	conn, err := d.DialContext(ctx, "tcp", s.addr)
-	if err != nil {
-		return nil, err
-	}
-
-	if s.password != "" {
-		if err := redisCmd(conn, "AUTH", s.password); err != nil {
-			conn.Close()
-			return nil, fmt.Errorf("redis AUTH: %w", err)
-		}
-	}
-
-	if s.db != 0 {
-		if err := redisCmd(conn, "SELECT", strconv.Itoa(s.db)); err != nil {
-			conn.Close()
-			return nil, fmt.Errorf("redis SELECT: %w", err)
-		}
-	}
-
-	return conn, nil
-}
-
-func (s *SessionStore) redisSetEx(ctx context.Context, key, value string, seconds int) error {
-	conn, err := s.redisConn(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return redisCmd(conn, "SETEX", key, strconv.Itoa(seconds), value)
-}
-
-func (s *SessionStore) redisGet(ctx context.Context, key string) (string, error) {
-	conn, err := s.redisConn(ctx)
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	return redisGetCmd(conn, key)
-}
-
-func (s *SessionStore) redisDel(ctx context.Context, key string) error {
-	conn, err := s.redisConn(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return redisCmd(conn, "DEL", key)
-}
-
-func (s *SessionStore) redisExpire(ctx context.Context, key string, seconds int) error {
-	conn, err := s.redisConn(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return redisCmd(conn, "EXPIRE", key, strconv.Itoa(seconds))
-}
-
-func redisCmd(conn net.Conn, args ...string) error {
-	if err := writeRESPArray(conn, args); err != nil {
-		return err
-	}
-	return readRESPOK(conn)
-}
-
-func redisGetCmd(conn net.Conn, key string) (string, error) {
-	if err := writeRESPArray(conn, []string{"GET", key}); err != nil {
-		return "", err
-	}
-	return readRESPBulkString(conn)
-}
-
-func writeRESPArray(w io.Writer, args []string) error {
-	var buf strings.Builder
-	buf.WriteString(fmt.Sprintf("*%d\r\n", len(args)))
-	for _, arg := range args {
-		buf.WriteString(fmt.Sprintf("$%d\r\n%s\r\n", len(arg), arg))
-	}
-	_, err := io.WriteString(w, buf.String())
-	return err
-}
-
-func readRESPOK(r io.Reader) error {
-	line, err := readLine(r)
-	if err != nil {
-		return err
-	}
-	if len(line) == 0 {
-		return fmt.Errorf("empty response")
-	}
-	switch line[0] {
-	case '+':
-		return nil // +OK
-	case '-':
-		return fmt.Errorf("redis error: %s", line[1:])
-	case ':':
-		return nil // integer response
-	case '$':
-		// bulk string - read and discard
-		n, _ := strconv.Atoi(line[1:])
-		if n > 0 {
-			buf := make([]byte, n+2) // +2 for \r\n
-			io.ReadFull(r, buf)
-		}
-		return nil
-	default:
-		return nil
-	}
-}
-
-func readRESPBulkString(r io.Reader) (string, error) {
-	line, err := readLine(r)
-	if err != nil {
-		return "", err
-	}
-	if len(line) == 0 {
-		return "", fmt.Errorf("empty response")
-	}
-	switch line[0] {
-	case '$':
-		n, _ := strconv.Atoi(line[1:])
-		if n < 0 {
-			return "", nil // nil bulk string
-		}
-		buf := make([]byte, n+2)
-		_, err := io.ReadFull(r, buf)
-		if err != nil {
-			return "", err
-		}
-		return string(buf[:n]), nil
-	case '-':
-		return "", fmt.Errorf("redis error: %s", line[1:])
-	default:
-		return "", fmt.Errorf("unexpected response type: %c", line[0])
-	}
-}
-
-func readRedisArray(r io.Reader) ([]string, error) {
-	line, err := readLine(r)
-	if err != nil {
-		return nil, err
-	}
-	if len(line) == 0 || line[0] != '*' {
-		return nil, fmt.Errorf("expected array, got: %s", line)
-	}
-	count, _ := strconv.Atoi(line[1:])
-	if count <= 0 {
-		return nil, nil
-	}
-	var result []string
-	for i := 0; i < count; i++ {
-		s, err := readRESPBulkString(r)
-		if err != nil {
-			return result, err
-		}
-		result = append(result, s)
-	}
-	return result, nil
-}
-
-func readLine(r io.Reader) (string, error) {
-	var buf []byte
-	b := make([]byte, 1)
-	for {
-		_, err := r.Read(b)
-		if err != nil {
-			return "", err
-		}
-		if b[0] == '\n' {
-			if len(buf) > 0 && buf[len(buf)-1] == '\r' {
-				buf = buf[:len(buf)-1]
-			}
-			return string(buf), nil
-		}
-		buf = append(buf, b[0])
-	}
 }

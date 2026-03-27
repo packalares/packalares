@@ -31,6 +31,7 @@ func GenerateSecrets(opts *InstallOptions) error {
 		"ENCRYPTION_KEY":       generateSecret(16),
 		"AUTH_SECRET":          generateSecret(32),
 		"SAMBA_PASSWORD":       generateSecret(16),
+		"TAPR_AUTH_TOKEN":      generateSecret(32),
 	}
 
 	// Also set PG_USER default

@@ -175,6 +175,8 @@ spec:
           value: "{{USERNAME}}@{{DOMAIN}}"
         - name: ADMIN_USERNAME
           value: "{{USERNAME}}"
+        - name: TAPR_AUTH_TOKEN
+          value: "{{TAPR_AUTH_TOKEN}}"
         resources:
           requests:
             cpu: 25m

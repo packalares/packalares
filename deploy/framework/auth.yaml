@@ -37,6 +37,8 @@ spec:
         env:
         - name: TAPR_URL
           value: "http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080"
+        - name: TAPR_AUTH_TOKEN
+          value: "{{TAPR_AUTH_TOKEN}}"
         - name: USER_ZONE
           value: "{{USER_ZONE}}"
         - name: REDIS_ADDR

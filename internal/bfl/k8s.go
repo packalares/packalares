@@ -193,45 +193,50 @@ func (k *K8sClient) GetOSVersion(ctx context.Context) string {
 }
 
 // ---------------------------------------------------------------------------
-// SSL ConfigMap helpers
+// SSL Secret helpers
 // ---------------------------------------------------------------------------
 
-// GetSSLConfigMap returns the zone-ssl-config ConfigMap data.
-func (k *K8sClient) GetSSLConfigMap(ctx context.Context) (map[string]string, error) {
-	cm, err := k.Clientset.CoreV1().ConfigMaps(k.Namespace).Get(ctx, SSLConfigMapName, metav1.GetOptions{})
+// GetSSLSecret returns the zone-ssl-config Secret data.
+func (k *K8sClient) GetSSLSecret(ctx context.Context) (map[string]string, error) {
+	secret, err := k.Clientset.CoreV1().Secrets(k.Namespace).Get(ctx, SSLSecretName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
 	}
-	return cm.Data, nil
+	data := make(map[string]string, len(secret.Data))
+	for k, v := range secret.Data {
+		data[k] = string(v)
+	}
+	return data, nil
 }
 
-// EnsureSSLConfigMap creates or updates zone-ssl-config with cert data.
-func (k *K8sClient) EnsureSSLConfigMap(ctx context.Context, zone, certPEM, keyPEM string) error {
+// EnsureSSLSecret creates or updates zone-ssl-config Secret with cert data.
+func (k *K8sClient) EnsureSSLSecret(ctx context.Context, zone, certPEM, keyPEM string) error {
 	expiry := time.Now().AddDate(10, 0, 0).Format("2006-01-02 15:04:05")
-	data := map[string]string{
-		"zone":       zone,
-		"cert":       certPEM,
-		"key":        keyPEM,
-		"expired_at": expiry,
+	data := map[string][]byte{
+		"zone":       []byte(zone),
+		"cert":       []byte(certPEM),
+		"key":        []byte(keyPEM),
+		"expired_at": []byte(expiry),
 	}
 
-	cm, err := k.Clientset.CoreV1().ConfigMaps(k.Namespace).Get(ctx, SSLConfigMapName, metav1.GetOptions{})
+	existing, err := k.Clientset.CoreV1().Secrets(k.Namespace).Get(ctx, SSLSecretName, metav1.GetOptions{})
 	if err != nil {
 		// Create
-		newCM := &corev1.ConfigMap{
+		newSecret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      SSLConfigMapName,
+				Name:      SSLSecretName,
 				Namespace: k.Namespace,
 			},
+			Type: corev1.SecretTypeOpaque,
 			Data: data,
 		}
-		_, err = k.Clientset.CoreV1().ConfigMaps(k.Namespace).Create(ctx, newCM, metav1.CreateOptions{})
+		_, err = k.Clientset.CoreV1().Secrets(k.Namespace).Create(ctx, newSecret, metav1.CreateOptions{})
 		return err
 	}
 
 	// Update
-	cm.Data = data
-	_, err = k.Clientset.CoreV1().ConfigMaps(k.Namespace).Update(ctx, cm, metav1.UpdateOptions{})
+	existing.Data = data
+	_, err = k.Clientset.CoreV1().Secrets(k.Namespace).Update(ctx, existing, metav1.UpdateOptions{})
 	return err
 }
 

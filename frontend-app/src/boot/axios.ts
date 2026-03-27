@@ -72,6 +72,7 @@ export function getWsUrl(): string {
 const api: AxiosInstance = axios.create({
   baseURL: getApiBase(),
   withCredentials: true,
+  headers: { 'X-Requested-With': 'packalares' },
 });
 
 api.interceptors.response.use(

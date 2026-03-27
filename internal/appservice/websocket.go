@@ -218,11 +218,27 @@ func verifySession(r *http.Request) error {
 // the session cookie, so Origin checking is unnecessary.
 func AuthWebSocketHandler() http.Handler {
 	wsHandler := WebSocketHandler()
+	zone := config.UserZone()
 	wsServer := websocket.Server{
 		Handler: wsHandler,
 		Handshake: func(cfg *websocket.Config, r *http.Request) error {
-			// Skip origin check; auth is handled by verifySession.
-			return nil
+			origin := r.Header.Get("Origin")
+			if origin == "" {
+				return nil // non-browser clients
+			}
+			// Allow https://ZONE and https://*.ZONE
+			allowed := "https://" + zone
+			if origin == allowed {
+				return nil
+			}
+			// Check subdomain: strip https://, check suffix
+			if len(origin) > 8 {
+				host := origin[8:] // strip "https://"
+				if len(host) > len(zone)+1 && host[len(host)-len(zone)-1] == '.' && host[len(host)-len(zone):] == zone {
+					return nil
+				}
+			}
+			return fmt.Errorf("origin %q not allowed", origin)
 		},
 	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

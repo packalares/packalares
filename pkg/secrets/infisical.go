@@ -17,6 +17,7 @@ import (
 // Client fetches secrets from the tapr gateway.
 type Client struct {
 	url        string
+	authToken  string
 	httpClient *http.Client
 }
 
@@ -28,14 +29,27 @@ func NewClient() *Client {
 	}
 	return &Client{
 		url:        url,
+		authToken:  os.Getenv("TAPR_AUTH_TOKEN"),
 		httpClient: &http.Client{Timeout: 10 * time.Second},
 	}
+}
+
+// doRequest creates an HTTP request with auth header.
+func (c *Client) doRequest(method, url string) (*http.Response, error) {
+	req, err := http.NewRequest(method, url, nil)
+	if err != nil {
+		return nil, err
+	}
+	if c.authToken != "" {
+		req.Header.Set("Authorization", "Bearer "+c.authToken)
+	}
+	return c.httpClient.Do(req)
 }
 
 // LoadSecrets fetches all secrets from tapr.
 // Returns a map of secret key → value.
 func (c *Client) LoadSecrets() (map[string]string, error) {
-	resp, err := c.httpClient.Get(c.url + "/secrets")
+	resp, err := c.doRequest("GET", c.url+"/secrets")
 	if err != nil {
 		return nil, fmt.Errorf("fetch secrets from tapr: %w", err)
 	}
@@ -56,7 +70,7 @@ func (c *Client) LoadSecrets() (map[string]string, error) {
 
 // Get fetches a single secret from tapr.
 func (c *Client) Get(key string) (string, error) {
-	resp, err := c.httpClient.Get(c.url + "/secrets/" + key)
+	resp, err := c.doRequest("GET", c.url+"/secrets/"+key)
 	if err != nil {
 		return "", fmt.Errorf("fetch secret %s: %w", key, err)
 	}

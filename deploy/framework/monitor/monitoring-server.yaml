@@ -74,6 +74,8 @@ spec:
               fieldPath: spec.nodeName
         - name: TAPR_URL
           value: "http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080"
+        - name: TAPR_AUTH_TOKEN
+          value: "{{TAPR_AUTH_TOKEN}}"
         - name: PROMETHEUS_URL
           value: "http://prometheus-svc.{{MONITORING_NAMESPACE}}:9090"
         - name: PORT

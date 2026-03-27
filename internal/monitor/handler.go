@@ -56,7 +56,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 func (h *Handler) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	metrics, err := CollectSystemMetrics()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		log.Printf("metrics: %v", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	// Round CPU usage to one decimal place
@@ -70,7 +71,7 @@ func (h *Handler) handleStatus(w http.ResponseWriter, r *http.Request) {
 	status, err := collectPodStatus()
 	if err != nil {
 		log.Printf("status: kubernetes query failed: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, status)

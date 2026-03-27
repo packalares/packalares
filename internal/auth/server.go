@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // Server is the auth HTTP server.
@@ -16,14 +18,17 @@ type Server struct {
 	cfg      *Config
 	lldap    *LLDAPClient
 	sessions *SessionStore
+	limiter  *RateLimiter
 	mux      *http.ServeMux
 }
 
 func NewServer(cfg *Config) *Server {
+	store := NewSessionStore(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
 	s := &Server{
 		cfg:      cfg,
 		lldap:    NewLLDAPClient(cfg.LLDAPHost, cfg.LLDAPPort),
-		sessions: NewSessionStore(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB),
+		sessions: store,
+		limiter:  NewRateLimiter(store.Redis()),
 		mux:      http.NewServeMux(),
 	}
 	s.setupRoutes()
@@ -138,9 +143,25 @@ func (s *Server) handleFirstFactor(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Rate limit check
+	clientIP := extractIP(r)
+	delaySec, err := s.limiter.Check(r.Context(), clientIP, req.Username)
+	if err != nil {
+		log.Printf("rate limit: blocked %s / %q: %v", clientIP, req.Username, err)
+		writeJSON(w, http.StatusTooManyRequests, map[string]interface{}{
+			"status":  "error",
+			"message": "too many failed attempts, try again later",
+		})
+		return
+	}
+	if delaySec > 0 {
+		time.Sleep(time.Duration(delaySec) * time.Second)
+	}
+
 	// Authenticate against LLDAP
 	if err := s.lldap.Authenticate(req.Username, req.Password); err != nil {
-		log.Printf("authentication failed for user %q: %v", req.Username, err)
+		s.limiter.RecordFailure(r.Context(), clientIP, req.Username)
+		log.Printf("authentication failed for user %q from %s: %v", req.Username, clientIP, err)
 		writeJSON(w, http.StatusUnauthorized, map[string]interface{}{
 			"status": "error",
 			"message": "invalid credentials",
@@ -196,6 +217,7 @@ func (s *Server) handleFirstFactor(w http.ResponseWriter, r *http.Request) {
 		log.Printf("failed to sign JWT for user %q: %v", req.Username, err)
 	}
 
+	s.limiter.Reset(r.Context(), clientIP, req.Username)
 	log.Printf("user %q authenticated successfully (first factor)", req.Username)
 
 	// Check if user has TOTP enabled — require second factor
@@ -215,7 +237,7 @@ func (s *Server) handleFirstFactor(w http.ResponseWriter, r *http.Request) {
 
 	// No TOTP — redirect to desktop
 	redirect := "/desktop/"
-	if rd := r.URL.Query().Get("rd"); rd != "" {
+	if rd := r.URL.Query().Get("rd"); rd != "" && safeRedirect(rd) {
 		redirect = rd
 	}
 
@@ -297,7 +319,7 @@ func (s *Server) handleSecondFactorTOTP(w http.ResponseWriter, r *http.Request) 
 	log.Printf("user %q completed second factor (TOTP)", session.Username)
 
 	redirect := "/desktop/"
-	if rd := r.URL.Query().Get("rd"); rd != "" {
+	if rd := r.URL.Query().Get("rd"); rd != "" && safeRedirect(rd) {
 		redirect = rd
 	}
 
@@ -563,61 +585,34 @@ func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
 // TOTP secret storage in Redis
 
 func (s *Server) getTOTPSecret(ctx context.Context, username string) (string, error) {
-	conn, err := s.sessions.redisConn(ctx)
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	return redisGetCmd(conn, "packalares:totp:"+username)
+	return s.sessions.Redis().Get(ctx, "packalares:totp:"+username).Result()
 }
 
 func (s *Server) storeTOTPSecret(ctx context.Context, username, secret string) error {
-	conn, err := s.sessions.redisConn(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return redisCmd(conn, "SET", "packalares:totp:"+username, secret)
+	return s.sessions.Redis().Set(ctx, "packalares:totp:"+username, secret, 0).Err()
 }
 
 func (s *Server) deleteTOTPSecret(ctx context.Context, username string) error {
-	conn, err := s.sessions.redisConn(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return redisCmd(conn, "DEL", "packalares:totp:"+username)
+	return s.sessions.Redis().Del(ctx, "packalares:totp:"+username).Err()
 }
 
 func (s *Server) storePendingTOTP(ctx context.Context, username, secret string) error {
-	conn, err := s.sessions.redisConn(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return redisCmd(conn, "SETEX", "packalares:totp:pending:"+username, "300", secret) // 5 min TTL
+	return s.sessions.Redis().Set(ctx, "packalares:totp:pending:"+username, secret, 5*time.Minute).Err()
 }
 
 func (s *Server) getPendingTOTP(ctx context.Context, username string) (string, error) {
-	conn, err := s.sessions.redisConn(ctx)
-	if err != nil {
-		return "", err
-	}
-	defer conn.Close()
-	return redisGetCmd(conn, "packalares:totp:pending:"+username)
+	return s.sessions.Redis().Get(ctx, "packalares:totp:pending:"+username).Result()
 }
 
 func (s *Server) deletePendingTOTP(ctx context.Context, username string) error {
-	conn, err := s.sessions.redisConn(ctx)
-	if err != nil {
-		return err
-	}
-	defer conn.Close()
-	return redisCmd(conn, "DEL", "packalares:totp:pending:"+username)
+	return s.sessions.Redis().Del(ctx, "packalares:totp:pending:"+username).Err()
 }
 
 func (s *Server) hasTOTPConfigured(ctx context.Context, username string) (bool, error) {
 	secret, err := s.getTOTPSecret(ctx, username)
+	if err == redis.Nil {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
@@ -646,6 +641,11 @@ func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(req.NewPassword) < 8 {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"status": "error", "message": "password must be at least 8 characters"})
+		return
+	}
+
 	// Verify current password
 	if err := s.lldap.Authenticate(session.Username, req.CurrentPassword); err != nil {
 		writeJSON(w, http.StatusUnauthorized, map[string]interface{}{"status": "error", "message": "current password is incorrect"})
@@ -661,6 +661,26 @@ func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("password changed for user %s", session.Username)
 	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "OK"})
+}
+
+// safeRedirect returns true only for relative paths (no protocol, no //).
+func safeRedirect(rd string) bool {
+	return strings.HasPrefix(rd, "/") && !strings.HasPrefix(rd, "//")
+}
+
+// extractIP gets the client IP from X-Real-IP, X-Forwarded-For, or RemoteAddr.
+func extractIP(r *http.Request) string {
+	if ip := r.Header.Get("X-Real-IP"); ip != "" {
+		return ip
+	}
+	if fwd := r.Header.Get("X-Forwarded-For"); fwd != "" {
+		if i := strings.Index(fwd, ","); i > 0 {
+			return strings.TrimSpace(fwd[:i])
+		}
+		return fwd
+	}
+	host, _, _ := net.SplitHostPort(r.RemoteAddr)
+	return host
 }
 
 func writeJSON(w http.ResponseWriter, code int, data interface{}) {

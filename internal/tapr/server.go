@@ -26,13 +26,19 @@ type Server struct {
 	privateKey   string // base64 NaCl private key (plaintext)
 	password     string // admin password for decrypting private key
 	pgDSN        string
+	authToken    string // bearer token for API authentication
 }
 
 // NewServer creates a tapr server.
 func NewServer() *Server {
 	jwtSecret := os.Getenv("JWT_AUTH_SECRET")
-	if len(jwtSecret) < 16 {
-		log.Printf("WARNING: JWT_AUTH_SECRET is too short (%d chars) — tokens may be forgeable. Set a secret of at least 32 characters.", len(jwtSecret))
+	if len(jwtSecret) < 32 {
+		log.Fatalf("FATAL: JWT_AUTH_SECRET is too short (%d chars). Set a secret of at least 32 characters.", len(jwtSecret))
+	}
+
+	authToken := os.Getenv("TAPR_AUTH_TOKEN")
+	if authToken == "" {
+		log.Println("WARNING: TAPR_AUTH_TOKEN not set — tapr API is unauthenticated!")
 	}
 
 	return &Server{
@@ -44,6 +50,7 @@ func NewServer() *Server {
 		privateKey:   os.Getenv("TAPR_PRIVATE_KEY"),
 		password:     os.Getenv("TAPR_PASSWORD"),
 		pgDSN:        os.Getenv("PG_DSN"),
+		authToken:    authToken,
 	}
 }
 
@@ -68,6 +75,22 @@ func (s *Server) issueToken() (string, error) {
 	return token.SignedString([]byte(s.jwtSecret))
 }
 
+// requireAuth is middleware that checks the Bearer token on every request.
+func (s *Server) requireAuth(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if s.authToken == "" {
+			next(w, r)
+			return
+		}
+		auth := r.Header.Get("Authorization")
+		if auth == "" || auth != "Bearer "+s.authToken {
+			http.Error(w, "unauthorized", 401)
+			return
+		}
+		next(w, r)
+	}
+}
+
 // Handler returns the HTTP handler for the tapr API.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -77,13 +100,13 @@ func (s *Server) Handler() http.Handler {
 	})
 
 	// GET /secrets — list all secrets from the default project
-	mux.HandleFunc("/secrets", s.handleSecrets)
+	mux.HandleFunc("/secrets", s.requireAuth(s.handleSecrets))
 
 	// GET /secrets/{key} — get a single secret
-	mux.HandleFunc("/secrets/", s.handleGetSecret)
+	mux.HandleFunc("/secrets/", s.requireAuth(s.handleGetSecret))
 
 	// POST /secrets — create/update secrets (bulk)
-	mux.HandleFunc("POST /secrets", s.handleStoreSecrets)
+	mux.HandleFunc("POST /secrets", s.requireAuth(s.handleStoreSecrets))
 
 	return mux
 }
@@ -97,7 +120,7 @@ func (s *Server) handleSecrets(w http.ResponseWriter, r *http.Request) {
 	secrets, err := s.fetchAllSecrets()
 	if err != nil {
 		log.Printf("tapr: GET /secrets error: %v", err)
-		http.Error(w, err.Error(), 500)
+		http.Error(w, "internal error", 500)
 		return
 	}
 
@@ -114,7 +137,8 @@ func (s *Server) handleGetSecret(w http.ResponseWriter, r *http.Request) {
 
 	secrets, err := s.fetchAllSecrets()
 	if err != nil {
-		http.Error(w, err.Error(), 500)
+		log.Printf("tapr: GET /secrets/%s error: %v", key, err)
+		http.Error(w, "internal error", 500)
 		return
 	}
 
@@ -137,7 +161,7 @@ func (s *Server) handleStoreSecrets(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.storeSecrets(secrets); err != nil {
 		log.Printf("tapr: POST /secrets error: %v", err)
-		http.Error(w, err.Error(), 500)
+		http.Error(w, "internal error", 500)
 		return
 	}
 

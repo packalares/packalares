@@ -46,11 +46,25 @@ func NewServer(listenAddr string) (*Server, error) {
 	return s, nil
 }
 
+// csrfProtect wraps a handler to require X-Requested-With header on mutating requests.
+func csrfProtect(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+			if r.Header.Get("X-Requested-With") == "" {
+				http.Error(w, "CSRF validation failed", http.StatusForbidden)
+				return
+			}
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
 // Run starts the HTTP server.
 func (s *Server) Run(ctx context.Context) error {
 	srv := &http.Server{
 		Addr:    s.ListenAddr,
-		Handler: s.mux,
+		Handler: csrfProtect(s.mux),
 		BaseContext: func(_ net.Listener) context.Context {
 			return ctx
 		},
@@ -309,8 +323,8 @@ func (s *Server) handleReDownloadCert(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := s.K8s.EnsureSSLConfigMap(ctx, zone, certPEM, keyPEM); err != nil {
-		respondError(w, fmt.Sprintf("update ssl configmap: %v", err))
+	if err := s.K8s.EnsureSSLSecret(ctx, zone, certPEM, keyPEM); err != nil {
+		respondError(w, fmt.Sprintf("update ssl secret: %v", err))
 		return
 	}
 
@@ -441,8 +455,8 @@ func (s *Server) handleUnbindZone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Delete SSL configmap (best effort)
-	_ = s.K8s.Clientset.CoreV1().ConfigMaps(s.K8s.Namespace).Delete(ctx, SSLConfigMapName, deleteOpts())
+	// Delete SSL secret (best effort)
+	_ = s.K8s.Clientset.CoreV1().Secrets(s.K8s.Namespace).Delete(ctx, SSLSecretName, deleteOpts())
 
 	respondSuccess(w)
 }
@@ -514,8 +528,8 @@ func (s *Server) handleActivate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Store cert in ConfigMap
-	if err := s.K8s.EnsureSSLConfigMap(ctx, userZone, certPEM, keyPEM); err != nil {
+	// Store cert in Secret
+	if err := s.K8s.EnsureSSLSecret(ctx, userZone, certPEM, keyPEM); err != nil {
 		respondError(w, fmt.Sprintf("activate: store cert: %v", err))
 		return
 	}
@@ -1046,8 +1060,8 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request, use
 		return
 	}
 
-	if pr.Password == "" {
-		respondError(w, "reset password: new password is empty")
+	if len(pr.Password) < 8 {
+		respondError(w, "reset password: password must be at least 8 characters")
 		return
 	}
 	if pr.Password == pr.CurrentPassword {
