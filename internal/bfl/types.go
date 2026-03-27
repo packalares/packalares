@@ -249,7 +249,7 @@ const (
 
 	DefaultAuthPolicy = "two_factor"
 
-	SSLConfigMapName         = "zone-ssl-config"
+	SSLSecretName            = "zone-ssl-config"
 	ReverseProxyConfigMap    = "reverse-proxy-config"
 	DefaultUserNamespacePrefix = "user-space"
 )

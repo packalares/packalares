@@ -99,6 +99,7 @@ func replaceConfigPlaceholders(manifest string, opts *InstallOptions) string {
 		"{{SERVER_IP}}":           os.Getenv("SERVER_IP"),
 		"{{COREDNS_CLUSTER_IP}}":  os.Getenv("COREDNS_CLUSTER_IP"),
 		"{{HOSTCTL_TOKEN_B64}}":   hostctlTokenB64,
+		"{{TAPR_AUTH_TOKEN}}":     os.Getenv("TAPR_AUTH_TOKEN"),
 	}
 
 	for placeholder, value := range replacements {

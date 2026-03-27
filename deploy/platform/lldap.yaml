@@ -90,3 +90,26 @@ spec:
   - name: http
     port: 17170
     targetPort: 17170
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: lldap-allow-auth-only
+  namespace: {{PLATFORM_NAMESPACE}}
+spec:
+  podSelector:
+    matchLabels:
+      app: lldap
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: packalares-auth
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: os-framework
+    ports:
+    - port: 3890
+    - port: 17170

@@ -79,9 +79,23 @@ func (h *Handler) safePath(reqPath string) (string, error) {
 		return "", fmt.Errorf("invalid path")
 	}
 
-	// Ensure the resolved path is within DataPath
+	// Resolve symlinks to get the real filesystem path
 	dataAbs, _ := filepath.Abs(h.DataPath)
-	if !strings.HasPrefix(abs, dataAbs) {
+	realDataAbs, err := filepath.EvalSymlinks(dataAbs)
+	if err != nil {
+		realDataAbs = dataAbs
+	}
+
+	// Check if target exists — if so, resolve symlinks on the full path
+	realAbs := abs
+	if _, statErr := os.Lstat(abs); statErr == nil {
+		realAbs, err = filepath.EvalSymlinks(abs)
+		if err != nil {
+			return "", fmt.Errorf("invalid path")
+		}
+	}
+
+	if !strings.HasPrefix(realAbs, realDataAbs) {
 		return "", fmt.Errorf("path traversal denied")
 	}
 
@@ -115,7 +129,7 @@ func (h *Handler) listOrStat(w http.ResponseWriter, r *http.Request) {
 
 	absPath, err := h.safePath(reqPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 
@@ -124,7 +138,7 @@ func (h *Handler) listOrStat(w http.ResponseWriter, r *http.Request) {
 		if os.IsNotExist(err) {
 			http.Error(w, "not found", http.StatusNotFound)
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -152,7 +166,7 @@ func (h *Handler) listOrStat(w http.ResponseWriter, r *http.Request) {
 	if info.IsDir() {
 		entries, err := os.ReadDir(absPath)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
@@ -214,7 +228,7 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 
 	absPath, err := h.safePath(reqPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 
@@ -237,7 +251,7 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 		}
 		defer file.Close()
 
-		destPath := filepath.Join(absPath, header.Filename)
+		destPath := filepath.Join(absPath, filepath.Base(header.Filename))
 		if !override {
 			if _, err := os.Stat(destPath); err == nil {
 				http.Error(w, "file already exists", http.StatusConflict)
@@ -247,19 +261,19 @@ func (h *Handler) uploadFile(w http.ResponseWriter, r *http.Request) {
 
 		// Ensure parent directory exists
 		if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
 		dst, err := os.Create(destPath)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		defer dst.Close()
 
 		if _, err := io.Copy(dst, file); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 
@@ -281,19 +295,19 @@ func (h *Handler) uploadRawBody(w http.ResponseWriter, r *http.Request, absPath 
 	}
 
 	if err := os.MkdirAll(filepath.Dir(absPath), 0755); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	dst, err := os.Create(absPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	defer dst.Close()
 
 	if _, err := io.Copy(dst, io.LimitReader(r.Body, h.MaxUploadSize)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -309,7 +323,7 @@ func (h *Handler) createOrUpdate(w http.ResponseWriter, r *http.Request) {
 
 	absPath, err := h.safePath(reqPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 
@@ -318,7 +332,7 @@ func (h *Handler) createOrUpdate(w http.ResponseWriter, r *http.Request) {
 	if strings.HasSuffix(reqPath, "/") || contentType == "" {
 		// Create directory
 		if err := os.MkdirAll(absPath, 0755); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusOK)
@@ -328,18 +342,18 @@ func (h *Handler) createOrUpdate(w http.ResponseWriter, r *http.Request) {
 
 	// Update file content (text save)
 	if err := os.MkdirAll(filepath.Dir(absPath), 0755); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	body, err := io.ReadAll(io.LimitReader(r.Body, h.MaxUploadSize))
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	if err := os.WriteFile(absPath, body, 0644); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -356,12 +370,12 @@ func (h *Handler) deleteResource(w http.ResponseWriter, r *http.Request) {
 
 	absPath, err := h.safePath(reqPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 
 	if err := os.RemoveAll(absPath); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -388,13 +402,13 @@ func (h *Handler) renameMove(w http.ResponseWriter, r *http.Request) {
 
 	srcPath, err := h.safePath(reqPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 
 	dstPath, err := h.safePath(destination)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 
@@ -414,14 +428,14 @@ func (h *Handler) renameMove(w http.ResponseWriter, r *http.Request) {
 
 	// Ensure parent of destination exists
 	if err := os.MkdirAll(filepath.Dir(dstPath), 0755); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	switch action {
 	case "copy":
 		if err := copyPath(srcPath, dstPath); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 			return
 		}
 	default:
@@ -429,7 +443,7 @@ func (h *Handler) renameMove(w http.ResponseWriter, r *http.Request) {
 		if err := os.Rename(srcPath, dstPath); err != nil {
 			// Cross-device move: copy then remove
 			if err := copyPath(srcPath, dstPath); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, "internal error", http.StatusInternalServerError)
 				return
 			}
 			os.RemoveAll(srcPath)
@@ -463,7 +477,7 @@ func (h *Handler) handleRaw(w http.ResponseWriter, r *http.Request) {
 
 	absPath, err := h.safePath(reqPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 
@@ -472,7 +486,7 @@ func (h *Handler) handleRaw(w http.ResponseWriter, r *http.Request) {
 		if os.IsNotExist(err) {
 			http.Error(w, "not found", http.StatusNotFound)
 		} else {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			http.Error(w, "internal error", http.StatusInternalServerError)
 		}
 		return
 	}
@@ -484,7 +498,7 @@ func (h *Handler) handleRaw(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/zip")
 			w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s.zip"`, info.Name()))
 			if err := zipDir(absPath, w); err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
+				http.Error(w, "internal error", http.StatusInternalServerError)
 			}
 			return
 		}
@@ -519,7 +533,7 @@ func (h *Handler) handlePreview(w http.ResponseWriter, r *http.Request) {
 
 	absPath, err := h.safePath(filePath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 
@@ -568,19 +582,19 @@ func (h *Handler) handleUploadInit(w http.ResponseWriter, r *http.Request) {
 	fullPath := filepath.Join(storagePath, fileRelPath)
 	absPath, err := h.safePath(fullPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 
 	if err := os.MkdirAll(filepath.Dir(absPath), 0755); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	// Create an empty file
 	f, err := os.Create(absPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	f.Close()
@@ -645,19 +659,19 @@ func (h *Handler) handleUploadChunk(w http.ResponseWriter, r *http.Request) {
 
 	f, err := os.OpenFile(state.absPath, os.O_WRONLY, 0644)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 	defer f.Close()
 
 	if _, err := f.Seek(offset, io.SeekStart); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
 	written, err := io.Copy(f, file)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
@@ -706,7 +720,7 @@ func (h *Handler) handleUploadedBytes(w http.ResponseWriter, r *http.Request) {
 	fullPath := filepath.Join(parentDir, fileName)
 	absPath, err := h.safePath(fullPath)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusForbidden)
+		http.Error(w, "access denied", http.StatusForbidden)
 		return
 	}
 

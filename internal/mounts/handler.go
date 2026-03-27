@@ -12,6 +12,104 @@ import (
 	"sync"
 )
 
+// allowedNFSOptions are the only mount options permitted for NFS mounts.
+var allowedNFSOptions = map[string]bool{
+	"ro": true, "rw": true, "soft": true, "hard": true,
+	"intr": true, "nolock": true, "tcp": true, "udp": true,
+	"noatime": true, "nodiratime": true, "relatime": true,
+}
+
+// allowedNFSPrefixes are option prefixes that accept a value (e.g. nfsvers=4).
+var allowedNFSPrefixes = []string{
+	"nfsvers=", "vers=", "timeo=", "retrans=", "rsize=", "wsize=",
+	"port=", "mountport=", "proto=", "sec=",
+}
+
+// allowedSMBOptions are the only mount options permitted for SMB mounts.
+var allowedSMBOptions = map[string]bool{
+	"ro": true, "rw": true, "noatime": true, "nodiratime": true,
+	"guest": true, "noperm": true, "file_mode=0644": true, "dir_mode=0755": true,
+}
+
+// allowedSMBPrefixes are option prefixes that accept a value.
+var allowedSMBPrefixes = []string{
+	"vers=", "sec=", "uid=", "gid=", "file_mode=", "dir_mode=",
+	"iocharset=", "domain=", "workgroup=",
+}
+
+// allowedRcloneFlags are the only flags permitted for rclone mounts.
+var allowedRcloneFlags = map[string]bool{
+	"--read-only":  true,
+	"--no-modtime": true,
+	"--no-checksum": true,
+}
+
+// allowedRclonePrefixes are flag prefixes that accept a value.
+var allowedRclonePrefixes = []string{
+	"--bwlimit=", "--buffer-size=", "--vfs-read-chunk-size=",
+	"--vfs-cache-max-age=", "--vfs-cache-max-size=", "--transfers=",
+}
+
+// sanitizeMountOptions filters options against a whitelist.
+func sanitizeMountOptions(raw string, allowed map[string]bool, prefixes []string) (string, error) {
+	if raw == "" {
+		return "", nil
+	}
+	var result []string
+	for _, opt := range strings.Split(raw, ",") {
+		opt = strings.TrimSpace(opt)
+		if opt == "" {
+			continue
+		}
+		if allowed[opt] {
+			result = append(result, opt)
+			continue
+		}
+		ok := false
+		for _, p := range prefixes {
+			if strings.HasPrefix(opt, p) {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return "", fmt.Errorf("mount option %q not allowed", opt)
+		}
+		result = append(result, opt)
+	}
+	return strings.Join(result, ","), nil
+}
+
+// sanitizeRcloneFlags filters rclone flags against a whitelist.
+func sanitizeRcloneFlags(raw string) ([]string, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	var result []string
+	for _, flag := range strings.Split(raw, " ") {
+		flag = strings.TrimSpace(flag)
+		if flag == "" {
+			continue
+		}
+		if allowedRcloneFlags[flag] {
+			result = append(result, flag)
+			continue
+		}
+		ok := false
+		for _, p := range allowedRclonePrefixes {
+			if strings.HasPrefix(flag, p) {
+				ok = true
+				break
+			}
+		}
+		if !ok {
+			return nil, fmt.Errorf("rclone flag %q not allowed", flag)
+		}
+		result = append(result, flag)
+	}
+	return result, nil
+}
+
 // MountType represents the type of remote storage.
 type MountType string
 
@@ -233,7 +331,13 @@ func mountSMB(cfg MountConfig, mountPoint string) error {
 		opts = append(opts, fmt.Sprintf("password=%s", strings.ReplaceAll(cfg.Password, ",", "\\,")))
 	}
 	if cfg.Options != "" {
-		opts = append(opts, cfg.Options)
+		sanitized, err := sanitizeMountOptions(cfg.Options, allowedSMBOptions, allowedSMBPrefixes)
+		if err != nil {
+			return fmt.Errorf("smb options: %w", err)
+		}
+		if sanitized != "" {
+			opts = append(opts, sanitized)
+		}
 	}
 	if len(opts) == 0 {
 		opts = append(opts, "guest")
@@ -256,7 +360,13 @@ func mountNFS(cfg MountConfig, mountPoint string) error {
 	args := []string{"-t", "nfs", source, mountPoint}
 
 	if cfg.Options != "" {
-		args = append(args, "-o", cfg.Options)
+		sanitized, err := sanitizeMountOptions(cfg.Options, allowedNFSOptions, allowedNFSPrefixes)
+		if err != nil {
+			return fmt.Errorf("nfs options: %w", err)
+		}
+		if sanitized != "" {
+			args = append(args, "-o", sanitized)
+		}
 	}
 
 	cmd := exec.Command("mount", args...)
@@ -282,11 +392,11 @@ func mountRclone(cfg MountConfig, mountPoint string) error {
 	}
 
 	if cfg.Options != "" {
-		for _, opt := range strings.Split(cfg.Options, " ") {
-			if opt != "" {
-				args = append(args, opt)
-			}
+		flags, err := sanitizeRcloneFlags(cfg.Options)
+		if err != nil {
+			return fmt.Errorf("rclone options: %w", err)
 		}
+		args = append(args, flags...)
 	}
 
 	cmd := exec.Command("rclone", args...)
