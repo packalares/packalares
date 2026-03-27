@@ -54,39 +54,44 @@ func NewK8sClient() *K8sClient {
 
 // GetPodsForApp returns pod info for pods matching an app's release label.
 func (k *K8sClient) GetPodsForApp(ctx context.Context, releaseName, namespace string) []PodInfo {
-	cmd := exec.CommandContext(ctx, "kubectl", "get", "pods",
-		"--namespace", namespace,
-		"-l", "app.kubernetes.io/instance="+releaseName,
-		"-o", "jsonpath={range .items[*]}{.metadata.name}|{.status.phase}|{.metadata.creationTimestamp}{\"\\n\"}{end}",
-	)
-
-	out, err := cmd.Output()
-	if err != nil {
-		return nil
+	selectors := []string{
+		"app.kubernetes.io/instance=" + releaseName,
+		"app=" + releaseName,
+		"io.kompose.service=" + releaseName,
 	}
 
-	var pods []PodInfo
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		parts := strings.Split(line, "|")
-		if len(parts) < 3 {
-			continue
-		}
-		created, _ := time.Parse(time.RFC3339, parts[2])
-		age := time.Since(created).Truncate(time.Second).String()
+	for _, sel := range selectors {
+		cmd := exec.CommandContext(ctx, "kubectl", "get", "pods",
+			"--namespace", namespace,
+			"-l", sel,
+			"-o", "jsonpath={range .items[*]}{.metadata.name}|{.status.phase}|{.metadata.creationTimestamp}{\"\\n\"}{end}",
+		)
 
-		pods = append(pods, PodInfo{
-			Name:   parts[0],
-			Status: parts[1],
-			Age:    age,
-		})
+		out, err := cmd.Output()
+		if err != nil || strings.TrimSpace(string(out)) == "" {
+			continue
+		}
+
+		var pods []PodInfo
+		for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			parts := strings.Split(line, "|")
+			if len(parts) < 3 {
+				continue
+			}
+			created, _ := time.Parse(time.RFC3339, parts[2])
+			age := time.Since(created).Truncate(time.Second).String()
+			pods = append(pods, PodInfo{Name: parts[0], Status: parts[1], Age: age})
+		}
+		if len(pods) > 0 {
+			return pods
+		}
 	}
 
-	return pods
+	return nil
 }
 
 // GetImagesForApp returns all container image references used by an app's pods.

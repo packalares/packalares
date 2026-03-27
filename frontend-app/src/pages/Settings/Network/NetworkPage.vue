@@ -34,6 +34,35 @@
         </div>
       </div>
 
+      <!-- IP Access -->
+      <div class="settings-card q-mt-lg">
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--network">
+            <q-icon name="sym_r_public" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">IP Access</div>
+            <div class="card-header-subtitle">Allow accessing the web UI directly via server IP address</div>
+          </div>
+          <div class="card-header-actions">
+            <span
+              class="status-badge"
+              :class="ipAccessEnabled ? 'status-connected' : 'status-disconnected'"
+            >{{ ipAccessEnabled ? 'enabled' : 'disabled' }}</span>
+          </div>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Enable IP Access</span>
+          <q-toggle v-model="ipAccessEnabled" dense color="primary" @update:model-value="toggleIPAccess" />
+        </div>
+        <div class="card-body" style="padding-top:0">
+          <div style="font-size:11px;color:var(--ink-3);line-height:1.5">
+            <q-icon name="sym_r_info" size="13px" style="vertical-align:middle;margin-right:4px" />
+            Installed apps are always accessed by domain (e.g. <strong>app.{{ netInfo.zone }}</strong>). This setting only controls the main dashboard and settings UI via IP.
+          </div>
+        </div>
+      </div>
+
       <!-- SSH Access -->
       <div class="settings-card q-mt-lg">
         <div class="card-header">
@@ -189,8 +218,11 @@
 <script lang="ts" setup>
 import { ref, reactive, onMounted } from 'vue';
 import { api } from 'boot/axios';
+import { useQuasar } from 'quasar';
 
+const $q = useQuasar();
 const netInfo = ref({ ip: '--', domain: '--', zone: '--' });
+const ipAccessEnabled = ref(true);
 const tsAuthKey = ref('');
 const tsControlURL = ref('');
 const tsHostname = ref('packalares');
@@ -251,7 +283,34 @@ onMounted(async () => {
     // SSH endpoint may not be available; keep defaults
   }
 
+  // Load IP access setting
+  try {
+    const ip: any = await api.get('/api/settings/ip-access');
+    ipAccessEnabled.value = ip?.data?.enabled ?? ip?.enabled ?? true;
+  } catch {}
 });
+
+async function toggleIPAccess(val: boolean) {
+  const action = val ? 'enable' : 'disable';
+  $q.dialog({
+    title: `${val ? 'Enable' : 'Disable'} IP Access`,
+    message: val
+      ? 'The web UI will be accessible via IP address again.'
+      : 'The web UI will only be accessible via domain. Make sure your domain is working before disabling.',
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await api.post('/api/settings/ip-access', { enabled: val });
+      $q.notify({ type: 'positive', message: `IP access ${action}d. Proxy restarting...` });
+    } catch (e: any) {
+      ipAccessEnabled.value = !val; // revert
+      $q.notify({ type: 'negative', message: `Failed to ${action}: ${e?.message || 'unknown'}` });
+    }
+  }).onCancel(() => {
+    ipAccessEnabled.value = !val; // revert toggle
+  });
+}
 
 async function applySSH() {
   sshSaving.value = true;

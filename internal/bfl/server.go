@@ -112,6 +112,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/bfl/settings/v1alpha1/config-system", s.handleConfigSystem)
 	s.mux.HandleFunc("/api/settings/tailscale", s.handleTailscaleSettings)
 	s.mux.HandleFunc("/api/settings/ssh", s.handleSSHSettings)
+	s.mux.HandleFunc("/api/settings/ip-access", s.handleIPAccess)
 	s.mux.HandleFunc("/api/settings/updates", s.handleUpdates)
 	s.mux.HandleFunc("/api/settings/updates/", s.handleUpdateRestart)
 
@@ -663,6 +664,112 @@ func (s *Server) handleTailscaleSettings(w http.ResponseWriter, r *http.Request)
 
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// IP Access — enable/disable direct IP access to the web UI
+// ---------------------------------------------------------------------------
+
+func (s *Server) handleIPAccess(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	ns := config.FrameworkNamespace()
+
+	switch r.Method {
+	case http.MethodGet:
+		// Read current setting from ConfigMap
+		cm, err := s.K8s.Clientset.CoreV1().ConfigMaps(ns).Get(ctx, "packalares-settings", metav1.GetOptions{})
+		enabled := true // default: enabled
+		if err == nil {
+			if v, ok := cm.Data["ip_access_enabled"]; ok && v == "false" {
+				enabled = false
+			}
+		}
+		respondJSON(w, http.StatusOK, map[string]bool{"enabled": enabled})
+
+	case http.MethodPost:
+		var req struct {
+			Enabled bool `json:"enabled"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+			respondError(w, "invalid request")
+			return
+		}
+
+		// Save to ConfigMap
+		cm, err := s.K8s.Clientset.CoreV1().ConfigMaps(ns).Get(ctx, "packalares-settings", metav1.GetOptions{})
+		if err != nil {
+			// Create if not exists
+			cm = &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "packalares-settings", Namespace: ns},
+				Data:       map[string]string{},
+			}
+			cm.Data["ip_access_enabled"] = fmt.Sprintf("%v", req.Enabled)
+			_, err = s.K8s.Clientset.CoreV1().ConfigMaps(ns).Create(ctx, cm, metav1.CreateOptions{})
+		} else {
+			if cm.Data == nil {
+				cm.Data = map[string]string{}
+			}
+			cm.Data["ip_access_enabled"] = fmt.Sprintf("%v", req.Enabled)
+			_, err = s.K8s.Clientset.CoreV1().ConfigMaps(ns).Update(ctx, cm, metav1.UpdateOptions{})
+		}
+		if err != nil {
+			respondError(w, fmt.Sprintf("save setting: %v", err))
+			return
+		}
+
+		// Patch nginx config — add or remove "return 403" in the IP server block
+		proxyCM, err := s.K8s.Clientset.CoreV1().ConfigMaps(ns).Get(ctx, "proxy-config", metav1.GetOptions{})
+		if err != nil {
+			respondError(w, fmt.Sprintf("read proxy config: %v", err))
+			return
+		}
+
+		conf := proxyCM.Data["nginx.conf"]
+		marker := "# IP_ACCESS_BLOCK"
+		blockLine := marker + "\n    return 403 'IP access is disabled. Use your domain instead.';\n"
+
+		if req.Enabled {
+			// Remove the block if present
+			conf = strings.ReplaceAll(conf, blockLine, "")
+		} else {
+			// Add block after "server_name {{SERVER_IP}};" if not already there
+			if !strings.Contains(conf, marker) {
+				// Find the first IP server block's server_name line and add after it
+				idx := strings.Index(conf, "ssl_protocols TLSv1.2 TLSv1.3;")
+				if idx > 0 {
+					insertAt := idx + len("ssl_protocols TLSv1.2 TLSv1.3;")
+					// Find end of line
+					nlIdx := strings.Index(conf[insertAt:], "\n")
+					if nlIdx >= 0 {
+						insertAt += nlIdx + 1
+						conf = conf[:insertAt] + "    " + blockLine + conf[insertAt:]
+					}
+				}
+			}
+		}
+
+		proxyCM.Data["nginx.conf"] = conf
+		if _, err := s.K8s.Clientset.CoreV1().ConfigMaps(ns).Update(ctx, proxyCM, metav1.UpdateOptions{}); err != nil {
+			respondError(w, fmt.Sprintf("update proxy config: %v", err))
+			return
+		}
+
+		// Restart proxy pod
+		go func() {
+			pods, _ := s.K8s.Clientset.CoreV1().Pods(ns).List(context.Background(), metav1.ListOptions{
+				LabelSelector: "app=proxy",
+			})
+			for _, p := range pods.Items {
+				_ = s.K8s.Clientset.CoreV1().Pods(ns).Delete(context.Background(), p.Name, metav1.DeleteOptions{})
+			}
+		}()
+
+		klog.Infof("IP access set to %v, proxy restarting", req.Enabled)
+		respondJSON(w, http.StatusOK, map[string]bool{"enabled": req.Enabled})
+
+	default:
+		respondError(w, "method not allowed")
 	}
 }
 
