@@ -204,6 +204,18 @@ func (s *Server) handleUserInfo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Get server IP from first node's InternalIP
+	serverIP := ""
+	nodes, nodeErr := s.K8s.Clientset.CoreV1().Nodes().List(ctx, metav1.ListOptions{})
+	if nodeErr == nil && len(nodes.Items) > 0 {
+		for _, addr := range nodes.Items[0].Status.Addresses {
+			if addr.Type == corev1.NodeInternalIP {
+				serverIP = addr.Address
+				break
+			}
+		}
+	}
+
 	info := UserInfo{
 		Name:           s.K8s.Username,
 		OwnerRole:      role,
@@ -213,6 +225,7 @@ func (s *Server) handleUserInfo(w http.ResponseWriter, r *http.Request) {
 		CreatedUser:    createdUser,
 		WizardComplete: IsWizardComplete(user),
 		AccessLevel:    accessLevel,
+		ServerIP:       serverIP,
 	}
 
 	respondJSON(w, http.StatusOK, info)
@@ -793,8 +806,27 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 	var results []DeploymentUpdateInfo
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 
+	// Collect containers from Deployments
+	type workload struct {
+		name       string
+		namespace  string
+		containers []corev1.Container
+	}
+	var workloads []workload
 	for _, dep := range deployments.Items {
-		for _, c := range dep.Spec.Template.Spec.Containers {
+		workloads = append(workloads, workload{dep.Name, dep.Namespace, dep.Spec.Template.Spec.Containers})
+	}
+
+	// Also collect DaemonSets
+	daemonsets, dsErr := s.K8s.Clientset.AppsV1().DaemonSets(ns).List(ctx, metav1.ListOptions{})
+	if dsErr == nil {
+		for _, ds := range daemonsets.Items {
+			workloads = append(workloads, workload{ds.Name, ds.Namespace, ds.Spec.Template.Spec.Containers})
+		}
+	}
+
+	for _, wl := range workloads {
+		for _, c := range wl.containers {
 			image := c.Image
 			if !strings.HasPrefix(image, "ghcr.io/packalares/") {
 				continue
@@ -811,7 +843,6 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 
 			// Get remote digest from GHCR manifest API (requires token)
 			remoteDigest := ""
-			// First get an anonymous token
 			tokenURL := fmt.Sprintf("https://ghcr.io/token?scope=repository:packalares/%s:pull", shortName)
 			var ghcrToken string
 			if tokenReq, err := http.NewRequestWithContext(ctx, http.MethodGet, tokenURL, nil); err == nil {
@@ -844,8 +875,8 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 			updateAvailable := remoteDigest != "" && currentDigest != "unknown" && remoteDigest != currentDigest
 
 			results = append(results, DeploymentUpdateInfo{
-				Name:            dep.Name,
-				Namespace:       dep.Namespace,
+				Name:            wl.name,
+				Namespace:       wl.namespace,
 				CurrentImage:    currentImage,
 				CurrentTag:      currentTag,
 				CurrentDigest:   currentDigest[:min(len(currentDigest), 19)],
@@ -879,31 +910,37 @@ func (s *Server) handleUpdateRestart(w http.ResponseWriter, r *http.Request) {
 
 	ns := config.FrameworkNamespace()
 
-	// Verify deployment exists
-	_, err := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
-	if err != nil {
-		respondError(w, fmt.Sprintf("deployment not found: %v", err))
-		return
+	// Try Deployment first, then DaemonSet
+	dep, depErr := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
+	if depErr == nil {
+		if dep.Spec.Template.Annotations == nil {
+			dep.Spec.Template.Annotations = make(map[string]string)
+		}
+		dep.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
+		_, err := s.K8s.Clientset.AppsV1().Deployments(ns).Update(ctx, dep, metav1.UpdateOptions{})
+		if err != nil {
+			respondError(w, fmt.Sprintf("rollout restart failed: %v", err))
+			return
+		}
+		klog.Infof("triggered rolling restart for deployment/%s in %s", name, ns)
+	} else {
+		// Try DaemonSet
+		ds, dsErr := s.K8s.Clientset.AppsV1().DaemonSets(ns).Get(ctx, name, metav1.GetOptions{})
+		if dsErr != nil {
+			respondError(w, fmt.Sprintf("workload %q not found as deployment or daemonset", name))
+			return
+		}
+		if ds.Spec.Template.Annotations == nil {
+			ds.Spec.Template.Annotations = make(map[string]string)
+		}
+		ds.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
+		_, err := s.K8s.Clientset.AppsV1().DaemonSets(ns).Update(ctx, ds, metav1.UpdateOptions{})
+		if err != nil {
+			respondError(w, fmt.Sprintf("rollout restart failed: %v", err))
+			return
+		}
+		klog.Infof("triggered rolling restart for daemonset/%s in %s", name, ns)
 	}
-
-	// Trigger rolling restart by patching the pod template annotation
-	// This is equivalent to "kubectl rollout restart" but uses the K8s API directly
-	dep, err := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
-	if err != nil {
-		respondError(w, fmt.Sprintf("get deployment: %v", err))
-		return
-	}
-	if dep.Spec.Template.Annotations == nil {
-		dep.Spec.Template.Annotations = make(map[string]string)
-	}
-	dep.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
-	_, err = s.K8s.Clientset.AppsV1().Deployments(ns).Update(ctx, dep, metav1.UpdateOptions{})
-	if err != nil {
-		respondError(w, fmt.Sprintf("rollout restart failed: %v", err))
-		return
-	}
-
-	klog.Infof("triggered rolling restart for deployment/%s in %s", name, ns)
 	respondJSON(w, http.StatusOK, map[string]interface{}{
 		"name":    name,
 		"status":  "restarting",

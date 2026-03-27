@@ -38,6 +38,7 @@ type UserInfo struct {
 	CreatedUser    string `json:"created_user"`
 	WizardComplete bool   `json:"wizard_complete"`
 	AccessLevel    *int   `json:"access_level,omitempty"`
+	ServerIP       string `json:"server_ip,omitempty"`
 }
 
 type TerminusInfo struct {

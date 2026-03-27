@@ -225,6 +225,7 @@ onMounted(async () => {
     const d = r?.data ?? r;
     if (d) {
       netInfo.value.zone = d.zone || d.terminusName || '--';
+      netInfo.value.ip = d.server_ip || '--';
       const parts = (d.zone || '').split('.');
       netInfo.value.domain = parts.length >= 2 ? parts.slice(1).join('.') : '--';
     }
@@ -256,14 +257,6 @@ onMounted(async () => {
     // SSH endpoint may not be available; keep defaults
   }
 
-  // Detect server IP from parent window or current host
-  const host = window.location.hostname;
-  const parentHost = window.parent?.location?.hostname || '';
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(parentHost)) {
-    netInfo.value.ip = parentHost;
-  } else if (/^\d+\.\d+\.\d+\.\d+$/.test(host)) {
-    netInfo.value.ip = host;
-  }
 });
 
 async function applySSH() {
