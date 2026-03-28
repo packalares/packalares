@@ -139,6 +139,11 @@ func LoadConfig() (*Config, error) {
 	if v := get("LLDAP_PASSWORD"); v != "" {
 		cfg.LLDAPPassword = v
 	}
+	if cfg.LLDAPPassword == "" {
+		if v := get("LLDAP_ADMIN_PASSWORD"); v != "" {
+			cfg.LLDAPPassword = v
+		}
+	}
 	if v := get("LLDAP_BASE_DN"); v != "" {
 		cfg.LLDAPBaseDN = v
 	}
