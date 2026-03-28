@@ -156,23 +156,22 @@ func SeedInfisical(opts *InstallOptions) error {
 		"sh", "-c", storeCmd)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		fmt.Printf("  Warning: store secrets: %v\n%s\n", err, string(out))
-	} else {
-		fmt.Printf("  Stored %d secrets in Infisical\n", len(secrets))
+		return fmt.Errorf("store secrets in Infisical: %v\n%s", err, string(out))
 	}
+	fmt.Printf("  Stored %d secrets in Infisical\n", len(secrets))
 
 	// Save admin info
 	stateDir := filepath.Join(opts.BaseDir, "state")
 	adminEmail := config.Username() + "@" + config.Domain()
 	os.WriteFile(filepath.Join(stateDir, "infisical_admin_email"), []byte(adminEmail), 0600)
 
-	// Delete plain-text secrets from disk — they're now in Infisical
+	// Delete plain-text secrets from disk — they're now safely in Infisical
 	fmt.Println("  Cleaning up plain-text secrets from disk ...")
 	entries, _ := os.ReadDir(stateDir)
 	for _, e := range entries {
 		name := e.Name()
 		if name == "infisical_admin_email" {
-			continue // keep this one
+			continue
 		}
 		os.Remove(filepath.Join(stateDir, name))
 	}

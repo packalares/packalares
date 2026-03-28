@@ -381,14 +381,20 @@ func SeedAndStart(ctx context.Context, listenAddr string, initialSecrets map[str
 		srv.privateKey = result.PrivateKey
 		log.Printf("tapr: seeded user=%s org=%s session=%s", srv.userID, srv.orgID, srv.sessionID)
 
-		// Create workspace immediately so it's ready when services call
+		// Create workspace — retry until Infisical's HTTP API is ready
 		token, err := srv.issueToken()
 		if err == nil {
-			wsID, err := srv.getOrCreateDefaultWorkspace(token)
-			if err != nil {
-				log.Printf("tapr: warning: create workspace: %v", err)
-			} else {
-				log.Printf("tapr: workspace ready: %s", wsID)
+			for attempt := 0; attempt < 30; attempt++ {
+				wsID, err := srv.getOrCreateDefaultWorkspace(token)
+				if err == nil {
+					log.Printf("tapr: workspace ready: %s", wsID)
+					break
+				}
+				if attempt < 29 {
+					time.Sleep(2 * time.Second)
+				} else {
+					log.Printf("tapr: warning: create workspace failed after 30 attempts: %v", err)
+				}
 			}
 		}
 	}
