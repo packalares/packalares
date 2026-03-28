@@ -247,10 +247,11 @@ onMounted(async () => {
 
   // Load user info
   try {
-    const res = await axios.get('/bfl/backend/v1/user-info');
+    const res = await axios.get('/api/user/info');
     const d = res?.data?.data ?? res?.data;
     if (d) {
       if (d.name) username.value = d.name;
+      if (d.server_ip) serverIP.value = d.server_ip;
       if (d.zone) {
         sysZone.value = d.zone;
         const parts = d.zone.split('.');
