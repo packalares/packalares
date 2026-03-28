@@ -226,9 +226,14 @@ func AuthWebSocketHandler() http.Handler {
 			if origin == "" {
 				return nil // non-browser clients
 			}
-			// Allow https://ZONE and https://*.ZONE
+			// Allow https://ZONE, https://*.ZONE, and https://SERVER_IP
 			allowed := "https://" + zone
 			if origin == allowed {
+				return nil
+			}
+			// Allow server IP
+			serverIP := os.Getenv("SERVER_IP")
+			if serverIP != "" && origin == "https://"+serverIP {
 				return nil
 			}
 			// Check subdomain: strip https://, check suffix

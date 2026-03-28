@@ -54,6 +54,8 @@ spec:
               value: "{{USERNAME}}"
             - name: USER_ZONE
               value: "{{USER_ZONE}}"
+            - name: SERVER_IP
+              value: "{{SERVER_IP}}"
             - name: CHART_REPO_URL
               value: "http://chart-repo-service.{{FRAMEWORK_NAMESPACE}}:82/"
             - name: LLDAP_HOST
