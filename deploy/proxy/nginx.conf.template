@@ -418,14 +418,22 @@ http {
     set $bfl_up bfl.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
     set $desktop_up desktop-svc.{{USER_NAMESPACE}}.svc.cluster.local;
 
+    # Static assets → desktop
     location /js/    { proxy_pass http://$desktop_up:80; }
     location /css/   { proxy_pass http://$desktop_up:80; }
     location /fonts/ { proxy_pass http://$desktop_up:80; }
-    location ~ ^/(?!api/)[^/]*\.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
+    location ~ ^/(?!api/|bfl/)[^/]*\.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
     location = /     { rewrite ^ /login last; }
-    location /api/user/info     { proxy_pass http://$bfl_up:80/bfl/backend/v1/user-info; proxy_set_header Host $host; }
-    location /bfl/info/v1/      { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; }
-    location /api/   { proxy_pass http://$auth_up:9091; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+
+    # Auth API → auth backend
+    location /api/auth/ { proxy_pass http://$auth_up:9091; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+
+    # BFL API → bfl (public, for wizard + user info)
+    location /api/user/info  { proxy_pass http://$bfl_up:80/bfl/backend/v1/user-info; proxy_set_header Host $host; }
+    location /api/settings/  { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+    location /bfl/           { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+
+    # Everything else → desktop SPA
     location /       { proxy_pass http://$desktop_up:80; }
   }
 
