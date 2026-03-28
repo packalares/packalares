@@ -115,12 +115,48 @@
 
           <div class="card-actions">
             <button class="btn-ghost" @click="step = 1">Back</button>
-            <button class="btn-action" @click="step = 3">Continue</button>
+            <button class="btn-action" @click="goToCerts">Continue</button>
           </div>
         </div>
 
-        <!-- Step 3: Complete -->
-        <div v-else-if="step === 3" key="complete" class="wizard-card">
+        <!-- Step 3: Certificate Setup (only for domain access) -->
+        <div v-else-if="step === 3" key="certs" class="wizard-card">
+          <h1 class="card-title">Certificate Setup</h1>
+          <p class="card-desc">
+            Your browser needs to trust the self-signed certificate for each subdomain.
+            Click each link below and accept the certificate warning.
+          </p>
+
+          <div class="cert-list">
+            <div v-for="sub in certSubdomains" :key="sub.name" class="cert-row">
+              <div class="cert-status" :class="sub.ok ? 'cert-ok' : 'cert-fail'">
+                <svg v-if="sub.ok" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+              </div>
+              <span class="cert-name">{{ sub.name }}</span>
+              <a v-if="!sub.ok" :href="'https://' + sub.name" target="_blank" class="cert-accept-link">Accept →</a>
+              <span v-else class="cert-accepted">Trusted</span>
+            </div>
+          </div>
+
+          <div class="cert-download">
+            <p class="cert-download-text">Or download and install the CA certificate to trust all subdomains at once:</p>
+            <a :href="caDownloadUrl" download="packalares-ca.crt" class="cert-download-link">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Download CA Certificate
+            </a>
+          </div>
+
+          <div class="card-actions">
+            <button class="btn-ghost" @click="step = 2">Back</button>
+            <button class="btn-action" :disabled="!allCertsOk" @click="step = 4">
+              {{ allCertsOk ? 'Continue' : 'Accept all certificates to continue' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Step 4: Complete -->
+        <div v-else-if="step === 4" key="complete" class="wizard-card">
           <h1 class="card-title">Ready to Activate</h1>
           <p class="card-desc">Review your settings and activate Packalares.</p>
 
@@ -146,7 +182,7 @@
           <p v-if="activateError" class="field-error">{{ activateError }}</p>
 
           <div class="card-actions">
-            <button class="btn-ghost" :disabled="activating" @click="step = 2">Back</button>
+            <button class="btn-ghost" :disabled="activating" @click="step = needsCerts ? 3 : 2">Back</button>
             <button class="btn-action" :disabled="activating" @click="activate">
               <span v-if="activating" class="spinner-inline" />
               {{ activating ? 'Activating...' : 'Launch Desktop' }}
@@ -160,11 +196,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 
-// Steps labels
-const steps = ['Welcome', 'Account', 'Network', 'Complete'];
+// Steps labels (dynamic — certs step only for domain access)
+const needsCerts = ref(false);
+const steps = computed(() => {
+  if (needsCerts.value) return ['Welcome', 'Account', 'Network', 'Certificates', 'Complete'];
+  return ['Welcome', 'Account', 'Network', 'Complete'];
+});
 const step = ref(0);
 
 // Account
@@ -179,7 +219,16 @@ const sysDomain = ref('');
 const sysZone = ref('');
 const serverIP = ref('');
 
-// Tailscale
+// Certificates
+interface CertCheck { name: string; ok: boolean }
+const certSubdomains = ref<CertCheck[]>([]);
+const allCertsOk = computed(() => certSubdomains.value.length > 0 && certSubdomains.value.every(c => c.ok));
+const caDownloadUrl = computed(() => {
+  const host = window.location.hostname;
+  if (/^\d/.test(host)) return `https://${host}/ca.crt`;
+  return '/ca.crt';
+});
+let certCheckTimer: ReturnType<typeof setInterval> | null = null;
 
 // Activation
 const activating = ref(false);
@@ -236,6 +285,45 @@ onMounted(async () => {
   // Tailscale configured post-wizard in Settings → Network
 });
 
+// ---------- Cert checking ----------
+function initCertSubdomains() {
+  if (!sysZone.value) return;
+  const prefixes = ['api', 'desktop', 'auth', 'settings', 'market', 'dashboard', 'files'];
+  certSubdomains.value = prefixes.map(p => ({ name: `${p}.${sysZone.value}`, ok: false }));
+}
+
+async function checkCerts() {
+  for (const sub of certSubdomains.value) {
+    try {
+      const resp = await fetch(`https://${sub.name}/api/auth/health`, { mode: 'no-cors', cache: 'no-store' });
+      // no-cors returns opaque response — status 0 means it connected (cert accepted)
+      sub.ok = true;
+    } catch {
+      // Network error = cert not accepted
+      try {
+        // Try with regular mode — if cert is accepted, we get a real response
+        const resp2 = await fetch(`https://${sub.name}/api/auth/health`, { cache: 'no-store' });
+        sub.ok = true;
+      } catch {
+        sub.ok = false;
+      }
+    }
+  }
+}
+
+function goToCerts() {
+  const host = window.location.hostname;
+  needsCerts.value = !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+  if (needsCerts.value) {
+    initCertSubdomains();
+    checkCerts();
+    certCheckTimer = setInterval(checkCerts, 3000);
+    step.value = 3;
+  } else {
+    step.value = 4; // skip certs for IP access
+  }
+}
+
 // ---------- Validation ----------
 function goToNetwork() {
   accountError.value = '';
@@ -279,6 +367,10 @@ async function activate() {
     activating.value = false;
   }
 }
+
+onUnmounted(() => {
+  if (certCheckTimer) clearInterval(certCheckTimer);
+});
 </script>
 
 <style scoped>
@@ -689,5 +781,104 @@ async function activate() {
   .info-grid {
     grid-template-columns: 1fr;
   }
+}
+
+/* ===== Certificate step ===== */
+.cert-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 16px 0;
+}
+
+.cert-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.cert-status {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.cert-ok {
+  background: rgba(52, 211, 153, 0.15);
+  color: #34d399;
+}
+
+.cert-fail {
+  background: rgba(248, 113, 113, 0.15);
+  color: #f87171;
+}
+
+.cert-name {
+  flex: 1;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Inter', monospace;
+}
+
+.cert-accept-link {
+  font-size: 12px;
+  color: #818cf8;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: rgba(129, 140, 248, 0.1);
+  transition: background 0.15s;
+}
+
+.cert-accept-link:hover {
+  background: rgba(129, 140, 248, 0.2);
+}
+
+.cert-accepted {
+  font-size: 12px;
+  color: #34d399;
+  font-weight: 500;
+}
+
+.cert-download {
+  margin: 20px 0 8px;
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+}
+
+.cert-download-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.cert-download-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #818cf8;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(129, 140, 248, 0.1);
+  transition: background 0.15s;
+}
+
+.cert-download-link:hover {
+  background: rgba(129, 140, 248, 0.2);
 }
 </style>

@@ -155,6 +155,9 @@ data:
         location /avatar-default.png { proxy_pass http://$desktop_up:80; }
         location ~ ^/(?!api/)[^/]*\.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
     
+        # --- CA cert download (public) ---
+        location = /ca.crt { alias /etc/ca/ca.crt; default_type application/x-x509-ca-cert; }
+
         # --- Login page (public) ---
         location /login  { proxy_pass http://$desktop_up:80; }
         location /wizard { proxy_pass http://$desktop_up:80; }
@@ -441,7 +444,8 @@ data:
         location /api/user/info  { proxy_pass http://$bfl_up:80/bfl/backend/v1/user-info; proxy_set_header Host $host; }
         location /bfl/info/      { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; }
         location /bfl/iam/       { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
-    
+        location = /ca.crt       { alias /etc/ca/ca.crt; default_type application/x-x509-ca-cert; }
+
         # Everything else → desktop SPA
         location /       { proxy_pass http://$desktop_up:80; }
       }
@@ -506,6 +510,9 @@ spec:
         - name: tls
           mountPath: /etc/tls
           readOnly: true
+        - name: ca
+          mountPath: /etc/ca
+          readOnly: true
       volumes:
       - name: config
         configMap:
@@ -513,3 +520,7 @@ spec:
       - name: tls
         secret:
           secretName: {{TLS_SECRET_NAME}}
+      - name: ca
+        configMap:
+          name: packalares-ca
+          optional: true
