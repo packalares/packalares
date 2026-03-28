@@ -140,15 +140,12 @@ func LoadConfig() (*Config, error) {
 	if v := get("LLDAP_USER"); v != "" {
 		cfg.LLDAPUser = v
 	}
-	// Service account password
+	// Service account password (from Infisical)
 	if v := get("SVC_LLDAP_PASSWORD"); v != "" {
 		cfg.LLDAPPassword = v
 	}
-	// Admin password (for bootstrapping service account)
-	if v := get("LLDAP_ADMIN_PASSWORD"); v != "" {
-		cfg.LLDAPAdminPassword = v
-	}
-	if v := get("LLDAP_PASSWORD"); v != "" {
+	// Admin password (from K8s Secret via env, only for bootstrapping)
+	if v := os.Getenv("LLDAP_ADMIN_PASSWORD"); v != "" {
 		cfg.LLDAPAdminPassword = v
 	}
 	// Fallback: if no service password, use admin password (pre-migration)
