@@ -139,6 +139,9 @@ func SeedInfisical(opts *InstallOptions) error {
 		"ENCRYPTION_KEY":       os.Getenv("ENCRYPTION_KEY"),
 		"AUTH_SECRET":          os.Getenv("AUTH_SECRET"),
 		"SAMBA_PASSWORD":       os.Getenv("SAMBA_PASSWORD"),
+		"LLDAP_ADMIN_PASSWORD": os.Getenv("LLDAP_ADMIN_PASSWORD"),
+		"SVC_LLDAP_PASSWORD":   os.Getenv("SVC_LLDAP_PASSWORD"),
+		"TAPR_AUTH_TOKEN":      os.Getenv("TAPR_AUTH_TOKEN"),
 	}
 
 	// Store secrets via kubectl exec into the tapr sidecar
@@ -162,6 +165,17 @@ func SeedInfisical(opts *InstallOptions) error {
 	stateDir := filepath.Join(opts.BaseDir, "state")
 	adminEmail := config.Username() + "@" + config.Domain()
 	os.WriteFile(filepath.Join(stateDir, "infisical_admin_email"), []byte(adminEmail), 0600)
+
+	// Delete plain-text secrets from disk — they're now in Infisical
+	fmt.Println("  Cleaning up plain-text secrets from disk ...")
+	entries, _ := os.ReadDir(stateDir)
+	for _, e := range entries {
+		name := e.Name()
+		if name == "infisical_admin_email" {
+			continue // keep this one
+		}
+		os.Remove(filepath.Join(stateDir, name))
+	}
 
 	fmt.Printf("  Infisical admin: %s\n", adminEmail)
 	return nil
