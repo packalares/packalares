@@ -146,9 +146,10 @@ func SeedInfisical(opts *InstallOptions) error {
 
 	// Store secrets via kubectl exec into the tapr sidecar
 	secretsJSON, _ := json.Marshal(secrets)
+	taprToken := os.Getenv("TAPR_AUTH_TOKEN")
 	storeCmd := fmt.Sprintf(
-		`wget -q -O- --post-data='%s' --header='Content-Type: application/json' http://localhost:8081/secrets`,
-		string(secretsJSON),
+		`wget -q -O- --post-data='%s' --header='Content-Type: application/json' --header='Authorization: Bearer %s' http://localhost:8081/secrets`,
+		string(secretsJSON), taprToken,
 	)
 
 	cmd := exec.Command("kubectl", "exec", "-n", ns,
