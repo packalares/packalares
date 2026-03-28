@@ -296,7 +296,9 @@ function initCertSubdomains() {
 
 async function checkOneCert(sub: CertCheck): Promise<boolean> {
   try {
-    await fetch(`https://${sub.name}/api/auth/health`, { cache: 'no-store' });
+    // no-cors: opaque response = connection succeeded = cert trusted
+    // network error = cert not trusted
+    await fetch(`https://${sub.name}/favicon.ico`, { mode: 'no-cors', cache: 'no-store' });
     return true;
   } catch {
     return false;
@@ -314,10 +316,13 @@ async function checkAllCerts() {
 
 function openCertPopup(sub: CertCheck) {
   sub.pending = true;
+  const w = 500, h = 400;
+  const left = Math.round((screen.width - w) / 2);
+  const top = Math.round((screen.height - h) / 2);
   const popup = window.open(
     `https://${sub.name}`,
     'cert_accept',
-    'width=600,height=450,scrollbars=yes,resizable=yes'
+    `width=${w},height=${h},left=${left},top=${top},scrollbars=yes,resizable=yes`
   );
 
   // Poll until the popup loads successfully (cert accepted) or is closed
