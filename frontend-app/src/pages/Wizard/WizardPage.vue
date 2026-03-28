@@ -264,7 +264,7 @@ async function activate() {
     await axios.put(`/bfl/iam/v1alpha1/users/${username.value}/password`, {
       current_password: '',
       password: password.value,
-    });
+    }, { headers: { 'X-Requested-With': 'packalares' } });
 
     // Done — redirect to login
     window.location.href = '/login';
