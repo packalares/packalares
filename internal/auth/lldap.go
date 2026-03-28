@@ -140,6 +140,34 @@ func (l *LLDAPClient) GetUserGroups(adminUser, adminPassword, username string) (
 	return groups, nil
 }
 
+// SetPasswordLDAP sets a user's password by binding as admin via LDAP.
+// Used for bootstrapping the service account.
+func (l *LLDAPClient) SetPasswordLDAP(adminUser, adminPassword, targetUser, newPassword, baseDN string) error {
+	ldapAddr := fmt.Sprintf("%s:3890", l.host)
+
+	conn, err := ldapv3.Dial("tcp", ldapAddr)
+	if err != nil {
+		return fmt.Errorf("ldap connect: %w", err)
+	}
+	defer conn.Close()
+
+	// Bind as admin
+	adminDN := fmt.Sprintf("uid=%s,ou=people,%s", ldapv3.EscapeFilter(adminUser), baseDN)
+	if err := conn.Bind(adminDN, adminPassword); err != nil {
+		return fmt.Errorf("ldap admin bind: %w", err)
+	}
+
+	// Set target user's password
+	targetDN := fmt.Sprintf("uid=%s,ou=people,%s", ldapv3.EscapeFilter(targetUser), baseDN)
+	req := ldapv3.NewPasswordModifyRequest(targetDN, "", newPassword)
+	_, err = conn.PasswordModify(req)
+	if err != nil {
+		return fmt.Errorf("ldap password modify for %s: %w", targetUser, err)
+	}
+
+	return nil
+}
+
 // ChangePasswordLDAP changes a user's password via the LDAP protocol (port 3890).
 // LLDAP v0.5 has no HTTP API for password changes, but LDAP password modify works.
 func (l *LLDAPClient) ChangePasswordLDAP(username, oldPassword, newPassword, baseDN string) error {
