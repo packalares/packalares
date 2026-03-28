@@ -283,7 +283,17 @@ async function fetchUserInfo() {
       window.location.href = '/wizard';
       return;
     }
-  } catch {}
+  } catch {
+    // Fallback: check via user-info
+    try {
+      const r: any = await api.get('/api/user/info');
+      const d = r?.data ?? r;
+      if (d && d.wizard_complete === false) {
+        window.location.href = '/wizard';
+        return;
+      }
+    } catch {}
+  }
 
   try {
     const res: any = await api.get('/api/user/info');

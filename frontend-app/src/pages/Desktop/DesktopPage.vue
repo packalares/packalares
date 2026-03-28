@@ -834,6 +834,16 @@ async function loadApps() {
 import { applyTheme } from 'src/composables/useTheme';
 
 onMounted(async () => {
+  // Check wizard status — redirect if not completed
+  try {
+    const r: any = await api.get('/api/user/info');
+    const d = r?.data ?? r;
+    if (d && d.wizard_complete === false) {
+      window.location.href = '/wizard';
+      return;
+    }
+  } catch {}
+
   // Apply saved theme
   const savedTheme = localStorage.getItem('packalares_theme') || 'dark';
   applyTheme(savedTheme);
