@@ -172,6 +172,73 @@ func (l *LLDAPClient) ChangePassword(adminUser, adminPassword, username, newPass
 	return nil
 }
 
+// CreateUser creates a new user in LLDAP. Returns nil if user already exists.
+func (l *LLDAPClient) CreateUser(adminUser, adminPassword, username, password, displayName string) error {
+	adminToken, err := l.getToken(adminUser, adminPassword)
+	if err != nil {
+		return fmt.Errorf("get admin token: %w", err)
+	}
+
+	url := fmt.Sprintf("http://%s:%d/api/graphql", l.host, l.port)
+	gqlBody, _ := json.Marshal(map[string]string{
+		"query": fmt.Sprintf(`mutation { createUser(user: {id: "%s", displayName: "%s"}) { id } }`,
+			escapeGraphQL(username), escapeGraphQL(displayName)),
+	})
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(gqlBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+
+	resp, err := l.client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+
+	// If user already exists, that's fine
+	if strings.Contains(string(body), "already exists") {
+		return nil
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("create user failed: %s", string(body))
+	}
+
+	// Set the password
+	return l.ChangePassword(adminUser, adminPassword, username, password)
+}
+
+// AddUserToGroup adds a user to an LLDAP group.
+func (l *LLDAPClient) AddUserToGroup(adminUser, adminPassword, username string, groupID int) error {
+	adminToken, err := l.getToken(adminUser, adminPassword)
+	if err != nil {
+		return err
+	}
+
+	url := fmt.Sprintf("http://%s:%d/api/graphql", l.host, l.port)
+	gqlBody, _ := json.Marshal(map[string]string{
+		"query": fmt.Sprintf(`mutation { addUserToGroup(userId: "%s", groupId: %d) { ok } }`,
+			escapeGraphQL(username), groupID),
+	})
+
+	req, err := http.NewRequest("POST", url, bytes.NewReader(gqlBody))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+adminToken)
+
+	resp, err := l.client.Do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	return nil
+}
+
 func (l *LLDAPClient) getToken(username, password string) (string, error) {
 	url := fmt.Sprintf("http://%s:%d/auth/simple/login", l.host, l.port)
 

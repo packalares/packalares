@@ -24,9 +24,27 @@ type Server struct {
 
 func NewServer(cfg *Config) *Server {
 	store := NewSessionStore(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
+	lldap := NewLLDAPClient(cfg.LLDAPHost, cfg.LLDAPPort)
+
+	// Bootstrap service account if it doesn't exist
+	if cfg.LLDAPAdminPassword != "" && cfg.LLDAPUser != cfg.LLDAPAdminUser {
+		err := lldap.CreateUser(cfg.LLDAPAdminUser, cfg.LLDAPAdminPassword,
+			cfg.LLDAPUser, cfg.LLDAPPassword, "Service Account")
+		if err != nil {
+			log.Printf("warning: could not create service account %q: %v (will use admin)", cfg.LLDAPUser, err)
+			// Fallback to admin
+			cfg.LLDAPUser = cfg.LLDAPAdminUser
+			cfg.LLDAPPassword = cfg.LLDAPAdminPassword
+		} else {
+			// Add to lldap_admin group (group 1) so it has API access
+			_ = lldap.AddUserToGroup(cfg.LLDAPAdminUser, cfg.LLDAPAdminPassword, cfg.LLDAPUser, 1)
+			log.Printf("service account %q ready", cfg.LLDAPUser)
+		}
+	}
+
 	s := &Server{
 		cfg:      cfg,
-		lldap:    NewLLDAPClient(cfg.LLDAPHost, cfg.LLDAPPort),
+		lldap:    lldap,
 		sessions: store,
 		limiter:  NewRateLimiter(store.Redis()),
 		mux:      http.NewServeMux(),

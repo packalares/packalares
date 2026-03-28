@@ -47,11 +47,13 @@ type Config struct {
 	RedisDB       int
 
 	// LLDAP connection for user authentication.
-	LLDAPHost     string
-	LLDAPPort     int
-	LLDAPUser     string
-	LLDAPPassword string
-	LLDAPBaseDN   string
+	LLDAPHost         string
+	LLDAPPort         int
+	LLDAPUser         string // service account for API calls
+	LLDAPPassword     string // service account password
+	LLDAPAdminUser    string // admin user (for bootstrapping service account)
+	LLDAPAdminPassword string
+	LLDAPBaseDN       string
 
 	// Session settings.
 	SessionName       string
@@ -80,11 +82,13 @@ func LoadConfig() (*Config, error) {
 		RedisAddr:      config.KVRocksHost() + ":" + config.KVRocksPort(),
 		RedisPassword:  "",
 		RedisDB:        0,
-		LLDAPHost:      config.LLDAPHost(),
-		LLDAPPort:      17170,
-		LLDAPUser:      "admin",
-		LLDAPPassword:  "",
-		LLDAPBaseDN:    "dc=packalares,dc=local",
+		LLDAPHost:          config.LLDAPHost(),
+		LLDAPPort:          17170,
+		LLDAPUser:          "svc-packalares",
+		LLDAPPassword:      "",
+		LLDAPAdminUser:     "admin",
+		LLDAPAdminPassword: "",
+		LLDAPBaseDN:        "dc=packalares,dc=local",
 		SessionName:    "packalares_session",
 		SessionMaxAgeSec:  1209600, // 14 days
 		SessionInactivity: 604800,  // 7 days
@@ -136,13 +140,20 @@ func LoadConfig() (*Config, error) {
 	if v := get("LLDAP_USER"); v != "" {
 		cfg.LLDAPUser = v
 	}
-	if v := get("LLDAP_PASSWORD"); v != "" {
+	// Service account password
+	if v := get("SVC_LLDAP_PASSWORD"); v != "" {
 		cfg.LLDAPPassword = v
 	}
+	// Admin password (for bootstrapping service account)
+	if v := get("LLDAP_ADMIN_PASSWORD"); v != "" {
+		cfg.LLDAPAdminPassword = v
+	}
+	if v := get("LLDAP_PASSWORD"); v != "" {
+		cfg.LLDAPAdminPassword = v
+	}
+	// Fallback: if no service password, use admin password (pre-migration)
 	if cfg.LLDAPPassword == "" {
-		if v := get("LLDAP_ADMIN_PASSWORD"); v != "" {
-			cfg.LLDAPPassword = v
-		}
+		cfg.LLDAPPassword = cfg.LLDAPAdminPassword
 	}
 	if v := get("LLDAP_BASE_DN"); v != "" {
 		cfg.LLDAPBaseDN = v
