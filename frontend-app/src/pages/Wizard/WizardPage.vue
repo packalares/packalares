@@ -111,51 +111,7 @@
             </div>
           </div>
 
-          <div class="ts-section">
-            <div class="ts-header" @click="showTailscale = !showTailscale">
-              <span class="ts-header-label">Tailscale (optional)</span>
-              <svg
-                :class="{ rotated: showTailscale }"
-                class="chevron"
-                width="16" height="16" viewBox="0 0 24 24"
-                fill="none" stroke="currentColor" stroke-width="2"
-                stroke-linecap="round" stroke-linejoin="round"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </div>
-            <transition name="expand">
-              <div v-if="showTailscale" class="ts-fields">
-                <div class="field-group">
-                  <label class="field-label">Auth Key</label>
-                  <input
-                    v-model="tsAuthKey"
-                    type="password"
-                    class="field-input"
-                    placeholder="tskey-auth-..."
-                  />
-                </div>
-                <div class="field-group">
-                  <label class="field-label">Control URL</label>
-                  <input
-                    v-model="tsControlURL"
-                    type="text"
-                    class="field-input"
-                    placeholder="https://controlplane.tailscale.com"
-                  />
-                </div>
-                <div class="field-group">
-                  <label class="field-label">Hostname</label>
-                  <input
-                    v-model="tsHostname"
-                    type="text"
-                    class="field-input"
-                    placeholder="packalares"
-                  />
-                </div>
-              </div>
-            </transition>
-          </div>
+          <p class="card-hint">You can configure Tailscale VPN and SSH access in Settings → Network after setup.</p>
 
           <div class="card-actions">
             <button class="btn-ghost" @click="step = 1">Back</button>
@@ -184,10 +140,6 @@
             <div class="summary-row">
               <span class="summary-label">User Zone</span>
               <span class="summary-value">{{ sysZone || '--' }}</span>
-            </div>
-            <div v-if="tsAuthKey" class="summary-row">
-              <span class="summary-label">Tailscale</span>
-              <span class="summary-value">Configured</span>
             </div>
           </div>
 
@@ -228,10 +180,6 @@ const sysZone = ref('');
 const serverIP = ref('');
 
 // Tailscale
-const showTailscale = ref(false);
-const tsAuthKey = ref('');
-const tsControlURL = ref('');
-const tsHostname = ref('packalares');
 
 // Activation
 const activating = ref(false);
@@ -285,18 +233,7 @@ onMounted(async () => {
   }
 
   // Load Tailscale config
-  try {
-    const tsRes = await axios.get('/api/settings/tailscale');
-    const ts = tsRes?.data?.data ?? tsRes?.data;
-    if (ts) {
-      tsAuthKey.value = ts.auth_key || '';
-      tsControlURL.value = ts.control_url || '';
-      tsHostname.value = ts.hostname || 'packalares';
-      if (tsAuthKey.value) showTailscale.value = true;
-    }
-  } catch {
-    // not configured yet
-  }
+  // Tailscale configured post-wizard in Settings → Network
 });
 
 // ---------- Validation ----------
@@ -339,18 +276,7 @@ async function activate() {
       password: password.value,
     });
 
-    // Step 4: Save Tailscale config if provided
-    if (tsAuthKey.value) {
-      try {
-        await axios.post('/api/settings/tailscale', {
-          auth_key: tsAuthKey.value,
-          hostname: tsHostname.value,
-          control_url: tsControlURL.value,
-        });
-      } catch {
-        // non-fatal
-      }
-    }
+    // Tailscale configured post-wizard in Settings → Network
 
     // Done -- redirect to login
     window.location.href = '/login';

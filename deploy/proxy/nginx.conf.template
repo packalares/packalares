@@ -429,9 +429,12 @@ http {
     location /api/auth/ { proxy_pass http://$auth_up:9091; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
 
     # BFL API → bfl (public, for wizard + user info)
+    # Public BFL (wizard)
     location /api/user/info  { proxy_pass http://$bfl_up:80/bfl/backend/v1/user-info; proxy_set_header Host $host; }
-    location /api/settings/  { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
-    location /bfl/           { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+    location /bfl/info/      { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; }
+    location /bfl/settings/v1alpha1/activate     { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+    location /bfl/settings/v1alpha1/binding-zone { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+    location /bfl/iam/       { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
 
     # Everything else → desktop SPA
     location /       { proxy_pass http://$desktop_up:80; }
