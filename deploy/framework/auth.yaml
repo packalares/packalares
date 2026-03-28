@@ -47,11 +47,6 @@ spec:
           value: "lldap-svc.{{PLATFORM_NAMESPACE}}"
         - name: LLDAP_PORT
           value: "17170"
-        - name: LLDAP_ADMIN_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: lldap-secret
-              key: admin-password
         - name: TOTP_ISSUER
           value: "packalares"
         - name: AUTH_LISTEN_ADDR
