@@ -110,6 +110,12 @@ spec:
       namespaceSelector:
         matchLabels:
           kubernetes.io/metadata.name: os-framework
+    - podSelector:
+        matchLabels:
+          app: bfl
+      namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: os-framework
     ports:
     - port: 3890
     - port: 17170

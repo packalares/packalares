@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"net/http"
 	"time"
 
 	"github.com/google/uuid"
@@ -46,10 +47,18 @@ func Seed(ctx context.Context, cfg SeedConfig) (*SeedResult, error) {
 	}
 	defer db.Close()
 
-	// Wait for DB
-	for i := 0; i < 30; i++ {
-		if err := db.PingContext(ctx); err == nil {
-			break
+	// Wait for Infisical to be fully ready (migrations complete, API serving)
+	httpClient := &http.Client{Timeout: 5 * time.Second}
+	for i := 0; i < 120; i++ {
+		resp, err := httpClient.Get("http://localhost:8080/api/status")
+		if err == nil {
+			resp.Body.Close()
+			if resp.StatusCode == 200 {
+				break
+			}
+		}
+		if i == 119 {
+			return nil, fmt.Errorf("infisical not ready after 4 minutes")
 		}
 		time.Sleep(2 * time.Second)
 	}
@@ -135,8 +144,7 @@ func Seed(ctx context.Context, cfg SeedConfig) (*SeedResult, error) {
 			 VALUES ($1, 'organization', $2, $3, true, 'accepted', $4, $5)`,
 			uuid.New().String(), userID, orgID, now, now)
 		if err != nil {
-			// Ignore — schema might differ
-			fmt.Printf("tapr: warning: create membership: %v\n", err)
+			return nil, fmt.Errorf("create membership: %w", err)
 		}
 	}
 
