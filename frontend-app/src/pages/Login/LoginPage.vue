@@ -275,25 +275,18 @@ function getRedirectUrl(responseRedirect?: string): string {
 
 // ---------- Fetch user info ----------
 async function fetchUserInfo() {
+  // Use same-origin fetch (not api instance which goes cross-origin on subdomains)
   try {
-    // Check wizard status — redirect if not completed
-    const infoRes: any = await api.get('/bfl/info/v1/olares-info');
-    const infoData = infoRes?.data ?? infoRes;
-    if (infoData?.wizardStatus && infoData.wizardStatus !== 'completed') {
-      window.location.href = '/wizard';
-      return;
-    }
-  } catch {
-    // Fallback: check via user-info
-    try {
-      const r: any = await api.get('/api/user/info');
-      const d = r?.data ?? r;
+    const infoRes = await fetch('/api/user/info');
+    if (infoRes.ok) {
+      const json = await infoRes.json();
+      const d = json?.data ?? json;
       if (d && d.wizard_complete === false) {
         window.location.href = '/wizard';
         return;
       }
-    } catch {}
-  }
+    }
+  } catch {}
 
   try {
     const res: any = await api.get('/api/user/info');

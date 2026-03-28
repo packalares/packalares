@@ -1,5 +1,5 @@
 <template>
-  <div class="desktop-root" @click="onDesktopClick" @contextmenu.prevent>
+  <div v-if="ready" class="desktop-root" @click="onDesktopClick" @contextmenu.prevent>
     <!-- Wallpaper -->
     <div class="desktop-bg-container">
       <img class="desktop-bg" :src="wallpaper" />
@@ -317,6 +317,7 @@ const monitorStore = useMonitorStore();
 
 // ─── State ───────────────────────────────────────────────────
 
+const ready = ref(false);
 const wallpaper = ref(localStorage.getItem('packalares_wallpaper') || '/bg/macos4.jpg');
 
 // Watch for wallpaper changes from Settings/Appearance (works across tabs and iframes)
@@ -843,6 +844,8 @@ onMounted(async () => {
       return;
     }
   } catch {}
+
+  ready.value = true;
 
   // Apply saved theme
   const savedTheme = localStorage.getItem('packalares_theme') || 'dark';
