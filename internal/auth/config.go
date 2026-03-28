@@ -93,7 +93,7 @@ func LoadConfig() (*Config, error) {
 		SessionMaxAgeSec:  1209600, // 14 days
 		SessionInactivity: 604800,  // 7 days
 		TOTPIssuer:     "packalares",
-		CookieSameSite: "lax",
+		CookieSameSite: "none",
 	}
 
 	// Helper: get from Infisical first, then env var
