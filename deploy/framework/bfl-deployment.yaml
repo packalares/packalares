@@ -90,6 +90,10 @@ spec:
               value: "{{DOMAIN}}"
             - name: OLARES_LOCAL_DOMAIN
               value: "{{DOMAIN}}"
+            - name: LLDAP_HOST
+              value: "lldap-svc.{{PLATFORM_NAMESPACE}}"
+            - name: LLDAP_ADMIN_PASSWORD
+              value: "{{LLDAP_ADMIN_PASSWORD}}"
             - name: HOSTCTL_TOKEN
               valueFrom:
                 secretKeyRef:

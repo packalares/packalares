@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	ldapv3 "github.com/go-ldap/ldap/v3"
 	"github.com/packalares/packalares/pkg/config"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -1213,8 +1214,6 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request, use
 		return
 	}
 
-	token := r.Header.Get("X-Authorization")
-
 	// Update wizard status if not completed
 	user, err := s.K8s.GetUser(ctx, userName)
 	if err != nil {
@@ -1230,29 +1229,35 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request, use
 		}
 	}
 
-	// Call auth service to reset the password
-	autheliaURL := fmt.Sprintf("http://%s:9091/api/reset/%s/password", config.AuthDNS(), userName)
+	// Change password directly in LLDAP via LDAP protocol
+	lldapHost := os.Getenv("LLDAP_HOST")
+	if lldapHost == "" {
+		lldapHost = "lldap-svc." + config.PlatformNamespace()
+	}
+	adminPass := os.Getenv("LLDAP_ADMIN_PASSWORD")
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, autheliaURL, bytes.NewReader(body))
+	ldapAddr := lldapHost + ":3890"
+	conn, err := ldapv3.Dial("tcp", ldapAddr)
 	if err != nil {
-		respondError(w, fmt.Sprintf("reset password: create request: %v", err))
+		respondError(w, fmt.Sprintf("reset password: ldap connect: %v", err))
 		return
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set("X-Authorization", token)
-	httpReq.Header.Set("X-BFL-USER", userName)
+	defer conn.Close()
 
-	httpClient := &http.Client{Timeout: 30 * time.Second}
-	resp, err := httpClient.Do(httpReq)
-	if err != nil {
-		respondError(w, fmt.Sprintf("reset password: authelia request: %v", err))
+	baseDN := "dc=packalares,dc=local"
+	adminDN := fmt.Sprintf("uid=admin,ou=people,%s", baseDN)
+
+	// Bind as admin
+	if err := conn.Bind(adminDN, adminPass); err != nil {
+		respondError(w, fmt.Sprintf("reset password: ldap bind: %v", err))
 		return
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
-		respondError(w, fmt.Sprintf("reset password: authelia: %s", string(respBody)))
+	// Change target user's password
+	targetDN := fmt.Sprintf("uid=%s,ou=people,%s", ldapv3.EscapeFilter(userName), baseDN)
+	pwReq := ldapv3.NewPasswordModifyRequest(targetDN, "", pr.Password)
+	if _, err := conn.PasswordModify(pwReq); err != nil {
+		respondError(w, fmt.Sprintf("reset password: ldap modify: %v", err))
 		return
 	}
 
