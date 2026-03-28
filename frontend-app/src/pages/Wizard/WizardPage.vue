@@ -260,25 +260,13 @@ async function activate() {
   activateError.value = '';
 
   try {
-    // Step 1: Bind zone (sets terminus name, advances wizard status)
-    await axios.post('/bfl/settings/v1alpha1/binding-zone', {});
-
-    // Step 2: Activate system (generates TLS cert, sets wizard to wait_reset_password)
-    await axios.post('/bfl/settings/v1alpha1/activate', {
-      language: navigator.language || 'en-US',
-      location: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
-      theme: 'dark',
-    });
-
-    // Step 3: Set password (advances wizard to completed)
+    // Set password and mark wizard complete
     await axios.put(`/bfl/iam/v1alpha1/users/${username.value}/password`, {
       current_password: '',
       password: password.value,
     });
 
-    // Tailscale configured post-wizard in Settings → Network
-
-    // Done -- redirect to login
+    // Done — redirect to login
     window.location.href = '/login';
   } catch (err: any) {
     const msg =
