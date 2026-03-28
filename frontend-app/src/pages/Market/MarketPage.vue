@@ -136,6 +136,7 @@
                 <q-spinner-dots size="16px" color="indigo-4" />
                 <span class="app-progress-text">Starting...</span>
               </div>
+              <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'pending'" class="app-state-failed" style="color:var(--warning)">Pending</span>
               <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'failed'" class="app-state-failed">Failed</span>
               <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'stopped'" class="app-state-failed">Stopped</span>
               <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'uninstalling'" class="app-install-progress">
@@ -196,6 +197,7 @@
                   <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.3" color="negative" track-color="grey-9" rounded size="4px" :indeterminate="!installProgress[app.name]" />
                   <span class="app-progress-text">{{ installProgress[app.name]?.detail || 'Removing...' }}</span>
                 </div>
+                <span v-else-if="getAppDisplayState(app.name) === 'pending'" class="app-state-failed" style="color:var(--warning)">Pending</span>
                 <span v-else-if="getAppDisplayState(app.name) === 'failed'" class="app-state-failed">Failed</span>
               </div>
             </div>
@@ -462,7 +464,8 @@ function getAppDisplayState(name: string, hasChart?: boolean): string {
   const installed = installedStatusMap.value[name];
   if (installed) {
     if (ws === 'running' || installed === 'running') return 'running';
-    if (installed === 'failed' || installed === 'install_failed') return 'failed';
+    if (installed === 'failed' || installed === 'install_failed' || installed === 'installFailed') return 'failed';
+    if (installed === 'pending') return 'pending';
     if (installed === 'stopped') return 'stopped';
     if (installed === 'uninstalling') return 'uninstalling';
     return 'starting'; // installed but not running yet

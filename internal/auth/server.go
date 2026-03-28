@@ -7,6 +7,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -26,20 +27,10 @@ func NewServer(cfg *Config) *Server {
 	store := NewSessionStore(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
 	lldap := NewLLDAPClient(cfg.LLDAPHost, cfg.LLDAPPort)
 
-	// Bootstrap service account if it doesn't exist
-	if cfg.LLDAPAdminPassword != "" && cfg.LLDAPUser != cfg.LLDAPAdminUser {
-		err := lldap.CreateUser(cfg.LLDAPAdminUser, cfg.LLDAPAdminPassword,
-			cfg.LLDAPUser, cfg.LLDAPPassword, "Service Account")
-		if err != nil {
-			log.Printf("warning: could not create service account %q: %v (will use admin)", cfg.LLDAPUser, err)
-			// Fallback to admin
-			cfg.LLDAPUser = cfg.LLDAPAdminUser
-			cfg.LLDAPPassword = cfg.LLDAPAdminPassword
-		} else {
-			// Add to lldap_admin group (group 1) so it has API access
-			_ = lldap.AddUserToGroup(cfg.LLDAPAdminUser, cfg.LLDAPAdminPassword, cfg.LLDAPUser, 1)
-			log.Printf("service account %q ready", cfg.LLDAPUser)
-		}
+	// Use admin account for LLDAP API calls
+	cfg.LLDAPUser = "admin"
+	if cfg.LLDAPPassword == "" {
+		cfg.LLDAPPassword = cfg.LLDAPAdminPassword
 	}
 
 	s := &Server{
@@ -670,15 +661,53 @@ func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Change password in LLDAP
-	if err := s.lldap.ChangePassword(s.cfg.LLDAPUser, s.cfg.LLDAPPassword, session.Username, req.NewPassword); err != nil {
+	// LLDAP v0.5 has no password change API.
+	// Use LDAP bind to change the password directly.
+	if err := s.lldap.ChangePasswordLDAP(session.Username, req.CurrentPassword, req.NewPassword, s.cfg.LLDAPBaseDN); err != nil {
 		log.Printf("password change failed for %s: %v", session.Username, err)
 		writeJSON(w, http.StatusInternalServerError, map[string]interface{}{"status": "error", "message": "failed to change password"})
 		return
 	}
 
+	// Update stored password so auth service keeps working
+	if session.Username == "admin" {
+		s.cfg.LLDAPPassword = req.NewPassword
+		go func() {
+			sc := &secretsClient{}
+			if err := sc.Store("LLDAP_ADMIN_PASSWORD", req.NewPassword); err != nil {
+				log.Printf("warning: failed to sync password to Infisical: %v", err)
+			}
+		}()
+	}
+
 	log.Printf("password changed for user %s", session.Username)
 	writeJSON(w, http.StatusOK, map[string]interface{}{"status": "OK"})
+}
+
+// secretsClient stores secrets in tapr/Infisical.
+type secretsClient struct{}
+
+func (s *secretsClient) Store(key, value string) error {
+	taprURL := os.Getenv("TAPR_URL")
+	if taprURL == "" {
+		return fmt.Errorf("TAPR_URL not set")
+	}
+	taprToken := os.Getenv("TAPR_AUTH_TOKEN")
+	body, _ := json.Marshal(map[string]string{key: value})
+	req, _ := http.NewRequest("POST", taprURL+"/secrets", strings.NewReader(string(body)))
+	req.Header.Set("Content-Type", "application/json")
+	if taprToken != "" {
+		req.Header.Set("Authorization", "Bearer "+taprToken)
+	}
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	resp.Body.Close()
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("tapr returned %d", resp.StatusCode)
+	}
+	return nil
 }
 
 // safeRedirect returns true only for relative paths (no protocol, no //).

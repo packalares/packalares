@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	ldapv3 "github.com/go-ldap/ldap/v3"
 )
 
 // escapeGraphQL escapes special characters for use inside GraphQL string literals.
@@ -138,37 +140,30 @@ func (l *LLDAPClient) GetUserGroups(adminUser, adminPassword, username string) (
 	return groups, nil
 }
 
-// ChangePassword changes a user's password via LLDAP GraphQL API.
-func (l *LLDAPClient) ChangePassword(adminUser, adminPassword, username, newPassword string) error {
-	adminToken, err := l.getToken(adminUser, adminPassword)
+// ChangePasswordLDAP changes a user's password via the LDAP protocol (port 3890).
+// LLDAP v0.5 has no HTTP API for password changes, but LDAP password modify works.
+func (l *LLDAPClient) ChangePasswordLDAP(username, oldPassword, newPassword, baseDN string) error {
+	ldapAddr := fmt.Sprintf("%s:3890", l.host)
+
+	conn, err := ldapv3.Dial("tcp", ldapAddr)
 	if err != nil {
-		return fmt.Errorf("get admin token: %w", err)
+		return fmt.Errorf("ldap connect: %w", err)
+	}
+	defer conn.Close()
+
+	// Bind as the user
+	userDN := fmt.Sprintf("uid=%s,ou=people,%s", ldapv3.EscapeFilter(username), baseDN)
+	if err := conn.Bind(userDN, oldPassword); err != nil {
+		return fmt.Errorf("ldap bind: %w", err)
 	}
 
-	url := fmt.Sprintf("http://%s:%d/api/graphql", l.host, l.port)
-	// Use json.Marshal to prevent GraphQL injection in username/password
-	gqlBody, _ := json.Marshal(map[string]string{
-		"query": fmt.Sprintf(`mutation { updateUser(user: {id: "%s", password: "%s"}) { ok } }`, escapeGraphQL(username), escapeGraphQL(newPassword)),
-	})
-	query := string(gqlBody)
-
-	req, err := http.NewRequest("POST", url, bytes.NewReader([]byte(query)))
+	// Change password using LDAP Password Modify Extended Operation
+	req := ldapv3.NewPasswordModifyRequest(userDN, oldPassword, newPassword)
+	_, err = conn.PasswordModify(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("ldap password modify: %w", err)
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+adminToken)
 
-	resp, err := l.client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return fmt.Errorf("change password failed (status %d): %s", resp.StatusCode, string(body))
-	}
 	return nil
 }
 
@@ -207,8 +202,7 @@ func (l *LLDAPClient) CreateUser(adminUser, adminPassword, username, password, d
 		return fmt.Errorf("create user failed: %s", string(body))
 	}
 
-	// Set the password
-	return l.ChangePassword(adminUser, adminPassword, username, password)
+	return nil
 }
 
 // AddUserToGroup adds a user to an LLDAP group.
