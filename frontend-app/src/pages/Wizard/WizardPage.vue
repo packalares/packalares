@@ -129,12 +129,14 @@
 
           <div class="cert-list">
             <div v-for="sub in certSubdomains" :key="sub.name" class="cert-row">
-              <div class="cert-status" :class="sub.ok ? 'cert-ok' : 'cert-fail'">
+              <div class="cert-status" :class="sub.ok ? 'cert-ok' : (sub.pending ? 'cert-pending' : 'cert-fail')">
                 <svg v-if="sub.ok" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                <span v-else-if="sub.pending" class="cert-spinner"></span>
                 <svg v-else width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
               </div>
               <span class="cert-name">{{ sub.name }}</span>
-              <a v-if="!sub.ok" :href="'https://' + sub.name" target="_blank" class="cert-accept-link">Accept →</a>
+              <button v-if="!sub.ok && !sub.pending" class="cert-accept-btn" @click="openCertPopup(sub)">Accept</button>
+              <span v-else-if="sub.pending" class="cert-waiting">Waiting...</span>
               <span v-else class="cert-accepted">Trusted</span>
             </div>
           </div>
@@ -220,7 +222,7 @@ const sysZone = ref('');
 const serverIP = ref('');
 
 // Certificates
-interface CertCheck { name: string; ok: boolean }
+interface CertCheck { name: string; ok: boolean; pending: boolean }
 const certSubdomains = ref<CertCheck[]>([]);
 const allCertsOk = computed(() => certSubdomains.value.length > 0 && certSubdomains.value.every(c => c.ok));
 const caDownloadUrl = computed(() => {
@@ -289,26 +291,54 @@ onMounted(async () => {
 function initCertSubdomains() {
   if (!sysZone.value) return;
   const prefixes = ['api', 'desktop', 'auth', 'settings', 'market', 'dashboard', 'files'];
-  certSubdomains.value = prefixes.map(p => ({ name: `${p}.${sysZone.value}`, ok: false }));
+  certSubdomains.value = prefixes.map(p => ({ name: `${p}.${sysZone.value}`, ok: false, pending: false }));
 }
 
-async function checkCerts() {
+async function checkOneCert(sub: CertCheck): Promise<boolean> {
+  try {
+    await fetch(`https://${sub.name}/api/auth/health`, { cache: 'no-store' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function checkAllCerts() {
   for (const sub of certSubdomains.value) {
-    try {
-      const resp = await fetch(`https://${sub.name}/api/auth/health`, { mode: 'no-cors', cache: 'no-store' });
-      // no-cors returns opaque response — status 0 means it connected (cert accepted)
-      sub.ok = true;
-    } catch {
-      // Network error = cert not accepted
-      try {
-        // Try with regular mode — if cert is accepted, we get a real response
-        const resp2 = await fetch(`https://${sub.name}/api/auth/health`, { cache: 'no-store' });
-        sub.ok = true;
-      } catch {
-        sub.ok = false;
-      }
+    if (!sub.ok) {
+      sub.ok = await checkOneCert(sub);
+      if (sub.ok) sub.pending = false;
     }
   }
+}
+
+function openCertPopup(sub: CertCheck) {
+  sub.pending = true;
+  const popup = window.open(
+    `https://${sub.name}`,
+    'cert_accept',
+    'width=600,height=450,scrollbars=yes,resizable=yes'
+  );
+
+  // Poll until the popup loads successfully (cert accepted) or is closed
+  const pollId = setInterval(async () => {
+    // Check if popup was closed by user
+    if (!popup || popup.closed) {
+      clearInterval(pollId);
+      sub.ok = await checkOneCert(sub);
+      sub.pending = false;
+      return;
+    }
+
+    // Try to detect if the cert was accepted
+    const ok = await checkOneCert(sub);
+    if (ok) {
+      clearInterval(pollId);
+      sub.ok = true;
+      sub.pending = false;
+      try { popup.close(); } catch {}
+    }
+  }, 1500);
 }
 
 function goToCerts() {
@@ -316,8 +346,8 @@ function goToCerts() {
   needsCerts.value = !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
   if (needsCerts.value) {
     initCertSubdomains();
-    checkCerts();
-    certCheckTimer = setInterval(checkCerts, 3000);
+    checkAllCerts();
+    certCheckTimer = setInterval(checkAllCerts, 3000);
     step.value = 3;
   } else {
     step.value = 4; // skip certs for IP access
@@ -828,19 +858,44 @@ onUnmounted(() => {
   font-family: 'Inter', monospace;
 }
 
-.cert-accept-link {
+.cert-pending {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
+}
+
+.cert-spinner {
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(251, 191, 36, 0.3);
+  border-top-color: #fbbf24;
+  border-radius: 50%;
+  animation: cert-spin 0.8s linear infinite;
+}
+
+@keyframes cert-spin {
+  to { transform: rotate(360deg); }
+}
+
+.cert-accept-btn {
   font-size: 12px;
   color: #818cf8;
-  text-decoration: none;
   font-weight: 600;
-  padding: 4px 10px;
+  padding: 4px 12px;
   border-radius: 6px;
   background: rgba(129, 140, 248, 0.1);
+  border: none;
+  cursor: pointer;
   transition: background 0.15s;
 }
 
-.cert-accept-link:hover {
+.cert-accept-btn:hover {
   background: rgba(129, 140, 248, 0.2);
+}
+
+.cert-waiting {
+  font-size: 12px;
+  color: #fbbf24;
+  font-weight: 500;
 }
 
 .cert-accepted {
