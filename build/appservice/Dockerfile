@@ -32,3 +32,4 @@ ENV LISTEN_ADDR=:6755
 EXPOSE 6755
 
 ENTRYPOINT ["app-service"]
+LABEL org.opencontainers.image.description="App service — Helm-based app install/uninstall, chart management, WebSocket metrics, pod status tracking"

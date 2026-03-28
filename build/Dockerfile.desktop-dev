@@ -13,3 +13,4 @@ ENV API_PROXY_TARGET=https://localhost
 EXPOSE 80
 
 CMD ["npx", "quasar", "dev", "--port", "80", "--hostname", "0.0.0.0"]
+LABEL org.opencontainers.image.description="Desktop dev — Quasar dev server with hot reload for frontend development"

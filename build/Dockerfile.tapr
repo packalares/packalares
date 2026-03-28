@@ -11,3 +11,4 @@ RUN apk add --no-cache ca-certificates
 COPY --from=builder /tapr /usr/local/bin/tapr
 EXPOSE 8080
 CMD ["tapr"]
+LABEL org.opencontainers.image.description="Tapr secrets gateway — Infisical proxy for service secret management with bearer token authentication"

@@ -11,3 +11,4 @@ RUN apk add --no-cache ca-certificates
 COPY --from=builder /kubesphere /usr/local/bin/kubesphere
 EXPOSE 9090
 ENTRYPOINT ["kubesphere"]
+LABEL org.opencontainers.image.description="KubeSphere integration — user CRD management and IAM compatibility layer"

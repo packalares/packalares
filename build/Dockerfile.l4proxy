@@ -15,3 +15,4 @@ COPY --from=builder /l4proxy /usr/local/bin/l4proxy
 
 EXPOSE 443
 ENTRYPOINT ["/usr/local/bin/l4proxy"]
+LABEL org.opencontainers.image.description="L4 proxy — TCP/UDP layer 4 proxy for non-HTTP service routing"

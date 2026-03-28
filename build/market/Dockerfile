@@ -23,3 +23,4 @@ ENV MARKET_LISTEN_ADDR=:6756
 EXPOSE 6756
 
 ENTRYPOINT ["market-backend"]
+LABEL org.opencontainers.image.description="Market backend — app catalog, chart sync, icon/screenshot serving, Olares marketplace integration"

@@ -15,3 +15,4 @@ COPY --from=builder /auth /usr/local/bin/auth
 
 EXPOSE 9091
 ENTRYPOINT ["/usr/local/bin/auth"]
+LABEL org.opencontainers.image.description="Authentication service — LLDAP integration, session management, TOTP 2FA, rate limiting, LDAP password management"

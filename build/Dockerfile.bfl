@@ -15,3 +15,4 @@ COPY --from=builder /bfl /usr/local/bin/bfl
 
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/bfl"]
+LABEL org.opencontainers.image.description="Bifrost Layer — API gateway for settings, user management, updates, wizard activation, SSH and Tailscale control"

@@ -15,3 +15,4 @@ COPY --from=builder /systemserver /usr/local/bin/systemserver
 
 EXPOSE 8080
 ENTRYPOINT ["/usr/local/bin/systemserver"]
+LABEL org.opencontainers.image.description="System server — app proxy, provider/consumer registry, subdomain routing for installed applications"

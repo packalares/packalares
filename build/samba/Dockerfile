@@ -10,3 +10,4 @@ RUN mkdir -p /packalares/data
 EXPOSE 445 139
 
 ENTRYPOINT ["/entrypoint.sh"]
+LABEL org.opencontainers.image.description="Samba server — SMB file sharing for local network access to user files"

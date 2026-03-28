@@ -10,3 +10,4 @@ FROM alpine:3.19
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /mdns-agent /usr/local/bin/mdns-agent
 ENTRYPOINT ["/usr/local/bin/mdns-agent"]
+LABEL org.opencontainers.image.description="mDNS agent — multicast DNS announcer for local network service discovery"

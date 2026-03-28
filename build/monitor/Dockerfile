@@ -13,3 +13,4 @@ EXPOSE 8000
 ENV PROMETHEUS_URL=http://prometheus.kubesphere-monitoring-system.svc:9090
 ENV PORT=8000
 ENTRYPOINT ["monitor-server"]
+LABEL org.opencontainers.image.description="Monitoring server — system metrics collection, Prometheus queries, Loki log proxy, KVRocks metrics publishing"

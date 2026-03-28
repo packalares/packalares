@@ -14,3 +14,4 @@ EXPOSE 8081
 ENV MOUNT_BASE_PATH=/packalares/mounts
 ENV PORT=8081
 ENTRYPOINT ["mounts-server"]
+LABEL org.opencontainers.image.description="Mount server — NFS, SMB/CIFS, and rclone remote storage mounting with whitelisted options"

@@ -14,3 +14,4 @@ RUN apk add --no-cache ca-certificates tzdata
 COPY --from=builder /middleware /usr/local/bin/middleware
 
 ENTRYPOINT ["/usr/local/bin/middleware"]
+LABEL org.opencontainers.image.description="Middleware operator — PostgreSQL connection pooling and database provisioning for installed apps"

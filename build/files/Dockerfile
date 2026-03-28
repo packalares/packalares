@@ -14,3 +14,4 @@ EXPOSE 8080
 ENV DATA_PATH=/packalares/data
 ENV PORT=8080
 ENTRYPOINT ["files-server"]
+LABEL org.opencontainers.image.description="File server — WebDAV-compatible file manager with upload, download, rename, permissions, and symlink protection"

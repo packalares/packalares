@@ -15,3 +15,4 @@ COPY --from=builder /hostctl /usr/local/bin/hostctl
 
 EXPOSE 9199
 CMD ["/usr/local/bin/hostctl"]
+LABEL org.opencontainers.image.description="Host control — SSH daemon management via nsenter, sshd enable/disable/port configuration"

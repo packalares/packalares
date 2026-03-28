@@ -21,63 +21,103 @@ jobs:
           - source: postgres:16.0-alpine3.18
             target: postgres
             tag: 16.0-alpine
+            desc: "PostgreSQL relational database"
+            repo: "https://github.com/postgres/postgres"
           - source: redis:7-alpine
             target: redis
             tag: 7-alpine
+            desc: "In-memory data store for caching and session management"
+            repo: "https://github.com/redis/redis"
           - source: busybox:1.36
             target: busybox
             tag: "1.36"
+            desc: "Minimal Linux utilities in a single binary"
+            repo: "https://github.com/docker-library/busybox"
           - source: nginx:stable-alpine
             target: nginx
             tag: stable-alpine
+            desc: "High-performance HTTP and reverse proxy server"
+            repo: "https://github.com/nginx/nginx"
           - source: infisical/infisical:v0.158.20
             target: infisical
             tag: v0.158.20
+            desc: "Open-source secret management platform"
+            repo: "https://github.com/Infisical/infisical"
           - source: nitnelave/lldap:v0.5.0
             target: lldap
             tag: v0.5.0
+            desc: "Lightweight LDAP server for authentication with web UI"
+            repo: "https://github.com/lldap/lldap"
           - source: apache/kvrocks:2.15.0
             target: kvrocks
             tag: "2.15.0"
+            desc: "Redis-compatible NoSQL database built on RocksDB"
+            repo: "https://github.com/apache/kvrocks"
           - source: citusdata/citus:12.1
             target: citus
             tag: "12.1"
+            desc: "Distributed PostgreSQL with sharding and columnar storage"
+            repo: "https://github.com/citusdata/citus"
           - source: nats:2.10-alpine
             target: nats
             tag: 2.10-alpine
+            desc: "Cloud-native messaging system for microservices"
+            repo: "https://github.com/nats-io/nats-server"
           - source: prom/prometheus:v2.51.0
             target: prometheus
             tag: v2.51.0
+            desc: "Monitoring and alerting toolkit for metrics collection"
+            repo: "https://github.com/prometheus/prometheus"
           - source: prom/node-exporter:v1.7.0
             target: node-exporter
             tag: v1.7.0
+            desc: "Hardware and OS metrics exporter for Prometheus"
+            repo: "https://github.com/prometheus/node_exporter"
           - source: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.11.0
             target: kube-state-metrics
             tag: v2.11.0
+            desc: "Kubernetes resource metrics for Prometheus"
+            repo: "https://github.com/kubernetes/kube-state-metrics"
           - source: grafana/loki:2.9.4
             target: loki
             tag: "2.9.4"
+            desc: "Log aggregation system by Grafana"
+            repo: "https://github.com/grafana/loki"
           - source: grafana/promtail:2.9.4
             target: promtail
             tag: "2.9.4"
+            desc: "Log shipping agent for Loki"
+            repo: "https://github.com/grafana/loki"
           - source: tailscale/tailscale:stable
             target: tailscale
             tag: stable
+            desc: "WireGuard-based mesh VPN"
+            repo: "https://github.com/tailscale/tailscale"
           - source: openebs/provisioner-localpv:3.3.0
             target: openebs-provisioner
             tag: "3.3.0"
+            desc: "Local PV provisioner for Kubernetes persistent volumes"
+            repo: "https://github.com/openebs/dynamic-localpv-provisioner"
           - source: openebs/linux-utils:3.3.0
             target: openebs-linux-utils
             tag: "3.3.0"
+            desc: "Linux utilities for OpenEBS volume operations"
+            repo: "https://github.com/openebs/linux-utils"
           - source: coredns/coredns:1.11.1
             target: coredns
             tag: "1.11.1"
+            desc: "DNS server for Kubernetes service discovery"
+            repo: "https://github.com/coredns/coredns"
           - source: nvidia/dcgm-exporter:4.5.2-4.8.1-ubuntu22.04
             target: dcgm-exporter
             tag: "4.5.2"
+            desc: "NVIDIA GPU metrics exporter for Prometheus"
+            repo: "https://github.com/NVIDIA/dcgm-exporter"
           - source: projecthami/hami:v2.4.1
             target: hami
             tag: v2.4.1
+            desc: "Heterogeneous AI computing resource manager for Kubernetes"
+            repo: "https://github.com/Project-HAMi/HAMi"
 
     steps:
       - name: Log in to GHCR
@@ -89,6 +129,8 @@ jobs:
 
       - name: Mirror ${{ matrix.source }}
         run: |
-          docker pull ${{ matrix.source }}
-          docker tag ${{ matrix.source }} ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.target }}:${{ matrix.tag }}
+          echo "FROM ${{ matrix.source }}" > /tmp/Dockerfile.mirror
+          echo 'LABEL org.opencontainers.image.description="${{ matrix.desc }}"' >> /tmp/Dockerfile.mirror
+          echo 'LABEL org.opencontainers.image.source="${{ matrix.repo }}"' >> /tmp/Dockerfile.mirror
+          docker build -f /tmp/Dockerfile.mirror -t ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.target }}:${{ matrix.tag }} /tmp
           docker push ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.target }}:${{ matrix.tag }}
