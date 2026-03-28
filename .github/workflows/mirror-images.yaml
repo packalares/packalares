@@ -131,6 +131,5 @@ jobs:
         run: |
           echo "FROM ${{ matrix.source }}" > /tmp/Dockerfile.mirror
           echo 'LABEL org.opencontainers.image.description="${{ matrix.desc }}"' >> /tmp/Dockerfile.mirror
-          echo 'LABEL org.opencontainers.image.source="${{ matrix.repo }}"' >> /tmp/Dockerfile.mirror
           docker build -f /tmp/Dockerfile.mirror -t ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.target }}:${{ matrix.tag }} /tmp
           docker push ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.target }}:${{ matrix.tag }}
