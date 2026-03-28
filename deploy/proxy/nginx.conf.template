@@ -149,7 +149,8 @@ http {
     location ~ ^/(?!api/)[^/]*\.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
 
     # --- Login page (public) ---
-    location /login { proxy_pass http://$desktop_up:80; }
+    location /login  { proxy_pass http://$desktop_up:80; }
+    location /wizard { proxy_pass http://$desktop_up:80; }
 
     # --- Root redirect ---
     location = / { auth_request /_auth; return 302 /desktop; }
