@@ -153,7 +153,7 @@ func (s *Service) syncStatuses(ctx context.Context) {
 		// Map helm status to our state
 		switch rel.Status {
 		case "deployed":
-			if rec.State == StateInstalling || rec.State == StatePending || rec.State == StateResuming {
+			if rec.State != StateRunning && rec.State != StateUninstalling {
 				rec.State = StateRunning
 				_ = s.store.Put(ctx, rec)
 			}
