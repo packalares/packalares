@@ -181,8 +181,8 @@ func (l *LLDAPClient) CreateUser(adminUser, adminPassword, username, password, d
 
 	url := fmt.Sprintf("http://%s:%d/api/graphql", l.host, l.port)
 	gqlBody, _ := json.Marshal(map[string]string{
-		"query": fmt.Sprintf(`mutation { createUser(user: {id: "%s", displayName: "%s"}) { id } }`,
-			escapeGraphQL(username), escapeGraphQL(displayName)),
+		"query": fmt.Sprintf(`mutation { createUser(user: {id: "%s", email: "%s@local", displayName: "%s"}) { id } }`,
+			escapeGraphQL(username), escapeGraphQL(username), escapeGraphQL(displayName)),
 	})
 
 	req, err := http.NewRequest("POST", url, bytes.NewReader(gqlBody))
