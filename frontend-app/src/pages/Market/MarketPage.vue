@@ -927,6 +927,9 @@ function progressDetail(name: string): string {
     const pct = Math.round((p.bytesDownloaded / p.bytesTotal) * 100);
     return 'Downloading: ' + formatBytes(p.bytesDownloaded) + ' / ' + formatBytes(p.bytesTotal) + ' (' + pct + '%)';
   }
+  if (p.bytesDownloaded > 0 && p.bytesTotal <= 0) {
+    return 'Downloading: ' + formatBytes(p.bytesDownloaded);
+  }
   return p.detail;
 }
 

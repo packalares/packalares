@@ -546,22 +546,13 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		}
 		missing := FilterMissingImages(bgCtx, allImages)
 		if len(missing) > 0 {
-			estimatedTotal := EstimateImageSizes(missing)
 			PullImagesWithProgress(bgCtx, missing, func(pulled, total int, currentImage string, bytesDownloaded, bytesTotal int64) {
-				dlBytes := bytesDownloaded
-				totalBytes := bytesTotal
-				if totalBytes <= 0 {
-					totalBytes = estimatedTotal
-				}
-				if dlBytes <= 0 && total > 0 {
-					dlBytes = totalBytes * int64(pulled) / int64(total)
-				}
 				short := currentImage
 				if idx := strings.LastIndex(short, "/"); idx >= 0 {
 					short = short[idx+1:]
 				}
 				detail := fmt.Sprintf("Pulling images (%d/%d) %s", pulled, total, short)
-				GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 4, 6, detail, dlBytes, totalBytes)
+				GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 4, 6, detail, bytesDownloaded, bytesTotal)
 			})
 		}
 	} else {

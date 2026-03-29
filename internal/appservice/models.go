@@ -340,22 +340,13 @@ func (v *VLLMBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSHub
 		images = templateImages
 	}
 	if missing := FilterMissingImages(ctx, images); len(missing) > 0 {
-		estimatedTotal := EstimateImageSizes(missing)
 		PullImagesWithProgress(ctx, missing, func(pulled, total int, currentImage string, bytesDownloaded, bytesTotal int64) {
-			dlBytes := bytesDownloaded
-			totalBytes := bytesTotal
-			if totalBytes <= 0 {
-				totalBytes = estimatedTotal
-			}
-			if dlBytes <= 0 && total > 0 {
-				dlBytes = totalBytes * int64(pulled) / int64(total)
-			}
 			short := currentImage
 			if idx := strings.LastIndex(short, "/"); idx >= 0 {
 				short = short[idx+1:]
 			}
 			detail := fmt.Sprintf("Pulling images (%d/%d) %s", pulled, total, short)
-			wsHub.BroadcastInstallProgress(model.Name, StateDownloading, 2, 4, detail, dlBytes, totalBytes)
+			wsHub.BroadcastInstallProgress(model.Name, StateDownloading, 2, 4, detail, bytesDownloaded, bytesTotal)
 		})
 	}
 

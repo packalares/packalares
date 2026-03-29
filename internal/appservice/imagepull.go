@@ -392,13 +392,6 @@ func FilterMissingImages(ctx context.Context, images []string) []string {
 	return missing
 }
 
-// EstimateImageSizes returns a rough byte estimate for pulling images.
-// This is a heuristic: ~100MB average per image. Actual sizes vary widely
-// but this gives the UI something to show.
-func EstimateImageSizes(images []string) int64 {
-	// 100MB per image as rough estimate
-	return int64(len(images)) * 100 * 1024 * 1024
-}
 
 // PullImagesForChart extracts images from a chart, filters out already-present
 // ones, and pulls the missing images with progress reporting via WebSocket.
@@ -421,27 +414,14 @@ func PullImagesForChart(ctx context.Context, appName, chartDir string, stepOffse
 	}
 
 	klog.Infof("chart %s: pulling %d/%d missing images", appName, len(missing), len(images))
-	estimatedTotal := EstimateImageSizes(missing)
 
 	errs := PullImagesWithProgress(ctx, missing, func(pulled, total int, currentImage string, bytesDownloaded, bytesTotal int64) {
-		// Use live byte counts when available, fall back to step-based estimate
-		dlBytes := bytesDownloaded
-		totalBytes := bytesTotal
-		if totalBytes <= 0 {
-			totalBytes = estimatedTotal
-		}
-		if dlBytes <= 0 && total > 0 {
-			dlBytes = totalBytes * int64(pulled) / int64(total)
-		}
-
-		// Shorten the image name for display
 		short := currentImage
 		if idx := strings.LastIndex(short, "/"); idx >= 0 {
 			short = short[idx+1:]
 		}
-
 		detail := fmt.Sprintf("Pulling images (%d/%d) %s", pulled, total, short)
-		GetWSHub().BroadcastInstallProgress(appName, StateInstalling, stepOffset, totalSteps, detail, dlBytes, totalBytes)
+		GetWSHub().BroadcastInstallProgress(appName, StateInstalling, stepOffset, totalSteps, detail, bytesDownloaded, bytesTotal)
 	})
 
 	if errs > 0 {
