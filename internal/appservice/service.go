@@ -684,11 +684,15 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 				}
 			}
 
-			// Step 3: Force-remove distribution cache blobs matching this image's registry/repo
-			// Extract registry/repo from image ref (e.g. "docker.io/beclab/openwebui-open-webui" from "docker.io/beclab/openwebui-open-webui:0.8.10-cuda")
+			// Step 3: Force-remove distribution cache blobs matching this image's repo
+			// Content labels use format: containerd.io/distribution.source.docker.io=beclab/repo
+			// So we strip the registry prefix and search for just the repo path
 			repoRef := img
 			if idx := strings.LastIndex(repoRef, ":"); idx > 0 && !strings.Contains(repoRef[idx:], "/") {
 				repoRef = repoRef[:idx]
+			}
+			if idx := strings.Index(repoRef, "/"); idx > 0 && strings.Contains(repoRef[:idx], ".") {
+				repoRef = repoRef[idx+1:]
 			}
 			contentOut, _ := exec.CommandContext(bgCtx, "ctr", "-a", ctrSock, "-n", "k8s.io", "content", "ls").Output()
 			for _, line := range strings.Split(string(contentOut), "\n") {
