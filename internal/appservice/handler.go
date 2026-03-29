@@ -32,6 +32,8 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/app-service/v1/app/", h.handleGetApp)
 	mux.HandleFunc("/app-service/v1/suspend", h.handleSuspend)
 	mux.HandleFunc("/app-service/v1/resume", h.handleResume)
+	mux.HandleFunc("/app-service/v1/stop", h.handleStop)
+	mux.HandleFunc("/app-service/v1/start", h.handleStart)
 
 	// Model endpoints
 	mux.HandleFunc("/app-service/v1/models/status", h.handleModelStatus)
@@ -190,6 +192,52 @@ func (h *Handler) handleResume(w http.ResponseWriter, r *http.Request) {
 	resp, err := h.svc.Resume(r.Context(), &req)
 	if err != nil {
 		klog.Errorf("resume %s: %v", req.Name, err)
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleStop handles POST /app-service/v1/stop — alias for suspend.
+func (h *Handler) handleStop(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var req SuspendRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	resp, err := h.svc.Suspend(r.Context(), &req)
+	if err != nil {
+		klog.Errorf("stop %s: %v", req.Name, err)
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleStart handles POST /app-service/v1/start — alias for resume.
+func (h *Handler) handleStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var req ResumeRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	resp, err := h.svc.Resume(r.Context(), &req)
+	if err != nil {
+		klog.Errorf("start %s: %v", req.Name, err)
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}

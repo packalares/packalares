@@ -762,6 +762,8 @@ func (s *Service) Suspend(ctx context.Context, req *SuspendRequest) (*Installati
 		return nil, err
 	}
 
+	GetWSHub().BroadcastAppState(req.Name, StateStopping)
+
 	go func() {
 		bgCtx := context.Background()
 		label := "app.kubernetes.io/instance=" + rec.ReleaseName
@@ -773,11 +775,13 @@ func (s *Service) Suspend(ctx context.Context, req *SuspendRequest) (*Installati
 			klog.Errorf("suspend %s: deployments=%v statefulsets=%v", req.Name, err1, err2)
 			rec.State = StateStopFailed
 			_ = s.store.Put(bgCtx, rec)
+			GetWSHub().BroadcastAppState(req.Name, StateStopFailed)
 			return
 		}
 
 		rec.State = StateStopped
 		_ = s.store.Put(bgCtx, rec)
+		GetWSHub().BroadcastAppState(req.Name, StateStopped)
 		klog.Infof("app %s suspended", req.Name)
 	}()
 
@@ -813,6 +817,8 @@ func (s *Service) Resume(ctx context.Context, req *ResumeRequest) (*Installation
 		return nil, err
 	}
 
+	GetWSHub().BroadcastAppState(req.Name, StateResuming)
+
 	go func() {
 		bgCtx := context.Background()
 		label := "app.kubernetes.io/instance=" + rec.ReleaseName
@@ -824,11 +830,13 @@ func (s *Service) Resume(ctx context.Context, req *ResumeRequest) (*Installation
 			klog.Errorf("resume %s: deployments=%v statefulsets=%v", req.Name, err1, err2)
 			rec.State = StateResumeFailed
 			_ = s.store.Put(bgCtx, rec)
+			GetWSHub().BroadcastAppState(req.Name, StateResumeFailed)
 			return
 		}
 
 		rec.State = StateRunning
 		_ = s.store.Put(bgCtx, rec)
+		GetWSHub().BroadcastAppState(req.Name, StateRunning)
 		klog.Infof("app %s resumed", req.Name)
 	}()
 

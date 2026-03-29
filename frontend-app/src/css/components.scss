@@ -259,6 +259,19 @@
   }
 }
 
+.btn-secondary {
+  background: var(--bg-3) !important;
+  color: var(--ink-2) !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+  text-transform: none !important;
+  font-size: 12px !important;
+  min-height: 28px !important;
+  padding: 4px 14px !important;
+
+  &:hover { background: var(--track-bg) !important; color: var(--ink-1) !important; }
+}
+
 .btn-danger {
   background: var(--negative-soft) !important;
   color: var(--negative) !important;
@@ -931,7 +944,60 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  padding-top: 10px;
   margin-top: auto;
+  border-top: 1px solid rgba(255,255,255,0.06);
+  gap: 8px;
+}
+
+.app-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  &.dot-running { background: var(--positive); }
+  &.dot-stopped { background: var(--warning); }
+  &.dot-failed { background: var(--negative); }
+  &.dot-starting, &.dot-pending, &.dot-resuming { background: var(--info); }
+  &.dot-stopping { background: var(--warning); }
+  &.dot-downloading, &.dot-installing { background: var(--primary); }
+  &.dot-uninstalling { background: var(--negative); }
+}
+
+.status-label {
+  font-size: 11px;
+  color: var(--ink-3);
+  text-transform: capitalize;
+}
+
+.app-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.app-action-btn {
+  font-size: 11px !important;
+  padding: 2px 8px !important;
+  border-radius: 6px !important;
+  color: var(--ink-3) !important;
+  &:hover { background: rgba(255,255,255,0.08); color: var(--ink-1) !important; }
+}
+
+.app-action-primary {
+  color: var(--primary) !important;
+}
+
+.app-action-danger {
+  color: var(--ink-3) !important;
+  &:hover { color: var(--negative) !important; background: rgba(255, 77, 77, 0.1); }
 }
 
 .app-card-footer-actions {
