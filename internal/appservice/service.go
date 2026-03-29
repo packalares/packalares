@@ -29,7 +29,8 @@ type Service struct {
 	namespace      string
 	chartRepo      string
 	modelBackends  map[string]ModelBackend
-	activeModelOps sync.Map // name → state string ("downloading", "uninstalling")
+	activeModelMu  sync.Mutex
+	activeModelOps map[string]string // name → state ("downloading", "uninstalling")
 }
 
 // Config holds configuration for the app-service.
@@ -100,6 +101,7 @@ func NewService(cfg *Config) (*Service, error) {
 		"ollama": NewOllamaBackend(ollamaURL),
 		"vllm":   NewVLLMBackend(helm, cfg.Namespace),
 	}
+	svc.activeModelOps = make(map[string]string)
 
 	return svc, nil
 }
@@ -935,10 +937,16 @@ func (s *Service) InstallModel(ctx context.Context, spec ModelSpec) error {
 
 	wsHub := GetWSHub()
 	wsHub.BroadcastAppState(spec.Name, StateDownloading)
-	s.activeModelOps.Store(spec.Name, StateDownloading)
+	s.activeModelMu.Lock()
+	s.activeModelOps[spec.Name] = string(StateDownloading)
+	s.activeModelMu.Unlock()
 
 	go func() {
-		defer s.activeModelOps.Delete(spec.Name)
+		defer func() {
+			s.activeModelMu.Lock()
+			delete(s.activeModelOps, spec.Name)
+			s.activeModelMu.Unlock()
+		}()
 		if err := backend.Install(context.Background(), spec, wsHub); err != nil {
 			klog.Errorf("model install %s (%s): %v", spec.Name, spec.Backend, err)
 			wsHub.BroadcastAppState(spec.Name, StateInstallFailed)
@@ -959,10 +967,16 @@ func (s *Service) UninstallModel(ctx context.Context, spec ModelSpec) error {
 
 	wsHub := GetWSHub()
 	wsHub.BroadcastAppState(spec.Name, StateUninstalling)
-	s.activeModelOps.Store(spec.Name, StateUninstalling)
+	s.activeModelMu.Lock()
+	s.activeModelOps[spec.Name] = string(StateUninstalling)
+	s.activeModelMu.Unlock()
 
 	go func() {
-		defer s.activeModelOps.Delete(spec.Name)
+		defer func() {
+			s.activeModelMu.Lock()
+			delete(s.activeModelOps, spec.Name)
+			s.activeModelMu.Unlock()
+		}()
 		if err := backend.Uninstall(context.Background(), spec); err != nil {
 			klog.Errorf("model uninstall %s (%s): %v", spec.Name, spec.Backend, err)
 			wsHub.BroadcastAppState(spec.Name, StateUninstallFailed)
@@ -994,14 +1008,15 @@ func (s *Service) ListInstalledModels(ctx context.Context) (map[string][]Install
 	}
 
 	// Include active operations so the frontend can show state after refresh
+	s.activeModelMu.Lock()
 	var active []InstalledModel
-	s.activeModelOps.Range(func(key, value any) bool {
+	for name, state := range s.activeModelOps {
 		active = append(active, InstalledModel{
-			Name:     key.(string),
-			Modified: value.(string), // reuse Modified field for state
+			Name:     name,
+			Modified: state, // reuse Modified field for state
 		})
-		return true
-	})
+	}
+	s.activeModelMu.Unlock()
 	if len(active) > 0 {
 		result["_active"] = active
 	}
