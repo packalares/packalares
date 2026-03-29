@@ -327,7 +327,8 @@ func (v *VLLMBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSHub
 	}
 
 	wsHub.BroadcastInstallProgress(model.Name, StateInstalling, 3, 3, "Model deploying — download in progress", 0, 0)
-	wsHub.BroadcastAppState(model.Name, StateRunning)
+	// Don't broadcast StateRunning — the pod is just starting, model is still downloading.
+	// The model will show as "installed" via InstalledModels (helm release exists).
 
 	// Register the vLLM endpoint in OpenWebUI so it auto-discovers the model
 	vllmURL := fmt.Sprintf("http://%s-api.%s:8000/v1", releaseName, v.namespace)
@@ -425,8 +426,13 @@ func (v *VLLMBackend) InstalledModels(ctx context.Context) ([]InstalledModel, er
 	for _, r := range releases {
 		// Look for releases whose chart name contains "vllm" as a heuristic
 		if strings.Contains(r.Chart, "vllm") {
+			// Strip "vllm-" prefix to match catalog modelId
+			name := r.Name
+			if strings.HasPrefix(name, "vllm-") {
+				name = strings.TrimPrefix(name, "vllm-")
+			}
 			models = append(models, InstalledModel{
-				Name:     r.Name,
+				Name:     name,
 				Size:     0,
 				Modified: r.Updated,
 			})
