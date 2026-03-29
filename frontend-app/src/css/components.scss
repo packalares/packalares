@@ -983,16 +983,31 @@
   gap: 4px;
 }
 
+// Grouped button bar — shared rounded container with dividers
+.app-btn-group {
+  display: flex;
+  align-items: stretch;
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.08);
+  background: rgba(255,255,255,0.03);
+  overflow: hidden;
+}
+
 .app-action-btn {
   font-size: 11px !important;
-  padding: 2px 8px !important;
-  border-radius: 6px !important;
+  padding: 4px 10px !important;
+  border-radius: 0 !important;
   color: var(--ink-3) !important;
+  min-height: 28px !important;
+  border-right: 1px solid rgba(255,255,255,0.06);
+  &:last-child { border-right: none; }
   &:hover { background: rgba(255,255,255,0.08); color: var(--ink-1) !important; }
+  .q-icon { font-size: 14px !important; }
 }
 
 .app-action-primary {
   color: var(--primary) !important;
+  &:hover { background: rgba(99, 102, 241, 0.12); }
 }
 
 .app-action-danger {

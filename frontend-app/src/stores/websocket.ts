@@ -82,7 +82,8 @@ export const useWebSocketStore = defineStore('websocket', {
         }
         case 'connected':
         case 'ping':
-          // Heartbeat messages, ignore
+        case 'install_progress':
+          // Heartbeat and app-specific messages handled by individual pages
           break;
         default:
           console.log('Unknown WS message:', msg.type);

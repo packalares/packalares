@@ -134,15 +134,18 @@
               </div>
               <!-- Installed: running -->
               <div v-if="getAppDisplayState(app.name, app.hasChart) === 'running'" class="app-actions">
-                <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_open_in_new" label="Open" class="app-action-btn" @click.stop="openApp(app.name)" />
-                <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_stop_circle" label="Stop" class="app-action-btn" @click.stop="stopApp(app)" />
-                <q-badge v-if="app.type === 'model'" label="Available" class="status-badge status-running" />
-                <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+                <div class="app-btn-group">
+                  <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_open_in_new" label="Open" class="app-action-btn app-action-primary" @click.stop="openApp(app.name)" />
+                  <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_stop_circle" label="Stop" class="app-action-btn" @click.stop="stopApp(app)" />
+                  <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+                </div>
               </div>
               <!-- Installed: stopped -->
               <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'stopped'" class="app-actions">
-                <q-btn flat dense no-caps size="sm" icon="sym_r_play_circle" label="Start" class="app-action-btn app-action-primary" @click.stop="startApp(app)" />
-                <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+                <div class="app-btn-group">
+                  <q-btn flat dense no-caps size="sm" icon="sym_r_play_circle" label="Start" class="app-action-btn app-action-primary" @click.stop="startApp(app)" />
+                  <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+                </div>
               </div>
               <!-- Stopping -->
               <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'stopping'" class="app-actions">
@@ -209,13 +212,17 @@
                 <span class="status-label">{{ getAppDisplayState(app.name) }}</span>
               </div>
               <div class="app-actions" v-if="getAppDisplayState(app.name) === 'running'">
-                <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_open_in_new" label="Open" class="app-action-btn" @click.stop="openApp(app.name)" />
-                <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_stop_circle" label="Stop" class="app-action-btn" @click.stop="stopApp(app)" />
-                <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+                <div class="app-btn-group">
+                  <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_open_in_new" label="Open" class="app-action-btn app-action-primary" @click.stop="openApp(app.name)" />
+                  <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_stop_circle" label="Stop" class="app-action-btn" @click.stop="stopApp(app)" />
+                  <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+                </div>
               </div>
               <div class="app-actions" v-else-if="getAppDisplayState(app.name) === 'stopped'">
-                <q-btn flat dense no-caps size="sm" icon="sym_r_play_circle" label="Start" class="app-action-btn app-action-primary" @click.stop="startApp(app)" />
-                <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+                <div class="app-btn-group">
+                  <q-btn flat dense no-caps size="sm" icon="sym_r_play_circle" label="Start" class="app-action-btn app-action-primary" @click.stop="startApp(app)" />
+                  <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+                </div>
               </div>
               <div class="app-actions" v-else-if="getAppDisplayState(app.name) === 'stopping'">
                 <q-spinner-dots size="14px" color="warning" />
@@ -961,6 +968,11 @@ function connectWebSocket() {
             installingSet.delete(name);
             delete appStates[name];
             delete installProgress[name];
+            // For models, immediately mark as installed so UI updates before API responds
+            const matchedApp = apps.value.find(a => a.name === name);
+            if (matchedApp?.type === 'model' && matchedApp.modelId) {
+              installedModels[matchedApp.modelId] = { name: matchedApp.modelId, size: 0, modified: '' };
+            }
             fetchInstalled();
             fetchModelStatus();
           } else if (state === 'failed') {
