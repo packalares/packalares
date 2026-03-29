@@ -13,11 +13,9 @@ func RunUninstall() error {
 	steps := []phase{
 		{"Stop K3s", stopK3s},
 		{"Stop etcd", stopEtcd},
-		{"Stop containerd", stopContainerd},
 		{"Stop Redis", stopRedis},
 		{"Remove K3s", removeK3s},
 		{"Remove etcd", removeEtcd},
-		{"Remove containerd", removeContainerd},
 		{"Remove Redis service", removeRedis},
 		{"Remove systemd units", removeSystemdUnits},
 		{"Clean Kubernetes state", cleanKubeState},
@@ -58,10 +56,6 @@ func stopK3s() error {
 
 func stopEtcd() error {
 	return stopService("etcd")
-}
-
-func stopContainerd() error {
-	return stopService("containerd")
 }
 
 func stopRedis() error {
@@ -112,19 +106,6 @@ func removeEtcd() error {
 	os.Remove("/usr/local/bin/etcd")
 	os.Remove("/usr/local/bin/etcdctl")
 	os.Remove("/usr/local/bin/etcdutl")
-
-	exec.Command("systemctl", "daemon-reload").Run()
-	return nil
-}
-
-func removeContainerd() error {
-	disableService("containerd")
-	os.Remove(filepath.Join(SystemdDir, "containerd.service"))
-	os.RemoveAll(ContainerdCfgDir)
-	os.Remove("/usr/local/bin/containerd")
-	os.Remove("/usr/local/bin/containerd-shim")
-	os.Remove("/usr/local/bin/containerd-shim-runc-v2")
-	os.Remove("/usr/local/bin/runc")
 
 	exec.Command("systemctl", "daemon-reload").Run()
 	return nil

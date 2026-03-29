@@ -637,7 +637,19 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 			klog.Errorf("delete Application CRD for %s: %v", req.Name, err)
 		}
 
-		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 3, 3, "Removing images...", 0, 0)
+		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 3, 4, "Waiting for pods to terminate...", 0, 0)
+
+		// Wait for all app pods to be fully gone before removing images,
+		// otherwise kubelet re-pulls them for the terminating pods.
+		for i := 0; i < 60; i++ {
+			pods := s.k8s.GetPodsForApp(bgCtx, rec.ReleaseName, rec.Namespace)
+			if len(pods) == 0 {
+				break
+			}
+			time.Sleep(time.Second)
+		}
+
+		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 4, 4, "Removing images...", 0, 0)
 
 		// Remove the app's container images explicitly
 		// crictl rmi --prune only removes untagged images, not tagged unused ones

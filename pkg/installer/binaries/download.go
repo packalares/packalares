@@ -13,10 +13,10 @@ import (
 
 const (
 	K3sVersion        = "v1.29.3+k3s1"
-	ContainerdVersion = "1.7.14"
+
 	EtcdVersion       = "v3.5.12"
 	HelmVersion       = "v3.14.3"
-	RuncVersion       = "v1.1.12"
+
 	CalicoVersion     = "v3.27.2"
 	CrictlVersion     = "v1.29.0"
 )
@@ -47,26 +47,6 @@ func DownloadAll(baseDir, arch string) error {
 			Extract: func(baseDir, arch, downloadPath string) error {
 				dest := "/usr/local/bin/k3s"
 				return copyAndChmod(downloadPath, dest, 0755)
-			},
-		},
-		{
-			Name: "containerd",
-			URL: func(arch string) string {
-				return fmt.Sprintf("https://github.com/containerd/containerd/releases/download/v%s/containerd-%s-linux-%s.tar.gz",
-					ContainerdVersion, ContainerdVersion, arch)
-			},
-			Extract: func(baseDir, arch, downloadPath string) error {
-				return extractTarGz(downloadPath, "/usr/local")
-			},
-		},
-		{
-			Name: "runc",
-			URL: func(arch string) string {
-				return fmt.Sprintf("https://github.com/opencontainers/runc/releases/download/%s/runc.%s",
-					RuncVersion, arch)
-			},
-			Extract: func(baseDir, arch, downloadPath string) error {
-				return copyAndChmod(downloadPath, "/usr/local/bin/runc", 0755)
 			},
 		},
 		{

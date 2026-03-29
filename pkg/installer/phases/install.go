@@ -8,7 +8,6 @@ import (
 
 	"github.com/packalares/packalares/pkg/installer/binaries"
 	"github.com/packalares/packalares/pkg/installer/cni"
-	"github.com/packalares/packalares/pkg/installer/containerd"
 	"github.com/packalares/packalares/pkg/installer/etcd"
 	"github.com/packalares/packalares/pkg/installer/helm"
 	"github.com/packalares/packalares/pkg/installer/k3s"
@@ -89,12 +88,7 @@ func RunInstall(opts *InstallOptions) error {
 			return kernel.ApplySysctl()
 		}},
 
-		// Phase 4: Install containerd
-		{"Install containerd", func() error {
-			return containerd.Install(opts.BaseDir)
-		}},
-
-		// Phase 5: Install etcd
+		// Phase 4: Install etcd
 		{"Install etcd", func() error {
 			return etcd.Install(opts.BaseDir)
 		}},

@@ -123,17 +123,19 @@ func installContainerToolkit() error {
 }
 
 func configureContainerdNvidia() error {
-	fmt.Println("  Configuring containerd for NVIDIA runtime ...")
+	fmt.Println("  Configuring K3s containerd for NVIDIA runtime ...")
 
-	// Configure nvidia-container-toolkit for containerd
-	cmd := exec.Command("nvidia-ctk", "runtime", "configure", "--runtime=containerd")
+	// Configure nvidia-container-toolkit for K3s's bundled containerd
+	cmd := exec.Command("nvidia-ctk", "runtime", "configure",
+		"--runtime=containerd",
+		"--config=/var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("nvidia-ctk configure: %s\n%w", string(out), err)
 	}
 
-	// Restart containerd to pick up the config
-	if err := exec.Command("systemctl", "restart", "containerd").Run(); err != nil {
-		return fmt.Errorf("restart containerd: %w", err)
+	// Restart K3s to pick up the containerd config
+	if err := exec.Command("systemctl", "restart", "k3s").Run(); err != nil {
+		return fmt.Errorf("restart k3s: %w", err)
 	}
 
 	return nil

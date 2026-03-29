@@ -26,6 +26,10 @@ func Install(baseDir, registry string) error {
 		}
 	}
 
+	// Configure crictl to use K3s's containerd socket
+	crictlConfig := "runtime-endpoint: unix:///run/k3s/containerd/containerd.sock\nimage-endpoint: unix:///run/k3s/containerd/containerd.sock\ntimeout: 5\n"
+	os.WriteFile("/etc/crictl.yaml", []byte(crictlConfig), 0644)
+
 	// Generate K3s service file
 	serviceContent := generateK3sService(registry)
 	if err := os.WriteFile("/etc/systemd/system/k3s.service", []byte(serviceContent), 0644); err != nil {
