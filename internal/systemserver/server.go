@@ -554,6 +554,7 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 	publicHost := appName + "." + s.cfg.UserZone
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.FlushInterval = -1 // flush immediately (required for SSE/streaming)
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("proxy error for %s: %v", appName, err)
 		http.Error(w, "upstream error", http.StatusBadGateway)
