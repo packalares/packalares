@@ -123,55 +123,121 @@
             </div>
             <div class="app-card-desc">{{ app.description }}</div>
             <div class="app-card-footer">
-              <div class="app-card-tags">
-                <q-badge
-                  v-for="cat in (app.categories || []).slice(0, 2)"
-                  :key="cat"
-                  :label="cat"
-                  class="app-tag"
-                />
-                <q-badge v-if="app.type === 'model' && app.backend" :label="app.backend" class="app-tag" />
-              </div>
-              <!-- Installed: running -->
-              <div v-if="getAppDisplayState(app.name, app.hasChart) === 'running'" class="app-actions">
-                <div class="app-btn-group">
-                  <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_open_in_new" label="Open" class="app-action-btn app-action-primary" @click.stop="openApp(app.name)" />
-                  <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_stop_circle" label="Stop" class="app-action-btn" @click.stop="stopApp(app)" />
-                  <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+              <!-- Downloading / installing / uninstalling: full-width progress -->
+              <template v-if="getAppDisplayState(app.name, app.hasChart) === 'downloading' || getAppDisplayState(app.name, app.hasChart) === 'installing'">
+                <div class="app-install-progress">
+                  <q-linear-progress :value="progressBarValue(app.name) || 0.2" color="indigo-4" track-color="grey-9" rounded size="4px" :indeterminate="isProgressIndeterminate(app.name)" />
+                  <span class="app-progress-text">{{ progressDetail(app.name) || (getAppDisplayState(app.name, app.hasChart) === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
                 </div>
-              </div>
-              <!-- Installed: stopped -->
-              <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'stopped'" class="app-actions">
-                <div class="app-btn-group">
-                  <q-btn flat dense no-caps size="sm" icon="sym_r_play_circle" label="Start" class="app-action-btn app-action-primary" @click.stop="startApp(app)" />
-                  <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+              </template>
+              <template v-else-if="getAppDisplayState(app.name, app.hasChart) === 'uninstalling'">
+                <div class="app-install-progress">
+                  <q-linear-progress :value="progressBarValue(app.name) || 0.3" color="negative" track-color="grey-9" rounded size="4px" :indeterminate="isProgressIndeterminate(app.name)" />
+                  <span class="app-progress-text">{{ installProgress[app.name]?.detail || 'Removing...' }}</span>
                 </div>
-              </div>
-              <!-- Stopping -->
-              <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'stopping'" class="app-actions">
-                <q-spinner-dots size="14px" color="warning" />
-                <span class="app-progress-text">Stopping...</span>
-              </div>
-              <!-- Starting / pending -->
-              <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'starting' || getAppDisplayState(app.name, app.hasChart) === 'pending'" class="app-actions">
-                <q-spinner-dots size="14px" color="indigo-4" />
-                <span class="app-progress-text">Starting...</span>
-              </div>
-              <!-- Failed -->
-              <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'failed'" class="app-state-failed">Failed</span>
-              <!-- Uninstalling -->
-              <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'uninstalling'" class="app-install-progress">
-                <q-linear-progress :value="progressBarValue(app.name) || 0.3" color="negative" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="isProgressIndeterminate(app.name)" />
-                <span class="app-progress-text">{{ installProgress[app.name]?.detail || 'Removing...' }}</span>
-              </div>
-              <!-- Downloading / installing -->
-              <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'downloading' || getAppDisplayState(app.name, app.hasChart) === 'installing'" class="app-install-progress">
-                <q-linear-progress :value="progressBarValue(app.name) || 0.2" color="indigo-4" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="isProgressIndeterminate(app.name)" />
-                <span class="app-progress-text">{{ progressDetail(app.name) || (getAppDisplayState(app.name, app.hasChart) === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
-              </div>
-              <!-- Not installed -->
-              <q-btn v-else-if="getAppDisplayState(app.name, app.hasChart) === 'not_installed'" flat dense no-caps :label="app.requiredDisk ? 'Install \u00b7 ' + app.requiredDisk : 'Install'" class="app-btn-install" @click.stop="handleInstall(app)" />
-              <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'no_chart'" class="app-no-chart">Not synced</span>
+              </template>
+              <!-- All other states: status left, actions right -->
+              <template v-else>
+                <div class="app-status" v-if="getAppDisplayState(app.name, app.hasChart) !== 'not_installed' && getAppDisplayState(app.name, app.hasChart) !== 'no_chart'">
+                  <span class="status-dot" :class="'dot-' + getAppDisplayState(app.name, app.hasChart)"></span>
+                  <span class="status-label">{{ getAppDisplayState(app.name, app.hasChart) }}</span>
+                </div>
+                <div class="app-card-tags" v-else>
+                  <q-badge
+                    v-for="cat in (app.categories || []).slice(0, 2)"
+                    :key="cat"
+                    :label="cat"
+                    class="app-tag"
+                  />
+                  <q-badge v-if="app.type === 'model' && app.backend" :label="app.backend" class="app-tag" />
+                </div>
+                <div class="app-card-actions">
+                  <!-- Running: app -->
+                  <template v-if="getAppDisplayState(app.name, app.hasChart) === 'running' && app.type !== 'model'">
+                    <q-btn unelevated dense no-caps size="sm" label="Open" icon="sym_r_open_in_new" class="app-primary-btn" @click.stop="openApp(app.name)" />
+                    <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
+                      <q-menu dark class="app-action-menu">
+                        <q-list dense>
+                          <q-item clickable v-close-popup @click.stop="stopApp(app)">
+                            <q-item-section avatar><q-icon name="sym_r_stop_circle" size="18px" /></q-item-section>
+                            <q-item-section>Stop</q-item-section>
+                          </q-item>
+                          <q-separator dark />
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                            <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
+                    </q-btn>
+                  </template>
+                  <!-- Running: model -->
+                  <template v-else-if="getAppDisplayState(app.name, app.hasChart) === 'running' && app.type === 'model'">
+                    <span class="app-footer-badge badge-available">Available</span>
+                    <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
+                      <q-menu dark class="app-action-menu">
+                        <q-list dense>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                            <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
+                    </q-btn>
+                  </template>
+                  <!-- Stopped -->
+                  <template v-else-if="getAppDisplayState(app.name, app.hasChart) === 'stopped'">
+                    <q-btn unelevated dense no-caps size="sm" label="Start" icon="sym_r_play_circle" class="app-primary-btn" @click.stop="startApp(app)" />
+                    <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
+                      <q-menu dark class="app-action-menu">
+                        <q-list dense>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                            <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
+                    </q-btn>
+                  </template>
+                  <!-- Stopping -->
+                  <template v-else-if="getAppDisplayState(app.name, app.hasChart) === 'stopping'">
+                    <q-spinner-dots size="14px" color="warning" />
+                    <span class="app-progress-text">Stopping...</span>
+                  </template>
+                  <!-- Starting / pending -->
+                  <template v-else-if="getAppDisplayState(app.name, app.hasChart) === 'starting' || getAppDisplayState(app.name, app.hasChart) === 'pending'">
+                    <q-spinner-dots size="14px" color="indigo-4" />
+                    <span class="app-progress-text">Starting...</span>
+                  </template>
+                  <!-- Failed -->
+                  <template v-else-if="getAppDisplayState(app.name, app.hasChart) === 'failed'">
+                    <span class="app-state-failed">Failed</span>
+                    <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
+                      <q-menu dark class="app-action-menu">
+                        <q-list dense>
+                          <q-item clickable v-close-popup @click.stop="handleInstall(app)">
+                            <q-item-section avatar><q-icon name="sym_r_refresh" size="18px" /></q-item-section>
+                            <q-item-section>Retry</q-item-section>
+                          </q-item>
+                          <q-separator dark />
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                            <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
+                    </q-btn>
+                  </template>
+                  <!-- Not installed -->
+                  <template v-else-if="getAppDisplayState(app.name, app.hasChart) === 'not_installed'">
+                    <q-btn unelevated dense no-caps size="sm" :label="app.requiredDisk ? 'Install \u00b7 ' + app.requiredDisk : 'Install'" class="app-btn-install" @click.stop="handleInstall(app)" />
+                  </template>
+                  <!-- No chart -->
+                  <template v-else-if="getAppDisplayState(app.name, app.hasChart) === 'no_chart'">
+                    <span class="app-no-chart">Not synced</span>
+                  </template>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -207,42 +273,104 @@
             </div>
             <div class="app-card-desc">{{ app.description }}</div>
             <div class="app-card-footer">
-              <div class="app-status">
-                <span class="status-dot" :class="'dot-' + getAppDisplayState(app.name)"></span>
-                <span class="status-label">{{ getAppDisplayState(app.name) }}</span>
-              </div>
-              <div class="app-actions" v-if="getAppDisplayState(app.name) === 'running'">
-                <div class="app-btn-group">
-                  <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_open_in_new" label="Open" class="app-action-btn app-action-primary" @click.stop="openApp(app.name)" />
-                  <q-btn v-if="app.type !== 'model'" flat dense no-caps size="sm" icon="sym_r_stop_circle" label="Stop" class="app-action-btn" @click.stop="stopApp(app)" />
-                  <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+              <!-- Downloading / installing / uninstalling: full-width progress -->
+              <template v-if="getAppDisplayState(app.name) === 'downloading' || getAppDisplayState(app.name) === 'installing'">
+                <div class="app-install-progress">
+                  <q-linear-progress :value="progressBarValue(app.name) || 0.2" color="indigo-4" track-color="grey-9" rounded size="4px" :indeterminate="isProgressIndeterminate(app.name)" />
+                  <span class="app-progress-text">{{ progressDetail(app.name) || 'Installing...' }}</span>
                 </div>
-              </div>
-              <div class="app-actions" v-else-if="getAppDisplayState(app.name) === 'stopped'">
-                <div class="app-btn-group">
-                  <q-btn flat dense no-caps size="sm" icon="sym_r_play_circle" label="Start" class="app-action-btn app-action-primary" @click.stop="startApp(app)" />
-                  <q-btn flat dense no-caps size="sm" icon="sym_r_delete" label="Remove" class="app-action-btn app-action-danger" @click.stop="confirmUninstall(app)" />
+              </template>
+              <template v-else-if="getAppDisplayState(app.name) === 'uninstalling'">
+                <div class="app-install-progress">
+                  <q-linear-progress :value="progressBarValue(app.name) || 0.3" color="negative" track-color="grey-9" rounded size="4px" :indeterminate="isProgressIndeterminate(app.name)" />
+                  <span class="app-progress-text">{{ installProgress[app.name]?.detail || 'Removing...' }}</span>
                 </div>
-              </div>
-              <div class="app-actions" v-else-if="getAppDisplayState(app.name) === 'stopping'">
-                <q-spinner-dots size="14px" color="warning" />
-                <span class="app-progress-text">Stopping...</span>
-              </div>
-              <div class="app-actions" v-else-if="getAppDisplayState(app.name) === 'starting' || getAppDisplayState(app.name) === 'pending'">
-                <q-spinner-dots size="14px" color="indigo-4" />
-                <span class="app-progress-text">Starting...</span>
-              </div>
-              <div class="app-actions" v-else-if="getAppDisplayState(app.name) === 'downloading' || getAppDisplayState(app.name) === 'installing'">
-                <q-linear-progress :value="progressBarValue(app.name) || 0.2" color="indigo-4" track-color="grey-9" rounded size="4px" :indeterminate="isProgressIndeterminate(app.name)" style="flex:1" />
-                <span class="app-progress-text">{{ progressDetail(app.name) || 'Installing...' }}</span>
-              </div>
-              <div class="app-actions" v-else-if="getAppDisplayState(app.name) === 'uninstalling'">
-                <q-linear-progress :value="progressBarValue(app.name) || 0.3" color="negative" track-color="grey-9" rounded size="4px" :indeterminate="isProgressIndeterminate(app.name)" style="flex:1" />
-                <span class="app-progress-text">{{ installProgress[app.name]?.detail || 'Removing...' }}</span>
-              </div>
-              <div class="app-actions" v-else-if="getAppDisplayState(app.name) === 'failed'">
-                <span class="app-state-failed">Failed</span>
-              </div>
+              </template>
+              <!-- All other states: status left, actions right -->
+              <template v-else>
+                <div class="app-status">
+                  <span class="status-dot" :class="'dot-' + getAppDisplayState(app.name)"></span>
+                  <span class="status-label">{{ getAppDisplayState(app.name) }}</span>
+                </div>
+                <div class="app-card-actions">
+                  <!-- Running: app -->
+                  <template v-if="getAppDisplayState(app.name) === 'running' && app.type !== 'model'">
+                    <q-btn unelevated dense no-caps size="sm" label="Open" icon="sym_r_open_in_new" class="app-primary-btn" @click.stop="openApp(app.name)" />
+                    <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
+                      <q-menu dark class="app-action-menu">
+                        <q-list dense>
+                          <q-item clickable v-close-popup @click.stop="stopApp(app)">
+                            <q-item-section avatar><q-icon name="sym_r_stop_circle" size="18px" /></q-item-section>
+                            <q-item-section>Stop</q-item-section>
+                          </q-item>
+                          <q-separator dark />
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                            <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
+                    </q-btn>
+                  </template>
+                  <!-- Running: model -->
+                  <template v-else-if="getAppDisplayState(app.name) === 'running' && app.type === 'model'">
+                    <span class="app-footer-badge badge-available">Available</span>
+                    <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
+                      <q-menu dark class="app-action-menu">
+                        <q-list dense>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                            <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
+                    </q-btn>
+                  </template>
+                  <!-- Stopped -->
+                  <template v-else-if="getAppDisplayState(app.name) === 'stopped'">
+                    <q-btn unelevated dense no-caps size="sm" label="Start" icon="sym_r_play_circle" class="app-primary-btn" @click.stop="startApp(app)" />
+                    <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
+                      <q-menu dark class="app-action-menu">
+                        <q-list dense>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                            <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
+                    </q-btn>
+                  </template>
+                  <!-- Stopping -->
+                  <template v-else-if="getAppDisplayState(app.name) === 'stopping'">
+                    <q-spinner-dots size="14px" color="warning" />
+                    <span class="app-progress-text">Stopping...</span>
+                  </template>
+                  <!-- Starting / pending -->
+                  <template v-else-if="getAppDisplayState(app.name) === 'starting' || getAppDisplayState(app.name) === 'pending'">
+                    <q-spinner-dots size="14px" color="indigo-4" />
+                    <span class="app-progress-text">Starting...</span>
+                  </template>
+                  <!-- Failed -->
+                  <template v-else-if="getAppDisplayState(app.name) === 'failed'">
+                    <span class="app-state-failed">Failed</span>
+                    <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
+                      <q-menu dark class="app-action-menu">
+                        <q-list dense>
+                          <q-item clickable v-close-popup @click.stop="handleInstall(app)">
+                            <q-item-section avatar><q-icon name="sym_r_refresh" size="18px" /></q-item-section>
+                            <q-item-section>Retry</q-item-section>
+                          </q-item>
+                          <q-separator dark />
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                            <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                        </q-list>
+                      </q-menu>
+                    </q-btn>
+                  </template>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -266,56 +394,108 @@
             <div class="detail-developer">{{ detailData?.developer || detailApp.developer || 'Unknown developer' }}</div>
           </div>
           <div class="detail-hero-actions">
+            <!-- Uninstalling -->
             <template v-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'uninstalling'">
               <div class="detail-progress-wrap">
-                <q-linear-progress :value="progressBarValue(detailApp.name) || 0.3" color="negative" track-color="grey-9" rounded size="5px" :indeterminate="isProgressIndeterminate(detailApp.name)" style="width:160px" />
+                <q-linear-progress :value="progressBarValue(detailApp.name) || 0.3" color="negative" track-color="grey-9" rounded size="5px" :indeterminate="isProgressIndeterminate(detailApp.name)" style="width:200px" />
                 <span class="detail-progress-text">{{ installProgress[detailApp.name]?.detail || 'Removing...' }}</span>
               </div>
             </template>
-            <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running'">
-              <q-btn v-if="detailApp.type !== 'model'" unelevated no-caps label="Open" class="btn-primary" icon="sym_r_open_in_new" @click="openApp(detailApp.name)" style="padding:6px 24px" />
-              <q-badge v-else label="Available" class="status-badge status-running" style="font-size:13px;padding:6px 16px" />
-              <q-btn v-if="detailApp.type !== 'model'" flat no-caps label="Stop" icon="sym_r_stop_circle" class="btn-secondary" @click="stopApp(detailApp)" />
-              <q-btn flat no-caps label="Remove" icon="sym_r_delete" class="btn-danger" @click="confirmUninstall(detailApp)" />
+            <!-- Running: app -->
+            <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running' && detailApp.type !== 'model'">
+              <q-btn unelevated no-caps label="Open" class="btn-primary" icon="sym_r_open_in_new" @click="openApp(detailApp.name)" style="padding:6px 24px" />
+              <q-btn flat no-caps label="Stop" icon="sym_r_stop_circle" class="btn-secondary" @click="stopApp(detailApp)" />
+              <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
+                <q-menu dark class="app-action-menu">
+                  <q-list dense>
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp)">
+                      <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                      <q-item-section class="text-negative">Uninstall</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
             </template>
+            <!-- Running: model -->
+            <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running' && detailApp.type === 'model'">
+              <q-badge label="Available" class="status-badge status-running" style="font-size:13px;padding:6px 16px" />
+              <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
+                <q-menu dark class="app-action-menu">
+                  <q-list dense>
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp)">
+                      <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                      <q-item-section class="text-negative">Remove</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
+            </template>
+            <!-- Stopped -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'stopped'">
               <q-btn unelevated no-caps label="Start" icon="sym_r_play_circle" class="btn-primary" @click="startApp(detailApp)" style="padding:6px 24px" />
-              <q-btn flat no-caps label="Remove" icon="sym_r_delete" class="btn-danger" @click="confirmUninstall(detailApp)" />
+              <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
+                <q-menu dark class="app-action-menu">
+                  <q-list dense>
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp)">
+                      <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                      <q-item-section class="text-negative">Uninstall</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
             </template>
+            <!-- Stopping -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'stopping'">
               <div class="detail-progress-wrap">
                 <q-spinner-dots size="20px" color="warning" />
                 <span class="detail-progress-text">Stopping...</span>
               </div>
             </template>
+            <!-- Starting -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'starting'">
               <div class="detail-progress-wrap">
                 <q-spinner-dots size="20px" color="indigo-4" />
                 <span class="detail-progress-text">Starting...</span>
               </div>
             </template>
+            <!-- Pending -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'pending'">
               <div class="detail-progress-wrap">
                 <q-spinner-dots size="20px" color="warning" />
                 <span class="detail-progress-text">Pending...</span>
               </div>
             </template>
+            <!-- Downloading / installing -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'downloading' || getAppDisplayState(detailApp.name, detailApp.hasChart) === 'installing'">
               <div class="detail-progress-wrap">
-                <q-linear-progress :value="progressBarValue(detailApp.name) || 0.2" color="primary" track-color="grey-9" rounded size="5px" :indeterminate="isProgressIndeterminate(detailApp.name)" style="width:160px" />
+                <q-linear-progress :value="progressBarValue(detailApp.name) || 0.2" color="primary" track-color="grey-9" rounded size="5px" :indeterminate="isProgressIndeterminate(detailApp.name)" style="width:200px" />
                 <span class="detail-progress-text">{{ progressDetail(detailApp.name) || (getAppDisplayState(detailApp.name, detailApp.hasChart) === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
               </div>
             </template>
+            <!-- Failed -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'failed'">
               <span class="app-state-failed">Failed</span>
-              <q-btn flat no-caps label="Retry" class="btn-primary" icon="sym_r_refresh" @click="handleInstall(detailApp)" style="padding:6px 24px" />
+              <q-btn unelevated no-caps label="Retry" class="btn-primary" icon="sym_r_refresh" @click="handleInstall(detailApp)" style="padding:6px 24px" />
+              <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
+                <q-menu dark class="app-action-menu">
+                  <q-list dense>
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp)">
+                      <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                      <q-item-section class="text-negative">Remove</q-item-section>
+                    </q-item>
+                  </q-list>
+                </q-menu>
+              </q-btn>
             </template>
+            <!-- Not installed -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'not_installed' && detailApp.hasChart">
               <q-btn unelevated no-caps label="Install" class="btn-primary" icon="sym_r_download" @click="handleInstall(detailApp)" style="padding:6px 24px" />
             </template>
+            <!-- No chart -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'no_chart'">
               <span class="detail-no-chart">Chart not synced</span>
             </template>
+            <!-- Default: not installed -->
             <template v-else>
               <q-btn unelevated no-caps label="Install" class="btn-primary" icon="sym_r_download" @click="handleInstall(detailApp)" style="padding:6px 24px" />
             </template>
