@@ -22,9 +22,13 @@ RUN curl -fsSLO "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/releas
     install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && \
     rm kubectl
 
-# Install crictl (for image pull progress tracking)
+# Install crictl (for image pull progress tracking) and ctr (for content GC)
 RUN CRICTL_VERSION=$(curl -fsSL https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/latest | grep '"tag_name"' | sed 's/.*"v\(.*\)".*/\1/') && \
     curl -fsSL "https://github.com/kubernetes-sigs/cri-tools/releases/download/v${CRICTL_VERSION}/crictl-v${CRICTL_VERSION}-linux-amd64.tar.gz" | tar -xz -C /usr/local/bin
+
+# Install ctr (containerd CLI for content store garbage collection)
+RUN CTR_VERSION=1.7.24 && \
+    curl -fsSL "https://github.com/containerd/containerd/releases/download/v${CTR_VERSION}/containerd-${CTR_VERSION}-linux-amd64.tar.gz" | tar -xz -C /usr/local bin/ctr
 
 COPY --from=builder /app-service /usr/local/bin/app-service
 

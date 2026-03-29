@@ -287,13 +287,8 @@ var prevNetRx, prevNetTx uint64
 var prevNetTime time.Time
 
 // readNetworkIO reads /proc/net/dev and computes bytes/sec since last call.
-// Prefers /host/proc/net/dev (host mount) for accurate server-level stats.
 func readNetworkIO() NetMetrics {
-	path := "/host/proc/net/dev"
-	if _, err := os.Stat(path); err != nil {
-		path = "/proc/net/dev"
-	}
-	f, err := os.Open(path)
+	f, err := os.Open("/proc/net/dev")
 	if err != nil {
 		return NetMetrics{}
 	}
