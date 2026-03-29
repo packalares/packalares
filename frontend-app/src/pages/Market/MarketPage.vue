@@ -776,9 +776,11 @@ async function fetchCategories() {
 async function fetchInstalled() {
   try {
     const res: any = await api.get('/api/apps/apps');
-    installedApps.value = res.data || [];
+    if (res.data) {
+      installedApps.value = res.data;
+    }
   } catch {
-    installedApps.value = [];
+    // Keep previous state on error — don't wipe installed apps
   }
 }
 
@@ -786,27 +788,30 @@ async function fetchModelStatus() {
   try {
     const res: any = await api.get('/api/models/status');
     const data = res.data || res || {};
-    // Clear existing entries
-    for (const key of Object.keys(installedModels)) {
-      delete installedModels[key];
-    }
-    // data is { ollama: [...], vllm: [...], _active: [...] }
+    // Build new map, then replace — don't clear before API succeeds
+    const newModels: Record<string, InstalledModelInfo> = {};
     for (const [backend, models] of Object.entries(data)) {
       if (backend === '_active') {
-        // Active operations — set appStates so UI shows progress
         for (const m of models as InstalledModelInfo[]) {
           if (m.modified && !appStates[m.name]) {
-            appStates[m.name] = m.modified; // modified field carries the state
+            appStates[m.name] = m.modified;
           }
         }
         continue;
       }
       for (const m of models as InstalledModelInfo[]) {
-        installedModels[m.name] = m;
+        newModels[m.name] = m;
       }
     }
+    // Replace: remove old, add new
+    for (const key of Object.keys(installedModels)) {
+      if (!newModels[key]) delete installedModels[key];
+    }
+    for (const [key, val] of Object.entries(newModels)) {
+      installedModels[key] = val;
+    }
   } catch {
-    // ollama might not be installed — ignore
+    // Keep previous state — ollama might not be installed
   }
 }
 
@@ -850,15 +855,19 @@ async function installApp(app: MarketApp) {
   appStates[app.name] = 'downloading';
   try {
     await api.post('/api/apps/install', { name: app.name, chart: app.chartName || app.name });
-    // WebSocket will update the state; fall back to polling
+    // WebSocket will update the state; poll as fallback only for detecting completion
     let attempts = 0;
     const poll = setInterval(async () => {
       attempts++;
       await fetchInstalled();
       if (isInstalled(app.name) || attempts >= 60) {
         clearInterval(poll);
-        installingSet.delete(app.name);
-        delete appStates[app.name];
+        // Don't clear appStates here — let WS app_state:running handle it
+        // Only clear installingSet as a safety net after timeout
+        if (attempts >= 60) {
+          installingSet.delete(app.name);
+          delete appStates[app.name];
+        }
       }
     }, 3000);
   } catch (e: any) {
@@ -1004,6 +1013,8 @@ function connectWebSocket() {
           const d = msg.data as { name: string; step: number; totalSteps: number; detail: string; state: string; bytesDownloaded: number; bytesTotal: number };
           if (d.state === 'running') {
             delete installProgress[d.name];
+            // Bridge the gap until app_state:running arrives
+            appStates[d.name] = 'running';
           } else {
             installProgress[d.name] = { step: d.step, totalSteps: d.totalSteps, detail: d.detail, bytesDownloaded: d.bytesDownloaded || 0, bytesTotal: d.bytesTotal || 0 };
           }
