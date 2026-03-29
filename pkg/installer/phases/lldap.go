@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -17,7 +18,13 @@ import (
 // createLLDAPServiceAccount creates the svc-packalares service account in LLDAP.
 // This runs during install so the auth service never needs the admin password at runtime.
 func createLLDAPServiceAccount(opts *InstallOptions) error {
-	lldapHost := fmt.Sprintf("lldap-svc.%s", config.PlatformNamespace())
+	// Resolve LLDAP ClusterIP via kubectl — installer runs on host, can't use K8s DNS
+	ns := config.PlatformNamespace()
+	lldapHost := fmt.Sprintf("lldap-svc.%s", ns)
+	if out, err := exec.Command("kubectl", "get", "svc", "lldap-svc", "-n", ns,
+		"-o", "jsonpath={.spec.clusterIP}").Output(); err == nil && len(out) > 0 {
+		lldapHost = strings.TrimSpace(string(out))
+	}
 	httpPort := 17170
 	ldapPort := 3890
 	adminUser := "admin"
