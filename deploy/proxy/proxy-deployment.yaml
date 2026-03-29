@@ -262,8 +262,8 @@ data:
           proxy_set_header X-Forwarded-Host $host;
           proxy_set_header Cookie $http_cookie;
         }
-        error_page 401 = @login_redirect;
-        location @login_redirect { return 302 https://auth.{{USER_ZONE}}/login?rd=https://$host$request_uri; }
+        error_page 401 = @api_auth_error;
+        location @api_auth_error { return 401 '{"error":"unauthorized"}'; }
     
         # Public
         location /api/auth/login    { proxy_pass http://$auth_up:9091/api/firstfactor; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
