@@ -670,6 +670,11 @@ interface MarketApp {
   type?: string;       // 'app' | 'model'
   backend?: string;    // 'ollama' | 'vllm'
   modelId?: string;    // e.g. 'gemma3:27b'
+  hfRepo?: string;     // HuggingFace repo for vllm models
+  hfRef?: string;
+  gpuMemoryUtilization?: string;
+  maxModelLen?: string;
+  tiktokenFiles?: string;
 }
 
 interface InstalledModelInfo {
@@ -1010,6 +1015,11 @@ async function installModel(app: MarketApp) {
       name: app.name,
       modelId: app.modelId,
       backend: app.backend || 'ollama',
+      hfRepo: app.hfRepo,
+      hfRef: app.hfRef,
+      gpuMemoryUtilization: app.gpuMemoryUtilization,
+      maxModelLen: app.maxModelLen,
+      tiktokenFiles: app.tiktokenFiles,
     });
     // WebSocket app_state:running will handle state cleanup
   } catch (e: any) {
