@@ -321,15 +321,50 @@ func (v *VLLMBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSHub
 		return fmt.Errorf("inject values: %w", err)
 	}
 
+	// Pre-pull container images with progress before helm install.
+	wsHub.BroadcastInstallProgress(model.Name, StateDownloading, 2, 4, "Pre-pulling images...", 0, 0)
+	images := ExtractImagesFromChart(chartDir)
+	if templateImages := ExtractImagesFromTemplateOutput(ctx, chartDir, v.namespace); len(templateImages) > 0 {
+		seen := make(map[string]bool)
+		for _, img := range templateImages {
+			seen[img] = true
+		}
+		for _, img := range images {
+			if !seen[img] {
+				templateImages = append(templateImages, img)
+			}
+		}
+		images = templateImages
+	}
+	if missing := FilterMissingImages(ctx, images); len(missing) > 0 {
+		estimatedTotal := EstimateImageSizes(missing)
+		PullImagesWithProgress(ctx, missing, func(pulled, total int, currentImage string, bytesDownloaded, bytesTotal int64) {
+			dlBytes := bytesDownloaded
+			totalBytes := bytesTotal
+			if totalBytes <= 0 {
+				totalBytes = estimatedTotal
+			}
+			if dlBytes <= 0 && total > 0 {
+				dlBytes = totalBytes * int64(pulled) / int64(total)
+			}
+			short := currentImage
+			if idx := strings.LastIndex(short, "/"); idx >= 0 {
+				short = short[idx+1:]
+			}
+			detail := fmt.Sprintf("Pulling images (%d/%d) %s", pulled, total, short)
+			wsHub.BroadcastInstallProgress(model.Name, StateDownloading, 2, 4, detail, dlBytes, totalBytes)
+		})
+	}
+
 	// Helm install.
-	wsHub.BroadcastInstallProgress(model.Name, StateInstalling, 2, 3, "Installing helm release...", 0, 0)
+	wsHub.BroadcastInstallProgress(model.Name, StateInstalling, 3, 4, "Installing helm release...", 0, 0)
 
 	releaseName := "vllm-" + model.Name
 	if err := v.helm.InstallFromDir(ctx, releaseName, chartDir, v.namespace); err != nil {
 		return fmt.Errorf("helm install: %w", err)
 	}
 
-	wsHub.BroadcastInstallProgress(model.Name, StateDownloading, 3, 3, "Waiting for pod to start...", 0, 0)
+	wsHub.BroadcastInstallProgress(model.Name, StateDownloading, 4, 4, "Downloading model...", 0, 0)
 
 	// Monitor hf-downloader logs for download progress until .done file appears.
 	// This blocks until download completes or context is cancelled.
