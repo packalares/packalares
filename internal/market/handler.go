@@ -1,30 +1,34 @@
 package market
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"k8s.io/klog/v2"
 )
 
+const (
+	// defaultDataDir is the base directory for market data (charts, icons, screenshots, catalog).
+	defaultDataDir    = "/data/market"
+	chartsSubdir      = "charts"
+	iconsSubdir       = "icons"
+	screenshotsSubdir = "screenshots"
+)
+
 // Handler implements the HTTP API for the market backend.
 type Handler struct {
-	catalog  *Catalog
-	syncMgr  *ChartSyncManager
+	catalog *Catalog
+	dataDir string
 }
 
 // NewHandler creates a market HTTP handler.
-func NewHandler(catalog *Catalog) *Handler {
-	return &Handler{catalog: catalog}
-}
-
-// SetSyncManager attaches the chart sync manager for sync endpoints.
-func (h *Handler) SetSyncManager(mgr *ChartSyncManager) {
-	h.syncMgr = mgr
+func NewHandler(catalog *Catalog, dataDir string) *Handler {
+	if dataDir == "" {
+		dataDir = defaultDataDir
+	}
+	return &Handler{catalog: catalog, dataDir: dataDir}
 }
 
 // RegisterRoutes adds all market routes to the mux.
@@ -35,10 +39,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/market/v1/categories", h.handleCategories)
 	mux.HandleFunc("/market/v1/search", h.handleSearch)
 	mux.HandleFunc("/market/v1/recommendations", h.handleRecommendations)
-
-	// Chart sync endpoints
-	mux.HandleFunc("/market/v1/sync", h.handleSync)
-	mux.HandleFunc("/market/v1/sync/status", h.handleSyncStatus)
 
 	// Chart, icon, and screenshot file serving
 	mux.HandleFunc("/charts/", h.handleServeChart)
@@ -76,30 +76,11 @@ func (h *Handler) handleListApps(w http.ResponseWriter, r *http.Request) {
 	category := r.URL.Query().Get("category")
 	var apps []MarketApp
 
-	// Build set of apps that have local charts
-	chartSet := make(map[string]bool)
-	if h.syncMgr != nil {
-		chartsDir := filepath.Join(h.syncMgr.DataDir(), chartsSubdir)
-		if entries, err := os.ReadDir(chartsDir); err == nil {
-			for _, e := range entries {
-				name := e.Name()
-				if strings.HasSuffix(name, ".tgz") {
-					// Extract app name from "appname-version.tgz"
-					idx := strings.LastIndex(name, "-")
-					if idx > 0 {
-						chartSet[name[:idx]] = true
-					}
-				}
-			}
-		}
-	}
-
 	if category != "" {
 		all := h.catalog.ListApps()
 		for _, app := range all {
 			for _, cat := range app.Categories {
 				if strings.EqualFold(cat, category) {
-					app.HasChart = chartSet[app.Name]
 					apps = append(apps, app)
 					break
 				}
@@ -109,11 +90,9 @@ func (h *Handler) handleListApps(w http.ResponseWriter, r *http.Request) {
 		apps = h.catalog.ListApps()
 	}
 
-	// Tag apps that have local charts
+	// All apps have charts since they are shipped in the image
 	for i := range apps {
-		if chartSet[apps[i].Name] {
-			apps[i].HasChart = true
-		}
+		apps[i].HasChart = true
 	}
 
 	writeJSON(w, http.StatusOK, CatalogResponse{
@@ -158,7 +137,6 @@ func (h *Handler) handleGetApp(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGetAppDetail handles GET /market/v1/app/{name}
-// Returns the app enriched with description/screenshots from GitHub if needed.
 func (h *Handler) handleGetAppDetail(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -236,85 +214,6 @@ func (h *Handler) handleRecommendations(w http.ResponseWriter, r *http.Request) 
 	})
 }
 
-// syncRequest is the POST body for /market/v1/sync.
-// Supports both {"source": "olares"} (single) and {"sources": ["olares"]} (multiple).
-type syncRequest struct {
-	Source  string   `json:"source"`
-	Sources []string `json:"sources"`
-}
-
-// handleSync handles POST /market/v1/sync
-// Starts a background chart sync from the specified sources.
-// Body: {"source": "olares"} or {"source": "all"} or {"sources": ["olares"]}
-// Returns immediately with 200, sync runs in background.
-func (h *Handler) handleSync(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-
-	if h.syncMgr == nil {
-		writeError(w, http.StatusServiceUnavailable, "sync manager not configured")
-		return
-	}
-
-	if h.syncMgr.IsRunning() {
-		writeJSON(w, http.StatusConflict, map[string]interface{}{
-			"code":    409,
-			"message": "sync already running",
-			"status":  h.syncMgr.Status(),
-		})
-		return
-	}
-
-	var req syncRequest
-	if r.Body != nil {
-		_ = json.NewDecoder(r.Body).Decode(&req)
-	}
-
-	// Build the source list from the request
-	var sourceNames []string
-	if req.Source == "all" || req.Source == "" {
-		// Sync all sources
-		sourceNames = nil
-	} else {
-		sourceNames = []string{req.Source}
-	}
-	// Merge in any sources from the array field
-	if len(req.Sources) > 0 {
-		sourceNames = req.Sources
-	}
-
-	// Start sync in background with detached context (survives HTTP response)
-	go h.syncMgr.SyncAll(context.Background(), sourceNames)
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"code":    200,
-		"message": "sync started",
-	})
-}
-
-// handleSyncStatus handles GET /market/v1/sync/status
-func (h *Handler) handleSyncStatus(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-
-	if h.syncMgr == nil {
-		writeJSON(w, http.StatusOK, map[string]interface{}{
-			"code": 200,
-			"data": SyncStatus{State: "idle", LastSync: map[string]string{}},
-		})
-		return
-	}
-
-	writeJSON(w, http.StatusOK, map[string]interface{}{
-		"code": 200,
-		"data": h.syncMgr.Status(),
-	})
-}
-
 // handleServeChart serves chart .tgz files from the charts directory.
 func (h *Handler) handleServeChart(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -330,12 +229,7 @@ func (h *Handler) handleServeChart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dataDir := defaultDataDir
-	if h.syncMgr != nil {
-		dataDir = h.syncMgr.DataDir()
-	}
-
-	filePath := filepath.Join(dataDir, chartsSubdir, filename)
+	filePath := filepath.Join(h.dataDir, chartsSubdir, filename)
 	http.ServeFile(w, r, filePath)
 }
 
@@ -361,12 +255,7 @@ func (h *Handler) handleServeIcon(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dataDir := defaultDataDir
-	if h.syncMgr != nil {
-		dataDir = h.syncMgr.DataDir()
-	}
-
-	filePath := filepath.Join(dataDir, iconsSubdir, filename)
+	filePath := filepath.Join(h.dataDir, iconsSubdir, filename)
 	http.ServeFile(w, r, filePath)
 }
 
@@ -395,15 +284,10 @@ func (h *Handler) handleServeScreenshot(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	appName := filepath.Base(parts[0]) // prevent traversal
+	appName := filepath.Base(parts[0])  // prevent traversal
 	filename := filepath.Base(parts[1]) // prevent traversal
 
-	dataDir := defaultDataDir
-	if h.syncMgr != nil {
-		dataDir = h.syncMgr.DataDir()
-	}
-
-	filePath := filepath.Join(dataDir, screenshotsSubdir, appName, filename)
+	filePath := filepath.Join(h.dataDir, screenshotsSubdir, appName, filename)
 	http.ServeFile(w, r, filePath)
 }
 

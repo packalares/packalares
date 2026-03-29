@@ -56,25 +56,6 @@
           </template>
         </q-input>
         <q-space />
-        <div class="sync-area">
-          <div v-if="syncStatus.state === 'running'" class="sync-progress">
-            <q-spinner-dots size="16px" color="white" />
-            <span class="sync-text">Syncing {{ syncStatus.currentApp || '...' }} ({{ syncStatus.syncedApps }}/{{ syncStatus.totalApps }})</span>
-          </div>
-          <div v-else-if="syncStatus.lastSync" class="sync-last">
-            <q-icon name="sym_r_check_circle" size="14px" color="positive" />
-            <span class="sync-text">{{ syncStatus.totalApps }} apps synced</span>
-          </div>
-          <q-btn
-            flat dense no-caps
-            :label="syncStatus.state === 'running' ? 'Syncing...' : 'Sync'"
-            icon="sym_r_sync"
-            class="sync-btn"
-            :loading="syncStatus.state === 'running'"
-            :disable="syncStatus.state === 'running'"
-            @click="triggerSync"
-          />
-        </div>
       </div>
 
       <!-- Discover View -->
@@ -711,17 +692,7 @@ const appStates = reactive<Record<string, string>>({});
 const installProgress = reactive<Record<string, { step: number; totalSteps: number; detail: string; bytesDownloaded: number; bytesTotal: number }>>({});
 const installedModels = reactive<Record<string, InstalledModelInfo>>({});
 
-const syncStatus = reactive({
-  state: '' as string,
-  totalApps: 0,
-  syncedApps: 0,
-  currentApp: '',
-  lastSync: '',
-  errors: [] as string[],
-});
-
 let ws: WebSocket | null = null;
-let syncPollTimer: ReturnType<typeof setInterval> | null = null;
 
 const installedStatusMap = computed(() => {
   const map: Record<string, string> = {};
@@ -1221,49 +1192,6 @@ function connectWebSocket() {
   }
 }
 
-async function triggerSync() {
-  try {
-    await api.post('/api/market/sync', { source: 'olares' });
-    syncStatus.state = 'running';
-    startSyncPoll();
-  } catch (e: any) {
-    $q.notify({ type: 'negative', message: 'Sync failed: ' + (e?.message || 'unknown') });
-  }
-}
-
-async function fetchSyncStatus() {
-  try {
-    const r: any = await api.get('/api/market/sync/status');
-    const d = r?.data || r || {};
-    syncStatus.state = d.state || '';
-    syncStatus.totalApps = d.total_apps || 0;
-    syncStatus.syncedApps = d.synced_apps || 0;
-    syncStatus.currentApp = d.current_app || '';
-    syncStatus.lastSync = d.last_sync || '';
-    syncStatus.errors = d.errors || [];
-
-    if (d.state === 'done' || d.state === 'error' || d.state === '') {
-      stopSyncPoll();
-      if (d.state === 'done') {
-        // Reload catalog after sync completes
-        await Promise.all([fetchApps(), fetchCategories()]);
-        $q.notify({ type: 'positive', message: `Synced ${d.total_apps} apps` });
-      }
-    }
-  } catch {}
-}
-
-function startSyncPoll() {
-  if (syncPollTimer) return;
-  syncPollTimer = setInterval(fetchSyncStatus, 2000);
-}
-
-function stopSyncPoll() {
-  if (syncPollTimer) {
-    clearInterval(syncPollTimer);
-    syncPollTimer = null;
-  }
-}
 
 // Watch for detail panel close to clean up
 watch(detailApp, (val) => {
@@ -1280,7 +1208,7 @@ onMounted(async () => {
     const r: any = await api.get('/api/user/info');
     userZone.value = r?.zone || r?.terminusName || '';
   } catch {}
-  await Promise.all([fetchApps(), fetchCategories(), fetchInstalled(), fetchModelStatus(), fetchSyncStatus()]);
+  await Promise.all([fetchApps(), fetchCategories(), fetchInstalled(), fetchModelStatus()]);
 
   // Initialize appStates from installed apps' non-terminal states so
   // getAppDisplayState works correctly after page refresh
@@ -1299,16 +1227,10 @@ onMounted(async () => {
 
   // No polling — WebSocket handles real-time updates.
   // State is fetched on load (above) and on WS reconnect.
-
-  // If sync is running, start polling
-  if (syncStatus.state === 'running') {
-    startSyncPoll();
-  }
 });
 
 onUnmounted(() => {
   if (ws) { ws.close(); ws = null; }
-  stopSyncPoll();
 });
 </script>
 

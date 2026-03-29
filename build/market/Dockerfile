@@ -15,12 +15,13 @@ RUN apt-get update && \
 
 COPY --from=builder /market-backend /usr/local/bin/market-backend
 
-RUN mkdir -p /etc/packalares
+RUN mkdir -p /etc/packalares /data/market
 
-ENV MARKET_URL=https://market.olares.com
+COPY market/ /data/market/
+
 ENV MARKET_LISTEN_ADDR=:6756
 
 EXPOSE 6756
 
 ENTRYPOINT ["market-backend"]
-LABEL org.opencontainers.image.description="Market backend — app catalog, chart sync, icon/screenshot serving, Olares marketplace integration"
+LABEL org.opencontainers.image.description="Market backend — self-contained app catalog, chart/icon/screenshot serving"
