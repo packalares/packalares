@@ -1,10 +1,7 @@
-# Model configuration — overridden per model install
+# Model configuration — name, hfRepo, storagePath injected by appservice
 model:
-  name: ""
-  hfRepo: ""
   hfRef: "main"
   doneName: ".done"
-  storagePath: ""
 
 # vLLM server settings
 vllm:
