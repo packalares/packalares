@@ -1026,8 +1026,11 @@ async function installModel(app: MarketApp) {
       maxModelLen: app.maxModelLen,
       tiktokenFiles: app.tiktokenFiles,
       requiredMemory: app.requiredMemory,
+      requiredCpu: app.requiredCpu,
       requiredGpu: app.requiredGpu,
       requiredDisk: app.requiredDisk,
+      limitedMemory: (app as any).limitedMemory,
+      limitedCPU: (app as any).limitedCPU,
     });
     // WebSocket app_state:running will handle state cleanup
   } catch (e: any) {

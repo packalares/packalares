@@ -43,8 +43,11 @@ type ModelSpec struct {
 	TiktokenFiles        string `json:"tiktokenFiles,omitempty"` // comma-separated
 	StoragePath          string `json:"storagePath,omitempty"`   // host path for model data
 	RequiredMemory       string `json:"requiredMemory,omitempty"`
+	RequiredCPU          string `json:"requiredCpu,omitempty"`
 	RequiredGPU          string `json:"requiredGpu,omitempty"`
 	RequiredDisk         string `json:"requiredDisk,omitempty"`
+	LimitedMemory        string `json:"limitedMemory,omitempty"`
+	LimitedCPU           string `json:"limitedCPU,omitempty"`
 }
 
 // InstalledModel represents a model available on a backend.
@@ -529,6 +532,46 @@ func (v *VLLMBackend) buildValues(model ModelSpec) map[string]interface{} {
 			"files":   model.TiktokenFiles,
 			"dir":     "/data/tiktoken",
 		}
+	}
+
+	// Inject resource requests/limits from catalog requirements
+	reqMem := model.RequiredMemory
+	if reqMem == "" {
+		reqMem = "256Mi"
+	}
+	limMem := model.LimitedMemory
+	if limMem == "" {
+		limMem = reqMem
+	}
+	reqCPU := model.RequiredCPU
+	if reqCPU == "" {
+		reqCPU = "500m"
+	}
+	limCPU := model.LimitedCPU
+	if limCPU == "" {
+		limCPU = "18"
+	}
+	vals["resources"] = map[string]interface{}{
+		"vllm": map[string]interface{}{
+			"requests": map[string]interface{}{
+				"cpu":    reqCPU,
+				"memory": reqMem,
+			},
+			"limits": map[string]interface{}{
+				"cpu":    limCPU,
+				"memory": limMem,
+			},
+		},
+		"downloader": map[string]interface{}{
+			"requests": map[string]interface{}{
+				"cpu":    "100m",
+				"memory": "256Mi",
+			},
+			"limits": map[string]interface{}{
+				"cpu":    "1",
+				"memory": "1Gi",
+			},
+		},
 	}
 
 	return vals
