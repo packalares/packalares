@@ -326,16 +326,111 @@ func (v *VLLMBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSHub
 		return fmt.Errorf("helm install: %w", err)
 	}
 
-	wsHub.BroadcastInstallProgress(model.Name, StateInstalling, 3, 3, "Model deploying — download in progress", 0, 0)
-	// Don't broadcast StateRunning — the pod is just starting, model is still downloading.
-	// The model will show as "installed" via InstalledModels (helm release exists).
+	wsHub.BroadcastInstallProgress(model.Name, StateDownloading, 3, 3, "Waiting for pod to start...", 0, 0)
+
+	// Monitor hf-downloader logs for download progress until .done file appears.
+	// This blocks until download completes or context is cancelled.
+	v.monitorDownload(ctx, model, releaseName, wsHub)
 
 	// Register the vLLM endpoint in OpenWebUI so it auto-discovers the model
 	vllmURL := fmt.Sprintf("http://%s-api.%s:8000/v1", releaseName, v.namespace)
 	v.addOpenWebUIEndpoint(vllmURL)
 
+	wsHub.BroadcastAppState(model.Name, StateRunning)
 	klog.Infof("vllm model %s deployed (release=%s, repo=%s)", model.Name, releaseName, model.HFRepo)
 	return nil
+}
+
+// monitorDownload tails the hf-downloader container logs and broadcasts progress.
+// Blocks until the download completes (container exits) or context is cancelled.
+func (v *VLLMBackend) monitorDownload(ctx context.Context, model ModelSpec, releaseName string, wsHub *WSHub) {
+	// Wait for pod to be ready
+	podName := ""
+	for i := 0; i < 60; i++ {
+		cmd := exec.CommandContext(ctx, "kubectl", "get", "pods",
+			"-n", v.namespace,
+			"-l", "app.kubernetes.io/instance="+releaseName,
+			"-o", "jsonpath={.items[0].metadata.name}",
+		)
+		out, err := cmd.Output()
+		if err == nil && len(out) > 0 {
+			podName = strings.TrimSpace(string(out))
+			break
+		}
+		time.Sleep(2 * time.Second)
+	}
+	if podName == "" {
+		klog.Warningf("vllm %s: could not find pod for progress monitoring", model.Name)
+		return
+	}
+
+	// Tail the hf-downloader logs
+	cmd := exec.CommandContext(ctx, "kubectl", "logs",
+		"-n", v.namespace,
+		podName,
+		"-c", "hf-downloader",
+		"-f", // follow
+	)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		klog.Warningf("vllm %s: could not tail logs: %v", model.Name, err)
+		return
+	}
+	if err := cmd.Start(); err != nil {
+		klog.Warningf("vllm %s: could not start log tail: %v", model.Name, err)
+		return
+	}
+
+	// Track cumulative progress across all files
+	fileTotals := map[string]int64{}
+	fileCompleted := map[string]int64{}
+
+	scanner := bufio.NewScanner(stdout)
+	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		var progress struct {
+			Status    string `json:"status"`
+			File      string `json:"file"`
+			Completed int64  `json:"completed"`
+			Total     int64  `json:"total"`
+			Error     string `json:"error"`
+		}
+		if err := json.Unmarshal([]byte(line), &progress); err != nil {
+			continue
+		}
+
+		if progress.Error != "" {
+			klog.Warningf("vllm %s download error: %s", model.Name, progress.Error)
+			continue
+		}
+
+		if progress.File != "" && progress.Total > 0 {
+			fileTotals[progress.File] = progress.Total
+			fileCompleted[progress.File] = progress.Completed
+		}
+
+		// Sum across all files
+		var cumCompleted, cumTotal int64
+		for f, t := range fileTotals {
+			cumTotal += t
+			cumCompleted += fileCompleted[f]
+		}
+
+		// Short file name for display
+		short := progress.File
+		if idx := strings.LastIndex(short, "/"); idx >= 0 {
+			short = short[idx+1:]
+		}
+
+		detail := fmt.Sprintf("Downloading %s (%d/%d files)", short, len(fileCompleted), len(fileTotals))
+		wsHub.BroadcastInstallProgress(model.Name, StateDownloading, 1, 1, detail, cumCompleted, cumTotal)
+	}
+
+	// Wait for the log tail to finish (container exited)
+	_ = cmd.Wait()
+	klog.Infof("vllm %s: hf-downloader finished", model.Name)
 }
 
 // buildValues creates the Helm values map for the vllm-model chart.
@@ -431,10 +526,22 @@ func (v *VLLMBackend) InstalledModels(ctx context.Context) ([]InstalledModel, er
 			if strings.HasPrefix(name, "vllm-") {
 				name = strings.TrimPrefix(name, "vllm-")
 			}
+			// Check if model is still downloading (hf-downloader container running)
+			state := "ready"
+			podStatus := exec.CommandContext(ctx, "kubectl", "get", "pods",
+				"-n", v.namespace,
+				"-l", "app.kubernetes.io/instance="+r.Name,
+				"-o", "jsonpath={.items[0].status.containerStatuses[?(@.name==\"hf-downloader\")].state}")
+			if out, err := podStatus.Output(); err == nil {
+				s := string(out)
+				if strings.Contains(s, "running") || strings.Contains(s, "waiting") {
+					state = "downloading"
+				}
+			}
 			models = append(models, InstalledModel{
 				Name:     name,
 				Size:     0,
-				Modified: r.Updated,
+				Modified: state, // reuse Modified field for status
 			})
 		}
 	}

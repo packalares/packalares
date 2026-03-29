@@ -747,7 +747,12 @@ function getAppDisplayState(name: string, hasChart?: boolean): string {
   if (app?.type === 'model') {
     if (wsState === 'running') return 'running';
     // Check if model is pulled/available on the backend
-    if (installedModels[app.modelId || name]) return 'running';
+    const model = installedModels[app.modelId || name];
+    if (model) {
+      // vLLM models report "downloading" while hf-downloader is running
+      if (model.modified === 'downloading') return 'downloading';
+      return 'running';
+    }
     return 'not_installed';
   }
 
