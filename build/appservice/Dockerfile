@@ -31,6 +31,7 @@ RUN CTR_VERSION=1.7.24 && \
     curl -fsSL "https://github.com/containerd/containerd/releases/download/v${CTR_VERSION}/containerd-${CTR_VERSION}-linux-amd64.tar.gz" | tar -xz -C /usr/local bin/ctr
 
 COPY --from=builder /app-service /usr/local/bin/app-service
+COPY --from=builder /src/deploy/charts/vllm-model /usr/share/packalares/charts/vllm-model
 
 RUN mkdir -p /var/lib/packalares/appservice
 
