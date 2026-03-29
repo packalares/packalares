@@ -507,6 +507,17 @@ func (v *VLLMBackend) Uninstall(ctx context.Context, model ModelSpec) error {
 	vllmURL := fmt.Sprintf("http://%s-api.%s:8000/v1", releaseName, v.namespace)
 	v.removeOpenWebUIEndpoint(vllmURL)
 
+	// Clean up model data on disk
+	storagePath := model.StoragePath
+	if storagePath == "" {
+		storagePath = filepath.Join(defaultModelStorageBase, model.Name)
+	}
+	if err := os.RemoveAll(storagePath); err != nil {
+		klog.Warningf("vllm %s: failed to clean model data at %s: %v", model.Name, storagePath, err)
+	} else {
+		klog.Infof("vllm %s: cleaned model data at %s", model.Name, storagePath)
+	}
+
 	return nil
 }
 
