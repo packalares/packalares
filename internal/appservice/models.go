@@ -42,6 +42,9 @@ type ModelSpec struct {
 	TensorParallelSize   int    `json:"tensorParallelSize,omitempty"`
 	TiktokenFiles        string `json:"tiktokenFiles,omitempty"` // comma-separated
 	StoragePath          string `json:"storagePath,omitempty"`   // host path for model data
+	RequiredMemory       string `json:"requiredMemory,omitempty"`
+	RequiredGPU          string `json:"requiredGpu,omitempty"`
+	RequiredDisk         string `json:"requiredDisk,omitempty"`
 }
 
 // InstalledModel represents a model available on a backend.
@@ -285,11 +288,11 @@ func (v *VLLMBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSHub
 		return fmt.Errorf("vllm install %s: hfRepo is required", model.Name)
 	}
 
-	// Check server has enough memory for the vLLM model
-	memRequired := parseResourceSize(v.getResourceValue(model, "memory"))
-	if memRequired > 0 {
+	// Check server has enough resources for the model
+	if model.RequiredMemory != "" {
+		memRequired := parseResourceSize(model.RequiredMemory)
 		availMem := getAvailableMemory()
-		if availMem > 0 && availMem < memRequired {
+		if memRequired > 0 && availMem > 0 && availMem < memRequired {
 			return fmt.Errorf("insufficient memory: need %s, available %s",
 				formatResourceSize(memRequired), formatResourceSize(availMem))
 		}
@@ -636,14 +639,6 @@ func splitNonEmpty(s, sep string) []string {
 		}
 	}
 	return result
-}
-
-// getResourceValue returns the memory request value for a model.
-func (v *VLLMBackend) getResourceValue(model ModelSpec, resource string) string {
-	if resource == "memory" {
-		return "20Gi" // default vLLM memory request
-	}
-	return ""
 }
 
 // parseResourceSize parses Kubernetes resource strings like "20Gi", "500Mi" to bytes.
