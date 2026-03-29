@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -317,6 +318,10 @@ func (v *VLLMBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSHub
 	wsHub.BroadcastInstallProgress(model.Name, StateInstalling, 3, 3, "Model deploying — download in progress", 0, 0)
 	wsHub.BroadcastAppState(model.Name, StateRunning)
 
+	// Register the vLLM endpoint in OpenWebUI so it auto-discovers the model
+	vllmURL := fmt.Sprintf("http://vllm-api.%s:8000/v1", v.namespace)
+	v.addOpenWebUIEndpoint(vllmURL)
+
 	klog.Infof("vllm model %s deployed (release=%s, repo=%s)", model.Name, releaseName, model.HFRepo)
 	return nil
 }
@@ -384,10 +389,21 @@ func (v *VLLMBackend) buildValues(model ModelSpec) map[string]interface{} {
 	return vals
 }
 
-// Uninstall removes a vLLM model's Helm release.
+// Uninstall removes a vLLM model's Helm release and cleans up OpenWebUI config.
 func (v *VLLMBackend) Uninstall(ctx context.Context, model ModelSpec) error {
 	releaseName := "vllm-" + model.Name
-	return v.helm.Uninstall(ctx, releaseName)
+	if err := v.helm.Uninstall(ctx, releaseName); err != nil {
+		return err
+	}
+
+	// Check if any other vLLM models are still installed — if not, remove the endpoint
+	remaining, _ := v.InstalledModels(ctx)
+	if len(remaining) == 0 {
+		vllmURL := fmt.Sprintf("http://vllm-api.%s:8000/v1", v.namespace)
+		v.removeOpenWebUIEndpoint(vllmURL)
+	}
+
+	return nil
 }
 
 // InstalledModels lists vLLM models by checking Helm releases with a model label.
@@ -409,6 +425,79 @@ func (v *VLLMBackend) InstalledModels(ctx context.Context) ([]InstalledModel, er
 		}
 	}
 	return models, nil
+}
+
+// addOpenWebUIEndpoint adds a vLLM URL to OpenWebUI's OPENAI_API_BASE_URLS env var.
+// If the URL is already present, this is a no-op.
+func (v *VLLMBackend) addOpenWebUIEndpoint(url string) {
+	ctx := context.Background()
+	current := v.getOpenWebUIEnv(ctx, "OPENAI_API_BASE_URLS")
+	urls := splitNonEmpty(current, ";")
+
+	for _, u := range urls {
+		if u == url {
+			return // already present
+		}
+	}
+	urls = append(urls, url)
+	newVal := strings.Join(urls, ";")
+
+	cmd := exec.CommandContext(ctx, "kubectl", "set", "env",
+		fmt.Sprintf("deploy/openwebui"), fmt.Sprintf("OPENAI_API_BASE_URLS=%s", newVal),
+		"-n", v.namespace)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		klog.Warningf("failed to add vLLM endpoint to OpenWebUI: %v: %s", err, string(out))
+	} else {
+		klog.Infof("added vLLM endpoint %s to OpenWebUI", url)
+	}
+}
+
+// removeOpenWebUIEndpoint removes a vLLM URL from OpenWebUI's OPENAI_API_BASE_URLS.
+func (v *VLLMBackend) removeOpenWebUIEndpoint(url string) {
+	ctx := context.Background()
+	current := v.getOpenWebUIEnv(ctx, "OPENAI_API_BASE_URLS")
+	urls := splitNonEmpty(current, ";")
+
+	var filtered []string
+	for _, u := range urls {
+		if u != url {
+			filtered = append(filtered, u)
+		}
+	}
+	newVal := strings.Join(filtered, ";")
+
+	cmd := exec.CommandContext(ctx, "kubectl", "set", "env",
+		"deploy/openwebui", fmt.Sprintf("OPENAI_API_BASE_URLS=%s", newVal),
+		"-n", v.namespace)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		klog.Warningf("failed to remove vLLM endpoint from OpenWebUI: %v: %s", err, string(out))
+	} else {
+		klog.Infof("removed vLLM endpoint %s from OpenWebUI", url)
+	}
+}
+
+// getOpenWebUIEnv reads an env var from the OpenWebUI deployment.
+func (v *VLLMBackend) getOpenWebUIEnv(ctx context.Context, envName string) string {
+	cmd := exec.CommandContext(ctx, "kubectl", "get", "deploy", "openwebui",
+		"-n", v.namespace,
+		"-o", fmt.Sprintf("jsonpath={.spec.template.spec.containers[0].env[?(@.name==\"%s\")].value}", envName))
+	out, err := cmd.Output()
+	if err != nil {
+		return ""
+	}
+	return strings.TrimSpace(string(out))
+}
+
+// splitNonEmpty splits s by sep and returns non-empty parts.
+func splitNonEmpty(s, sep string) []string {
+	var result []string
+	for _, part := range strings.Split(s, sep) {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			result = append(result, part)
+		}
+	}
+	return result
 }
 
 // copyDir recursively copies a directory tree.
