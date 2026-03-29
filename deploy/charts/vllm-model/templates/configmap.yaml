@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: vllm-model-config
+  name: {{ .Release.Name }}-config
   namespace: {{ .Release.Namespace }}
 data:
   MODEL_NAME: {{ .Values.model.name | quote }}

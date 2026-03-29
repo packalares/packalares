@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -284,6 +285,16 @@ func (v *VLLMBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSHub
 		return fmt.Errorf("vllm install %s: hfRepo is required", model.Name)
 	}
 
+	// Check server has enough memory for the vLLM model
+	memRequired := parseResourceSize(v.getResourceValue(model, "memory"))
+	if memRequired > 0 {
+		availMem := getAvailableMemory()
+		if availMem > 0 && availMem < memRequired {
+			return fmt.Errorf("insufficient memory: need %s, available %s",
+				formatResourceSize(memRequired), formatResourceSize(availMem))
+		}
+	}
+
 	wsHub.BroadcastInstallProgress(model.Name, StateInstalling, 1, 3, "Preparing chart...", 0, 0)
 
 	// Build values override from the model spec.
@@ -319,7 +330,7 @@ func (v *VLLMBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSHub
 	wsHub.BroadcastAppState(model.Name, StateRunning)
 
 	// Register the vLLM endpoint in OpenWebUI so it auto-discovers the model
-	vllmURL := fmt.Sprintf("http://vllm-api.%s:8000/v1", v.namespace)
+	vllmURL := fmt.Sprintf("http://%s-api.%s:8000/v1", releaseName, v.namespace)
 	v.addOpenWebUIEndpoint(vllmURL)
 
 	klog.Infof("vllm model %s deployed (release=%s, repo=%s)", model.Name, releaseName, model.HFRepo)
@@ -396,12 +407,9 @@ func (v *VLLMBackend) Uninstall(ctx context.Context, model ModelSpec) error {
 		return err
 	}
 
-	// Check if any other vLLM models are still installed — if not, remove the endpoint
-	remaining, _ := v.InstalledModels(ctx)
-	if len(remaining) == 0 {
-		vllmURL := fmt.Sprintf("http://vllm-api.%s:8000/v1", v.namespace)
-		v.removeOpenWebUIEndpoint(vllmURL)
-	}
+	// Remove this model's endpoint from OpenWebUI
+	vllmURL := fmt.Sprintf("http://%s-api.%s:8000/v1", releaseName, v.namespace)
+	v.removeOpenWebUIEndpoint(vllmURL)
 
 	return nil
 }
@@ -498,6 +506,69 @@ func splitNonEmpty(s, sep string) []string {
 		}
 	}
 	return result
+}
+
+// getResourceValue returns the memory request value for a model.
+func (v *VLLMBackend) getResourceValue(model ModelSpec, resource string) string {
+	if resource == "memory" {
+		return "20Gi" // default vLLM memory request
+	}
+	return ""
+}
+
+// parseResourceSize parses Kubernetes resource strings like "20Gi", "500Mi" to bytes.
+func parseResourceSize(s string) int64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+	var multiplier int64 = 1
+	if strings.HasSuffix(s, "Gi") {
+		multiplier = 1024 * 1024 * 1024
+		s = strings.TrimSuffix(s, "Gi")
+	} else if strings.HasSuffix(s, "Mi") {
+		multiplier = 1024 * 1024
+		s = strings.TrimSuffix(s, "Mi")
+	} else if strings.HasSuffix(s, "Ki") {
+		multiplier = 1024
+		s = strings.TrimSuffix(s, "Ki")
+	}
+	val, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0
+	}
+	return int64(val * float64(multiplier))
+}
+
+// formatResourceSize formats bytes as human-readable.
+func formatResourceSize(bytes int64) string {
+	if bytes >= 1024*1024*1024 {
+		return fmt.Sprintf("%.1f GB", float64(bytes)/(1024*1024*1024))
+	}
+	if bytes >= 1024*1024 {
+		return fmt.Sprintf("%.0f MB", float64(bytes)/(1024*1024))
+	}
+	return fmt.Sprintf("%d bytes", bytes)
+}
+
+// getAvailableMemory reads available memory from /proc/meminfo.
+func getAvailableMemory() int64 {
+	data, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return 0
+	}
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.HasPrefix(line, "MemAvailable:") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				val, err := strconv.ParseInt(fields[1], 10, 64)
+				if err == nil {
+					return val * 1024 // kB to bytes
+				}
+			}
+		}
+	}
+	return 0
 }
 
 // copyDir recursively copies a directory tree.
