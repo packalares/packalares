@@ -148,7 +148,12 @@ func RunInstall(opts *InstallOptions) error {
 			return SeedInfisical(opts)
 		}},
 
-		// Phase 13: Deploy user apps
+		// Phase 17: Create LLDAP service account
+		{"Create LLDAP service account", func() error {
+			return createLLDAPServiceAccount(opts)
+		}},
+
+		// Phase 18: Deploy user apps
 		{"Deploy user apps", func() error {
 			return deployAppCharts(opts)
 		}},

@@ -26,34 +26,18 @@ func NewServer(cfg *Config) *Server {
 	store := NewSessionStore(cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
 	lldap := NewLLDAPClient(cfg.LLDAPHost, cfg.LLDAPPort)
 
-	// Bootstrap service account if admin password is available
-	if cfg.LLDAPAdminPassword != "" && cfg.LLDAPUser != cfg.LLDAPAdminUser {
-		svcPass := cfg.LLDAPPassword
-		if svcPass == "" {
-			svcPass = cfg.LLDAPAdminPassword // fallback for first run
-		}
-
-		// Create user (no-op if exists)
-		err := lldap.CreateUser(cfg.LLDAPAdminUser, cfg.LLDAPAdminPassword,
-			cfg.LLDAPUser, svcPass, "Service Account")
-		if err != nil {
-			log.Printf("warning: could not create service account %q: %v", cfg.LLDAPUser, err)
-		} else {
-			// Add to lldap_admin group
-			_ = lldap.AddUserToGroup(cfg.LLDAPAdminUser, cfg.LLDAPAdminPassword, cfg.LLDAPUser, 1)
-		}
-
-		// Set password via LDAP protocol (LLDAP has no HTTP API for this)
-		if err := lldap.SetPasswordLDAP(cfg.LLDAPAdminUser, cfg.LLDAPAdminPassword, cfg.LLDAPUser, svcPass, cfg.LLDAPBaseDN); err != nil {
-			log.Printf("warning: could not set service account password via LDAP: %v (will use admin)", err)
+	// Service account is created by the installer — auth just uses it.
+	// Fall back to admin credentials if service account password is missing (pre-migration installs).
+	if cfg.LLDAPPassword == "" {
+		if cfg.LLDAPAdminPassword != "" {
+			log.Printf("warning: SVC_LLDAP_PASSWORD not set, falling back to admin credentials")
 			cfg.LLDAPUser = cfg.LLDAPAdminUser
 			cfg.LLDAPPassword = cfg.LLDAPAdminPassword
 		} else {
-			cfg.LLDAPPassword = svcPass
-			log.Printf("service account %q ready", cfg.LLDAPUser)
+			log.Printf("warning: no LLDAP credentials available")
 		}
-	} else if cfg.LLDAPPassword == "" {
-		cfg.LLDAPPassword = cfg.LLDAPAdminPassword
+	} else {
+		log.Printf("using service account %q for LLDAP", cfg.LLDAPUser)
 	}
 
 	s := &Server{
