@@ -33,6 +33,11 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/app-service/v1/suspend", h.handleSuspend)
 	mux.HandleFunc("/app-service/v1/resume", h.handleResume)
 
+	// Model endpoints
+	mux.HandleFunc("/app-service/v1/models/status", h.handleModelStatus)
+	mux.HandleFunc("/app-service/v1/models/install", h.handleModelInstall)
+	mux.HandleFunc("/app-service/v1/models/uninstall", h.handleModelUninstall)
+
 	// WebSocket endpoint for desktop real-time notifications.
 	// Auth is handled in-process (not via nginx auth_request) to avoid
 	// issues with WebSocket upgrade requests.
@@ -190,6 +195,89 @@ func (h *Handler) handleResume(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// handleModelStatus returns all installed models across all backends.
+func (h *Handler) handleModelStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	models, err := h.svc.ListInstalledModels(r.Context())
+	if err != nil {
+		klog.Errorf("list installed models: %v", err)
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, models)
+}
+
+// handleModelInstall starts installing a model on the specified backend.
+func (h *Handler) handleModelInstall(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var spec ModelSpec
+	if err := json.NewDecoder(r.Body).Decode(&spec); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	if spec.Name == "" {
+		writeError(w, http.StatusBadRequest, "model name is required")
+		return
+	}
+	if spec.Backend == "" {
+		spec.Backend = "ollama" // default backend
+	}
+
+	if err := h.svc.InstallModel(r.Context(), spec); err != nil {
+		klog.Errorf("install model %s: %v", spec.Name, err)
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status": "installing",
+		"name":   spec.Name,
+	})
+}
+
+// handleModelUninstall removes a model from the specified backend.
+func (h *Handler) handleModelUninstall(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var spec ModelSpec
+	if err := json.NewDecoder(r.Body).Decode(&spec); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	if spec.Name == "" {
+		writeError(w, http.StatusBadRequest, "model name is required")
+		return
+	}
+	if spec.Backend == "" {
+		spec.Backend = "ollama"
+	}
+
+	if err := h.svc.UninstallModel(r.Context(), spec); err != nil {
+		klog.Errorf("uninstall model %s: %v", spec.Name, err)
+		writeError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"status": "uninstalling",
+		"name":   spec.Name,
+	})
 }
 
 // handleServerInit returns desktop initialization data.

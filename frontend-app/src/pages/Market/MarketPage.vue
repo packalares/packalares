@@ -119,6 +119,7 @@
                 <div class="app-card-title">{{ app.title }}</div>
                 <div class="app-card-developer">{{ app.developer || 'Unknown' }}</div>
               </div>
+              <q-badge v-if="app.type === 'model'" label="Model" class="app-model-badge" />
             </div>
             <div class="app-card-desc">{{ app.description }}</div>
             <div class="app-card-footer">
@@ -129,9 +130,11 @@
                   :label="cat"
                   class="app-tag"
                 />
+                <q-badge v-if="app.type === 'model' && app.backend" :label="app.backend" class="app-tag" />
               </div>
               <!-- Unified app state display -->
-              <q-btn v-if="getAppDisplayState(app.name, app.hasChart) === 'running'" flat dense no-caps label="Open" class="app-btn-open" @click.stop="openApp(app.name)" />
+              <q-btn v-if="getAppDisplayState(app.name, app.hasChart) === 'running' && app.type !== 'model'" flat dense no-caps label="Open" class="app-btn-open" @click.stop="openApp(app.name)" />
+              <q-badge v-else-if="getAppDisplayState(app.name, app.hasChart) === 'running' && app.type === 'model'" label="Available" class="status-badge status-running" />
               <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'starting'" class="app-install-progress">
                 <q-spinner-dots size="16px" color="indigo-4" />
                 <span class="app-progress-text">Starting...</span>
@@ -140,14 +143,14 @@
               <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'failed'" class="app-state-failed">Failed</span>
               <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'stopped'" class="app-state-failed">Stopped</span>
               <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'uninstalling'" class="app-install-progress">
-                <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.3" color="negative" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="!installProgress[app.name]" />
+                <q-linear-progress :value="progressBarValue(app.name) || 0.3" color="negative" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="isProgressIndeterminate(app.name)" />
                 <span class="app-progress-text">{{ installProgress[app.name]?.detail || 'Removing...' }}</span>
               </div>
               <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'downloading' || getAppDisplayState(app.name, app.hasChart) === 'installing'" class="app-install-progress">
-                <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.2" color="indigo-4" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="!installProgress[app.name]" />
+                <q-linear-progress :value="progressBarValue(app.name) || 0.2" color="indigo-4" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="isProgressIndeterminate(app.name)" />
                 <span class="app-progress-text">{{ progressDetail(app.name) || (getAppDisplayState(app.name, app.hasChart) === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
               </div>
-              <q-btn v-else-if="getAppDisplayState(app.name, app.hasChart) === 'not_installed'" flat dense no-caps :label="app.requiredDisk ? 'Install \u00b7 ' + app.requiredDisk : 'Install'" class="app-btn-install" @click.stop="installApp(app)" />
+              <q-btn v-else-if="getAppDisplayState(app.name, app.hasChart) === 'not_installed'" flat dense no-caps :label="app.requiredDisk ? 'Install \u00b7 ' + app.requiredDisk : 'Install'" class="app-btn-install" @click.stop="handleInstall(app)" />
               <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'no_chart'" class="app-no-chart">Not synced</span>
             </div>
           </div>
@@ -187,18 +190,24 @@
               <q-badge :label="getAppDisplayState(app.name)" :class="'status-badge status-' + getAppDisplayState(app.name)" />
               <div class="app-card-footer-actions">
                 <template v-if="getAppDisplayState(app.name) === 'running'">
-                  <q-btn flat dense no-caps label="Open" class="app-btn-open" @click.stop="openApp(app.name)" />
+                  <q-btn v-if="app.type !== 'model'" flat dense no-caps label="Open" class="app-btn-open" @click.stop="openApp(app.name)" />
+                  <q-badge v-else label="Available" class="status-badge status-running" />
                   <q-btn flat dense no-caps label="Uninstall" class="app-btn-uninstall" @click.stop="confirmUninstall(app)" />
                 </template>
                 <div v-else-if="getAppDisplayState(app.name) === 'starting'" class="app-install-progress">
                   <q-spinner-dots size="16px" color="indigo-4" /><span class="app-progress-text">Starting...</span>
                 </div>
                 <div v-else-if="getAppDisplayState(app.name) === 'uninstalling'" class="app-install-progress">
-                  <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.3" color="negative" track-color="grey-9" rounded size="4px" :indeterminate="!installProgress[app.name]" />
+                  <q-linear-progress :value="progressBarValue(app.name) || 0.3" color="negative" track-color="grey-9" rounded size="4px" :indeterminate="isProgressIndeterminate(app.name)" />
                   <span class="app-progress-text">{{ installProgress[app.name]?.detail || 'Removing...' }}</span>
+                </div>
+                <div v-else-if="getAppDisplayState(app.name) === 'downloading' || getAppDisplayState(app.name) === 'installing'" class="app-install-progress">
+                  <q-linear-progress :value="progressBarValue(app.name) || 0.2" color="indigo-4" track-color="grey-9" rounded size="4px" :indeterminate="isProgressIndeterminate(app.name)" />
+                  <span class="app-progress-text">{{ progressDetail(app.name) || (getAppDisplayState(app.name) === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
                 </div>
                 <span v-else-if="getAppDisplayState(app.name) === 'pending'" class="app-state-failed" style="color:var(--warning)">Pending</span>
                 <span v-else-if="getAppDisplayState(app.name) === 'failed'" class="app-state-failed">Failed</span>
+                <span v-else-if="getAppDisplayState(app.name) === 'stopped'" class="app-state-failed">Stopped</span>
               </div>
             </div>
           </div>
@@ -223,27 +232,50 @@
             <div class="detail-developer">{{ detailData?.developer || detailApp.developer || 'Unknown developer' }}</div>
           </div>
           <div class="detail-hero-actions">
-            <template v-if="appStates[detailApp.name] === 'uninstalling'">
+            <template v-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'uninstalling'">
               <div class="detail-progress-wrap">
-                <q-linear-progress :value="installProgress[detailApp.name] ? installProgress[detailApp.name].step / installProgress[detailApp.name].totalSteps : 0.3" color="negative" track-color="grey-9" rounded size="5px" :indeterminate="!installProgress[detailApp.name]" style="width:160px" />
+                <q-linear-progress :value="progressBarValue(detailApp.name) || 0.3" color="negative" track-color="grey-9" rounded size="5px" :indeterminate="isProgressIndeterminate(detailApp.name)" style="width:160px" />
                 <span class="detail-progress-text">{{ installProgress[detailApp.name]?.detail || 'Removing...' }}</span>
               </div>
             </template>
-            <template v-else-if="isInstalled(detailApp.name) && appStates[detailApp.name] !== 'installing' && appStates[detailApp.name] !== 'downloading'">
-              <q-btn unelevated no-caps label="Open" class="btn-primary" icon="sym_r_open_in_new" @click="openApp(detailApp.name)" style="padding:6px 24px" />
+            <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running'">
+              <q-btn v-if="detailApp.type !== 'model'" unelevated no-caps label="Open" class="btn-primary" icon="sym_r_open_in_new" @click="openApp(detailApp.name)" style="padding:6px 24px" />
+              <q-badge v-else label="Available" class="status-badge status-running" style="font-size:13px;padding:6px 16px" />
               <q-btn flat no-caps label="Uninstall" class="btn-danger" @click="confirmUninstall(detailApp)" />
             </template>
-            <template v-else-if="appStates[detailApp.name] === 'downloading' || appStates[detailApp.name] === 'installing' || installingSet.has(detailApp.name)">
+            <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'starting'">
               <div class="detail-progress-wrap">
-                <q-linear-progress :value="installProgress[detailApp.name] ? installProgress[detailApp.name].step / installProgress[detailApp.name].totalSteps : 0.2" color="primary" track-color="grey-9" rounded size="5px" :indeterminate="!installProgress[detailApp.name]" style="width:160px" />
-                <span class="detail-progress-text">{{ progressDetail(detailApp.name) || (appStates[detailApp.name] === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
+                <q-spinner-dots size="20px" color="indigo-4" />
+                <span class="detail-progress-text">Starting...</span>
               </div>
             </template>
-            <template v-else-if="detailApp.hasChart">
-              <q-btn unelevated no-caps label="Install" class="btn-primary" icon="sym_r_download" @click="installApp(detailApp)" style="padding:6px 24px" />
+            <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'pending'">
+              <div class="detail-progress-wrap">
+                <q-spinner-dots size="20px" color="warning" />
+                <span class="detail-progress-text">Pending...</span>
+              </div>
+            </template>
+            <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'downloading' || getAppDisplayState(detailApp.name, detailApp.hasChart) === 'installing'">
+              <div class="detail-progress-wrap">
+                <q-linear-progress :value="progressBarValue(detailApp.name) || 0.2" color="primary" track-color="grey-9" rounded size="5px" :indeterminate="isProgressIndeterminate(detailApp.name)" style="width:160px" />
+                <span class="detail-progress-text">{{ progressDetail(detailApp.name) || (getAppDisplayState(detailApp.name, detailApp.hasChart) === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
+              </div>
+            </template>
+            <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'failed'">
+              <span class="app-state-failed">Failed</span>
+              <q-btn flat no-caps label="Retry" class="btn-primary" icon="sym_r_refresh" @click="handleInstall(detailApp)" style="padding:6px 24px" />
+            </template>
+            <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'stopped'">
+              <span class="app-state-failed">Stopped</span>
+            </template>
+            <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'not_installed' && detailApp.hasChart">
+              <q-btn unelevated no-caps label="Install" class="btn-primary" icon="sym_r_download" @click="handleInstall(detailApp)" style="padding:6px 24px" />
+            </template>
+            <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'no_chart'">
+              <span class="detail-no-chart">Chart not synced</span>
             </template>
             <template v-else>
-              <span class="detail-no-chart">Chart not synced</span>
+              <q-btn unelevated no-caps label="Install" class="btn-primary" icon="sym_r_download" @click="handleInstall(detailApp)" style="padding:6px 24px" />
             </template>
           </div>
         </div>
@@ -284,6 +316,16 @@
             <q-icon name="sym_r_memory_alt" size="18px" class="stat-icon" />
             <span class="stat-val">{{ detailData.requiredGpu }}</span>
             <span class="stat-lbl">GPU</span>
+          </div>
+          <div class="stat-item" v-if="detailApp?.type === 'model' && detailApp?.backend">
+            <q-icon name="sym_r_smart_toy" size="18px" class="stat-icon" />
+            <span class="stat-val">{{ detailApp.backend }}</span>
+            <span class="stat-lbl">Backend</span>
+          </div>
+          <div class="stat-item" v-if="detailApp?.type === 'model' && detailApp?.modelId">
+            <q-icon name="sym_r_tag" size="18px" class="stat-icon" />
+            <span class="stat-val">{{ detailApp.modelId }}</span>
+            <span class="stat-lbl">Model ID</span>
           </div>
         </div>
 
@@ -403,6 +445,15 @@ interface MarketApp {
   requiredDisk?: string;
   requiredGpu?: string;
   hasChart?: boolean;
+  type?: string;       // 'app' | 'model'
+  backend?: string;    // 'ollama' | 'vllm'
+  modelId?: string;    // e.g. 'gemma3:27b'
+}
+
+interface InstalledModelInfo {
+  name: string;
+  size: number;
+  modified: string;
 }
 
 interface Category {
@@ -431,6 +482,7 @@ const previewImg = ref('');
 const installingSet = reactive(new Set<string>());
 const appStates = reactive<Record<string, string>>({});
 const installProgress = reactive<Record<string, { step: number; totalSteps: number; detail: string; bytesDownloaded: number; bytesTotal: number }>>({});
+const installedModels = reactive<Record<string, InstalledModelInfo>>({});
 
 const syncStatus = reactive({
   state: '' as string,
@@ -443,6 +495,7 @@ const syncStatus = reactive({
 
 let ws: WebSocket | null = null;
 let syncPollTimer: ReturnType<typeof setInterval> | null = null;
+let installedPollTimer: ReturnType<typeof setInterval> | null = null;
 
 const installedStatusMap = computed(() => {
   const map: Record<string, string> = {};
@@ -453,22 +506,39 @@ const installedStatusMap = computed(() => {
 });
 
 // Single source of truth for app display state
-// Returns: 'downloading' | 'installing' | 'running' | 'starting' | 'failed' | 'uninstalling' | 'stopped' | 'not_installed' | 'no_chart'
+// Returns: 'downloading' | 'installing' | 'running' | 'starting' | 'pending' | 'failed' | 'uninstalling' | 'stopped' | 'not_installed' | 'no_chart'
 function getAppDisplayState(name: string, hasChart?: boolean): string {
-  // WebSocket/realtime state takes priority
-  const ws = appStates[name];
-  if (ws === 'downloading' || ws === 'installing' || ws === 'uninstalling' || ws === 'failed') return ws;
+  // WebSocket/realtime state ALWAYS wins during active operations
+  const wsState = appStates[name];
+  if (wsState === 'downloading' || wsState === 'installing' || wsState === 'uninstalling' || wsState === 'failed') return wsState;
   if (installingSet.has(name)) return 'installing';
 
-  // Check installed status
+  // For model items, check installedModels instead of app installed status
+  const app = apps.value.find(a => a.name === name);
+  if (app?.type === 'model') {
+    if (wsState === 'running') return 'running';
+    // Check if model is pulled/available on the backend
+    if (installedModels[app.modelId || name]) return 'running';
+    return 'not_installed';
+  }
+
+  // Check installed status from API
   const installed = installedStatusMap.value[name];
   if (installed) {
-    if (ws === 'running' || installed === 'running') return 'running';
+    if (wsState === 'running' || installed === 'running') return 'running';
     if (installed === 'failed' || installed === 'install_failed' || installed === 'installFailed') return 'failed';
-    if (installed === 'pending') return 'pending';
-    if (installed === 'stopped') return 'stopped';
     if (installed === 'uninstalling') return 'uninstalling';
-    return 'starting'; // installed but not running yet
+    if (installed === 'stopped') return 'stopped';
+
+    // Non-terminal API states (no WS state available, e.g. after refresh)
+    if (installed === 'downloading') return 'downloading';
+    if (installed === 'installing') return 'installing';
+
+    // Pending means pod is starting up - show as pending, not installing progress
+    if (installed === 'pending') return 'pending';
+
+    // Any other non-running installed state = starting
+    return 'starting';
   }
 
   // Not installed
@@ -476,9 +546,36 @@ function getAppDisplayState(name: string, hasChart?: boolean): string {
   return 'not_installed';
 }
 
+// Helper: compute progress bar value from byte data or step data
+function progressBarValue(name: string): number {
+  const p = installProgress[name];
+  if (!p) return 0;
+  if (p.bytesTotal > 0 && p.bytesDownloaded > 0) {
+    return Math.min(p.bytesDownloaded / p.bytesTotal, 1);
+  }
+  if (p.totalSteps > 0) {
+    return Math.min(p.step / p.totalSteps, 1);
+  }
+  return 0;
+}
+
+// Helper: is the progress indeterminate (no data available)?
+function isProgressIndeterminate(name: string): boolean {
+  const p = installProgress[name];
+  if (!p) return true;
+  if (p.bytesTotal > 0 && p.bytesDownloaded > 0) return false;
+  if (p.totalSteps > 0) return false;
+  return true;
+}
+
 const installedAppsDetail = computed(() => {
   const names = new Set(installedApps.value.map((a) => a.name));
-  return apps.value.filter((a) => names.has(a.name));
+  return apps.value.filter((a) => {
+    if (names.has(a.name)) return true;
+    // Include models that are installed on their backend
+    if (a.type === 'model' && installedModels[a.modelId || a.name]) return true;
+    return false;
+  });
 });
 
 const filteredApps = computed(() => {
@@ -592,8 +689,9 @@ function formatBytes(bytes: number): string {
 function progressDetail(name: string): string {
   const p = installProgress[name];
   if (!p) return '';
-  if (p.bytesTotal > 0) {
-    return p.detail + ' (' + formatBytes(p.bytesDownloaded) + ' / ' + formatBytes(p.bytesTotal) + ')';
+  if (p.bytesTotal > 0 && p.bytesDownloaded > 0) {
+    const pct = Math.round((p.bytesDownloaded / p.bytesTotal) * 100);
+    return 'Downloading: ' + formatBytes(p.bytesDownloaded) + ' / ' + formatBytes(p.bytesTotal) + ' (' + pct + '%)';
   }
   return p.detail;
 }
@@ -639,6 +737,60 @@ async function fetchInstalled() {
   }
 }
 
+async function fetchModelStatus() {
+  try {
+    const res: any = await api.get('/api/models/status');
+    const data = res.data || res || {};
+    // Clear existing entries
+    for (const key of Object.keys(installedModels)) {
+      delete installedModels[key];
+    }
+    // data is { ollama: [...], vllm: [...] }
+    for (const models of Object.values(data)) {
+      for (const m of models as InstalledModelInfo[]) {
+        installedModels[m.name] = m;
+      }
+    }
+  } catch {
+    // ollama might not be installed — ignore
+  }
+}
+
+function handleInstall(app: MarketApp) {
+  if (app.type === 'model') {
+    installModel(app);
+  } else {
+    installApp(app);
+  }
+}
+
+async function installModel(app: MarketApp) {
+  installingSet.add(app.name);
+  appStates[app.name] = 'downloading';
+  try {
+    await api.post('/api/models/install', {
+      name: app.name,
+      modelId: app.modelId,
+      backend: app.backend || 'ollama',
+    });
+    // Progress comes via WebSocket; poll model status as fallback
+    let attempts = 0;
+    const poll = setInterval(async () => {
+      attempts++;
+      await fetchModelStatus();
+      if (installedModels[app.modelId || app.name] || attempts >= 120) {
+        clearInterval(poll);
+        installingSet.delete(app.name);
+        delete appStates[app.name];
+      }
+    }, 5000);
+  } catch (e: any) {
+    installingSet.delete(app.name);
+    delete appStates[app.name];
+    $q.notify({ type: 'negative', message: `Install failed: ${e.message || 'unknown error'}` });
+  }
+}
+
 async function installApp(app: MarketApp) {
   installingSet.add(app.name);
   appStates[app.name] = 'downloading';
@@ -677,8 +829,39 @@ function confirmUninstall(app: MarketApp) {
       color: 'negative',
     },
   }).onOk(() => {
-    uninstallApp(app);
+    handleUninstall(app);
   });
+}
+
+function handleUninstall(app: MarketApp) {
+  if (app.type === 'model') {
+    uninstallModel(app);
+  } else {
+    uninstallApp(app);
+  }
+}
+
+async function uninstallModel(app: MarketApp) {
+  try {
+    appStates[app.name] = 'uninstalling';
+    await api.post('/api/models/uninstall', {
+      name: app.name,
+      modelId: app.modelId,
+      backend: app.backend || 'ollama',
+    });
+    // After uninstall, refresh model status
+    setTimeout(async () => {
+      await fetchModelStatus();
+      delete appStates[app.name];
+      if (detailApp.value?.name === app.name) {
+        detailApp.value = null;
+      }
+      $q.notify({ type: 'positive', message: `${app.title || app.name} removed` });
+    }, 2000);
+  } catch (e: any) {
+    delete appStates[app.name];
+    $q.notify({ type: 'negative', message: `Uninstall failed: ${e.message || 'unknown error'}` });
+  }
 }
 
 async function uninstallApp(app: MarketApp) {
@@ -712,6 +895,7 @@ function connectWebSocket() {
             delete appStates[name];
             delete installProgress[name];
             fetchInstalled();
+            fetchModelStatus();
           } else if (state === 'failed') {
             installingSet.delete(name);
             appStates[name] = 'failed';
@@ -726,6 +910,7 @@ function connectWebSocket() {
             installingSet.delete(name);
             installedApps.value = installedApps.value.filter((a) => a.name !== name);
             fetchInstalled();
+            fetchModelStatus();
             $q.notify({ type: 'positive', message: `${name} uninstalled` });
           } else {
             appStates[name] = state;
@@ -820,9 +1005,37 @@ onMounted(async () => {
     const r: any = await api.get('/api/user/info');
     userZone.value = r?.zone || r?.terminusName || '';
   } catch {}
-  await Promise.all([fetchApps(), fetchCategories(), fetchInstalled(), fetchSyncStatus()]);
+  await Promise.all([fetchApps(), fetchCategories(), fetchInstalled(), fetchModelStatus(), fetchSyncStatus()]);
+
+  // Initialize appStates from installed apps' non-terminal states so
+  // getAppDisplayState works correctly after page refresh
+  for (const app of installedApps.value) {
+    const st = app.state || app.status || '';
+    if (st && st !== 'running' && st !== 'failed' && st !== 'installFailed' && st !== 'install_failed') {
+      // Only set if there is no existing WebSocket state (shouldn't be on fresh mount)
+      if (!appStates[app.name]) {
+        appStates[app.name] = st;
+      }
+    }
+  }
+
   loading.value = false;
   connectWebSocket();
+
+  // Periodic poll as fallback to keep installed states fresh (every 5 seconds)
+  installedPollTimer = setInterval(async () => {
+    await Promise.all([fetchInstalled(), fetchModelStatus()]);
+    // Update appStates for apps that have transitioned to running (clears stale states)
+    for (const app of installedApps.value) {
+      const st = app.state || app.status || '';
+      if (st === 'running' && appStates[app.name] && appStates[app.name] !== 'uninstalling') {
+        delete appStates[app.name];
+        delete installProgress[app.name];
+        installingSet.delete(app.name);
+      }
+    }
+  }, 5000);
+
   // If sync is running, start polling
   if (syncStatus.state === 'running') {
     startSyncPoll();
@@ -832,6 +1045,7 @@ onMounted(async () => {
 onUnmounted(() => {
   if (ws) { ws.close(); ws = null; }
   stopSyncPoll();
+  if (installedPollTimer) { clearInterval(installedPollTimer); installedPollTimer = null; }
 });
 </script>
 

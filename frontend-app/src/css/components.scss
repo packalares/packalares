@@ -956,6 +956,16 @@
   white-space: nowrap;
 }
 
+.app-model-badge {
+  background: #6366f1 !important;
+  color: #fff !important;
+  border-radius: 4px;
+  font-size: 10px;
+  padding: 2px 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .app-install-progress {
   display: flex;
   flex-direction: column;

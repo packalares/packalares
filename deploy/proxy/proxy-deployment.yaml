@@ -93,6 +93,13 @@ data:
           proxy_set_header Host $host;
           proxy_set_header Cookie $http_cookie;
         }
+        location /api/models/ {
+          auth_request /_auth;
+          rewrite ^/api/models/(.*) /app-service/v1/models/$1 break;
+          proxy_pass http://$app_up:6755;
+          proxy_set_header Host $host;
+          proxy_set_header Cookie $http_cookie;
+        }
         location /api/desktop/init      { auth_request /_auth; proxy_pass http://$app_up:6755/server/init; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
         location /api/desktop/myApps    { auth_request /_auth; proxy_pass http://$app_up:6755/server/myApps; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
         location /api/desktop/upgrade   { auth_request /_auth; proxy_pass http://$app_up:6755/server/upgrade/state; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
@@ -281,6 +288,13 @@ data:
           proxy_set_header Host $host;
           proxy_set_header Cookie $http_cookie;
         }
+        location /api/models/ {
+          auth_request /_auth;
+          rewrite ^/api/models/(.*) /app-service/v1/models/$1 break;
+          proxy_pass http://$app_up:6755;
+          proxy_set_header Host $host;
+          proxy_set_header Cookie $http_cookie;
+        }
         location /api/desktop/init  { auth_request /_auth; proxy_pass http://$app_up:6755/server/init; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
         location /api/desktop/myApps { auth_request /_auth; proxy_pass http://$app_up:6755/server/myApps; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
         location /api/desktop/upgrade { auth_request /_auth; proxy_pass http://$app_up:6755/server/upgrade/state; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
@@ -392,6 +406,13 @@ data:
         location /api/apps/ {
           auth_request /_auth;
           rewrite ^/api/apps/(.*) /app-service/v1/$1 break;
+          proxy_pass http://$app_up:6755;
+          proxy_set_header Host $host;
+          proxy_set_header Cookie $http_cookie;
+        }
+        location /api/models/ {
+          auth_request /_auth;
+          rewrite ^/api/models/(.*) /app-service/v1/models/$1 break;
           proxy_pass http://$app_up:6755;
           proxy_set_header Host $host;
           proxy_set_header Cookie $http_cookie;

@@ -18,15 +18,16 @@ import (
 // Service is the main app-service controller that orchestrates installs,
 // uninstalls, suspends, and resumes.
 type Service struct {
-	helm       *HelmClient
-	store      *AppStore
-	k8s        *K8sClient
-	lldap      *LLDAPClient
-	genMgr     *GeneratedAppManager
-	chartDL    *ChartDownloader
-	owner      string
-	namespace  string
-	chartRepo  string
+	helm           *HelmClient
+	store          *AppStore
+	k8s            *K8sClient
+	lldap          *LLDAPClient
+	genMgr         *GeneratedAppManager
+	chartDL        *ChartDownloader
+	owner          string
+	namespace      string
+	chartRepo      string
+	modelBackends  map[string]ModelBackend
 }
 
 // Config holds configuration for the app-service.
@@ -90,6 +91,13 @@ func NewService(cfg *Config) (*Service, error) {
 	}
 
 	svc.genMgr = NewGeneratedAppManager(helm, store, cfg.Owner)
+
+	// Initialize model backends
+	ollamaURL := fmt.Sprintf("http://ollama.%s:11434", cfg.Namespace)
+	svc.modelBackends = map[string]ModelBackend{
+		"ollama": NewOllamaBackend(ollamaURL),
+		"vllm":   NewVLLMBackend(helm, cfg.Namespace),
+	}
 
 	return svc, nil
 }
@@ -536,17 +544,21 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		missing := FilterMissingImages(bgCtx, allImages)
 		if len(missing) > 0 {
 			estimatedTotal := EstimateImageSizes(missing)
-			PullImagesWithProgress(bgCtx, missing, func(pulled, total int, currentImage string) {
-				estimatedDone := int64(0)
-				if total > 0 {
-					estimatedDone = estimatedTotal * int64(pulled) / int64(total)
+			PullImagesWithProgress(bgCtx, missing, func(pulled, total int, currentImage string, bytesDownloaded, bytesTotal int64) {
+				dlBytes := bytesDownloaded
+				totalBytes := bytesTotal
+				if totalBytes <= 0 {
+					totalBytes = estimatedTotal
+				}
+				if dlBytes <= 0 && total > 0 {
+					dlBytes = totalBytes * int64(pulled) / int64(total)
 				}
 				short := currentImage
 				if idx := strings.LastIndex(short, "/"); idx >= 0 {
 					short = short[idx+1:]
 				}
 				detail := fmt.Sprintf("Pulling images (%d/%d) %s", pulled, total, short)
-				GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 4, 6, detail, estimatedDone, estimatedTotal)
+				GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 4, 6, detail, dlBytes, totalBytes)
 			})
 		}
 	} else {
@@ -897,4 +909,69 @@ func recordToInfo(rec *AppRecord) AppInfo {
 		CreatedAt:   rec.CreatedAt,
 		UpdatedAt:   rec.UpdatedAt,
 	}
+}
+
+// InstallModel installs a model via the appropriate backend.
+// The install runs in a background goroutine; progress is broadcast via WebSocket.
+func (s *Service) InstallModel(ctx context.Context, spec ModelSpec) error {
+	backend, ok := s.modelBackends[spec.Backend]
+	if !ok {
+		return fmt.Errorf("unknown model backend %q (available: ollama, vllm)", spec.Backend)
+	}
+
+	wsHub := GetWSHub()
+	wsHub.BroadcastAppState(spec.Name, StateDownloading)
+
+	go func() {
+		if err := backend.Install(context.Background(), spec, wsHub); err != nil {
+			klog.Errorf("model install %s (%s): %v", spec.Name, spec.Backend, err)
+			wsHub.BroadcastAppState(spec.Name, StateInstallFailed)
+			wsHub.BroadcastInstallProgress(spec.Name, StateInstallFailed, 1, 1,
+				fmt.Sprintf("Install failed: %v", err), 0, 0)
+		}
+	}()
+
+	return nil
+}
+
+// UninstallModel removes a model via the appropriate backend.
+func (s *Service) UninstallModel(ctx context.Context, spec ModelSpec) error {
+	backend, ok := s.modelBackends[spec.Backend]
+	if !ok {
+		return fmt.Errorf("unknown model backend %q", spec.Backend)
+	}
+
+	wsHub := GetWSHub()
+	wsHub.BroadcastAppState(spec.Name, StateUninstalling)
+
+	go func() {
+		if err := backend.Uninstall(context.Background(), spec); err != nil {
+			klog.Errorf("model uninstall %s (%s): %v", spec.Name, spec.Backend, err)
+			wsHub.BroadcastAppState(spec.Name, StateUninstallFailed)
+			return
+		}
+		wsHub.BroadcastAppState(spec.Name, StateUninstalled)
+		klog.Infof("model %s (%s) uninstalled", spec.Name, spec.Backend)
+	}()
+
+	return nil
+}
+
+// ListInstalledModels returns all installed models across all backends.
+// The result is a map of backend name to list of installed models.
+func (s *Service) ListInstalledModels(ctx context.Context) (map[string][]InstalledModel, error) {
+	result := make(map[string][]InstalledModel)
+
+	for name, backend := range s.modelBackends {
+		models, err := backend.InstalledModels(ctx)
+		if err != nil {
+			klog.V(2).Infof("list models for %s: %v", name, err)
+			continue // backend might not be reachable
+		}
+		if len(models) > 0 {
+			result[name] = models
+		}
+	}
+
+	return result, nil
 }

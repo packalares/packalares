@@ -8,9 +8,11 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"gopkg.in/yaml.v3"
 	"k8s.io/klog/v2"
@@ -208,10 +210,13 @@ type ImagePullProgress struct {
 
 // PullImagesWithProgress pulls images using crictl (CRI-compatible) and
 // reports progress via the provided callback. It pulls up to 3 images
-// concurrently. The callback receives (pulled, total, currentImage).
+// concurrently. The callback receives (pulled, total, currentImage,
+// bytesDownloaded, bytesTotal). While each crictl pull blocks, a background
+// goroutine polls containerd for active download bytes and calls onProgress
+// with real byte counts.
 // Returns the number of errors (non-fatal -- install continues even if
 // some images fail to pre-pull since kubelet will retry).
-func PullImagesWithProgress(ctx context.Context, images []string, onProgress func(pulled, total int, currentImage string)) int {
+func PullImagesWithProgress(ctx context.Context, images []string, onProgress func(pulled, total int, currentImage string, bytesDownloaded, bytesTotal int64)) int {
 	if len(images) == 0 {
 		return 0
 	}
@@ -221,14 +226,44 @@ func PullImagesWithProgress(ctx context.Context, images []string, onProgress fun
 	var errors int64
 	var wg sync.WaitGroup
 
+	// Track aggregate download bytes across all concurrent pulls
+	var liveBytes int64 // atomic: current bytes being downloaded
+
 	// Determine the pull tool: prefer crictl, fall back to ctr
 	pullTool := "crictl"
 	if _, err := exec.LookPath("crictl"); err != nil {
 		pullTool = "ctr"
 	}
 
+	// Find ctr binary for progress polling
+	ctrBin := "ctr"
+	if p, err := exec.LookPath("ctr"); err == nil {
+		ctrBin = p
+	}
+	containerdSock := "/run/containerd/containerd.sock"
+
 	// Semaphore for concurrency limit
 	sem := make(chan struct{}, 3)
+
+	// Start a background goroutine that polls containerd for active download progress
+	pollCtx, pollCancel := context.WithCancel(ctx)
+	defer pollCancel()
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-pollCtx.Done():
+				return
+			case <-ticker.C:
+				bytes := pollActiveDownloads(pollCtx, ctrBin, containerdSock)
+				atomic.StoreInt64(&liveBytes, bytes)
+				// Report progress with live byte counts
+				p := int(atomic.LoadInt64(&pulled))
+				onProgress(p, total, "", bytes, 0)
+			}
+		}
+	}()
 
 	for _, img := range images {
 		wg.Add(1)
@@ -237,7 +272,7 @@ func PullImagesWithProgress(ctx context.Context, images []string, onProgress fun
 			sem <- struct{}{}
 			defer func() { <-sem }()
 
-			onProgress(int(atomic.LoadInt64(&pulled)), total, image)
+			onProgress(int(atomic.LoadInt64(&pulled)), total, image, atomic.LoadInt64(&liveBytes), 0)
 
 			var cmd *exec.Cmd
 			if pullTool == "crictl" {
@@ -257,12 +292,83 @@ func PullImagesWithProgress(ctx context.Context, images []string, onProgress fun
 			}
 
 			n := int(atomic.AddInt64(&pulled, 1))
-			onProgress(n, total, image)
+			onProgress(n, total, image, atomic.LoadInt64(&liveBytes), 0)
 		}(img)
 	}
 
 	wg.Wait()
+	pollCancel()
 	return int(atomic.LoadInt64(&errors))
+}
+
+// pollActiveDownloads runs `ctr content active` and sums the sizes of all
+// active downloads. Returns total bytes currently downloaded across all
+// active content fetches.
+func pollActiveDownloads(ctx context.Context, ctrBin, sock string) int64 {
+	cmd := exec.CommandContext(ctx, ctrBin, "-a", sock, "-n", "k8s.io", "content", "active")
+	cmd.Env = os.Environ()
+	out, err := cmd.Output()
+	if err != nil {
+		return 0
+	}
+
+	var totalBytes int64
+	scanner := bufio.NewScanner(strings.NewReader(string(out)))
+	for scanner.Scan() {
+		line := scanner.Text()
+		// Skip header line
+		if strings.HasPrefix(line, "REF") || strings.TrimSpace(line) == "" {
+			continue
+		}
+		// Format: REF\tSIZE\tAGE  (tab-separated)
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		totalBytes += parseSizeString(fields[1])
+	}
+	return totalBytes
+}
+
+// parseSizeString converts a human-readable size like "345.7MB", "1.2GB",
+// "500KB", "1024B" into bytes.
+func parseSizeString(s string) int64 {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0
+	}
+
+	// Find where the numeric part ends and the unit begins
+	unitStart := len(s)
+	for i, c := range s {
+		if c != '.' && (c < '0' || c > '9') {
+			unitStart = i
+			break
+		}
+	}
+
+	numStr := s[:unitStart]
+	unit := strings.ToUpper(s[unitStart:])
+
+	val, err := strconv.ParseFloat(numStr, 64)
+	if err != nil {
+		return 0
+	}
+
+	switch unit {
+	case "B", "":
+		return int64(val)
+	case "KB", "KIB", "K":
+		return int64(val * 1024)
+	case "MB", "MIB", "M":
+		return int64(val * 1024 * 1024)
+	case "GB", "GIB", "G":
+		return int64(val * 1024 * 1024 * 1024)
+	case "TB", "TIB", "T":
+		return int64(val * 1024 * 1024 * 1024 * 1024)
+	default:
+		return int64(val)
+	}
 }
 
 // CheckImageExists returns true if the image is already present locally.
@@ -317,11 +423,15 @@ func PullImagesForChart(ctx context.Context, appName, chartDir string, stepOffse
 	klog.Infof("chart %s: pulling %d/%d missing images", appName, len(missing), len(images))
 	estimatedTotal := EstimateImageSizes(missing)
 
-	errs := PullImagesWithProgress(ctx, missing, func(pulled, total int, currentImage string) {
-		// Estimate bytes based on progress
-		estimatedDone := int64(0)
-		if total > 0 {
-			estimatedDone = estimatedTotal * int64(pulled) / int64(total)
+	errs := PullImagesWithProgress(ctx, missing, func(pulled, total int, currentImage string, bytesDownloaded, bytesTotal int64) {
+		// Use live byte counts when available, fall back to step-based estimate
+		dlBytes := bytesDownloaded
+		totalBytes := bytesTotal
+		if totalBytes <= 0 {
+			totalBytes = estimatedTotal
+		}
+		if dlBytes <= 0 && total > 0 {
+			dlBytes = totalBytes * int64(pulled) / int64(total)
 		}
 
 		// Shorten the image name for display
@@ -331,7 +441,7 @@ func PullImagesForChart(ctx context.Context, appName, chartDir string, stepOffse
 		}
 
 		detail := fmt.Sprintf("Pulling images (%d/%d) %s", pulled, total, short)
-		GetWSHub().BroadcastInstallProgress(appName, StateInstalling, stepOffset, totalSteps, detail, estimatedDone, estimatedTotal)
+		GetWSHub().BroadcastInstallProgress(appName, StateInstalling, stepOffset, totalSteps, detail, dlBytes, totalBytes)
 	})
 
 	if errs > 0 {
