@@ -745,8 +745,17 @@ async function fetchModelStatus() {
     for (const key of Object.keys(installedModels)) {
       delete installedModels[key];
     }
-    // data is { ollama: [...], vllm: [...] }
-    for (const models of Object.values(data)) {
+    // data is { ollama: [...], vllm: [...], _active: [...] }
+    for (const [backend, models] of Object.entries(data)) {
+      if (backend === '_active') {
+        // Active operations — set appStates so UI shows progress
+        for (const m of models as InstalledModelInfo[]) {
+          if (m.modified && !appStates[m.name]) {
+            appStates[m.name] = m.modified; // modified field carries the state
+          }
+        }
+        continue;
+      }
       for (const m of models as InstalledModelInfo[]) {
         installedModels[m.name] = m;
       }

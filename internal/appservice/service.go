@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/packalares/packalares/pkg/config"
@@ -28,6 +29,7 @@ type Service struct {
 	namespace      string
 	chartRepo      string
 	modelBackends  map[string]ModelBackend
+	activeModelOps sync.Map // name → state string ("downloading", "uninstalling")
 }
 
 // Config holds configuration for the app-service.
@@ -925,8 +927,10 @@ func (s *Service) InstallModel(ctx context.Context, spec ModelSpec) error {
 
 	wsHub := GetWSHub()
 	wsHub.BroadcastAppState(spec.Name, StateDownloading)
+	s.activeModelOps.Store(spec.Name, StateDownloading)
 
 	go func() {
+		defer s.activeModelOps.Delete(spec.Name)
 		if err := backend.Install(context.Background(), spec, wsHub); err != nil {
 			klog.Errorf("model install %s (%s): %v", spec.Name, spec.Backend, err)
 			wsHub.BroadcastAppState(spec.Name, StateInstallFailed)
@@ -947,8 +951,10 @@ func (s *Service) UninstallModel(ctx context.Context, spec ModelSpec) error {
 
 	wsHub := GetWSHub()
 	wsHub.BroadcastAppState(spec.Name, StateUninstalling)
+	s.activeModelOps.Store(spec.Name, StateUninstalling)
 
 	go func() {
+		defer s.activeModelOps.Delete(spec.Name)
 		if err := backend.Uninstall(context.Background(), spec); err != nil {
 			klog.Errorf("model uninstall %s (%s): %v", spec.Name, spec.Backend, err)
 			wsHub.BroadcastAppState(spec.Name, StateUninstallFailed)
@@ -961,8 +967,10 @@ func (s *Service) UninstallModel(ctx context.Context, spec ModelSpec) error {
 	return nil
 }
 
-// ListInstalledModels returns all installed models across all backends.
+// ListInstalledModels returns all installed models across all backends,
+// plus any models with active operations (downloading, uninstalling).
 // The result is a map of backend name to list of installed models.
+// Active operations appear under the "_active" key.
 func (s *Service) ListInstalledModels(ctx context.Context) (map[string][]InstalledModel, error) {
 	result := make(map[string][]InstalledModel)
 
@@ -975,6 +983,19 @@ func (s *Service) ListInstalledModels(ctx context.Context) (map[string][]Install
 		if len(models) > 0 {
 			result[name] = models
 		}
+	}
+
+	// Include active operations so the frontend can show state after refresh
+	var active []InstalledModel
+	s.activeModelOps.Range(func(key, value any) bool {
+		active = append(active, InstalledModel{
+			Name:     key.(string),
+			Modified: value.(string), // reuse Modified field for state
+		})
+		return true
+	})
+	if len(active) > 0 {
+		result["_active"] = active
 	}
 
 	return result, nil

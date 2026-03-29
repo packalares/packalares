@@ -303,7 +303,10 @@ func readNetworkIO() NetMetrics {
 		}
 		parts := strings.SplitN(line, ":", 2)
 		iface := strings.TrimSpace(parts[0])
-		if iface == "lo" {
+		// Skip loopback and virtual interfaces (Calico, Docker, flannel, etc.)
+		if iface == "lo" || strings.HasPrefix(iface, "cali") || strings.HasPrefix(iface, "veth") ||
+			strings.HasPrefix(iface, "flannel") || strings.HasPrefix(iface, "vxlan") ||
+			strings.HasPrefix(iface, "docker") || strings.HasPrefix(iface, "tunl") {
 			continue
 		}
 		fields := strings.Fields(parts[1])

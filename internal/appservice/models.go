@@ -93,9 +93,12 @@ func (o *OllamaBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSH
 		return fmt.Errorf("ollama pull %s: status %d: %s", modelID, resp.StatusCode, string(respBody))
 	}
 
-	// Read streaming JSON lines for progress
+	// Read streaming JSON lines for progress.
+	// Track cumulative bytes across all layers/digests to show accurate total progress.
+	layerTotals := map[string]int64{}
+	layerCompleted := map[string]int64{}
+
 	scanner := bufio.NewScanner(resp.Body)
-	// Increase scanner buffer for large JSON lines
 	scanner.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 
 	for scanner.Scan() {
@@ -120,7 +123,19 @@ func (o *OllamaBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSH
 			return fmt.Errorf("ollama pull %s: %s", modelID, progress.Error)
 		}
 
-		// Broadcast progress via WebSocket using the catalog name
+		// Track per-layer progress
+		if progress.Digest != "" {
+			layerTotals[progress.Digest] = progress.Total
+			layerCompleted[progress.Digest] = progress.Completed
+		}
+
+		// Sum across all layers for cumulative progress
+		var cumCompleted, cumTotal int64
+		for d, t := range layerTotals {
+			cumTotal += t
+			cumCompleted += layerCompleted[d]
+		}
+
 		detail := progress.Status
 		if progress.Digest != "" && len(progress.Digest) > 12 {
 			detail = progress.Status + " " + progress.Digest[:12]
@@ -131,8 +146,8 @@ func (o *OllamaBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSH
 			StateDownloading,
 			1, 1,
 			detail,
-			progress.Completed,
-			progress.Total,
+			cumCompleted,
+			cumTotal,
 		)
 	}
 
