@@ -537,7 +537,6 @@ const syncStatus = reactive({
 
 let ws: WebSocket | null = null;
 let syncPollTimer: ReturnType<typeof setInterval> | null = null;
-let installedPollTimer: ReturnType<typeof setInterval> | null = null;
 
 const installedStatusMap = computed(() => {
   const map: Record<string, string> = {};
@@ -832,17 +831,7 @@ async function installModel(app: MarketApp) {
       modelId: app.modelId,
       backend: app.backend || 'ollama',
     });
-    // Progress comes via WebSocket; poll model status as fallback
-    let attempts = 0;
-    const poll = setInterval(async () => {
-      attempts++;
-      await fetchModelStatus();
-      if (installedModels[app.modelId || app.name] || attempts >= 120) {
-        clearInterval(poll);
-        installingSet.delete(app.name);
-        delete appStates[app.name];
-      }
-    }, 5000);
+    // WebSocket app_state:running will handle state cleanup
   } catch (e: any) {
     installingSet.delete(app.name);
     delete appStates[app.name];
@@ -855,21 +844,7 @@ async function installApp(app: MarketApp) {
   appStates[app.name] = 'downloading';
   try {
     await api.post('/api/apps/install', { name: app.name, chart: app.chartName || app.name });
-    // WebSocket will update the state; poll as fallback only for detecting completion
-    let attempts = 0;
-    const poll = setInterval(async () => {
-      attempts++;
-      await fetchInstalled();
-      if (isInstalled(app.name) || attempts >= 60) {
-        clearInterval(poll);
-        // Don't clear appStates here — let WS app_state:running handle it
-        // Only clear installingSet as a safety net after timeout
-        if (attempts >= 60) {
-          installingSet.delete(app.name);
-          delete appStates[app.name];
-        }
-      }
-    }, 3000);
+    // WebSocket app_state:running will handle state cleanup
   } catch (e: any) {
     console.error('Install failed:', e);
     installingSet.delete(app.name);
@@ -1025,10 +1000,11 @@ function connectWebSocket() {
     };
 
     ws.onclose = () => {
-      // Reconnect after 5s
-      setTimeout(() => {
+      // Reconnect after 5s, fetch state on reconnect to catch missed events
+      setTimeout(async () => {
         if (!ws || ws.readyState === WebSocket.CLOSED) {
           connectWebSocket();
+          await Promise.all([fetchInstalled(), fetchModelStatus()]);
         }
       }, 5000);
     };
@@ -1117,22 +1093,8 @@ onMounted(async () => {
   loading.value = false;
   connectWebSocket();
 
-  // Periodic poll as fallback to keep installed states fresh (every 5 seconds)
-  installedPollTimer = setInterval(async () => {
-    await Promise.all([fetchInstalled(), fetchModelStatus()]);
-    // Update appStates for apps that have transitioned to running or stopped (clears stale states)
-    for (const app of installedApps.value) {
-      const st = app.state || app.status || '';
-      if (st === 'running' && appStates[app.name] && appStates[app.name] !== 'uninstalling') {
-        delete appStates[app.name];
-        delete installProgress[app.name];
-        installingSet.delete(app.name);
-      }
-      if (st === 'stopped' && appStates[app.name] === 'stopping') {
-        appStates[app.name] = 'stopped';
-      }
-    }
-  }, 5000);
+  // No polling — WebSocket handles real-time updates.
+  // State is fetched on load (above) and on WS reconnect.
 
   // If sync is running, start polling
   if (syncStatus.state === 'running') {
@@ -1143,7 +1105,6 @@ onMounted(async () => {
 onUnmounted(() => {
   if (ws) { ws.close(); ws = null; }
   stopSyncPoll();
-  if (installedPollTimer) { clearInterval(installedPollTimer); installedPollTimer = null; }
 });
 </script>
 
