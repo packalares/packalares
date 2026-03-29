@@ -460,13 +460,8 @@ data:
         location ~ ^/(?!api/|bfl/)[^/]*\.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
         location = /     { rewrite ^ /login last; }
 
-        # Login — if already authenticated, redirect to desktop
-        location /login {
-          auth_request /_auth;
-          error_page 401 = @serve_login;
-          return 302 https://desktop.{{USER_ZONE}};
-        }
-        location @serve_login { proxy_pass http://$desktop_up:80; }
+        # Login page — always serve (SPA handles redirect if already authenticated)
+        location /login { proxy_pass http://$desktop_up:80; }
 
         # Auth API → auth backend
         location /api/auth/ { proxy_pass http://$auth_up:9091; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
