@@ -85,6 +85,9 @@ jobs:
           - name: hostctl
             dockerfile: build/Dockerfile.hostctl
             context: .
+          - name: hf-downloader
+            dockerfile: build/hf-downloader/Dockerfile
+            context: .
 
     steps:
       - name: Checkout

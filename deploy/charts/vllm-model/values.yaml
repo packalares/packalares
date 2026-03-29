@@ -1,0 +1,46 @@
+# Model configuration — overridden per model install
+model:
+  name: ""
+  hfRepo: ""
+  hfRef: "main"
+  doneName: ".done"
+  storagePath: ""
+
+# vLLM server settings
+vllm:
+  image: "docker.io/vllm/vllm-openai:v0.17.1-cu130"
+  gpuMemoryUtilization: "0.9"
+  maxModelLen: "auto"
+  tensorParallelSize: 1
+
+# HF downloader settings
+downloader:
+  image: "ghcr.io/packalares/hf-downloader:latest"
+
+# Optional tiktoken files (for OpenAI models)
+tiktoken:
+  enabled: false
+  files: ""
+  dir: "/data/tiktoken"
+
+# Resource limits
+resources:
+  vllm:
+    requests:
+      cpu: "500m"
+      memory: "20Gi"
+    limits:
+      cpu: "18"
+      memory: "28Gi"
+  downloader:
+    requests:
+      cpu: "100m"
+      memory: "500Mi"
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+
+# HuggingFace auth (injected by appservice)
+hf:
+  token: ""
+  endpoint: "https://huggingface.co"

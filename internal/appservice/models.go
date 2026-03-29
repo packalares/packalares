@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -31,6 +33,13 @@ type ModelSpec struct {
 	Title   string `json:"title,omitempty"`
 	HFRepo  string `json:"hfRepo,omitempty"`  // for vllm: HuggingFace repo
 	HFRef   string `json:"hfRef,omitempty"`   // for vllm: branch/ref
+
+	// vLLM-specific fields (optional, used by VLLMBackend)
+	GPUMemoryUtilization string `json:"gpuMemoryUtilization,omitempty"`
+	MaxModelLen          string `json:"maxModelLen,omitempty"`
+	TensorParallelSize   int    `json:"tensorParallelSize,omitempty"`
+	TiktokenFiles        string `json:"tiktokenFiles,omitempty"` // comma-separated
+	StoragePath          string `json:"storagePath,omitempty"`   // host path for model data
 }
 
 // InstalledModel represents a model available on a backend.
@@ -241,31 +250,144 @@ func (o *OllamaBackend) InstalledModels(ctx context.Context) ([]InstalledModel, 
 // VLLMBackend — deploys vLLM models as Helm releases (pods)
 // ---------------------------------------------------------------------------
 
+const (
+	// defaultVLLMChartPath is where the generic vLLM chart is installed.
+	// In the appservice container this is copied from deploy/charts/vllm-model/.
+	defaultVLLMChartPath = "/usr/share/packalares/charts/vllm-model"
+	// defaultModelStorageBase is the base host path for model data.
+	defaultModelStorageBase = "/packalares/data/Huggingface"
+)
+
 // VLLMBackend implements ModelBackend for vLLM-based model serving.
-// vLLM models are deployed as pods via Helm, so Install/Uninstall delegate
-// to the existing Helm flow. The model card UI just categorizes them differently.
+// It deploys a pod with a vLLM server and an HF downloader sidecar
+// using the generic vllm-model Helm chart.
 type VLLMBackend struct {
 	helm      *HelmClient
 	namespace string
+	chartPath string // path to the generic vllm-model chart
 }
 
 // NewVLLMBackend creates a VLLMBackend.
 func NewVLLMBackend(helm *HelmClient, namespace string) *VLLMBackend {
-	return &VLLMBackend{helm: helm, namespace: namespace}
+	chartPath := os.Getenv("VLLM_CHART_PATH")
+	if chartPath == "" {
+		chartPath = defaultVLLMChartPath
+	}
+	return &VLLMBackend{helm: helm, namespace: namespace, chartPath: chartPath}
 }
 
-// Install deploys a vLLM model via Helm. For now this is a stub — the actual
-// chart install is handled through the normal app install flow since vLLM
-// models require pods.
+// Install deploys a vLLM model by copying the generic chart to a temp directory,
+// writing model-specific values, and running helm install.
 func (v *VLLMBackend) Install(ctx context.Context, model ModelSpec, wsHub *WSHub) error {
-	klog.Infof("vllm install: model %s — use app install flow for pod-based models", model.Name)
-	wsHub.BroadcastInstallProgress(model.Name, StateInstalling, 1, 1, "vLLM models use app install flow", 0, 0)
-	return fmt.Errorf("vllm models should be installed via the app install flow (they require pods)")
+	if model.HFRepo == "" {
+		return fmt.Errorf("vllm install %s: hfRepo is required", model.Name)
+	}
+
+	wsHub.BroadcastInstallProgress(model.Name, StateInstalling, 1, 3, "Preparing chart...", 0, 0)
+
+	// Build values override from the model spec.
+	values := v.buildValues(model)
+
+	// Copy chart to a temp directory so we can write values without
+	// modifying the original.
+	tmpDir, err := os.MkdirTemp("", "vllm-chart-*")
+	if err != nil {
+		return fmt.Errorf("create temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	chartDir := filepath.Join(tmpDir, "vllm-model")
+	if err := copyDir(v.chartPath, chartDir); err != nil {
+		return fmt.Errorf("copy chart: %w", err)
+	}
+
+	// Write the values override into the chart's values.yaml.
+	if err := injectValuesYaml(chartDir, values); err != nil {
+		return fmt.Errorf("inject values: %w", err)
+	}
+
+	// Helm install.
+	wsHub.BroadcastInstallProgress(model.Name, StateInstalling, 2, 3, "Installing helm release...", 0, 0)
+
+	releaseName := "vllm-" + model.Name
+	if err := v.helm.InstallFromDir(ctx, releaseName, chartDir, v.namespace); err != nil {
+		return fmt.Errorf("helm install: %w", err)
+	}
+
+	wsHub.BroadcastInstallProgress(model.Name, StateInstalling, 3, 3, "Model deploying — download in progress", 0, 0)
+	wsHub.BroadcastAppState(model.Name, StateRunning)
+
+	klog.Infof("vllm model %s deployed (release=%s, repo=%s)", model.Name, releaseName, model.HFRepo)
+	return nil
+}
+
+// buildValues creates the Helm values map for the vllm-model chart.
+func (v *VLLMBackend) buildValues(model ModelSpec) map[string]interface{} {
+	hfRef := model.HFRef
+	if hfRef == "" {
+		hfRef = "main"
+	}
+
+	storagePath := model.StoragePath
+	if storagePath == "" {
+		storagePath = filepath.Join(defaultModelStorageBase, model.Name)
+	}
+
+	gpuMem := model.GPUMemoryUtilization
+	if gpuMem == "" {
+		gpuMem = "0.9"
+	}
+
+	maxLen := model.MaxModelLen
+	if maxLen == "" {
+		maxLen = "auto"
+	}
+
+	tps := model.TensorParallelSize
+	if tps <= 0 {
+		tps = 1
+	}
+
+	hfToken := os.Getenv("OLARES_USER_HUGGINGFACE_TOKEN")
+	hfEndpoint := os.Getenv("HF_ENDPOINT")
+	if hfEndpoint == "" {
+		hfEndpoint = "https://huggingface.co"
+	}
+
+	vals := map[string]interface{}{
+		"model": map[string]interface{}{
+			"name":        model.Name,
+			"hfRepo":      model.HFRepo,
+			"hfRef":       hfRef,
+			"doneName":    ".done",
+			"storagePath": storagePath,
+		},
+		"vllm": map[string]interface{}{
+			"gpuMemoryUtilization": gpuMem,
+			"maxModelLen":          maxLen,
+			"tensorParallelSize":   tps,
+		},
+		"hf": map[string]interface{}{
+			"token":    hfToken,
+			"endpoint": hfEndpoint,
+		},
+	}
+
+	if model.TiktokenFiles != "" {
+		vals["tiktoken"] = map[string]interface{}{
+			"enabled": true,
+			"files":   model.TiktokenFiles,
+			"dir":     "/data/tiktoken",
+		}
+	}
+
+	return vals
 }
 
 // Uninstall removes a vLLM model's Helm release.
 func (v *VLLMBackend) Uninstall(ctx context.Context, model ModelSpec) error {
-	return v.helm.Uninstall(ctx, model.Name)
+	releaseName := "vllm-" + model.Name
+	return v.helm.Uninstall(ctx, releaseName)
 }
 
 // InstalledModels lists vLLM models by checking Helm releases with a model label.
@@ -287,4 +409,45 @@ func (v *VLLMBackend) InstalledModels(ctx context.Context) ([]InstalledModel, er
 		}
 	}
 	return models, nil
+}
+
+// copyDir recursively copies a directory tree.
+func copyDir(src, dst string) error {
+	srcInfo, err := os.Stat(src)
+	if err != nil {
+		return err
+	}
+	if err := os.MkdirAll(dst, srcInfo.Mode()); err != nil {
+		return err
+	}
+
+	entries, err := os.ReadDir(src)
+	if err != nil {
+		return err
+	}
+
+	for _, entry := range entries {
+		srcPath := filepath.Join(src, entry.Name())
+		dstPath := filepath.Join(dst, entry.Name())
+
+		if entry.IsDir() {
+			if err := copyDir(srcPath, dstPath); err != nil {
+				return err
+			}
+		} else {
+			data, err := os.ReadFile(srcPath)
+			if err != nil {
+				return err
+			}
+			info, err := entry.Info()
+			if err != nil {
+				return err
+			}
+			if err := os.WriteFile(dstPath, data, info.Mode()); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

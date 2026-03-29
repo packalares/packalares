@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    io.kompose.service: vllm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/instance: {{ .Release.Name }}
+      io.kompose.service: vllm
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        io.kompose.service: vllm
+    spec:
+      containers:
+        - name: vllm
+          image: {{ .Values.vllm.image | quote }}
+          command:
+            - /bin/bash
+            - -c
+            - |
+              DONE_FILE="/models/{{ .Values.model.name }}/{{ .Values.model.doneName }}"
+              echo "Waiting for model download to complete..."
+              while [ ! -f "$DONE_FILE" ]; do
+                sleep 10
+              done
+              echo "Model download complete, starting vLLM server"
+              python3 -m vllm.entrypoints.openai.api_server \
+                --model "/models/{{ .Values.model.name }}" \
+                --gpu-memory-utilization {{ .Values.vllm.gpuMemoryUtilization }} \
+                --max-model-len {{ .Values.vllm.maxModelLen }} \
+                --tensor-parallel-size {{ .Values.vllm.tensorParallelSize }}
+          env:
+            - name: PGID
+              value: "1000"
+            - name: PUID
+              value: "1000"
+            - name: TZ
+              value: "Etc/UTC"
+            - name: PYTHONUNBUFFERED
+              value: "1"
+            - name: VLLM_PORT
+              value: "8000"
+            {{- if .Values.tiktoken.enabled }}
+            - name: TIKTOKEN_ENCODINGS_BASE
+              value: {{ .Values.tiktoken.dir | quote }}
+            {{- end }}
+          ports:
+            - containerPort: 8000
+              protocol: TCP
+          volumeMounts:
+            - name: model-data
+              mountPath: /models/{{ .Values.model.name }}
+            {{- if .Values.tiktoken.enabled }}
+            - name: model-data
+              mountPath: {{ .Values.tiktoken.dir }}
+              subPath: tiktoken
+            {{- end }}
+          resources:
+            requests:
+              cpu: {{ .Values.resources.vllm.requests.cpu | quote }}
+              memory: {{ .Values.resources.vllm.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.resources.vllm.limits.cpu | quote }}
+              memory: {{ .Values.resources.vllm.limits.memory | quote }}
+
+        - name: hf-downloader
+          image: {{ .Values.downloader.image | quote }}
+          env:
+            - name: HF_REPO
+              value: {{ .Values.model.hfRepo | quote }}
+            - name: HF_REF
+              value: {{ .Values.model.hfRef | quote }}
+            - name: HF_ENDPOINT
+              value: {{ .Values.hf.endpoint | quote }}
+            - name: OUTPUT_DIR
+              value: "/data"
+            - name: DONE_NAME
+              value: {{ .Values.model.doneName | quote }}
+            {{- if .Values.hf.token }}
+            - name: HF_TOKEN
+              value: {{ .Values.hf.token | quote }}
+            {{- end }}
+            {{- if .Values.tiktoken.enabled }}
+            - name: TIKTOKEN_FILES
+              value: {{ .Values.tiktoken.files | quote }}
+            - name: TIKTOKEN_DIR
+              value: "/data/tiktoken"
+            {{- end }}
+          volumeMounts:
+            - name: model-data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: {{ .Values.resources.downloader.requests.cpu | quote }}
+              memory: {{ .Values.resources.downloader.requests.memory | quote }}
+            limits:
+              cpu: {{ .Values.resources.downloader.limits.cpu | quote }}
+              memory: {{ .Values.resources.downloader.limits.memory | quote }}
+
+      volumes:
+        - name: model-data
+          hostPath:
+            path: {{ .Values.model.storagePath | quote }}
+            type: DirectoryOrCreate
