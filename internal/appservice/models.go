@@ -518,6 +518,12 @@ func (v *VLLMBackend) Uninstall(ctx context.Context, model ModelSpec) error {
 		klog.Infof("vllm %s: cleaned model data at %s", model.Name, storagePath)
 	}
 
+	// Purge container images (vLLM + hf-downloader)
+	purgeContainerImages(ctx, []string{
+		"docker.io/vllm/vllm-openai:v0.17.1-cu130",
+		"ghcr.io/packalares/hf-downloader:latest",
+	})
+
 	return nil
 }
 

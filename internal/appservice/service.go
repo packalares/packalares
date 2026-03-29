@@ -5,7 +5,6 @@ import (
 	"crypto/md5"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -666,54 +665,7 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 		}
 
 		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 4, 4, "Removing images...", 0, 0)
-
-		// Remove the app's container images and their content store data.
-		// Three steps per image:
-		// 1. crictl rmi — removes CRI tag
-		// 2. ctr images rm — removes containerd image record (enables content GC)
-		// 3. ctr content rm — force-remove distribution cache blobs for this image
-		ctrSock := "/run/containerd/containerd.sock"
-		for _, img := range appImages {
-			// Step 1: Remove CRI tag
-			exec.CommandContext(bgCtx, "crictl", "rmi", img).Run()
-
-			// Step 2: Remove containerd image records (tagged + by-digest)
-			exec.CommandContext(bgCtx, "ctr", "-a", ctrSock, "-n", "k8s.io", "images", "rm", img).Run()
-			// Also remove the @sha256: digest variant
-			digestOut, _ := exec.CommandContext(bgCtx, "ctr", "-a", ctrSock, "-n", "k8s.io", "images", "ls", "-q").Output()
-			for _, line := range strings.Split(string(digestOut), "\n") {
-				line = strings.TrimSpace(line)
-				if strings.Contains(line, "@sha256:") && strings.HasPrefix(line, strings.Split(img, ":")[0]) {
-					exec.CommandContext(bgCtx, "ctr", "-a", ctrSock, "-n", "k8s.io", "images", "rm", line).Run()
-				}
-			}
-
-			// Step 3: Force-remove distribution cache blobs matching this image's repo
-			// Content labels use format: containerd.io/distribution.source.docker.io=beclab/repo
-			// So we strip the registry prefix and search for just the repo path
-			repoRef := img
-			if idx := strings.LastIndex(repoRef, ":"); idx > 0 && !strings.Contains(repoRef[idx:], "/") {
-				repoRef = repoRef[:idx]
-			}
-			if idx := strings.Index(repoRef, "/"); idx > 0 && strings.Contains(repoRef[:idx], ".") {
-				repoRef = repoRef[idx+1:]
-			}
-			contentOut, _ := exec.CommandContext(bgCtx, "ctr", "-a", ctrSock, "-n", "k8s.io", "content", "ls").Output()
-			for _, line := range strings.Split(string(contentOut), "\n") {
-				if strings.Contains(line, repoRef) {
-					fields := strings.Fields(line)
-					if len(fields) > 0 {
-						exec.CommandContext(bgCtx, "ctr", "-a", ctrSock, "-n", "k8s.io", "content", "rm", fields[0]).Run()
-					}
-				}
-			}
-
-			klog.Infof("purged image %s and content for %s", img, req.Name)
-		}
-
-		// Final GC pass for any remaining orphaned content
-		exec.CommandContext(bgCtx, "crictl", "rmi", "--prune").Run()
-		exec.CommandContext(bgCtx, "ctr", "-a", ctrSock, "-n", "k8s.io", "content", "prune", "references").Run()
+		purgeContainerImages(bgCtx, appImages)
 
 		rec.State = StateUninstalled
 		_ = s.store.Put(bgCtx, rec)
