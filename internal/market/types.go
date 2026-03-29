@@ -37,6 +37,8 @@ type MarketApp struct {
 	SupportArch      []string      `json:"supportArch,omitempty"`
 	Status           string        `json:"status,omitempty"`
 	Type             string        `json:"type,omitempty"`
+	Backend          string        `json:"backend,omitempty"`
+	ModelID          string        `json:"modelId,omitempty"`
 	Locale           []string      `json:"locale,omitempty"`
 	Permission       *AppPermission `json:"permission,omitempty"`
 	Dependencies     []Dependency  `json:"dependencies,omitempty"`
