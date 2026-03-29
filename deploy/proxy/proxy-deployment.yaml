@@ -429,13 +429,24 @@ data:
         set $bfl_up bfl.{{FRAMEWORK_NAMESPACE}}.svc.cluster.local;
         set $desktop_up desktop-svc.{{USER_NAMESPACE}}.svc.cluster.local;
     
+        # Auth subrequest (for login redirect check)
+        location = /_auth { internal; proxy_pass http://$auth_up:9091/api/verify; proxy_pass_request_body off; proxy_set_header Content-Length ""; proxy_set_header X-Forwarded-Host $host; proxy_set_header Cookie $http_cookie; }
+
         # Static assets → desktop
         location /js/    { proxy_pass http://$desktop_up:80; }
         location /css/   { proxy_pass http://$desktop_up:80; }
         location /fonts/ { proxy_pass http://$desktop_up:80; }
         location ~ ^/(?!api/|bfl/)[^/]*\.(js|css|map|ico|png|jpg|svg|woff2?)$ { proxy_pass http://$desktop_up:80; }
         location = /     { rewrite ^ /login last; }
-    
+
+        # Login — if already authenticated, redirect to desktop
+        location /login {
+          auth_request /_auth;
+          error_page 401 = @serve_login;
+          return 302 https://desktop.{{USER_ZONE}};
+        }
+        location @serve_login { proxy_pass http://$desktop_up:80; }
+
         # Auth API → auth backend
         location /api/auth/ { proxy_pass http://$auth_up:9091; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
     
@@ -468,7 +479,7 @@ data:
         error_page 401 = @lr;
         location @lr { return 302 https://auth.{{USER_ZONE}}/login?rd=https://$host$request_uri; }
         location /ws { proxy_pass http://$app_up:6755/ws; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade; proxy_set_header Cookie $http_cookie; }
-        location / { auth_request /_auth; proxy_pass http://$ss_up:8080; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+        location / { auth_request /_auth; proxy_pass http://$ss_up:8080; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
       }
     
       # HTTP → HTTPS

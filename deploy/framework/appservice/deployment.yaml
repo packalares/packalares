@@ -67,6 +67,9 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /var/lib/packalares/appservice
+            - name: containerd-sock
+              mountPath: /run/containerd/containerd.sock
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /app-service/healthz
@@ -90,6 +93,10 @@ spec:
         - name: data
           persistentVolumeClaim:
             claimName: app-service-data
+        - name: containerd-sock
+          hostPath:
+            path: /run/containerd/containerd.sock
+            type: Socket
 ---
 apiVersion: v1
 kind: Service
@@ -132,7 +139,7 @@ metadata:
   name: app-service
 rules:
   - apiGroups: [""]
-    resources: ["pods", "services", "namespaces", "configmaps", "secrets", "serviceaccounts"]
+    resources: ["pods", "pods/exec", "services", "namespaces", "configmaps", "secrets", "serviceaccounts"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
   - apiGroups: ["apps"]
     resources: ["deployments", "statefulsets", "replicasets"]

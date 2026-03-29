@@ -251,7 +251,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 	rec.State = StateDownloading
 	_ = s.store.Put(bgCtx, rec)
 	GetWSHub().BroadcastAppState(rec.Name, StateDownloading)
-	GetWSHub().BroadcastInstallProgress(rec.Name, StateDownloading, 1, 5, "Downloading chart...", 0, 0)
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateDownloading, 1, 6, "Downloading chart...", 0, 0)
 
 	chartDir, err := s.chartDL.DownloadChart(bgCtx, req.Name)
 	if err != nil {
@@ -259,12 +259,12 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		rec.State = StateInstallFailed
 		_ = s.store.Put(bgCtx, rec)
 		GetWSHub().BroadcastAppState(rec.Name, StateInstallFailed)
-		GetWSHub().BroadcastInstallProgress(rec.Name, StateInstallFailed, 1, 5, fmt.Sprintf("Download failed: %v", err), 0, 0)
+		GetWSHub().BroadcastInstallProgress(rec.Name, StateInstallFailed, 1, 6, fmt.Sprintf("Download failed: %v", err), 0, 0)
 		return
 	}
 	defer CleanupChart(req.Name)
 
-	GetWSHub().BroadcastInstallProgress(rec.Name, StateDownloading, 2, 5, "Parsing manifest...", 0, 0)
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateDownloading, 2, 6, "Parsing manifest...", 0, 0)
 
 	// --- Step 2: Parse OlaresManifest.yaml ---
 	manifest, err := ParseOlaresManifest(chartDir)
@@ -308,7 +308,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 	}
 	_ = s.store.Put(bgCtx, rec)
 
-	GetWSHub().BroadcastInstallProgress(rec.Name, StateDownloading, 3, 5, "Preparing namespace...", 0, 0)
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateDownloading, 3, 6, "Preparing namespace...", 0, 0)
 
 	// --- Step 3: Create namespace if needed ---
 	if err := s.k8s.CreateNamespace(bgCtx, s.namespace); err != nil {
@@ -510,23 +510,63 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		}
 	}
 
-	// --- Step 5: helm install ---
+	// --- Step 5: Pre-pull container images ---
 	rec.State = StateInstalling
 	_ = s.store.Put(bgCtx, rec)
 	GetWSHub().BroadcastAppState(rec.Name, StateInstalling)
-	GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 4, 5, "Running helm install...", 0, 0)
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 4, 6, "Pre-pulling images...", 0, 0)
+
+	// Try helm template first for accurate image list, fall back to static extraction
+	templateImages := ExtractImagesFromTemplateOutput(bgCtx, chartDir, s.namespace)
+	if len(templateImages) > 0 {
+		klog.Infof("chart %s: helm template found %d images", req.Name, len(templateImages))
+		// Merge with statically extracted images
+		staticImages := ExtractImagesFromChart(chartDir)
+		mergedSet := make(map[string]bool)
+		for _, img := range templateImages {
+			mergedSet[img] = true
+		}
+		for _, img := range staticImages {
+			mergedSet[img] = true
+		}
+		allImages := make([]string, 0, len(mergedSet))
+		for img := range mergedSet {
+			allImages = append(allImages, img)
+		}
+		missing := FilterMissingImages(bgCtx, allImages)
+		if len(missing) > 0 {
+			estimatedTotal := EstimateImageSizes(missing)
+			PullImagesWithProgress(bgCtx, missing, func(pulled, total int, currentImage string) {
+				estimatedDone := int64(0)
+				if total > 0 {
+					estimatedDone = estimatedTotal * int64(pulled) / int64(total)
+				}
+				short := currentImage
+				if idx := strings.LastIndex(short, "/"); idx >= 0 {
+					short = short[idx+1:]
+				}
+				detail := fmt.Sprintf("Pulling images (%d/%d) %s", pulled, total, short)
+				GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 4, 6, detail, estimatedDone, estimatedTotal)
+			})
+		}
+	} else {
+		PullImagesForChart(bgCtx, rec.Name, chartDir, 4, 6)
+	}
+
+	// --- Step 6: helm install ---
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 5, 6, "Running helm install...", 0, 0)
 
 	if err := s.helm.InstallFromDir(bgCtx, rec.ReleaseName, chartDir, s.namespace); err != nil {
 		klog.Errorf("helm install %s: %v", req.Name, err)
 		rec.State = StateInstallFailed
 		_ = s.store.Put(bgCtx, rec)
 		GetWSHub().BroadcastAppState(rec.Name, StateInstallFailed)
-		GetWSHub().BroadcastInstallProgress(rec.Name, StateInstallFailed, 4, 5, fmt.Sprintf("Install failed: %v", err), 0, 0)
+		GetWSHub().BroadcastInstallProgress(rec.Name, StateInstallFailed, 5, 6, fmt.Sprintf("Install failed: %v", err), 0, 0)
 		return
 	}
 
-	// --- Step 6: Create Application CRD ---
-	GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 5, 5, "Registering app...", 0, 0)
+	// --- Step 7: Create Application CRD ---
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 6, 6, "Registering app...", 0, 0)
 	rec.State = StateRunning
 	_ = s.store.Put(bgCtx, rec)
 
@@ -536,7 +576,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 
 	// --- Done ---
 	GetWSHub().BroadcastAppState(rec.Name, StateRunning)
-	GetWSHub().BroadcastInstallProgress(rec.Name, StateRunning, 5, 5, "Installed successfully", 0, 0)
+	GetWSHub().BroadcastInstallProgress(rec.Name, StateRunning, 6, 6, "Installed successfully", 0, 0)
 	klog.Infof("app %s installed successfully (release=%s, namespace=%s)", req.Name, rec.ReleaseName, s.namespace)
 }
 

@@ -92,6 +92,10 @@ spec:
             port: 8000
           initialDelaySeconds: 3
           periodSeconds: 10
+        volumeMounts:
+        - name: host-net-dev
+          mountPath: /host/proc/net/dev
+          readOnly: true
         resources:
           requests:
             cpu: 25m
@@ -99,6 +103,11 @@ spec:
           limits:
             cpu: 500m
             memory: 256Mi
+      volumes:
+      - name: host-net-dev
+        hostPath:
+          path: /proc/net/dev
+          type: File
 
 ---
 apiVersion: v1

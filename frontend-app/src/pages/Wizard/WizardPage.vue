@@ -244,7 +244,7 @@ onMounted(async () => {
     serverIP.value = host;
   }
 
-  // Load user info
+  // Load user info (wizard_complete check handled by router guard)
   try {
     const res = await axios.get('/api/user/info');
     const d = res?.data?.data ?? res?.data;

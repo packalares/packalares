@@ -275,7 +275,7 @@ function getRedirectUrl(responseRedirect?: string): string {
 
 // ---------- Fetch user info ----------
 async function fetchUserInfo() {
-  // Use same-origin fetch (not api instance which goes cross-origin on subdomains)
+  // Check wizard status (auth redirect handled by nginx)
   try {
     const infoRes = await fetch('/api/user/info');
     if (infoRes.ok) {

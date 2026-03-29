@@ -145,7 +145,7 @@
               </div>
               <div v-else-if="getAppDisplayState(app.name, app.hasChart) === 'downloading' || getAppDisplayState(app.name, app.hasChart) === 'installing'" class="app-install-progress">
                 <q-linear-progress :value="installProgress[app.name] ? installProgress[app.name].step / installProgress[app.name].totalSteps : 0.2" color="indigo-4" track-color="grey-9" rounded size="4px" class="app-progress-bar" :indeterminate="!installProgress[app.name]" />
-                <span class="app-progress-text">{{ installProgress[app.name]?.detail || (getAppDisplayState(app.name, app.hasChart) === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
+                <span class="app-progress-text">{{ progressDetail(app.name) || (getAppDisplayState(app.name, app.hasChart) === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
               </div>
               <q-btn v-else-if="getAppDisplayState(app.name, app.hasChart) === 'not_installed'" flat dense no-caps :label="app.requiredDisk ? 'Install \u00b7 ' + app.requiredDisk : 'Install'" class="app-btn-install" @click.stop="installApp(app)" />
               <span v-else-if="getAppDisplayState(app.name, app.hasChart) === 'no_chart'" class="app-no-chart">Not synced</span>
@@ -236,7 +236,7 @@
             <template v-else-if="appStates[detailApp.name] === 'downloading' || appStates[detailApp.name] === 'installing' || installingSet.has(detailApp.name)">
               <div class="detail-progress-wrap">
                 <q-linear-progress :value="installProgress[detailApp.name] ? installProgress[detailApp.name].step / installProgress[detailApp.name].totalSteps : 0.2" color="primary" track-color="grey-9" rounded size="5px" :indeterminate="!installProgress[detailApp.name]" style="width:160px" />
-                <span class="detail-progress-text">{{ installProgress[detailApp.name]?.detail || (appStates[detailApp.name] === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
+                <span class="detail-progress-text">{{ progressDetail(detailApp.name) || (appStates[detailApp.name] === 'downloading' ? 'Downloading...' : 'Installing...') }}</span>
               </div>
             </template>
             <template v-else-if="detailApp.hasChart">
@@ -430,7 +430,7 @@ const detailLoading = ref(false);
 const previewImg = ref('');
 const installingSet = reactive(new Set<string>());
 const appStates = reactive<Record<string, string>>({});
-const installProgress = reactive<Record<string, { step: number; totalSteps: number; detail: string }>>({});
+const installProgress = reactive<Record<string, { step: number; totalSteps: number; detail: string; bytesDownloaded: number; bytesTotal: number }>>({});
 
 const syncStatus = reactive({
   state: '' as string,
@@ -582,6 +582,22 @@ function renderMarkdown(text: string): string {
     .replace(/^/, '<p>').replace(/$/, '</p>');
 }
 
+function formatBytes(bytes: number): string {
+  if (bytes <= 0) return '0 B';
+  const units = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
+  return (bytes / Math.pow(1024, i)).toFixed(i > 1 ? 1 : 0) + ' ' + units[i];
+}
+
+function progressDetail(name: string): string {
+  const p = installProgress[name];
+  if (!p) return '';
+  if (p.bytesTotal > 0) {
+    return p.detail + ' (' + formatBytes(p.bytesDownloaded) + ' / ' + formatBytes(p.bytesTotal) + ')';
+  }
+  return p.detail;
+}
+
 async function openDetail(app: MarketApp) {
   detailApp.value = app;
   detailData.value = null;
@@ -682,15 +698,7 @@ async function uninstallApp(app: MarketApp) {
 
 function connectWebSocket() {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  // Connect to main domain or IP for WS (not the market subdomain)
-  let wsHost = window.location.host;
-  const hostname = window.location.hostname;
-  const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname);
-  if (!isIP && hostname.split('.').length >= 3) {
-    // On subdomain: strip first part to get main domain
-    wsHost = hostname.split('.').slice(1).join('.');
-  }
-  const wsUrl = proto + '//' + wsHost + '/ws';
+  const wsUrl = proto + '//' + window.location.host + '/ws';
   try {
     ws = new WebSocket(wsUrl);
 
@@ -724,11 +732,11 @@ function connectWebSocket() {
           }
         }
         if (msg.type === 'install_progress' && msg.data) {
-          const d = msg.data as { name: string; step: number; totalSteps: number; detail: string; state: string };
+          const d = msg.data as { name: string; step: number; totalSteps: number; detail: string; state: string; bytesDownloaded: number; bytesTotal: number };
           if (d.state === 'running') {
             delete installProgress[d.name];
           } else {
-            installProgress[d.name] = { step: d.step, totalSteps: d.totalSteps, detail: d.detail };
+            installProgress[d.name] = { step: d.step, totalSteps: d.totalSteps, detail: d.detail, bytesDownloaded: d.bytesDownloaded || 0, bytesTotal: d.bytesTotal || 0 };
           }
         }
       } catch {

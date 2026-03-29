@@ -31,7 +31,24 @@ export default route(function () {
     history: createWebHistory(),
   });
 
-  // No guard needed — SubdomainRouter handles / based on hostname
+  router.beforeEach((to) => {
+    // Wizard only accessible on auth subdomain or IP
+    if (to.path === '/wizard') {
+      const host = window.location.hostname;
+      const isIP = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host);
+      const isAuth = host.startsWith('auth.');
+      if (!isIP && !isAuth) return '/';
+    }
+
+    // Unknown paths → redirect to correct root for this subdomain
+    if (to.matched.length === 0 || to.matched[0]?.path === '/:catchAll(.*)*') {
+      const sub = getSubdomain();
+      if (sub && subdomainRoutes[sub]) {
+        return subdomainRoutes[sub];
+      }
+      return '/desktop';
+    }
+  });
 
   return router;
 });
