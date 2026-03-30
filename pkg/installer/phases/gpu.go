@@ -136,8 +136,12 @@ func installContainerToolkit() error {
 func configureContainerdNvidia() error {
 	fmt.Println("  Configuring K3s containerd for NVIDIA runtime ...")
 
-	// Write NVIDIA runtime config to /etc/containerd/conf.d/ which K3s imports.
-	// Do NOT write to K3s's config.toml.tmpl — that overwrites K3s config and breaks kubelet.
+	// Create K3s containerd template that imports from conf.d
+	os.MkdirAll("/var/lib/rancher/k3s/agent/etc/containerd", 0755)
+	os.WriteFile("/var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl",
+		[]byte("imports = [\"/etc/containerd/conf.d/*.toml\"]\n"), 0644)
+
+	// Write NVIDIA runtime config to /etc/containerd/conf.d/ which K3s now imports.
 	os.MkdirAll("/etc/containerd/conf.d", 0755)
 	cmd := exec.Command("nvidia-ctk", "runtime", "configure",
 		"--runtime=containerd")
