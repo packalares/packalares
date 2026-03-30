@@ -137,6 +137,18 @@ data:
           proxy_pass http://$bfl_up:80;
           proxy_set_header Host $host;
         }
+        location /bfl/backend/v1/tailscale/ {
+          auth_request /_auth;
+          proxy_pass http://$bfl_up:80;
+          proxy_set_header Host $host;
+          proxy_set_header Cookie $http_cookie;
+        }
+        location /bfl/backend/v1/network/ {
+          auth_request /_auth;
+          proxy_pass http://$bfl_up:80;
+          proxy_set_header Host $host;
+          proxy_set_header Cookie $http_cookie;
+        }
         location = /api/logs {
           auth_request /_auth;
           proxy_pass http://$mon_up:80;
@@ -149,7 +161,7 @@ data:
           proxy_pass http://$mon_up:80;
           proxy_set_header Host $host;
         }
-    
+
         # WebSocket
         location /ws { proxy_pass http://$app_up:6755/ws; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade; proxy_set_header Cookie $http_cookie; }
     
@@ -332,6 +344,18 @@ data:
           proxy_pass http://$bfl_up:80;
           proxy_set_header Host $host;
         }
+        location /bfl/backend/v1/tailscale/ {
+          auth_request /_auth;
+          proxy_pass http://$bfl_up:80;
+          proxy_set_header Host $host;
+          proxy_set_header Cookie $http_cookie;
+        }
+        location /bfl/backend/v1/network/ {
+          auth_request /_auth;
+          proxy_pass http://$bfl_up:80;
+          proxy_set_header Host $host;
+          proxy_set_header Cookie $http_cookie;
+        }
         location = /api/logs {
           auth_request /_auth;
           proxy_pass http://$mon_up:80;
@@ -346,7 +370,7 @@ data:
         }
         location /ws { proxy_pass http://$app_up:6755/ws; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade; proxy_set_header Cookie $http_cookie; }
       }
-    
+
       # ══════════════════════════════════════════════════════════
       # DESKTOP SUBDOMAIN — SPA with auth
       # ══════════════════════════════════════════════════════════

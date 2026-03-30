@@ -102,6 +102,9 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/bfl/backend/v1/myapps", s.handleMyApps)
 	s.mux.HandleFunc("/bfl/backend/v1/cluster", s.handleClusterMetrics)
 	s.mux.HandleFunc("/bfl/backend/v1/config-system", s.handleGetSysConfig)
+	s.mux.HandleFunc("/bfl/backend/v1/tailscale/status", s.handleTailscaleStatus)
+	s.mux.HandleFunc("/bfl/backend/v1/network/domain", s.handleCustomDomain)
+	s.mux.HandleFunc("/bfl/backend/v1/network/info", s.handleNetworkInfo)
 
 	// Info v1 (wizard info endpoint)
 	s.mux.HandleFunc("/bfl/info/v1/olares-info", s.handleOlaresInfo)
@@ -660,6 +663,9 @@ func (s *Server) handleTailscaleSettings(w http.ResponseWriter, r *http.Request)
 			// Restart to pick up new config
 			exec.CommandContext(ctx, "kubectl", "rollout", "restart", "deployment/tailscale", "-n", ns).Run()
 		}
+
+		// After deployment create/restart, regenerate cert with Tailscale IP
+		go s.afterTailscaleEnabled(context.Background())
 
 		respondJSON(w, http.StatusOK, map[string]interface{}{"status": "OK", "message": "Tailscale config updated, restarting..."})
 

@@ -244,6 +244,43 @@ var (
 	AnnoTaskEnableSSL     = anno("task-enable-ssl")
 )
 
+// ---------------------------------------------------------------------------
+// Network / Tailscale types
+// ---------------------------------------------------------------------------
+
+// TailscalePeer represents a single peer in the Tailscale network.
+type TailscalePeer struct {
+	Name     string `json:"name"`
+	IP       string `json:"ip"`
+	Online   bool   `json:"online"`
+	LastSeen string `json:"lastSeen"`
+}
+
+// TailscaleStatusResponse is the API response for /bfl/backend/v1/tailscale/status.
+type TailscaleStatusResponse struct {
+	Enabled      bool            `json:"enabled"`
+	Connected    bool            `json:"connected"`
+	IP           string          `json:"ip"`
+	Hostname     string          `json:"hostname"`
+	Peers        []TailscalePeer `json:"peers"`
+	AcceptRoutes bool            `json:"acceptRoutes"`
+}
+
+// NetworkInfoResponse is the API response for /bfl/backend/v1/network/info.
+type NetworkInfoResponse struct {
+	ServerIP     string   `json:"serverIP"`
+	TailscaleIP  string   `json:"tailscaleIP"`
+	Zone         string   `json:"zone"`
+	CustomDomain string   `json:"customDomain"`
+	CertSANs     []string `json:"certSANs"`
+	CertExpiry   string   `json:"certExpiry"`
+}
+
+// CustomDomainRequest is the POST body for /bfl/backend/v1/network/domain.
+type CustomDomainRequest struct {
+	Domain string `json:"domain"`
+}
+
 const (
 	RoleOwner = "owner"
 	RoleAdmin = "admin"

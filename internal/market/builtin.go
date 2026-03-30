@@ -1,8 +1,7 @@
 package market
 
 // builtinCatalog returns an empty catalog.
-// Run market sync to populate the catalog from the Olares appstore.
-// No external URLs — everything must be local.
+// The catalog is loaded from /data/market/catalog.json (baked into the image).
 func builtinCatalog() []MarketApp {
 	return []MarketApp{}
 }

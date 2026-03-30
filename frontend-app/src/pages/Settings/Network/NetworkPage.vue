@@ -20,17 +20,88 @@
         <div class="info-grid-2col">
           <div class="info-row">
             <span class="info-label">Server IP</span>
-            <span class="info-value">{{ netInfo.ip }}</span>
+            <span class="info-value">{{ networkInfo.serverIP || netInfo.ip }}</span>
           </div>
+          <div class="info-row">
+            <span class="info-label">Tailscale IP</span>
+            <span class="info-value">{{ networkInfo.tailscaleIP || '--' }}</span>
+          </div>
+        </div>
+        <q-separator class="card-separator" />
+        <div class="info-grid-2col">
           <div class="info-row">
             <span class="info-label">Domain</span>
             <span class="info-value">{{ netInfo.domain }}</span>
           </div>
+          <div class="info-row">
+            <span class="info-label">User Zone</span>
+            <span class="info-value">{{ networkInfo.zone || netInfo.zone }}</span>
+          </div>
         </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">User Zone</span>
-          <span class="info-value">{{ netInfo.zone }}</span>
+        <template v-if="networkInfo.customDomain">
+          <q-separator class="card-separator" />
+          <div class="info-row">
+            <span class="info-label">Custom Domain</span>
+            <span class="info-value">{{ networkInfo.customDomain }}</span>
+          </div>
+        </template>
+        <template v-if="networkInfo.certSANs && networkInfo.certSANs.length">
+          <q-separator class="card-separator" />
+          <div class="info-row" style="align-items:flex-start">
+            <span class="info-label">Cert SANs</span>
+            <div class="info-value" style="display:flex;flex-wrap:wrap;gap:4px">
+              <span
+                v-for="san in networkInfo.certSANs"
+                :key="san"
+                class="port-badge"
+                style="font-size:10px"
+              >{{ san }}</span>
+            </div>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Cert Expiry</span>
+            <span class="info-value">{{ formatExpiry(networkInfo.certExpiry) }}</span>
+          </div>
+        </template>
+      </div>
+
+      <!-- Custom Domain -->
+      <div class="settings-card q-mt-lg">
+        <div class="card-header">
+          <div class="card-header-icon card-header-icon--network">
+            <q-icon name="sym_r_dns" size="18px" />
+          </div>
+          <div class="card-header-text">
+            <div class="card-header-title">Custom Domain</div>
+            <div class="card-header-subtitle">Add a custom domain for external access (TLS cert will be regenerated)</div>
+          </div>
+        </div>
+        <div class="form-grid cols-1">
+          <div class="form-group">
+            <label class="form-label">Domain</label>
+            <q-input
+              v-model="customDomainInput"
+              dense dark outlined
+              placeholder="e.g. olares.example.com"
+            />
+          </div>
+        </div>
+        <div class="card-body" style="padding-top:0">
+          <div style="font-size:11px;color:var(--ink-3);line-height:1.5">
+            <q-icon name="sym_r_info" size="13px" style="vertical-align:middle;margin-right:4px" />
+            Set your DNS A record to point to <strong>{{ networkInfo.serverIP || netInfo.ip }}</strong>.
+            Leave empty and save to remove the custom domain.
+          </div>
+        </div>
+        <div class="card-footer">
+          <span v-if="domainMsg" class="footer-msg" :class="domainMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ domainMsg }}</span>
+          <q-btn
+            unelevated dense
+            label="Save"
+            class="btn-primary"
+            :loading="domainSaving"
+            @click="saveCustomDomain"
+          />
         </div>
       </div>
 
@@ -120,10 +191,65 @@
           <div class="card-header-actions">
             <span
               class="status-badge"
-              :class="tsStatus === 'connected' ? 'status-connected' : tsStatus === 'connecting' ? 'status-connecting' : 'status-disconnected'"
-            >{{ tsStatus }}</span>
+              :class="tsStatusBadgeClass"
+            >{{ tsStatusLabel }}</span>
           </div>
         </div>
+
+        <!-- Status section (shown when tailscale has data) -->
+        <template v-if="tsLive.enabled">
+          <div class="info-grid-2col">
+            <div class="info-row">
+              <span class="info-label">Status</span>
+              <span class="info-value" style="display:flex;align-items:center;gap:6px">
+                <span
+                  class="status-dot"
+                  :class="tsLive.connected ? 'dot-green' : 'dot-red'"
+                ></span>
+                {{ tsLive.connected ? 'Connected' : 'Disconnected' }}
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Tailscale IP</span>
+              <span class="info-value">{{ tsLive.ip || '--' }}</span>
+            </div>
+          </div>
+          <div class="info-row">
+            <span class="info-label">Hostname</span>
+            <span class="info-value">{{ tsLive.hostname || '--' }}</span>
+          </div>
+          <template v-if="tsLive.peers && tsLive.peers.length">
+            <q-separator class="card-separator" />
+            <div style="padding:0 16px 8px">
+              <div style="font-size:11px;color:var(--ink-3);margin-bottom:6px;font-weight:600">Peers</div>
+              <table class="data-table" style="margin:0">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>IP</th>
+                    <th style="text-align:right">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="peer in tsLive.peers" :key="peer.name + peer.ip">
+                    <td class="td-label">{{ peer.name }}</td>
+                    <td class="td-mono">{{ peer.ip }}</td>
+                    <td style="text-align:right">
+                      <span
+                        class="status-badge"
+                        :class="peer.online ? 'status-connected' : 'status-disconnected'"
+                        style="font-size:10px"
+                      >{{ peer.online ? 'online' : 'offline' }}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </template>
+          <q-separator class="card-separator" />
+        </template>
+
+        <!-- Config form -->
         <div class="form-grid cols-1">
           <div class="form-group">
             <label class="form-label">Auth Key</label>
@@ -216,7 +342,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
 import { api } from 'boot/axios';
 import { useQuasar } from 'quasar';
 
@@ -239,10 +365,102 @@ const sshPort = ref(22);
 const sshSaving = ref(false);
 const sshMsg = ref('');
 
+// Network info
+const networkInfo = reactive({
+  serverIP: '',
+  tailscaleIP: '',
+  zone: '',
+  customDomain: '',
+  certSANs: [] as string[],
+  certExpiry: '',
+});
+
+// Custom domain
+const customDomainInput = ref('');
+const domainSaving = ref(false);
+const domainMsg = ref('');
+
+// Tailscale live status
+const tsLive = reactive({
+  enabled: false,
+  connected: false,
+  ip: '',
+  hostname: '',
+  peers: [] as Array<{ name: string; ip: string; online: boolean; lastSeen: string }>,
+  acceptRoutes: false,
+});
+
+let tsPollingTimer: ReturnType<typeof setInterval> | null = null;
+
+const tsStatusLabel = computed(() => {
+  if (tsLive.enabled && tsLive.connected) return 'connected';
+  if (tsLive.enabled && !tsLive.connected) return 'disconnected';
+  if (tsStatus.value === 'connecting') return 'connecting';
+  return tsStatus.value;
+});
+
+const tsStatusBadgeClass = computed(() => {
+  if (tsLive.enabled && tsLive.connected) return 'status-connected';
+  if (tsLive.enabled && !tsLive.connected) return 'status-disconnected';
+  if (tsStatus.value === 'connecting') return 'status-connecting';
+  return 'status-disconnected';
+});
+
 function portRule(val: number): boolean | string {
   if (val === 22) return true;
   if (val >= 1024 && val <= 65535) return true;
   return 'Port must be 22 or 1024-65535';
+}
+
+function formatExpiry(s: string): string {
+  if (!s) return '--';
+  try {
+    return new Date(s).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return s;
+  }
+}
+
+async function loadNetworkInfo() {
+  try {
+    const r: any = await api.get('/bfl/backend/v1/network/info');
+    const d = r?.data?.data ?? r?.data ?? r;
+    if (d) {
+      networkInfo.serverIP = d.serverIP || '';
+      networkInfo.tailscaleIP = d.tailscaleIP || '';
+      networkInfo.zone = d.zone || '';
+      networkInfo.customDomain = d.customDomain || '';
+      networkInfo.certSANs = d.certSANs || [];
+      networkInfo.certExpiry = d.certExpiry || '';
+      customDomainInput.value = d.customDomain || '';
+    }
+  } catch {
+    // Endpoint may not be available yet
+  }
+}
+
+async function loadTailscaleStatus() {
+  try {
+    const r: any = await api.get('/bfl/backend/v1/tailscale/status');
+    const d = r?.data?.data ?? r?.data ?? r;
+    if (d) {
+      tsLive.enabled = d.enabled ?? false;
+      tsLive.connected = d.connected ?? false;
+      tsLive.ip = d.ip || '';
+      tsLive.hostname = d.hostname || '';
+      tsLive.peers = d.peers || [];
+      tsLive.acceptRoutes = d.acceptRoutes ?? false;
+
+      // Update top-level status
+      if (tsLive.enabled && tsLive.connected) {
+        tsStatus.value = 'connected';
+      } else if (tsLive.enabled) {
+        tsStatus.value = 'disconnected';
+      }
+    }
+  } catch {
+    // Tailscale status endpoint may not be available
+  }
 }
 
 onMounted(async () => {
@@ -288,6 +506,19 @@ onMounted(async () => {
     const ip: any = await api.get('/api/settings/ip-access');
     ipAccessEnabled.value = ip?.data?.enabled ?? ip?.enabled ?? true;
   } catch {}
+
+  // Load network info and Tailscale status
+  await Promise.all([loadNetworkInfo(), loadTailscaleStatus()]);
+
+  // Poll Tailscale status every 10 seconds
+  tsPollingTimer = setInterval(loadTailscaleStatus, 10000);
+});
+
+onUnmounted(() => {
+  if (tsPollingTimer) {
+    clearInterval(tsPollingTimer);
+    tsPollingTimer = null;
+  }
 });
 
 async function toggleIPAccess(val: boolean) {
@@ -356,12 +587,46 @@ async function saveTailscale() {
       tsHostname.value = ts?.hostname || ts?.data?.hostname || 'packalares';
       tsStatus.value = tsAuthKey.value ? 'connecting' : 'not configured';
     } catch {}
+    // Refresh Tailscale status after a short delay
+    setTimeout(loadTailscaleStatus, 5000);
   } catch (e: any) {
     saveMsg.value = 'Error: ' + (e.message || 'unknown');
   }
   saving.value = false;
 }
+
+async function saveCustomDomain() {
+  domainSaving.value = true;
+  domainMsg.value = '';
+  try {
+    await api.post('/bfl/backend/v1/network/domain', {
+      domain: customDomainInput.value.trim(),
+    });
+    domainMsg.value = customDomainInput.value.trim()
+      ? 'Domain saved. TLS cert regenerated, proxy restarting...'
+      : 'Custom domain removed. TLS cert regenerated, proxy restarting...';
+    // Refresh network info after a short delay
+    setTimeout(loadNetworkInfo, 3000);
+  } catch (e: any) {
+    domainMsg.value = 'Error: ' + (e?.response?.data?.message || e?.message || 'unknown');
+  }
+  domainSaving.value = false;
+}
 </script>
 
 <style lang="scss" scoped>
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.dot-green {
+  background: #4caf50;
+  box-shadow: 0 0 4px rgba(76, 175, 80, 0.5);
+}
+.dot-red {
+  background: #f44336;
+  box-shadow: 0 0 4px rgba(244, 67, 54, 0.5);
+}
 </style>
