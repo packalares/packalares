@@ -23,6 +23,9 @@ dist/
 .DS_Store
 /tmp/
 
+# Docs (audit reports, internal notes)
+docs/
+
 # Frontend source repos (cloned for reference)
 frontend-src/
 
