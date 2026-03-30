@@ -1235,12 +1235,11 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request, use
 		}
 	}
 
-	// Change password directly in LLDAP via LDAP protocol
+	// Change password via LDAP — bind as the user with their current password
 	lldapHost := os.Getenv("LLDAP_HOST")
 	if lldapHost == "" {
 		lldapHost = "lldap-svc." + config.PlatformNamespace()
 	}
-	adminPass := os.Getenv("LLDAP_ADMIN_PASSWORD")
 
 	ldapAddr := lldapHost + ":3890"
 	conn, err := ldapv3.Dial("tcp", ldapAddr)
@@ -1251,17 +1250,16 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request, use
 	defer conn.Close()
 
 	baseDN := "dc=packalares,dc=local"
-	adminDN := fmt.Sprintf("uid=admin,ou=people,%s", baseDN)
+	userDN := fmt.Sprintf("uid=%s,ou=people,%s", ldapv3.EscapeFilter(userName), baseDN)
 
-	// Bind as admin
-	if err := conn.Bind(adminDN, adminPass); err != nil {
-		respondError(w, fmt.Sprintf("reset password: ldap bind: %v", err))
+	// Bind as the user — verifies current password
+	if err := conn.Bind(userDN, pr.CurrentPassword); err != nil {
+		respondError(w, "reset password: current password is incorrect")
 		return
 	}
 
-	// Change target user's password
-	targetDN := fmt.Sprintf("uid=%s,ou=people,%s", ldapv3.EscapeFilter(userName), baseDN)
-	pwReq := ldapv3.NewPasswordModifyRequest(targetDN, "", pr.Password)
+	// Change to new password
+	pwReq := ldapv3.NewPasswordModifyRequest(userDN, pr.CurrentPassword, pr.Password)
 	if _, err := conn.PasswordModify(pwReq); err != nil {
 		respondError(w, fmt.Sprintf("reset password: ldap modify: %v", err))
 		return
