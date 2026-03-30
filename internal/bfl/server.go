@@ -16,6 +16,7 @@ import (
 
 	ldapv3 "github.com/go-ldap/ldap/v3"
 	"github.com/packalares/packalares/pkg/config"
+	"github.com/packalares/packalares/pkg/validation"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -1211,8 +1212,8 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request, use
 		return
 	}
 
-	if len(pr.Password) < 8 {
-		respondError(w, "reset password: password must be at least 8 characters")
+	if err := validation.ValidatePassword(pr.Password); err != nil {
+		respondError(w, fmt.Sprintf("reset password: %v", err))
 		return
 	}
 	if pr.Password == pr.CurrentPassword {

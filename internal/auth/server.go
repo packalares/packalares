@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/redis/go-redis/v9"
+
+	"github.com/packalares/packalares/pkg/validation"
 )
 
 // Server is the auth HTTP server.
@@ -66,6 +68,16 @@ func (s *Server) setupRoutes() {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// CSRF protection: POST/PUT/PATCH/DELETE must include X-Requested-With header.
+	// Browsers block cross-origin custom headers, so this prevents CSRF attacks.
+	// GET requests (including nginx auth_request subrequests) are exempt.
+	switch r.Method {
+	case http.MethodPost, http.MethodPut, http.MethodPatch, http.MethodDelete:
+		if r.Header.Get("X-Requested-With") == "" {
+			http.Error(w, "CSRF validation failed", http.StatusForbidden)
+			return
+		}
+	}
 	s.mux.ServeHTTP(w, r)
 }
 
@@ -601,11 +613,19 @@ func (s *Server) handleSessions(w http.ResponseWriter, r *http.Request) {
 // TOTP secret storage in Redis
 
 func (s *Server) getTOTPSecret(ctx context.Context, username string) (string, error) {
-	return s.sessions.Redis().Get(ctx, "packalares:totp:"+username).Result()
+	encrypted, err := s.sessions.Redis().Get(ctx, "packalares:totp:"+username).Result()
+	if err != nil {
+		return "", err
+	}
+	return decryptAES(encrypted, s.cfg.SessionSecret)
 }
 
 func (s *Server) storeTOTPSecret(ctx context.Context, username, secret string) error {
-	return s.sessions.Redis().Set(ctx, "packalares:totp:"+username, secret, 0).Err()
+	encrypted, err := encryptAES(secret, s.cfg.SessionSecret)
+	if err != nil {
+		return fmt.Errorf("encrypt totp secret: %w", err)
+	}
+	return s.sessions.Redis().Set(ctx, "packalares:totp:"+username, encrypted, 0).Err()
 }
 
 func (s *Server) deleteTOTPSecret(ctx context.Context, username string) error {
@@ -613,11 +633,19 @@ func (s *Server) deleteTOTPSecret(ctx context.Context, username string) error {
 }
 
 func (s *Server) storePendingTOTP(ctx context.Context, username, secret string) error {
-	return s.sessions.Redis().Set(ctx, "packalares:totp:pending:"+username, secret, 5*time.Minute).Err()
+	encrypted, err := encryptAES(secret, s.cfg.SessionSecret)
+	if err != nil {
+		return fmt.Errorf("encrypt pending totp: %w", err)
+	}
+	return s.sessions.Redis().Set(ctx, "packalares:totp:pending:"+username, encrypted, 5*time.Minute).Err()
 }
 
 func (s *Server) getPendingTOTP(ctx context.Context, username string) (string, error) {
-	return s.sessions.Redis().Get(ctx, "packalares:totp:pending:"+username).Result()
+	encrypted, err := s.sessions.Redis().Get(ctx, "packalares:totp:pending:"+username).Result()
+	if err != nil {
+		return "", err
+	}
+	return decryptAES(encrypted, s.cfg.SessionSecret)
 }
 
 func (s *Server) deletePendingTOTP(ctx context.Context, username string) error {
@@ -657,8 +685,8 @@ func (s *Server) handlePasswordChange(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if len(req.NewPassword) < 8 {
-		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"status": "error", "message": "password must be at least 8 characters"})
+	if err := validation.ValidatePassword(req.NewPassword); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]interface{}{"status": "error", "message": err.Error()})
 		return
 	}
 

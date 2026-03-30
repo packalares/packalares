@@ -482,9 +482,10 @@ onMounted(async () => {
     tsHostname.value = ts?.hostname || ts?.data?.hostname || 'packalares';
     tsStatus.value = tsAuthKey.value ? 'configured' : 'not configured';
   } catch {
-    tsAuthKey.value = localStorage.getItem('ts_auth_key') || '';
-    tsControlURL.value = localStorage.getItem('ts_control_url') || '';
-    tsHostname.value = localStorage.getItem('ts_hostname') || 'packalares';
+    // API failed — leave fields empty, user re-enters
+    tsAuthKey.value = '';
+    tsControlURL.value = '';
+    tsHostname.value = 'packalares';
   }
 
   // Load SSH status

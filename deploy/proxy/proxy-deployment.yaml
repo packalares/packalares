@@ -14,7 +14,11 @@ data:
       default_type application/octet-stream;
       map $http_upgrade $connection_upgrade { default upgrade; "" close; }
       resolver {{COREDNS_CLUSTER_IP}} valid=30s ipv6=off;
-    
+
+      # Security headers
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
       # CORS origin whitelist — only allow own zone subdomains and IP
       map $http_origin $cors_origin {
         default "";

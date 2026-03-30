@@ -65,6 +65,19 @@
               autocomplete="new-password"
               placeholder="Minimum 8 characters"
             />
+            <div v-if="password" class="password-strength">
+              <div class="strength-bar">
+                <div class="strength-fill" :class="pwStrengthClass"></div>
+              </div>
+              <div class="strength-label">{{ pwStrengthLabel }}</div>
+              <div class="password-rules">
+                <div :class="password.length >= 8 ? 'rule-met' : 'rule-unmet'">{{ password.length >= 8 ? '\u2713' : '\u2717' }} At least 8 characters</div>
+                <div :class="pwHasUpper ? 'rule-met' : 'rule-unmet'">{{ pwHasUpper ? '\u2713' : '\u2717' }} Uppercase letter (A-Z)</div>
+                <div :class="pwHasLower ? 'rule-met' : 'rule-unmet'">{{ pwHasLower ? '\u2713' : '\u2717' }} Lowercase letter (a-z)</div>
+                <div :class="pwHasDigit ? 'rule-met' : 'rule-unmet'">{{ pwHasDigit ? '\u2713' : '\u2717' }} Number (0-9)</div>
+                <div :class="pwHasSpecial ? 'rule-met' : 'rule-unmet'">{{ pwHasSpecial ? '\u2713' : '\u2717' }} Special character (!@#$%^&amp;*)</div>
+              </div>
+            </div>
           </div>
 
           <div class="field-group">
@@ -83,7 +96,7 @@
 
           <div class="card-actions">
             <button class="btn-ghost" @click="step = 0">Back</button>
-            <button class="btn-action" @click="goToNetwork">Continue</button>
+            <button class="btn-action" :disabled="!pwAllMet || password !== passwordConfirm || !passwordConfirm" @click="goToNetwork">Continue</button>
           </div>
         </div>
 
@@ -214,6 +227,32 @@ const username = ref('admin');
 const password = ref('');
 const passwordConfirm = ref('');
 const accountError = ref('');
+
+// Password strength
+const pwHasUpper = computed(() => /[A-Z]/.test(password.value));
+const pwHasLower = computed(() => /[a-z]/.test(password.value));
+const pwHasDigit = computed(() => /[0-9]/.test(password.value));
+const pwHasSpecial = computed(() => /[^A-Za-z0-9]/.test(password.value));
+const pwScore = computed(() => {
+  let s = 0;
+  if (password.value.length >= 8) s++;
+  if (pwHasUpper.value) s++;
+  if (pwHasLower.value) s++;
+  if (pwHasDigit.value) s++;
+  if (pwHasSpecial.value) s++;
+  return s;
+});
+const pwAllMet = computed(() => pwScore.value === 5);
+const pwStrengthClass = computed(() => {
+  if (pwScore.value <= 2) return 'strength-weak';
+  if (pwScore.value <= 4) return 'strength-medium';
+  return 'strength-strong';
+});
+const pwStrengthLabel = computed(() => {
+  if (pwScore.value <= 2) return 'Weak';
+  if (pwScore.value <= 4) return 'Medium';
+  return 'Strong';
+});
 
 // Network info
 const sysHostname = ref('');
@@ -366,8 +405,8 @@ function goToNetwork() {
     accountError.value = 'Username is required.';
     return;
   }
-  if (password.value.length < 8) {
-    accountError.value = 'Password must be at least 8 characters.';
+  if (!pwAllMet.value) {
+    accountError.value = 'Password does not meet all requirements.';
     return;
   }
   if (password.value !== passwordConfirm.value) {
@@ -801,6 +840,37 @@ onUnmounted(() => {
   padding-top: 0;
   padding-bottom: 0;
 }
+
+/* ===== Password strength indicator ===== */
+.password-strength {
+  margin-top: 6px;
+}
+.strength-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.strength-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s, background 0.3s;
+}
+.strength-weak { background: var(--negative, #f87171); width: 33%; }
+.strength-medium { background: var(--warning, #fbbf24); width: 66%; }
+.strength-strong { background: var(--positive, #34d399); width: 100%; }
+.strength-label {
+  font-size: 11px;
+  margin-top: 4px;
+  color: var(--ink-3, rgba(226,228,234,0.32));
+}
+.password-rules {
+  font-size: 11px;
+  margin-top: 6px;
+  color: var(--ink-3, rgba(226,228,234,0.32));
+}
+.rule-met { color: var(--positive, #34d399); }
+.rule-unmet { color: var(--ink-3, rgba(226,228,234,0.32)); }
 
 /* ===== Responsive ===== */
 @media (max-width: 560px) {

@@ -41,6 +41,19 @@
           <div class="form-group">
             <label class="form-label">New Password</label>
             <q-input v-model="newPassword" dense dark outlined type="password" />
+            <div v-if="newPassword" class="password-strength">
+              <div class="strength-bar">
+                <div class="strength-fill" :class="pwStrengthClass"></div>
+              </div>
+              <div class="strength-label">{{ pwStrengthLabel }}</div>
+              <div class="password-rules">
+                <div :class="newPassword.length >= 8 ? 'rule-met' : 'rule-unmet'">{{ newPassword.length >= 8 ? '\u2713' : '\u2717' }} At least 8 characters</div>
+                <div :class="pwHasUpper ? 'rule-met' : 'rule-unmet'">{{ pwHasUpper ? '\u2713' : '\u2717' }} Uppercase letter (A-Z)</div>
+                <div :class="pwHasLower ? 'rule-met' : 'rule-unmet'">{{ pwHasLower ? '\u2713' : '\u2717' }} Lowercase letter (a-z)</div>
+                <div :class="pwHasDigit ? 'rule-met' : 'rule-unmet'">{{ pwHasDigit ? '\u2713' : '\u2717' }} Number (0-9)</div>
+                <div :class="pwHasSpecial ? 'rule-met' : 'rule-unmet'">{{ pwHasSpecial ? '\u2713' : '\u2717' }} Special character (!@#$%^&amp;*)</div>
+              </div>
+            </div>
           </div>
           <div class="form-group">
             <label class="form-label">Confirm</label>
@@ -49,7 +62,7 @@
         </div>
         <div class="card-footer">
           <span v-if="pwMsg" class="footer-msg" :class="pwMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ pwMsg }}</span>
-          <q-btn unelevated dense label="Change Password" class="btn-primary" :loading="changingPw" @click="changePassword" />
+          <q-btn unelevated dense label="Change Password" class="btn-primary" :loading="changingPw" :disable="!pwAllMet" @click="changePassword" />
         </div>
       </div>
 
@@ -74,7 +87,8 @@
           <div class="totp-setup" v-if="totpURI">
             <div class="totp-layout">
               <div class="totp-qr">
-                <img :src="'https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' + encodeURIComponent(totpURI)" alt="TOTP QR" />
+                <img v-if="qrDataUrl" :src="qrDataUrl" alt="TOTP QR" width="160" height="160" />
+                <div v-else class="totp-qr-fallback">Use the secret code below</div>
               </div>
               <div class="totp-right">
                 <div class="totp-instructions">Scan this QR code with your authenticator app, then enter the 6-digit code below.</div>
@@ -164,7 +178,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { api } from 'boot/axios';
 import { useQuasar } from 'quasar';
 
@@ -181,6 +195,45 @@ const totpURI = ref('');
 const totpSecret = ref('');
 const totpCode = ref('');
 const totpMsg = ref('');
+const qrCanvas = ref<HTMLCanvasElement | null>(null);
+const qrDataUrl = ref('');
+
+// Password strength
+const pwHasUpper = computed(() => /[A-Z]/.test(newPassword.value));
+const pwHasLower = computed(() => /[a-z]/.test(newPassword.value));
+const pwHasDigit = computed(() => /[0-9]/.test(newPassword.value));
+const pwHasSpecial = computed(() => /[^A-Za-z0-9]/.test(newPassword.value));
+const pwScore = computed(() => {
+  let s = 0;
+  if (newPassword.value.length >= 8) s++;
+  if (pwHasUpper.value) s++;
+  if (pwHasLower.value) s++;
+  if (pwHasDigit.value) s++;
+  if (pwHasSpecial.value) s++;
+  return s;
+});
+const pwAllMet = computed(() => pwScore.value === 5);
+const pwStrengthClass = computed(() => {
+  if (pwScore.value <= 2) return 'strength-weak';
+  if (pwScore.value <= 4) return 'strength-medium';
+  return 'strength-strong';
+});
+const pwStrengthLabel = computed(() => {
+  if (pwScore.value <= 2) return 'Weak';
+  if (pwScore.value <= 4) return 'Medium';
+  return 'Strong';
+});
+
+// Generate QR code locally when TOTP URI is set
+watch(totpURI, async (uri) => {
+  if (!uri) { qrDataUrl.value = ''; return; }
+  try {
+    const QRCode = (await import('qrcode')).default;
+    qrDataUrl.value = await QRCode.toDataURL(uri, { width: 160, margin: 1 });
+  } catch {
+    qrDataUrl.value = '';
+  }
+});
 
 onMounted(async () => {
   try {
@@ -202,7 +255,7 @@ onMounted(async () => {
 async function changePassword() {
   if (!currentPassword.value || !newPassword.value) { pwMsg.value = 'Error: fill all fields'; return; }
   if (newPassword.value !== confirmPassword.value) { pwMsg.value = 'Error: passwords don\'t match'; return; }
-  if (newPassword.value.length < 6) { pwMsg.value = 'Error: min 6 characters'; return; }
+  if (!pwAllMet.value) { pwMsg.value = 'Error: password does not meet all requirements'; return; }
   changingPw.value = true; pwMsg.value = '';
   try {
     await api.post('/api/auth/password', { current_password: currentPassword.value, new_password: newPassword.value });
@@ -348,6 +401,36 @@ function confirmLogoutAll() {
   font-family: 'Inter', sans-serif;
   letter-spacing: 0.06em;
 }
+
+.password-strength {
+  margin-top: 6px;
+}
+.strength-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  overflow: hidden;
+}
+.strength-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s, background 0.3s;
+}
+.strength-weak { background: var(--negative, #f87171); width: 33%; }
+.strength-medium { background: var(--warning, #fbbf24); width: 66%; }
+.strength-strong { background: var(--positive, #34d399); width: 100%; }
+.strength-label {
+  font-size: 11px;
+  margin-top: 4px;
+  color: var(--ink-3);
+}
+.password-rules {
+  font-size: 11px;
+  margin-top: 6px;
+  color: var(--ink-3);
+}
+.rule-met { color: var(--positive, #34d399); }
+.rule-unmet { color: var(--ink-3); }
 
 .sessions-grid {
   display: grid;
