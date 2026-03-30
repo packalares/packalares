@@ -1,9 +1,12 @@
 package commands
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 
 	"github.com/packalares/packalares/pkg/installer/phases"
 	"github.com/spf13/cobra"
@@ -32,6 +35,11 @@ func newInstallCmd() *cobra.Command {
  14. Deploy KubeBlocks
  15. Wait for all pods to be ready`,
 		Run: func(cmd *cobra.Command, args []string) {
+			// Interactive prompts if username/domain not passed as flags
+			if !cmd.Flags().Changed("username") && !cmd.Flags().Changed("domain") {
+				promptInstallOptions(&opts)
+			}
+
 			if err := phases.RunInstall(&opts); err != nil {
 				if errors.Is(err, phases.ErrRebootRequired) {
 					// Clean exit — state saved, user will resume after reboot.
@@ -56,4 +64,38 @@ func newInstallCmd() *cobra.Command {
 	cmd.Flags().BoolVar(&opts.SkipPrecheck, "skip-precheck", false, "skip system requirements check")
 
 	return cmd
+}
+
+func promptInstallOptions(opts *phases.InstallOptions) {
+	reader := bufio.NewReader(os.Stdin)
+
+	// Apply defaults first so we can show them
+	if opts.Username == "" {
+		opts.Username = "admin"
+	}
+	if opts.Domain == "" {
+		opts.Domain = os.Getenv("PACKALARES_DOMAIN")
+		if opts.Domain == "" {
+			opts.Domain = "olares.local"
+		}
+	}
+
+	fmt.Println()
+	fmt.Println("  Packalares Installer")
+	fmt.Println()
+
+	opts.Username = prompt(reader, "  Username", opts.Username)
+	opts.Domain = prompt(reader, "  Domain", opts.Domain)
+
+	fmt.Println()
+}
+
+func prompt(reader *bufio.Reader, label, defaultVal string) string {
+	fmt.Printf("%s [%s]: ", label, defaultVal)
+	input, _ := reader.ReadString('\n')
+	input = strings.TrimSpace(input)
+	if input == "" {
+		return defaultVal
+	}
+	return input
 }
