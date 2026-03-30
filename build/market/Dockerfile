@@ -14,10 +14,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /market-backend /usr/local/bin/market-backend
-
-RUN mkdir -p /etc/packalares /data/market
-
-COPY market/ /data/market/
+COPY --from=builder /src/market /data/market
 
 ENV MARKET_LISTEN_ADDR=:6756
 
