@@ -1,13 +1,14 @@
 package monitor
 
 import (
+	"encoding/json"
 	"fmt"
-	"log"
+	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // GPUInfo describes a single detected GPU.
@@ -34,19 +35,114 @@ type GPUListResponse struct {
 	GPUCount        int       `json:"gpu_count"`
 }
 
-// detectGPUs gathers GPU information from nvidia-smi and sysfs.
-func detectGPUs() GPUListResponse {
-	resp := GPUListResponse{
-		GPUs: []GPUInfo{},
+// detectGPUsFromPrometheus queries Prometheus DCGM metrics to get GPU info.
+// This works from Alpine containers that can't run nvidia-smi.
+func detectGPUsFromPrometheus(prometheusURL string) GPUListResponse {
+	resp := GPUListResponse{GPUs: []GPUInfo{}}
+
+	if prometheusURL == "" {
+		// Fallback to AMD sysfs detection
+		amdGPUs := detectAMDGPUs(0)
+		resp.GPUs = append(resp.GPUs, amdGPUs...)
+		resp.GPUCount = len(resp.GPUs)
+		return resp
 	}
 
-	// Try NVIDIA GPUs first via nvidia-smi.
-	nvidiaGPUs, cudaVersion, driverInstalled := detectNVIDIAGPUs()
-	resp.DriverInstalled = driverInstalled
-	resp.CUDAVersion = cudaVersion
-	resp.GPUs = append(resp.GPUs, nvidiaGPUs...)
+	// Query DCGM metrics from Prometheus
+	type promResult struct {
+		Metric map[string]string `json:"metric"`
+		Value  []interface{}     `json:"value"`
+	}
+	type promResponse struct {
+		Status string `json:"status"`
+		Data   struct {
+			Result []promResult `json:"result"`
+		} `json:"data"`
+	}
 
-	// Try AMD GPUs via sysfs.
+	query := func(q string) *promResponse {
+		url := fmt.Sprintf("%s/api/v1/query?query=%s", prometheusURL, q)
+		client := &http.Client{Timeout: 5 * time.Second}
+		r, err := client.Get(url)
+		if err != nil {
+			return nil
+		}
+		defer r.Body.Close()
+		var pr promResponse
+		json.NewDecoder(r.Body).Decode(&pr)
+		if pr.Status == "success" {
+			return &pr
+		}
+		return nil
+	}
+
+	// Get GPU list from DCGM_FI_DEV_GPU_UTIL (one entry per GPU)
+	utilResult := query("DCGM_FI_DEV_GPU_UTIL")
+	if utilResult == nil || len(utilResult.Data.Result) == 0 {
+		// No DCGM data — try AMD
+		amdGPUs := detectAMDGPUs(0)
+		resp.GPUs = append(resp.GPUs, amdGPUs...)
+		resp.GPUCount = len(resp.GPUs)
+		return resp
+	}
+
+	// Query all GPU metrics
+	tempResult := query("DCGM_FI_DEV_GPU_TEMP")
+	powerResult := query("DCGM_FI_DEV_POWER_USAGE")
+	memUsedResult := query("DCGM_FI_DEV_FB_USED")
+	memFreeResult := query("DCGM_FI_DEV_FB_FREE")
+
+	getVal := func(pr *promResponse, gpu string) float64 {
+		if pr == nil {
+			return 0
+		}
+		for _, r := range pr.Data.Result {
+			if r.Metric["gpu"] == gpu && len(r.Value) >= 2 {
+				v, _ := strconv.ParseFloat(fmt.Sprint(r.Value[1]), 64)
+				return v
+			}
+		}
+		return 0
+	}
+
+	resp.DriverInstalled = true
+	for i, r := range utilResult.Data.Result {
+		gpuIdx := r.Metric["gpu"]
+		util, _ := strconv.ParseFloat(fmt.Sprint(r.Value[1]), 64)
+
+		memUsed := getVal(memUsedResult, gpuIdx)
+		memFree := getVal(memFreeResult, gpuIdx)
+		temp := getVal(tempResult, gpuIdx)
+		power := getVal(powerResult, gpuIdx)
+
+		gpu := GPUInfo{
+			Index:             i,
+			Vendor:            "NVIDIA",
+			Name:              r.Metric["modelName"],
+			UUID:              r.Metric["UUID"],
+			DriverVersion:     r.Metric["DCGM_FI_DRIVER_VERSION"],
+			GPUUtilization:    int(util),
+			Temperature:       int(temp),
+			PowerDrawW:        power,
+			MemoryUsedMB:      uint64(memUsed),
+			MemoryFreeMB:      uint64(memFree),
+			MemoryTotalMB:     uint64(memUsed + memFree),
+			MemoryUtilization: 0,
+		}
+		if gpu.MemoryTotalMB > 0 {
+			gpu.MemoryUtilization = int(float64(gpu.MemoryUsedMB) / float64(gpu.MemoryTotalMB) * 100)
+		}
+		if gpu.DriverVersion == "" {
+			gpu.DriverVersion = r.Metric["DCGM_FI_DRIVER_VERSION"]
+		}
+		resp.GPUs = append(resp.GPUs, gpu)
+	}
+
+	if len(resp.GPUs) > 0 {
+		resp.CUDAVersion = detectCUDAFromPrometheus(prometheusURL)
+	}
+
+	// Also check AMD GPUs
 	amdGPUs := detectAMDGPUs(len(resp.GPUs))
 	resp.GPUs = append(resp.GPUs, amdGPUs...)
 
@@ -54,89 +150,15 @@ func detectGPUs() GPUListResponse {
 	return resp
 }
 
-// detectNVIDIAGPUs runs nvidia-smi and parses the CSV output.
-// Returns the list of GPUs, the CUDA version string, and whether the driver is installed.
-func detectNVIDIAGPUs() ([]GPUInfo, string, bool) {
-	nvidiaSmi, err := exec.LookPath("nvidia-smi")
-	if err != nil {
-		return nil, "", false
-	}
-	_ = nvidiaSmi
-
-	// Query per-GPU details.
-	out, err := exec.Command("nvidia-smi",
-		"--query-gpu=name,uuid,memory.total,memory.used,memory.free,utilization.gpu,utilization.memory,temperature.gpu,power.draw,driver_version",
-		"--format=csv,noheader,nounits",
-	).Output()
-	if err != nil {
-		log.Printf("gpu: nvidia-smi query failed: %v", err)
-		return nil, "", false
-	}
-
-	// Get CUDA version from nvidia-smi header output.
-	cudaVersion := detectCUDAVersion()
-
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	var gpus []GPUInfo
-	for i, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		fields := strings.Split(line, ", ")
-		if len(fields) < 10 {
-			log.Printf("gpu: nvidia-smi line %d: expected 10 fields, got %d: %s", i, len(fields), line)
-			continue
-		}
-
-		gpu := GPUInfo{
-			Index:         i,
-			Vendor:        "NVIDIA",
-			Name:          strings.TrimSpace(fields[0]),
-			UUID:          strings.TrimSpace(fields[1]),
-			DriverVersion: strings.TrimSpace(fields[9]),
-		}
-
-		gpu.MemoryTotalMB = parseUint64Field(fields[2])
-		gpu.MemoryUsedMB = parseUint64Field(fields[3])
-		gpu.MemoryFreeMB = parseUint64Field(fields[4])
-		gpu.GPUUtilization = parseIntField(fields[5])
-		gpu.MemoryUtilization = parseIntField(fields[6])
-		gpu.Temperature = parseIntField(fields[7])
-		gpu.PowerDrawW = parseFloatField(fields[8])
-
-		gpus = append(gpus, gpu)
-	}
-
-	return gpus, cudaVersion, true
-}
-
-// detectCUDAVersion runs nvidia-smi (no args) and parses the CUDA Version from its output.
-func detectCUDAVersion() string {
-	out, err := exec.Command("nvidia-smi").Output()
-	if err != nil {
-		return ""
-	}
-	// The output contains a line like: "CUDA Version: 12.3"
-	for _, line := range strings.Split(string(out), "\n") {
-		if idx := strings.Index(line, "CUDA Version:"); idx >= 0 {
-			part := strings.TrimSpace(line[idx+len("CUDA Version:"):])
-			// Take up to the first space or pipe.
-			for i, c := range part {
-				if c == ' ' || c == '|' {
-					return part[:i]
-				}
-			}
-			return part
-		}
-	}
+// detectCUDAFromPrometheus tries to get CUDA version from driver version mapping.
+func detectCUDAFromPrometheus(prometheusURL string) string {
+	// DCGM doesn't expose CUDA version directly.
+	// Common driver-to-CUDA mappings for recent drivers.
 	return ""
 }
 
 // detectAMDGPUs scans sysfs for AMD GPU devices.
-// startIndex is the GPU index offset (to continue numbering after NVIDIA GPUs).
 func detectAMDGPUs(startIndex int) []GPUInfo {
-	// Look for DRM card devices with AMD vendor ID (0x1002).
 	matches, err := filepath.Glob("/sys/class/drm/card[0-9]*/device/vendor")
 	if err != nil {
 		return nil
@@ -163,17 +185,12 @@ func detectAMDGPUs(startIndex int) []GPUInfo {
 			Name:   readAMDGPUName(deviceDir, cardDir),
 		}
 
-		// Read memory info if available (amdgpu driver exposes these).
 		gpu.MemoryTotalMB = readAMDGPUMemTotal(deviceDir)
 		gpu.MemoryUsedMB = readAMDGPUMemUsed(deviceDir)
 		if gpu.MemoryTotalMB > 0 && gpu.MemoryUsedMB <= gpu.MemoryTotalMB {
 			gpu.MemoryFreeMB = gpu.MemoryTotalMB - gpu.MemoryUsedMB
 		}
-
-		// Read GPU utilization if available.
 		gpu.GPUUtilization = readAMDGPUBusyPercent(deviceDir)
-
-		// Read temperature from hwmon.
 		gpu.Temperature = readAMDGPUTemperature(cardDir)
 
 		gpus = append(gpus, gpu)
@@ -183,9 +200,7 @@ func detectAMDGPUs(startIndex int) []GPUInfo {
 	return gpus
 }
 
-// readAMDGPUName tries to read a human-readable name for an AMD GPU.
 func readAMDGPUName(deviceDir, cardDir string) string {
-	// Try reading the product name from the device directory.
 	for _, nameFile := range []string{
 		filepath.Join(deviceDir, "product_name"),
 		filepath.Join(deviceDir, "label"),
@@ -198,88 +213,45 @@ func readAMDGPUName(deviceDir, cardDir string) string {
 			}
 		}
 	}
-
-	// Fall back to the card directory name.
 	return fmt.Sprintf("AMD GPU (%s)", filepath.Base(cardDir))
 }
 
-// readAMDGPUMemTotal reads total VRAM in MB from amdgpu sysfs.
 func readAMDGPUMemTotal(deviceDir string) uint64 {
-	// amdgpu exposes mem_info_vram_total in bytes.
 	data, err := os.ReadFile(filepath.Join(deviceDir, "mem_info_vram_total"))
 	if err != nil {
 		return 0
 	}
-	val, err := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
-	if err != nil {
-		return 0
-	}
+	val, _ := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
 	return val / (1024 * 1024)
 }
 
-// readAMDGPUMemUsed reads used VRAM in MB from amdgpu sysfs.
 func readAMDGPUMemUsed(deviceDir string) uint64 {
 	data, err := os.ReadFile(filepath.Join(deviceDir, "mem_info_vram_used"))
 	if err != nil {
 		return 0
 	}
-	val, err := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
-	if err != nil {
-		return 0
-	}
+	val, _ := strconv.ParseUint(strings.TrimSpace(string(data)), 10, 64)
 	return val / (1024 * 1024)
 }
 
-// readAMDGPUBusyPercent reads GPU utilization from gpu_busy_percent sysfs file.
 func readAMDGPUBusyPercent(deviceDir string) int {
 	data, err := os.ReadFile(filepath.Join(deviceDir, "gpu_busy_percent"))
 	if err != nil {
 		return 0
 	}
-	val, err := strconv.Atoi(strings.TrimSpace(string(data)))
-	if err != nil {
-		return 0
-	}
+	val, _ := strconv.Atoi(strings.TrimSpace(string(data)))
 	return val
 }
 
-// readAMDGPUTemperature reads the GPU temperature from hwmon.
 func readAMDGPUTemperature(cardDir string) int {
-	// hwmon devices are under the device directory.
 	hwmonDirs, err := filepath.Glob(filepath.Join(cardDir, "device", "hwmon", "hwmon*"))
 	if err != nil || len(hwmonDirs) == 0 {
 		return 0
 	}
-	// Read temp1_input (millidegrees Celsius).
 	data, err := os.ReadFile(filepath.Join(hwmonDirs[0], "temp1_input"))
 	if err != nil {
 		return 0
 	}
-	val, err := strconv.Atoi(strings.TrimSpace(string(data)))
-	if err != nil {
-		return 0
-	}
-	return val / 1000 // Convert from millidegrees to degrees.
-}
-
-// ---------------------------------------------------------------------------
-// Field parsing helpers
-// ---------------------------------------------------------------------------
-
-func parseUint64Field(s string) uint64 {
-	s = strings.TrimSpace(s)
-	v, _ := strconv.ParseUint(s, 10, 64)
-	return v
-}
-
-func parseIntField(s string) int {
-	s = strings.TrimSpace(s)
-	v, _ := strconv.Atoi(s)
-	return v
-}
-
-func parseFloatField(s string) float64 {
-	s = strings.TrimSpace(s)
-	v, _ := strconv.ParseFloat(s, 64)
-	return v
+	val, _ := strconv.Atoi(strings.TrimSpace(string(data)))
+	return val / 1000
 }

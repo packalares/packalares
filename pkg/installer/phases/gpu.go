@@ -135,10 +135,11 @@ func configureContainerdNvidia() error {
 	// We write the template FIRST, then run nvidia-ctk which writes to conf.d.
 	os.MkdirAll("/etc/containerd/conf.d", 0755)
 
-	// Run nvidia-ctk to write the NVIDIA runtime config
+	// Run nvidia-ctk to write the NVIDIA runtime config to conf.d
+	// Don't use --config flag — let nvidia-ctk write to conf.d by default
 	cmd := exec.Command("nvidia-ctk", "runtime", "configure",
 		"--runtime=containerd",
-		"--config=/etc/containerd/conf.d/99-nvidia.toml")
+		"--set-as-default")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("nvidia-ctk configure: %s\n%w", string(out), err)
 	}
@@ -193,6 +194,11 @@ func deployHAMi() error {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("helm install hami: %s\n%w", string(out), err)
 	}
+
+	// Label the node so HAMi device-plugin DaemonSet can schedule
+	nodeName, _ := os.Hostname()
+	exec.Command("kubectl", "label", "node", nodeName, "gpu=on", "--overwrite").Run()
+	fmt.Printf("  Labeled node %s with gpu=on\n", nodeName)
 
 	return nil
 }

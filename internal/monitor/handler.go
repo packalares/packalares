@@ -184,7 +184,7 @@ func (h *Handler) handleGPU(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleGPUList(w http.ResponseWriter, r *http.Request) {
-	gpuInfo := detectGPUs()
+	gpuInfo := detectGPUsFromPrometheus(h.prom.baseURL)
 	writeJSON(w, gpuInfo)
 }
 
