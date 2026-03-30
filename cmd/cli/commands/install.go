@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"log"
 
@@ -32,6 +33,10 @@ func newInstallCmd() *cobra.Command {
  15. Wait for all pods to be ready`,
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := phases.RunInstall(&opts); err != nil {
+				if errors.Is(err, phases.ErrRebootRequired) {
+					// Clean exit — state saved, user will resume after reboot.
+					return
+				}
 				log.Fatalf("installation failed: %v", err)
 			}
 			fmt.Println("\nPackalares installation complete.")

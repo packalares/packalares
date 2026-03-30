@@ -1,6 +1,7 @@
 package phases
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -23,6 +24,28 @@ type phase struct {
 }
 
 func RunInstall(opts *InstallOptions) error {
+	// Check for a saved state file from a previous (interrupted) install.
+	savedState, err := loadInstallState()
+	if err != nil {
+		return fmt.Errorf("load install state: %w", err)
+	}
+
+	resuming := savedState != nil
+	var completedSet map[string]bool
+
+	if resuming {
+		// Restore options from state so the user does not need to re-pass flags.
+		*opts = savedState.Options
+		completedSet = make(map[string]bool, len(savedState.CompletedPhases))
+		for _, name := range savedState.CompletedPhases {
+			completedSet[name] = true
+		}
+		fmt.Println("[install] Resuming installation ...")
+		if savedState.RebootReason != "" {
+			fmt.Printf("[install] Previous stop reason: %s\n", savedState.RebootReason)
+		}
+	}
+
 	opts.applyDefaults()
 	if err := opts.validate(); err != nil {
 		return err
@@ -179,15 +202,55 @@ func RunInstall(opts *InstallOptions) error {
 		}},
 	}
 
+	// Build the running state that tracks progress through this run.
+	state := &InstallState{
+		Options: *opts,
+	}
+	if resuming {
+		state.CompletedPhases = savedState.CompletedPhases
+	}
+
 	total := len(phases)
 	for i, p := range phases {
+		// Skip phases already completed in a prior run.
+		if completedSet[p.Name] {
+			fmt.Printf("\n[%d/%d] %s ... already completed\n", i+1, total, p.Name)
+			continue
+		}
+
 		fmt.Printf("\n[%d/%d] %s ...\n", i+1, total, p.Name)
 		start := time.Now()
 		if err := p.Fn(); err != nil {
+			if errors.Is(err, ErrRebootRequired) {
+				// Save state so the user can resume after reboot.
+				state.RebootReason = err.Error()
+				if saveErr := saveInstallState(state); saveErr != nil {
+					fmt.Printf("[install] Warning: could not save state: %v\n", saveErr)
+				}
+				fmt.Println()
+				fmt.Println("========================================")
+				fmt.Println("  Reboot required to continue install.")
+				fmt.Println("  After reboot, run: packalares install")
+				fmt.Println("========================================")
+				return ErrRebootRequired
+			}
+			// On regular errors, save state so the user can resume after fixing.
+			if saveErr := saveInstallState(state); saveErr != nil {
+				fmt.Printf("[install] Warning: could not save state: %v\n", saveErr)
+			}
 			return fmt.Errorf("phase %q failed: %w", p.Name, err)
 		}
 		fmt.Printf("[%d/%d] %s completed in %s\n", i+1, total, p.Name, time.Since(start).Round(time.Second))
+
+		// Record completion.
+		state.CompletedPhases = append(state.CompletedPhases, p.Name)
+		if saveErr := saveInstallState(state); saveErr != nil {
+			fmt.Printf("[install] Warning: could not save progress: %v\n", saveErr)
+		}
 	}
+
+	// All phases done — clean up state file.
+	removeInstallState()
 
 	return nil
 }

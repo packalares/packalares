@@ -90,9 +90,9 @@ func installNVIDIADriver() error {
 	// Verify — may need reboot for kernel module
 	if out, err := exec.Command("nvidia-smi").Output(); err != nil {
 		if exec.Command("dpkg", "-l", "nvidia-driver*").Run() == nil {
-			fmt.Println("  NVIDIA driver installed but nvidia-smi not available yet")
-			fmt.Println("  A reboot may be required to load the kernel module")
-			return nil
+			fmt.Println("  GPU driver installed. Reboot required to load kernel module.")
+			fmt.Println("  After reboot, run: packalares install")
+			return fmt.Errorf("GPU driver requires reboot to load kernel module: %w", ErrRebootRequired)
 		}
 		return fmt.Errorf("nvidia-smi failed after install: %w", err)
 	} else {

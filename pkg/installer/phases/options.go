@@ -3,21 +3,30 @@ package phases
 import (
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 
 	"github.com/packalares/packalares/pkg/config"
 	"golang.org/x/crypto/bcrypt"
 )
 
+// ErrRebootRequired is returned by phases that need a system reboot before
+// the install can continue. The install loop treats this as a clean exit
+// after saving state.
+var ErrRebootRequired = errors.New("reboot required")
+
 const (
 	DefaultDomain  = "olares.local"
 	DefaultBaseDir = "/opt/packalares"
 
-	ReleaseFile = "/etc/packalares/release"
+	ReleaseFile    = "/etc/packalares/release"
+	StateFilePath  = "/etc/packalares/install-state.json"
 
 	BinDir           = "/usr/local/bin"
 	ETCDCertDir      = "/etc/ssl/etcd/ssl"
@@ -169,4 +178,46 @@ func registryImage(registry, image string) string {
 		return registry + "/" + parts[1]
 	}
 	return registry + "/" + image
+}
+
+// InstallState is persisted to disk so the installer can resume after a reboot.
+type InstallState struct {
+	CompletedPhases []string       `json:"completed_phases"`
+	Options         InstallOptions `json:"options"`
+	RebootReason    string         `json:"reboot_reason,omitempty"`
+	Timestamp       string         `json:"timestamp"`
+}
+
+// loadInstallState reads the state file. Returns nil if it does not exist.
+func loadInstallState() (*InstallState, error) {
+	data, err := os.ReadFile(StateFilePath)
+	if os.IsNotExist(err) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read state file: %w", err)
+	}
+	var st InstallState
+	if err := json.Unmarshal(data, &st); err != nil {
+		return nil, fmt.Errorf("parse state file: %w", err)
+	}
+	return &st, nil
+}
+
+// saveInstallState writes the state file atomically.
+func saveInstallState(st *InstallState) error {
+	st.Timestamp = time.Now().UTC().Format(time.RFC3339)
+	data, err := json.MarshalIndent(st, "", "  ")
+	if err != nil {
+		return fmt.Errorf("marshal state: %w", err)
+	}
+	if err := os.MkdirAll(filepath.Dir(StateFilePath), 0755); err != nil {
+		return fmt.Errorf("create state dir: %w", err)
+	}
+	return os.WriteFile(StateFilePath, data, 0600)
+}
+
+// removeInstallState deletes the state file.
+func removeInstallState() {
+	os.Remove(StateFilePath)
 }
