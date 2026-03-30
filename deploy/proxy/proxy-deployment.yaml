@@ -494,7 +494,6 @@ data:
         location = /_auth { internal; proxy_pass http://$auth_up:9091/api/verify; proxy_pass_request_body off; proxy_set_header Content-Length ""; proxy_set_header X-Forwarded-Host $host; proxy_set_header Cookie $http_cookie; }
         error_page 401 = @lr;
         location @lr { return 302 https://auth.{{USER_ZONE}}/login?rd=https://$host$request_uri; }
-        location /ws { proxy_pass http://$app_up:6755/ws; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade; proxy_set_header Cookie $http_cookie; }
         location / { auth_request /_auth; proxy_pass http://$ss_up:8080; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; proxy_buffering off; }
       }
     
