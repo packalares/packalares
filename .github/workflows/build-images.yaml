@@ -106,6 +106,7 @@ jobs:
           context: ${{ matrix.context }}
           file: ${{ matrix.dockerfile }}
           push: true
+          no-cache: true
           tags: |
             ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.name }}:latest
             ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.name }}:${{ github.sha }}
