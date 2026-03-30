@@ -25,20 +25,10 @@ spec:
               name: http
               protocol: TCP
           env:
-            - name: MARKET_URL
-              value: "https://market.olares.com"
-            - name: CATALOG_PATH
-              value: "/etc/packalares/catalog.json"
             - name: MARKET_LISTEN_ADDR
               value: ":6756"
             - name: MARKET_DATA_DIR
               value: "/data/market"
-          volumeMounts:
-            - name: catalog
-              mountPath: /etc/packalares
-              readOnly: true
-            - name: market-data
-              mountPath: /data/market
           livenessProbe:
             httpGet:
               path: /market/healthz
@@ -58,29 +48,6 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
-      volumes:
-        - name: catalog
-          configMap:
-            name: market-catalog
-            optional: true
-        - name: market-data
-          persistentVolumeClaim:
-            claimName: market-data
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: market-data
-  namespace: {{FRAMEWORK_NAMESPACE}}
-  labels:
-    app: market-backend
-    tier: framework
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 10Gi
 ---
 apiVersion: v1
 kind: Service
@@ -98,11 +65,3 @@ spec:
       protocol: TCP
       name: http
   type: ClusterIP
----
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: market-catalog
-  namespace: {{FRAMEWORK_NAMESPACE}}
-data:
-  catalog.json: "[]"
