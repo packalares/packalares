@@ -2,6 +2,7 @@ package phases
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 )
@@ -86,6 +87,9 @@ func installNVIDIADriver() error {
 		}
 	}
 
+	// Install nvidia-utils (provides nvidia-smi) — headless driver packages don't include it
+	exec.Command("apt-get", "install", "-y", "-qq", "nvidia-utils-server").Run()
+
 	// Verify — nvidia-smi may not work until after reboot (kernel module not loaded yet)
 	if out, err := exec.Command("nvidia-smi").Output(); err != nil {
 		// Check if driver package is at least installed
@@ -132,10 +136,11 @@ func installContainerToolkit() error {
 func configureContainerdNvidia() error {
 	fmt.Println("  Configuring K3s containerd for NVIDIA runtime ...")
 
-	// Configure nvidia-container-toolkit for K3s's bundled containerd
+	// Write NVIDIA runtime config to /etc/containerd/conf.d/ which K3s imports.
+	// Do NOT write to K3s's config.toml.tmpl — that overwrites K3s config and breaks kubelet.
+	os.MkdirAll("/etc/containerd/conf.d", 0755)
 	cmd := exec.Command("nvidia-ctk", "runtime", "configure",
-		"--runtime=containerd",
-		"--config=/var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl")
+		"--runtime=containerd")
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("nvidia-ctk configure: %s\n%w", string(out), err)
 	}

@@ -51,7 +51,7 @@ spec:
       containers:
       - name: device-plugin
         image: ghcr.io/packalares/hami:v2.4.1
-        command: ["hami-device-plugin"]
+        command: ["/k8s-vgpu/bin/nvidia-device-plugin"]
         args:
         - --mig-strategy=none
         - --device-split-count=10
@@ -105,7 +105,7 @@ spec:
       containers:
       - name: scheduler
         image: ghcr.io/packalares/hami:v2.4.1
-        command: ["hami-scheduler"]
+        command: ["/k8s-vgpu/bin/scheduler"]
         args:
         - --http-bind=:443
         - --scheduler-name=hami-scheduler
