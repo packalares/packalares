@@ -23,7 +23,8 @@ type GPUInfo struct {
 	GPUUtilization    int     `json:"gpu_utilization"`
 	MemoryUtilization int     `json:"memory_utilization"`
 	Temperature       int     `json:"temperature"`
-	PowerDrawW        float64 `json:"power_draw_w"`
+	PowerDrawW        float64 `json:"power_draw"`
+	PowerLimitW       float64 `json:"power_limit"`
 	DriverVersion     string  `json:"driver_version"`
 }
 
@@ -89,6 +90,7 @@ func detectGPUsFromPrometheus(prometheusURL string) GPUListResponse {
 	// Query all GPU metrics
 	tempResult := query("DCGM_FI_DEV_GPU_TEMP")
 	powerResult := query("DCGM_FI_DEV_POWER_USAGE")
+	powerLimitResult := query("DCGM_FI_DEV_ENFORCED_POWER_LIMIT")
 	memUsedResult := query("DCGM_FI_DEV_FB_USED")
 	memFreeResult := query("DCGM_FI_DEV_FB_FREE")
 
@@ -114,6 +116,7 @@ func detectGPUsFromPrometheus(prometheusURL string) GPUListResponse {
 		memFree := getVal(memFreeResult, gpuIdx)
 		temp := getVal(tempResult, gpuIdx)
 		power := getVal(powerResult, gpuIdx)
+		powerLimit := getVal(powerLimitResult, gpuIdx)
 
 		gpu := GPUInfo{
 			Index:             i,
@@ -124,6 +127,7 @@ func detectGPUsFromPrometheus(prometheusURL string) GPUListResponse {
 			GPUUtilization:    int(util),
 			Temperature:       int(temp),
 			PowerDrawW:        power,
+			PowerLimitW:       powerLimit,
 			MemoryUsedMB:      uint64(memUsed),
 			MemoryFreeMB:      uint64(memFree),
 			MemoryTotalMB:     uint64(memUsed + memFree),

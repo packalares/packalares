@@ -129,7 +129,7 @@ func printHardwareInfo() {
 	fmt.Println()
 
 	// CPU
-	if out, err := exec.Command("bash", "-c", `lscpu | grep "Model name" | sed 's/.*: *//'`).Output(); err == nil {
+	if out, err := exec.Command("bash", "-c", `lscpu | grep "Model name" | head -1 | sed 's/.*: *//'`).Output(); err == nil {
 		name := strings.TrimSpace(string(out))
 		if name != "" {
 			fmt.Printf("    CPU     %s (%d cores)\n", name, runtime.NumCPU())

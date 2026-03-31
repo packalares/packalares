@@ -20,14 +20,12 @@ func DetectGPU() bool {
 
 // GetGPUName returns the NVIDIA GPU model name from lspci, or "Unknown NVIDIA GPU".
 func GetGPUName() string {
-	// Use lspci -nn for detailed names even without driver loaded
-	out, err := exec.Command("lspci", "-nn").Output()
+	// Update PCI ID database so new GPUs (e.g. RTX 5090) are recognized
+	exec.Command("update-pciids").Run()
+
+	out, err := exec.Command("lspci").Output()
 	if err != nil {
-		// Fallback to plain lspci
-		out, err = exec.Command("lspci").Output()
-		if err != nil {
-			return "Unknown NVIDIA GPU"
-		}
+		return "Unknown NVIDIA GPU"
 	}
 	for _, line := range strings.Split(string(out), "\n") {
 		lower := strings.ToLower(line)

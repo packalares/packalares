@@ -33,7 +33,7 @@ func main() {
 	})
 
 	// Start metrics pusher to KVRocks
-	go startMetricsPublisher()
+	go startMetricsPublisher(prometheusURL)
 
 	addr := ":" + port
 	log.Printf("monitoring-server starting on %s (prometheus: %s)", addr, prometheusURL)
@@ -42,7 +42,7 @@ func main() {
 	}
 }
 
-func startMetricsPublisher() {
+func startMetricsPublisher(prometheusURL string) {
 	redisAddr := config.KVRocksHost() + ":" + config.KVRocksPort()
 	redisPass := os.Getenv("REDIS_PASSWORD")
 
@@ -67,7 +67,7 @@ func startMetricsPublisher() {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		metrics, err := monitor.CollectSystemMetrics()
+		metrics, err := monitor.CollectSystemMetrics(prometheusURL)
 		if err != nil {
 			continue
 		}

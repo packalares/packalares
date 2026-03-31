@@ -2,7 +2,9 @@ package monitor
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"strconv"
@@ -63,7 +65,7 @@ type PowerMetrics struct {
 
 // CollectSystemMetrics gathers CPU, memory, disk, network, power, uptime, and load
 // from the local /proc filesystem and syscall.Statfs.
-func CollectSystemMetrics() (*SystemMetrics, error) {
+func CollectSystemMetrics(prometheusURL string) (*SystemMetrics, error) {
 	cpuUsage, cpuCores, err := readCPUUsageWithCores()
 	if err != nil {
 		return nil, fmt.Errorf("cpu: %w", err)
@@ -81,7 +83,7 @@ func CollectSystemMetrics() (*SystemMetrics, error) {
 
 	diskIO := readDiskIO()
 	net := readNetworkIO()
-	power := readPowerConsumption()
+	power := readPowerConsumption(prometheusURL)
 
 	uptime, err := readUptime()
 	if err != nil {
@@ -391,8 +393,8 @@ func readDiskIO() DiskIOMetrics {
 
 // --- Power Consumption ---
 
-// readPowerConsumption reads CPU power from Intel RAPL and GPU power from nvidia-smi.
-func readPowerConsumption() PowerMetrics {
+// readPowerConsumption reads CPU power from Intel RAPL and GPU power from Prometheus DCGM.
+func readPowerConsumption(prometheusURL string) PowerMetrics {
 	var p PowerMetrics
 
 	// CPU power from Intel RAPL
@@ -402,11 +404,30 @@ func readPowerConsumption() PowerMetrics {
 		p.CPUWatts = raplToWatts(uj)
 	}
 
-	// GPU power from nvidia-smi
-	out, err := execCommand("nvidia-smi", "--query-gpu=power.draw", "--format=csv,noheader,nounits")
-	if err == nil {
-		watts, _ := strconv.ParseFloat(strings.TrimSpace(out), 64)
-		p.GPUWatts = watts
+	// GPU power from Prometheus DCGM metrics
+	if prometheusURL != "" {
+		url := fmt.Sprintf("%s/api/v1/query?query=DCGM_FI_DEV_POWER_USAGE", prometheusURL)
+		client := &http.Client{Timeout: 3 * time.Second}
+		resp, err := client.Get(url)
+		if err == nil {
+			defer resp.Body.Close()
+			var pr struct {
+				Status string `json:"status"`
+				Data   struct {
+					Result []struct {
+						Value []interface{} `json:"value"`
+					} `json:"result"`
+				} `json:"data"`
+			}
+			if json.NewDecoder(resp.Body).Decode(&pr) == nil && pr.Status == "success" {
+				for _, r := range pr.Data.Result {
+					if len(r.Value) >= 2 {
+						w, _ := strconv.ParseFloat(fmt.Sprint(r.Value[1]), 64)
+						p.GPUWatts += w
+					}
+				}
+			}
+		}
 	}
 
 	p.TotalWatts = p.CPUWatts + p.GPUWatts
