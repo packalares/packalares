@@ -107,21 +107,20 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted } from 'vue';
 import { api } from 'boot/axios';
+import { useMonitorStore } from 'stores/monitor';
 import { formatBytes } from 'src/utils/helpers';
+
+const monitorStore = useMonitorStore();
 
 interface Mount { name: string; type: string; remote: string; local_path: string; }
 
-const diskUsed = ref(0);
-const diskTotal = ref(0);
+const diskUsed = computed(() => monitorStore.diskUsed);
+const diskTotal = computed(() => monitorStore.diskTotal);
 const diskPct = computed(() => diskTotal.value ? (diskUsed.value / diskTotal.value) * 100 : 0);
 const mounts = ref<Mount[]>([]);
 const adding = ref(false);
 const mountMsg = ref('');
 const newMount = ref({ type: 'smb', name: '', remote: '', username: '', password: '' });
-
-async function loadDisk() {
-  try { const r: any = await api.get('/api/monitor/metrics'); diskUsed.value = r?.disk?.used || 0; diskTotal.value = r?.disk?.total || 0; } catch {}
-}
 
 async function loadMounts() {
   try { const r: any = await api.get('/api/mounts'); mounts.value = r?.mounts || r || []; } catch { mounts.value = []; }
@@ -141,7 +140,7 @@ async function addMount() {
 
 async function removeMount(name: string) { try { await api.delete('/api/mounts/' + name); await loadMounts(); } catch {} }
 
-onMounted(() => { loadDisk(); loadMounts(); });
+onMounted(() => { loadMounts(); });
 </script>
 
 <style lang="scss" scoped>

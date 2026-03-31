@@ -5,10 +5,15 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
 import { applyTheme } from 'src/composables/useTheme';
+import { useWebSocketStore } from 'stores/websocket';
 
 onMounted(() => {
   const theme = localStorage.getItem('packalares_theme') || 'dark';
   applyTheme(theme);
+
+  // Start WebSocket app-wide for live metrics
+  const wsStore = useWebSocketStore();
+  wsStore.start();
 
   // Listen for theme changes from other iframes/tabs (same-origin)
   const channel = new BroadcastChannel('packalares_settings');

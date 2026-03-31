@@ -369,6 +369,23 @@ func (h *Handler) handleServerInit(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Include installed apps
+	apps := h.svc.ListApps(r.Context())
+	var desktopApps []map[string]interface{}
+	for _, app := range apps {
+		url := ""
+		if len(app.Entrances) > 0 {
+			url = app.Entrances[0].URL
+		}
+		desktopApps = append(desktopApps, map[string]interface{}{
+			"name":   app.Name,
+			"title":  app.Title,
+			"icon":   app.Icon,
+			"status": string(app.State),
+			"url":    url,
+		})
+	}
+
 	resp := map[string]interface{}{
 		"terminus": map[string]interface{}{
 			"terminusName":    terminusName,
@@ -383,6 +400,10 @@ func (h *Handler) handleServerInit(w http.ResponseWriter, r *http.Request) {
 			"apps":    []interface{}{},
 			"dock":    []interface{}{},
 			"bgIndex": 0,
+		},
+		"myApps": map[string]interface{}{
+			"code": 200,
+			"data": desktopApps,
 		},
 	}
 	writeJSON(w, http.StatusOK, resp)

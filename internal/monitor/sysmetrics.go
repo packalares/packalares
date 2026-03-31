@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -530,4 +531,120 @@ func readSystemInfo() sysInfoCache {
 
 	cachedSysInfo = &info
 	return info
+}
+
+// --- /api/system/info — static system information + devices ---
+
+// DeviceInfo describes a detected hardware device.
+type DeviceInfo struct {
+	Type   string `json:"type"`   // gpu, npu, wifi, ethernet, nvme, thunderbolt, audio, bluetooth
+	Name   string `json:"name"`
+	Driver string `json:"driver,omitempty"`
+}
+
+// SystemInfo is the JSON response for GET /api/system/info. Loaded once.
+type SystemInfo struct {
+	Hostname    string       `json:"hostname"`
+	OSVersion   string       `json:"os_version"`
+	Kernel      string       `json:"kernel"`
+	Arch        string       `json:"arch"`
+	CPUModel    string       `json:"cpu_model"`
+	CPUCount    int          `json:"cpu_count"`
+	MemoryTotal uint64       `json:"memory_total"`
+	DiskTotal   uint64       `json:"disk_total"`
+	Devices     []DeviceInfo `json:"devices"`
+}
+
+var cachedSystemInfo *SystemInfo
+
+// CollectSystemInfo returns static system info (cached after first call).
+func CollectSystemInfo() *SystemInfo {
+	if cachedSystemInfo != nil {
+		return cachedSystemInfo
+	}
+
+	si := readSystemInfo()
+	_, memTotal, _ := readMemInfo()
+	_, diskTotal, _ := readDiskUsage("/")
+
+	info := &SystemInfo{
+		Hostname:    si.hostname,
+		OSVersion:   si.osVersion,
+		Kernel:      si.kernel,
+		Arch:        si.arch,
+		CPUModel:    si.cpuModel,
+		CPUCount:    runtime.NumCPU(),
+		MemoryTotal: memTotal,
+		DiskTotal:   diskTotal,
+		Devices:     detectDevices(),
+	}
+
+	cachedSystemInfo = info
+	return info
+}
+
+// detectDevices parses lspci -k to find hardware devices and their drivers.
+func detectDevices() []DeviceInfo {
+	out, err := execCommand("lspci", "-k")
+	if err != nil {
+		return nil
+	}
+
+	var devices []DeviceInfo
+	lines := strings.Split(out, "\n")
+
+	for i := 0; i < len(lines); i++ {
+		line := lines[i]
+		if line == "" || line[0] == '\t' || line[0] == ' ' {
+			continue
+		}
+
+		lower := strings.ToLower(line)
+		parts := strings.SplitN(line, ": ", 3)
+		if len(parts) < 3 {
+			continue
+		}
+		name := strings.TrimSpace(parts[2])
+
+		// Find driver on next lines
+		driver := ""
+		for j := i + 1; j < len(lines) && (strings.HasPrefix(lines[j], "\t") || strings.HasPrefix(lines[j], " ")); j++ {
+			if strings.Contains(lines[j], "Kernel driver in use:") {
+				dParts := strings.SplitN(lines[j], ":", 2)
+				if len(dParts) == 2 {
+					driver = strings.TrimSpace(dParts[1])
+				}
+			}
+		}
+
+		var devType string
+		switch {
+		case strings.Contains(lower, "nvidia") && (strings.Contains(lower, "vga") || strings.Contains(lower, "3d controller")):
+			devType = "gpu"
+		case strings.Contains(lower, "vga") && !strings.Contains(lower, "nvidia"):
+			devType = "igpu"
+		case strings.Contains(lower, "npu") || strings.Contains(lower, "processing accelerator"):
+			devType = "npu"
+		case strings.Contains(lower, "wi-fi") || strings.Contains(lower, "wireless") || strings.Contains(lower, "network controller"):
+			devType = "wifi"
+		case strings.Contains(lower, "ethernet"):
+			devType = "ethernet"
+		case strings.Contains(lower, "non-volatile memory") || strings.Contains(lower, "nvme"):
+			devType = "nvme"
+		case strings.Contains(lower, "thunderbolt") && strings.Contains(lower, "usb controller"):
+			devType = "thunderbolt"
+		case strings.Contains(lower, "audio"):
+			devType = "audio"
+		default:
+			continue
+		}
+
+		devices = append(devices, DeviceInfo{
+			Type:   devType,
+			Name:   name,
+			Driver: driver,
+		})
+	}
+
+	return devices
 }

@@ -271,7 +271,6 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from
 import { api } from 'boot/axios';
 import { useUserStore } from 'stores/user';
 import { useMonitorStore } from 'stores/monitor';
-import { useWebSocketStore } from 'stores/websocket';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -798,34 +797,30 @@ async function loadInit() {
       userStore.terminusName = data.terminus.terminusName || '';
       userStore.avatar = data.terminus.avatar || '';
     }
-    // Wallpaper is persisted in localStorage, not from API
+    // Load apps from init response
+    if (data?.myApps?.code === 200 && Array.isArray(data.myApps.data)) {
+      loadAppsFromData(data.myApps.data);
+    }
   } catch {
     // Init endpoint may not be available; use defaults
   }
 }
 
-async function loadApps() {
-  try {
-    const data: any = await api.post('/api/desktop/myApps');
-    if (data?.code === 200 && Array.isArray(data.data)) {
-      const remote: AppInfo[] = data.data.map((a: any) => ({
-        id: a.name || a.id,
-        name: a.name,
-        title: a.title || a.name,
-        icon: a.icon || 'web',
-        url: appUrl(a.name || a.id),
-        status: a.status || 'running',
-      }));
-      // Merge: keep system apps, add remote apps that are not duplicates
-      const sysIds = new Set(systemApps.map((s) => s.id));
-      const extraApps = remote.filter((a) => !sysIds.has(a.id));
-      allApps.value = [...systemApps, ...extraApps];
-      // Dock: system apps + any configured dock apps from remote
-      dockApps.value = [...systemApps];
-    }
-  } catch {
-    // Keep defaults
-  }
+function loadAppsFromData(appData: any[]) {
+  const remote: AppInfo[] = appData.map((a: any) => ({
+    id: a.name || a.id,
+    name: a.name,
+    title: a.title || a.name,
+    icon: a.icon || 'web',
+    url: appUrl(a.name || a.id),
+    status: a.status || 'running',
+  }));
+  // Merge: keep system apps, add remote apps that are not duplicates
+  const sysIds = new Set(systemApps.map((s) => s.id));
+  const extraApps = remote.filter((a) => !sysIds.has(a.id));
+  allApps.value = [...systemApps, ...extraApps];
+  // Dock: system apps + any configured dock apps from remote
+  dockApps.value = [...systemApps];
 }
 
 // ─── Lifecycle ───────────────────────────────────────────────
@@ -857,21 +852,14 @@ onMounted(async () => {
   window.addEventListener('keydown', onKeydown);
 
   await loadInit();
-  await loadApps();
 
   // Restore saved window state after apps are loaded
   restoreWindowState();
-
-  // WebSocket pushes metrics every 5s
-  const wsStore = useWebSocketStore();
-  wsStore.start();
 });
 
 onUnmounted(() => {
   if (clockInterval) clearInterval(clockInterval);
   if (saveTimer) clearTimeout(saveTimer);
-  const wsStore = useWebSocketStore();
-  wsStore.stop();
   window.removeEventListener('keydown', onKeydown);
   document.removeEventListener('mousemove', onDragMove);
   document.removeEventListener('mouseup', onDragEnd);

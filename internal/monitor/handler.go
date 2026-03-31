@@ -29,6 +29,7 @@ func NewHandler(prometheusURL, lokiURL string) *Handler {
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Packalares native endpoints
 	mux.HandleFunc("/api/metrics", h.handleMetrics)
+	mux.HandleFunc("/api/system/info", h.handleSystemInfo)
 	mux.HandleFunc("/api/status", h.handleStatus)
 	mux.HandleFunc("/api/monitoring/cluster", h.handleCluster)
 	mux.HandleFunc("/api/monitoring/nodes", h.handleNodes)
@@ -65,6 +66,11 @@ func (h *Handler) handleMetrics(w http.ResponseWriter, r *http.Request) {
 	// Round uptime to whole seconds
 	metrics.Uptime = math.Round(metrics.Uptime)
 	writeJSON(w, metrics)
+}
+
+func (h *Handler) handleSystemInfo(w http.ResponseWriter, r *http.Request) {
+	info := CollectSystemInfo()
+	writeJSON(w, info)
 }
 
 func (h *Handler) handleStatus(w http.ResponseWriter, r *http.Request) {

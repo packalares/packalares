@@ -2,7 +2,7 @@
   <div class="settings-page">
     <div class="page-header">
       <div class="page-title">About</div>
-      <div class="page-description">System information and project resources.</div>
+      <div class="page-description">Project information and resources.</div>
     </div>
     <div class="page-scroll">
 
@@ -16,47 +16,8 @@
         <span class="version-badge">v1.0.0</span>
       </div>
 
-      <!-- System Info -->
-      <div class="settings-card">
-        <div class="card-header">
-          <div class="card-header-icon card-header-icon--system">
-            <q-icon name="sym_r_computer" size="18px" />
-          </div>
-          <div class="card-header-text">
-            <div class="card-header-title">System</div>
-            <div class="card-header-subtitle">Hardware and operating system details</div>
-          </div>
-        </div>
-        <div class="info-grid-2col">
-          <div class="info-row">
-            <span class="info-label">Hostname</span>
-            <span class="info-value">{{ info.hostname }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Architecture</span>
-            <span class="info-value">{{ info.arch }}</span>
-          </div>
-        </div>
-        <q-separator class="card-separator" />
-        <div class="info-grid-2col">
-          <div class="info-row">
-            <span class="info-label">Operating System</span>
-            <span class="info-value">{{ info.os_version }}</span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Kernel</span>
-            <span class="info-value">{{ info.kernel }}</span>
-          </div>
-        </div>
-        <q-separator class="card-separator" />
-        <div class="info-row">
-          <span class="info-label">CPU</span>
-          <span class="info-value">{{ info.cpu_model }}</span>
-        </div>
-      </div>
-
       <!-- Resources -->
-      <div class="settings-card q-mt-lg">
+      <div class="settings-card">
         <div class="card-header">
           <div class="card-header-icon card-header-icon--network">
             <q-icon name="sym_r_link" size="18px" />
@@ -93,26 +54,6 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, onMounted } from 'vue';
-import { api } from 'boot/axios';
-
-const info = ref({ hostname: '--', os_version: '--', kernel: '--', arch: '--', cpu_model: '--' });
-
-onMounted(async () => {
-  try {
-    const r: any = await api.get('/api/monitor/metrics');
-    if (r) {
-      info.value = {
-        hostname: r.hostname || '--',
-        os_version: r.os_version || '--',
-        kernel: r.kernel || '--',
-        arch: r.arch || '--',
-        cpu_model: r.cpu_model || '--',
-      };
-    }
-  } catch {}
-});
-
 const openLink = (url: string) => window.open(url, '_blank');
 </script>
 
