@@ -155,6 +155,7 @@ spec:
           periodSeconds: 15
       - name: tapr
         image: ghcr.io/packalares/tapr:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8081
         env:

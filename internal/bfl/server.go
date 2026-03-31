@@ -17,6 +17,7 @@ import (
 	ldapv3 "github.com/go-ldap/ldap/v3"
 	"github.com/packalares/packalares/pkg/config"
 	"github.com/packalares/packalares/pkg/validation"
+	"github.com/redis/go-redis/v9"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -28,6 +29,7 @@ import (
 // Server is the BFL API gateway server.
 type Server struct {
 	K8s        *K8sClient
+	Redis      *redis.Client
 	ListenAddr string
 	mux        *http.ServeMux
 }
@@ -39,8 +41,16 @@ func NewServer(listenAddr string) (*Server, error) {
 		return nil, fmt.Errorf("init k8s client: %w", err)
 	}
 
+	redisAddr := config.KVRocksHost() + ":" + config.KVRocksPort()
+	redisPass := os.Getenv("REDIS_PASSWORD")
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     redisAddr,
+		Password: redisPass,
+	})
+
 	s := &Server{
 		K8s:        k8s,
+		Redis:      rdb,
 		ListenAddr: listenAddr,
 		mux:        http.NewServeMux(),
 	}
@@ -887,8 +897,21 @@ type DeploymentUpdateInfo struct {
 	CurrentDigest   string `json:"currentDigest"`
 	RemoteDigest    string `json:"remoteDigest"`
 	UpdateAvailable bool   `json:"updateAvailable"`
-	PodStatus       string `json:"podStatus"` // Running, Pending, ContainerCreating, Terminating, Error
+	PodStatus       string `json:"podStatus"`       // Running, Pending, ContainerCreating, Terminating, Error
+	Type            string `json:"type"`             // "packalares" for :latest, "infrastructure" for pinned versions
+	UpdateStatus    string `json:"updateStatus"`     // "", "restarting", "pulling", "complete", "failed"
 }
+
+// updateStateEntry is stored in Redis to track in-progress updates.
+type updateStateEntry struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	StartedAt string `json:"startedAt"`
+	Status    string `json:"status"`
+}
+
+const updateKeyPrefix = "packalares:update:"
+const updateStateTTL = 5 * time.Minute
 
 func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
@@ -897,12 +920,15 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 
-	// Scan all packalares namespaces
-	namespaces := []string{
-		config.FrameworkNamespace(),
-		config.PlatformNamespace(),
-		config.MonitoringNamespace(),
-		config.UserNamespace(config.Username()),
+	// Discover all namespaces dynamically
+	nsList, err := s.K8s.Clientset.CoreV1().Namespaces().List(ctx, metav1.ListOptions{})
+	if err != nil {
+		respondError(w, fmt.Sprintf("list namespaces: %v", err))
+		return
+	}
+	var namespaces []string
+	for _, ns := range nsList.Items {
+		namespaces = append(namespaces, ns.Name)
 	}
 
 	type podInfo struct {
@@ -929,7 +955,8 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 
-			for _, cs := range pod.Status.ContainerStatuses {
+			allStatuses := append(pod.Status.InitContainerStatuses, pod.Status.ContainerStatuses...)
+			for _, cs := range allStatuses {
 				if strings.Contains(cs.ImageID, "@sha256:") {
 					parts := strings.SplitN(cs.ImageID, "@", 2)
 					podDigests[ns+"/"+cs.Image] = podInfo{digest: parts[1], status: status}
@@ -952,16 +979,40 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 		deployments, err := s.K8s.Clientset.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{})
 		if err == nil {
 			for _, dep := range deployments.Items {
-				workloads = append(workloads, workload{dep.Name, dep.Namespace, dep.Spec.Template.Spec.Containers})
+				allContainers := append(dep.Spec.Template.Spec.InitContainers, dep.Spec.Template.Spec.Containers...)
+				workloads = append(workloads, workload{dep.Name, dep.Namespace, allContainers})
 			}
 		}
 		daemonsets, err := s.K8s.Clientset.AppsV1().DaemonSets(ns).List(ctx, metav1.ListOptions{})
 		if err == nil {
 			for _, ds := range daemonsets.Items {
-				workloads = append(workloads, workload{ds.Name, ds.Namespace, ds.Spec.Template.Spec.Containers})
+				allContainers := append(ds.Spec.Template.Spec.InitContainers, ds.Spec.Template.Spec.Containers...)
+				workloads = append(workloads, workload{ds.Name, ds.Namespace, allContainers})
 			}
 		}
 	}
+
+	// Load active update states from Redis
+	updateStates := make(map[string]updateStateEntry) // "namespace/name" -> entry
+	keys, _ := s.Redis.Keys(ctx, updateKeyPrefix+"*").Result()
+	for _, key := range keys {
+		val, err := s.Redis.Get(ctx, key).Result()
+		if err != nil {
+			continue
+		}
+		var entry updateStateEntry
+		if json.Unmarshal([]byte(val), &entry) == nil {
+			// Clean up entries older than 5 minutes
+			if t, err := time.Parse(time.RFC3339, entry.StartedAt); err == nil && time.Since(t) > updateStateTTL {
+				s.Redis.Del(ctx, key)
+				continue
+			}
+			updateStates[entry.Namespace+"/"+entry.Name] = entry
+		}
+	}
+
+	// Track images we've already seen (dedup by workload name+namespace)
+	seen := make(map[string]bool)
 
 	for _, wl := range workloads {
 		for _, c := range wl.containers {
@@ -970,8 +1021,21 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 
+			// Dedup: one entry per workload (not per container)
+			dedup := wl.namespace + "/" + wl.name
+			if seen[dedup] {
+				continue
+			}
+			seen[dedup] = true
+
 			currentImage, currentTag := parseImageTag(image)
 			shortName := strings.TrimPrefix(currentImage, "ghcr.io/packalares/")
+
+			// Determine type: ":latest" = packalares, pinned version = infrastructure
+			imageType := "infrastructure"
+			if currentTag == "latest" {
+				imageType = "packalares"
+			}
 
 			pi := podDigests[wl.namespace+"/"+image]
 			currentDigest := pi.digest
@@ -983,38 +1047,51 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 				podStatus = "Unknown"
 			}
 
-			// Get remote digest from GHCR manifest API
+			// Only check GHCR remote digest for :latest images (packalares type)
 			remoteDigest := ""
-			tokenURL := fmt.Sprintf("https://ghcr.io/token?scope=repository:packalares/%s:pull", shortName)
-			var ghcrToken string
-			if tokenReq, err := http.NewRequestWithContext(ctx, http.MethodGet, tokenURL, nil); err == nil {
-				if tokenResp, err := httpClient.Do(tokenReq); err == nil {
-					var tokenBody struct {
-						Token string `json:"token"`
+			updateAvailable := false
+			if imageType == "packalares" {
+				tokenURL := fmt.Sprintf("https://ghcr.io/token?scope=repository:packalares/%s:pull", shortName)
+				var ghcrToken string
+				if tokenReq, err := http.NewRequestWithContext(ctx, http.MethodGet, tokenURL, nil); err == nil {
+					if tokenResp, err := httpClient.Do(tokenReq); err == nil {
+						var tokenBody struct {
+							Token string `json:"token"`
+						}
+						json.NewDecoder(tokenResp.Body).Decode(&tokenBody)
+						tokenResp.Body.Close()
+						ghcrToken = tokenBody.Token
 					}
-					json.NewDecoder(tokenResp.Body).Decode(&tokenBody)
-					tokenResp.Body.Close()
-					ghcrToken = tokenBody.Token
 				}
-			}
 
-			manifestURL := fmt.Sprintf("https://ghcr.io/v2/packalares/%s/manifests/%s", shortName, currentTag)
-			req, err := http.NewRequestWithContext(ctx, http.MethodHead, manifestURL, nil)
-			if err == nil {
-				req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
-				if ghcrToken != "" {
-					req.Header.Set("Authorization", "Bearer "+ghcrToken)
-				}
-				resp, err := httpClient.Do(req)
+				manifestURL := fmt.Sprintf("https://ghcr.io/v2/packalares/%s/manifests/%s", shortName, currentTag)
+				req, err := http.NewRequestWithContext(ctx, http.MethodHead, manifestURL, nil)
 				if err == nil {
-					resp.Body.Close()
-					if resp.StatusCode == http.StatusOK {
-						remoteDigest = resp.Header.Get("Docker-Content-Digest")
+					req.Header.Set("Accept", "application/vnd.docker.distribution.manifest.v2+json")
+					if ghcrToken != "" {
+						req.Header.Set("Authorization", "Bearer "+ghcrToken)
+					}
+					resp, err := httpClient.Do(req)
+					if err == nil {
+						resp.Body.Close()
+						if resp.StatusCode == http.StatusOK {
+							remoteDigest = resp.Header.Get("Docker-Content-Digest")
+						}
 					}
 				}
+				updateAvailable = remoteDigest != "" && currentDigest != "unknown" && remoteDigest != currentDigest
 			}
 
-			updateAvailable := remoteDigest != "" && currentDigest != "unknown" && remoteDigest != currentDigest
+			// Check Redis for active update status
+			updateStatus := ""
+			if entry, ok := updateStates[wl.namespace+"/"+wl.name]; ok {
+				updateStatus = entry.Status
+				// If pod is Running and update was in progress, mark complete and clean up
+				if podStatus == "Running" && (entry.Status == "restarting" || entry.Status == "pulling") {
+					updateStatus = "complete"
+					s.Redis.Del(ctx, updateKeyPrefix+wl.namespace+"/"+wl.name)
+				}
+			}
 
 			results = append(results, DeploymentUpdateInfo{
 				Name:            wl.name,
@@ -1025,6 +1102,8 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 				RemoteDigest:    remoteDigest[:min(len(remoteDigest), 19)],
 				UpdateAvailable: updateAvailable,
 				PodStatus:       podStatus,
+				Type:            imageType,
+				UpdateStatus:    updateStatus,
 			})
 		}
 	}
@@ -1061,6 +1140,16 @@ func (s *Server) handleUpdateRestart(w http.ResponseWriter, r *http.Request) {
 		name = path
 	}
 
+	// Write update state to Redis before starting
+	redisKey := updateKeyPrefix + ns + "/" + name
+	stateEntry, _ := json.Marshal(updateStateEntry{
+		Name:      name,
+		Namespace: ns,
+		StartedAt: time.Now().Format(time.RFC3339),
+		Status:    "restarting",
+	})
+	s.Redis.Set(ctx, redisKey, string(stateEntry), updateStateTTL)
+
 	// Try Deployment first, then DaemonSet
 	dep, depErr := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
 	if depErr == nil {
@@ -1081,6 +1170,9 @@ func (s *Server) handleUpdateRestart(w http.ResponseWriter, r *http.Request) {
 		dep.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
 		_, err := s.K8s.Clientset.AppsV1().Deployments(ns).Update(ctx, dep, metav1.UpdateOptions{})
 		if err != nil {
+			// Mark as failed in Redis
+			failEntry, _ := json.Marshal(updateStateEntry{Name: name, Namespace: ns, StartedAt: time.Now().Format(time.RFC3339), Status: "failed"})
+			s.Redis.Set(ctx, redisKey, string(failEntry), updateStateTTL)
 			respondError(w, fmt.Sprintf("rollout restart failed: %v", err))
 			return
 		}
@@ -1088,6 +1180,7 @@ func (s *Server) handleUpdateRestart(w http.ResponseWriter, r *http.Request) {
 	} else {
 		ds, dsErr := s.K8s.Clientset.AppsV1().DaemonSets(ns).Get(ctx, name, metav1.GetOptions{})
 		if dsErr != nil {
+			s.Redis.Del(ctx, redisKey)
 			respondError(w, fmt.Sprintf("workload %q not found in %s", name, ns))
 			return
 		}
@@ -1107,16 +1200,24 @@ func (s *Server) handleUpdateRestart(w http.ResponseWriter, r *http.Request) {
 		ds.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
 		_, err := s.K8s.Clientset.AppsV1().DaemonSets(ns).Update(ctx, ds, metav1.UpdateOptions{})
 		if err != nil {
+			failEntry, _ := json.Marshal(updateStateEntry{Name: name, Namespace: ns, StartedAt: time.Now().Format(time.RFC3339), Status: "failed"})
+			s.Redis.Set(ctx, redisKey, string(failEntry), updateStateTTL)
 			respondError(w, fmt.Sprintf("rollout restart failed: %v", err))
 			return
 		}
 		klog.Infof("triggered rolling restart for daemonset/%s in %s", name, ns)
 	}
+
+	// Update Redis state to "pulling" after successful restart trigger
+	pullingEntry, _ := json.Marshal(updateStateEntry{Name: name, Namespace: ns, StartedAt: time.Now().Format(time.RFC3339), Status: "pulling"})
+	s.Redis.Set(ctx, redisKey, string(pullingEntry), updateStateTTL)
+
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"name":      name,
-		"namespace": ns,
-		"status":    "restarting",
-		"message":   fmt.Sprintf("Rolling restart triggered for %s/%s", ns, name),
+		"name":         name,
+		"namespace":    ns,
+		"status":       "restarting",
+		"updateStatus": "pulling",
+		"message":      fmt.Sprintf("Rolling restart triggered for %s/%s", ns, name),
 	})
 }
 

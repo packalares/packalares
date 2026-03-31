@@ -75,7 +75,7 @@ spec:
       containers:
         - name: bfl
           image: ghcr.io/packalares/bfl:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               protocol: TCP

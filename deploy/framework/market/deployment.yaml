@@ -20,6 +20,7 @@ spec:
       containers:
         - name: market-backend
           image: ghcr.io/packalares/market:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 6756
               name: http

@@ -69,6 +69,7 @@ spec:
       containers:
       - name: middleware
         image: ghcr.io/packalares/middleware:latest
+        imagePullPolicy: Always
         env:
         - name: TAPR_URL
           value: "http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080"

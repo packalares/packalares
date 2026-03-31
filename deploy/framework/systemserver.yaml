@@ -57,6 +57,7 @@ spec:
       containers:
       - name: system-server
         image: ghcr.io/packalares/systemserver:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
           name: http

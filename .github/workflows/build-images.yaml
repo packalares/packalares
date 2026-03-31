@@ -61,7 +61,6 @@ jobs:
           # Format: image_name:path1,path2,...
           declare -A IMAGE_PATHS
           IMAGE_PATHS[bfl]="internal/bfl,cmd/bfl,build/Dockerfile.bfl,pkg"
-          IMAGE_PATHS[l4proxy]="internal/l4proxy,cmd/l4proxy,build/Dockerfile.l4proxy,pkg"
           IMAGE_PATHS[auth]="internal/auth,cmd/auth,build/Dockerfile.auth,pkg"
           IMAGE_PATHS[middleware]="internal/middleware,cmd/middleware,build/Dockerfile.middleware,pkg"
           IMAGE_PATHS[systemserver]="internal/systemserver,cmd/systemserver,build/Dockerfile.systemserver,pkg"
@@ -75,7 +74,6 @@ jobs:
           IMAGE_PATHS[desktop]="frontend-app,build/Dockerfile.desktop"
           IMAGE_PATHS[desktop-dev]="frontend-app,build/Dockerfile.desktop-dev"
           IMAGE_PATHS[tapr]="internal/tapr,cmd/tapr,build/Dockerfile.tapr,pkg"
-          IMAGE_PATHS[envoy-init]="build/envoy-init"
           IMAGE_PATHS[mdns]="internal/mdns,cmd/mdns,build/Dockerfile.mdns,pkg"
           IMAGE_PATHS[hostctl]="internal/hostctl,cmd/hostctl,build/Dockerfile.hostctl,pkg"
           IMAGE_PATHS[hf-downloader]="internal/hfdownload,cmd/hf-downloader,build/hf-downloader,pkg"
@@ -83,7 +81,6 @@ jobs:
           # Image-to-dockerfile mapping
           declare -A IMAGE_DOCKERFILE
           IMAGE_DOCKERFILE[bfl]="build/Dockerfile.bfl"
-          IMAGE_DOCKERFILE[l4proxy]="build/Dockerfile.l4proxy"
           IMAGE_DOCKERFILE[auth]="build/Dockerfile.auth"
           IMAGE_DOCKERFILE[middleware]="build/Dockerfile.middleware"
           IMAGE_DOCKERFILE[systemserver]="build/Dockerfile.systemserver"
@@ -97,7 +94,6 @@ jobs:
           IMAGE_DOCKERFILE[desktop]="build/Dockerfile.desktop"
           IMAGE_DOCKERFILE[desktop-dev]="build/Dockerfile.desktop-dev"
           IMAGE_DOCKERFILE[tapr]="build/Dockerfile.tapr"
-          IMAGE_DOCKERFILE[envoy-init]="build/envoy-init/Dockerfile"
           IMAGE_DOCKERFILE[mdns]="build/Dockerfile.mdns"
           IMAGE_DOCKERFILE[hostctl]="build/Dockerfile.hostctl"
           IMAGE_DOCKERFILE[hf-downloader]="build/hf-downloader/Dockerfile"
@@ -105,7 +101,6 @@ jobs:
           # Image-to-context mapping
           declare -A IMAGE_CONTEXT
           IMAGE_CONTEXT[samba]="build/samba"
-          IMAGE_CONTEXT[envoy-init]="build/envoy-init"
           # All others default to "."
 
           # Shared paths that trigger ALL Go images

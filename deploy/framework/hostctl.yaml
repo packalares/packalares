@@ -39,7 +39,7 @@ spec:
       containers:
         - name: hostctl
           image: ghcr.io/packalares/hostctl:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           ports:
             - containerPort: 9199
               protocol: TCP

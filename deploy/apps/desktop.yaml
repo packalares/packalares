@@ -21,6 +21,7 @@ spec:
       containers:
       - name: desktop
         image: ghcr.io/packalares/desktop:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 80
           name: http

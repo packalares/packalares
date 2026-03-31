@@ -19,7 +19,7 @@ spec:
       containers:
       - name: files-server
         image: ghcr.io/packalares/files:latest
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         ports:
         - containerPort: 8080
           name: http

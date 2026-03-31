@@ -24,6 +24,7 @@ spec:
       containers:
       - name: mdns
         image: ghcr.io/packalares/mdns:latest
+        imagePullPolicy: Always
         env:
         - name: MDNS_SERVICE_NAME
           value: "Packalares"

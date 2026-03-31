@@ -33,6 +33,7 @@ spec:
       containers:
         - name: app-service
           image: ghcr.io/packalares/appservice:latest
+          imagePullPolicy: Always
           ports:
             - containerPort: 6755
               name: http
