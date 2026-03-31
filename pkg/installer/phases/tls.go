@@ -123,6 +123,20 @@ func generateTLSCert(opts *InstallOptions, w io.Writer) error {
 		}
 	}
 
+	// Store CA key as K8s Secret so BFL can regenerate certs (e.g. after Tailscale enable)
+	if _, err := os.Stat(caKeyFile); err == nil {
+		caKeyCmd := exec.Command("kubectl", "create", "secret", "generic", "packalares-ca-key",
+			"--from-file=ca.key="+caKeyFile,
+			"-n", ns,
+			"--dry-run=client", "-o", "yaml")
+		caKeyYaml, err := caKeyCmd.Output()
+		if err == nil {
+			caKeyApply := exec.Command("kubectl", "apply", "-f", "-")
+			caKeyApply.Stdin = bytes.NewReader(caKeyYaml)
+			caKeyApply.CombinedOutput()
+		}
+	}
+
 	fmt.Fprintf(w, "  TLS certificate ready for *.%s\n", zone)
 	return nil
 }
