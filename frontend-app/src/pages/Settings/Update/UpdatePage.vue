@@ -247,8 +247,18 @@ async function checkUpdates() {
   loading.value = true;
   try {
     const resp: any = await api.get('/api/settings/updates');
-    const data = resp?.data ?? resp;
-    if (Array.isArray(data)) {
+    const raw = resp?.data ?? resp;
+    const data = Array.isArray(raw) ? raw : [];
+    // Normalize: fill in missing type/updateStatus for older BFL versions
+    for (const img of data) {
+      if (!img.type) {
+        img.type = img.currentTag === 'latest' ? 'packalares' : 'infrastructure';
+      }
+      if (!img.updateStatus) {
+        img.updateStatus = '';
+      }
+    }
+    if (data.length) {
       // Check if any previously-updating items just completed
       for (const img of data) {
         const prev = images.value.find(p => p.name === img.name && p.namespace === img.namespace);
