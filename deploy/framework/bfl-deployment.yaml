@@ -97,6 +97,8 @@ spec:
               value: "lldap-svc.{{PLATFORM_NAMESPACE}}"
             - name: LLDAP_ADMIN_PASSWORD
               value: "{{LLDAP_ADMIN_PASSWORD}}"
+            - name: REDIS_PASSWORD
+              value: "{{REDIS_PASSWORD}}"
             - name: HOSTCTL_TOKEN
               valueFrom:
                 secretKeyRef:
