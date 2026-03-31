@@ -75,6 +75,18 @@ spec:
     spec:
       serviceAccountName: bfl
       priorityClassName: system-cluster-critical
+      initContainers:
+        - name: wait-for-tapr
+          image: ghcr.io/packalares/busybox:1.36
+          command:
+            - sh
+            - -c
+            - >-
+              echo "Waiting for tapr ...";
+              until wget -q -O- http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080/healthz 2>/dev/null | grep -q ok; do
+                sleep 2; printf ".";
+              done;
+              echo " tapr is ready";
       containers:
         - name: bfl
           image: ghcr.io/packalares/bfl:latest
@@ -97,8 +109,10 @@ spec:
               value: "lldap-svc.{{PLATFORM_NAMESPACE}}"
             - name: LLDAP_ADMIN_PASSWORD
               value: "{{LLDAP_ADMIN_PASSWORD}}"
-            - name: REDIS_PASSWORD
-              value: "{{REDIS_PASSWORD}}"
+            - name: TAPR_URL
+              value: "http://tapr-svc.{{PLATFORM_NAMESPACE}}:8080"
+            - name: TAPR_AUTH_TOKEN
+              value: "{{TAPR_AUTH_TOKEN}}"
             - name: HOSTCTL_TOKEN
               valueFrom:
                 secretKeyRef:

@@ -7,11 +7,13 @@ import (
 	"syscall"
 
 	"github.com/packalares/packalares/internal/bfl"
+	"github.com/packalares/packalares/pkg/secrets"
 	"k8s.io/klog/v2"
 )
 
 func main() {
 	klog.InitFlags(nil)
+	secrets.MustLoadSecrets()
 
 	listenAddr := os.Getenv("BFL_LISTEN_ADDR")
 	if listenAddr == "" {
