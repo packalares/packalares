@@ -2,6 +2,7 @@ package precheck
 
 import (
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -62,24 +63,24 @@ func RunPrecheck() PrecheckReport {
 	return report
 }
 
-func PrintReport(report PrecheckReport) {
-	fmt.Println()
-	fmt.Println("=== Packalares System Precheck ===")
-	fmt.Println()
+func PrintReport(report PrecheckReport, out io.Writer) {
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "=== Packalares System Precheck ===")
+	fmt.Fprintln(out)
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(w, "CHECK\tSTATUS\tDETAILS")
-	fmt.Fprintln(w, "-----\t------\t-------")
+	tw := tabwriter.NewWriter(out, 0, 4, 2, ' ', 0)
+	fmt.Fprintln(tw, "CHECK\tSTATUS\tDETAILS")
+	fmt.Fprintln(tw, "-----\t------\t-------")
 
 	for _, c := range report.Checks {
 		status := "PASS"
 		if !c.Passed {
 			status = "FAIL"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n", c.Name, status, c.Message)
+		fmt.Fprintf(tw, "%s\t%s\t%s\n", c.Name, status, c.Message)
 	}
-	w.Flush()
-	fmt.Println()
+	tw.Flush()
+	fmt.Fprintln(out)
 }
 
 func checkOS() CheckResult {

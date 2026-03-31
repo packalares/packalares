@@ -27,7 +27,9 @@ type binary struct {
 	Extract func(baseDir, arch, downloadPath string) error
 }
 
-func DownloadAll(baseDir, arch string) error {
+// DownloadAll downloads and installs all required binaries.
+// It writes progress messages to w.
+func DownloadAll(baseDir, arch string, w io.Writer) error {
 	dlDir := filepath.Join(baseDir, "downloads")
 	if err := os.MkdirAll(dlDir, 0755); err != nil {
 		return fmt.Errorf("create download dir: %w", err)
@@ -88,7 +90,7 @@ func DownloadAll(baseDir, arch string) error {
 	}
 
 	for _, b := range bins {
-		fmt.Printf("  Downloading %s ...\n", b.Name)
+		fmt.Fprintf(w, "  Downloading %s ...\n", b.Name)
 		url := b.URL(arch)
 		dlPath := filepath.Join(dlDir, b.Name+filepath.Ext(url))
 		if filepath.Ext(url) == "" || strings.Contains(url, "%2B") {
@@ -108,7 +110,7 @@ func DownloadAll(baseDir, arch string) error {
 			return fmt.Errorf("download %s: %w", b.Name, err)
 		}
 
-		fmt.Printf("  Installing %s ...\n", b.Name)
+		fmt.Fprintf(w, "  Installing %s ...\n", b.Name)
 		if err := b.Extract(baseDir, arch, dlPath); err != nil {
 			return fmt.Errorf("extract %s: %w", b.Name, err)
 		}

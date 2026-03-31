@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -18,8 +19,8 @@ import (
 // GenerateSecrets creates all system secrets, saves them to disk and sets
 // them as env vars so replaceConfigPlaceholders can inject them into manifests.
 // Must be called BEFORE deploying platform/framework services.
-func GenerateSecrets(opts *InstallOptions) error {
-	fmt.Println("  Generating system secrets ...")
+func GenerateSecrets(opts *InstallOptions, w io.Writer) error {
+	fmt.Fprintln(w, "  Generating system secrets ...")
 
 	secrets := map[string]string{
 		"JWT_SECRET":           generateSecret(32),
@@ -56,7 +57,7 @@ func GenerateSecrets(opts *InstallOptions) error {
 	if os.Getenv("SERVER_IP") == "" {
 		if ip, err := detectServerIP(); err == nil {
 			os.Setenv("SERVER_IP", ip)
-			fmt.Printf("  Detected server IP: %s\n", ip)
+			fmt.Fprintf(w, "  Detected server IP: %s\n", ip)
 		}
 	}
 
@@ -64,11 +65,11 @@ func GenerateSecrets(opts *InstallOptions) error {
 	if os.Getenv("COREDNS_CLUSTER_IP") == "" {
 		if ip, err := detectCoreDNSIP(); err == nil {
 			os.Setenv("COREDNS_CLUSTER_IP", ip)
-			fmt.Printf("  Detected CoreDNS IP: %s\n", ip)
+			fmt.Fprintf(w, "  Detected CoreDNS IP: %s\n", ip)
 		}
 	}
 
-	fmt.Println("  Secrets generated and saved to", stateDir)
+	fmt.Fprintln(w, "  Secrets generated and saved to", stateDir)
 	return nil
 }
 
@@ -101,11 +102,11 @@ func detectCoreDNSIP() (string, error) {
 // SeedInfisical waits for the tapr sidecar to be ready, then stores all
 // generated secrets via tapr's API. Tapr handles the Infisical database
 // seeding (user, org, encryption keys) automatically at startup.
-func SeedInfisical(opts *InstallOptions) error {
+func SeedInfisical(opts *InstallOptions, w io.Writer) error {
 	ns := config.PlatformNamespace()
 
 	// Wait for tapr sidecar to be ready
-	fmt.Println("  Waiting for tapr secrets gateway ...")
+	fmt.Fprintln(w, "  Waiting for tapr secrets gateway ...")
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
@@ -121,14 +122,14 @@ func SeedInfisical(opts *InstallOptions) error {
 			"deploy/infisical", "-c", "tapr", "--",
 			"wget", "-q", "-O-", "http://localhost:8081/healthz")
 		if out, err := cmd.CombinedOutput(); err == nil && strings.Contains(string(out), "ok") {
-			fmt.Println("  Tapr is ready")
+			fmt.Fprintln(w, "  Tapr is ready")
 			break
 		}
 		time.Sleep(5 * time.Second)
 	}
 
 	// Store all generated secrets via tapr
-	fmt.Println("  Storing secrets in Infisical via tapr ...")
+	fmt.Fprintln(w, "  Storing secrets in Infisical via tapr ...")
 	secrets := map[string]string{
 		"REDIS_PASSWORD":       os.Getenv("REDIS_PASSWORD"),
 		"PG_PASSWORD":          os.Getenv("PG_PASSWORD"),
@@ -159,7 +160,7 @@ func SeedInfisical(opts *InstallOptions) error {
 	if err != nil {
 		return fmt.Errorf("store secrets in Infisical: %v\n%s", err, string(out))
 	}
-	fmt.Printf("  Stored %d secrets in Infisical\n", len(secrets))
+	fmt.Fprintf(w, "  Stored %d secrets in Infisical\n", len(secrets))
 
 	// Save admin info
 	stateDir := filepath.Join(opts.BaseDir, "state")
@@ -167,7 +168,7 @@ func SeedInfisical(opts *InstallOptions) error {
 	os.WriteFile(filepath.Join(stateDir, "infisical_admin_email"), []byte(adminEmail), 0600)
 
 	// Delete plain-text secrets from disk — they're now safely in Infisical
-	fmt.Println("  Cleaning up plain-text secrets from disk ...")
+	fmt.Fprintln(w, "  Cleaning up plain-text secrets from disk ...")
 	entries, _ := os.ReadDir(stateDir)
 	for _, e := range entries {
 		name := e.Name()
@@ -177,7 +178,7 @@ func SeedInfisical(opts *InstallOptions) error {
 		os.Remove(filepath.Join(stateDir, name))
 	}
 
-	fmt.Printf("  Infisical admin: %s\n", adminEmail)
+	fmt.Fprintf(w, "  Infisical admin: %s\n", adminEmail)
 	return nil
 }
 

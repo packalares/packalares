@@ -9,8 +9,13 @@ import (
 	"time"
 )
 
+type uninstallStep struct {
+	Name string
+	Fn   func() error
+}
+
 func RunUninstall() error {
-	steps := []phase{
+	steps := []uninstallStep{
 		{"Stop K3s", stopK3s},
 		{"Stop etcd", stopEtcd},
 		{"Stop Redis", stopRedis},
@@ -192,7 +197,7 @@ func removeReleaseFile() error {
 func RunUpgrade(targetVersion string) error {
 	fmt.Printf("Upgrading to version %s ...\n", targetVersion)
 
-	steps := []phase{
+	steps := []uninstallStep{
 		{"Download new version", func() error {
 			return fmt.Errorf("upgrade not yet implemented for version %s — download from https://github.com/packalares/packalares/releases", targetVersion)
 		}},

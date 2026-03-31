@@ -3,14 +3,15 @@ package cni
 import (
 	"context"
 	"fmt"
+	"io"
 	"os/exec"
 	"time"
 )
 
 const calicoVersion = "v3.27.2"
 
-func DeployCalico(registry string) error {
-	fmt.Println("  Deploying Calico CNI ...")
+func DeployCalico(registry string, w io.Writer) error {
+	fmt.Fprintln(w, "  Deploying Calico CNI ...")
 
 	// Apply Calico operator
 	operatorURL := fmt.Sprintf("https://raw.githubusercontent.com/projectcalico/calico/%s/manifests/tigera-operator.yaml", calicoVersion)
@@ -23,7 +24,7 @@ func DeployCalico(registry string) error {
 	}
 
 	// Wait for CRDs to be registered by the operator
-	fmt.Println("  Waiting for Calico CRDs ...")
+	fmt.Fprintln(w, "  Waiting for Calico CRDs ...")
 	for i := 0; i < 60; i++ {
 		crdCheck := exec.CommandContext(ctx, "kubectl", "get", "crd", "installations.operator.tigera.io", "--no-headers")
 		if out, err := crdCheck.CombinedOutput(); err == nil && len(out) > 0 {
@@ -73,7 +74,7 @@ spec: {}
 	}
 
 	// Wait for calico to be ready
-	fmt.Println("  Waiting for Calico to be ready ...")
+	fmt.Fprintln(w, "  Waiting for Calico to be ready ...")
 	for i := 0; i < 60; i++ {
 		cmd := exec.Command("kubectl", "get", "pods", "-n", "calico-system", "--no-headers")
 		out, err := cmd.CombinedOutput()
@@ -81,7 +82,7 @@ spec: {}
 			// Check if all pods are running
 			lines := string(out)
 			if !containsNotReady(lines) {
-				fmt.Println("  Calico CNI deployed")
+				fmt.Fprintln(w, "  Calico CNI deployed")
 				return nil
 			}
 		}
@@ -89,7 +90,7 @@ spec: {}
 	}
 
 	// Don't fail — calico might still be coming up
-	fmt.Println("  Warning: Calico not fully ready yet, continuing ...")
+	fmt.Fprintln(w, "  Warning: Calico not fully ready yet, continuing ...")
 	return nil
 }
 

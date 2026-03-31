@@ -3,12 +3,13 @@ package storage
 import (
 	"context"
 	"fmt"
+	"io"
 	"os/exec"
 	"time"
 )
 
-func DeployOpenEBS(registry string) error {
-	fmt.Println("  Deploying OpenEBS storage ...")
+func DeployOpenEBS(registry string, w io.Writer) error {
+	fmt.Fprintln(w, "  Deploying OpenEBS storage ...")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
@@ -30,7 +31,7 @@ func DeployOpenEBS(registry string) error {
 	}
 
 	// Wait for provisioner to start
-	fmt.Println("  Waiting for OpenEBS provisioner ...")
+	fmt.Fprintln(w, "  Waiting for OpenEBS provisioner ...")
 	for i := 0; i < 30; i++ {
 		check := exec.CommandContext(ctx, "kubectl", "get", "pods", "-n", "kube-system",
 			"-l", "name=openebs-localpv-provisioner", "-o", "jsonpath={.items[0].status.phase}")
@@ -41,7 +42,7 @@ func DeployOpenEBS(registry string) error {
 		time.Sleep(3 * time.Second)
 	}
 
-	fmt.Println("  OpenEBS deployed with default StorageClass")
+	fmt.Fprintln(w, "  OpenEBS deployed with default StorageClass")
 	return nil
 }
 

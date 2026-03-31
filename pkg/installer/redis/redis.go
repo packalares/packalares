@@ -6,6 +6,7 @@ package redis
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -82,7 +83,7 @@ spec:
 
 // Install deploys KVRocks in Kubernetes using the REDIS_PASSWORD
 // from GenerateSecrets (must be called after GenerateSecrets).
-func Install(baseDir string) error {
+func Install(baseDir string, w io.Writer) error {
 	ns := config.PlatformNamespace()
 
 	// Read password from env (set by GenerateSecrets)
@@ -97,7 +98,7 @@ func Install(baseDir string) error {
 	manifest = strings.ReplaceAll(manifest, "{{PASSWORD}}", password)
 
 	// Apply via kubectl
-	fmt.Println("  Deploying KVRocks in Kubernetes ...")
+	fmt.Fprintln(w, "  Deploying KVRocks in Kubernetes ...")
 	cmd := exec.Command("kubectl", "apply", "-f", "-")
 	cmd.Stdin = strings.NewReader(manifest)
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -105,13 +106,13 @@ func Install(baseDir string) error {
 	}
 
 	// Wait for pod to be ready
-	fmt.Println("  Waiting for KVRocks to be ready ...")
+	fmt.Fprintln(w, "  Waiting for KVRocks to be ready ...")
 	for i := 0; i < 30; i++ {
 		cmd := exec.Command("kubectl", "get", "pods", "-n", ns,
 			"-l", "app=kvrocks", "-o", "jsonpath={.items[0].status.phase}")
 		out, err := cmd.Output()
 		if err == nil && string(out) == "Running" {
-			fmt.Println("  KVRocks deployed and running")
+			fmt.Fprintln(w, "  KVRocks deployed and running")
 			return nil
 		}
 		time.Sleep(3 * time.Second)

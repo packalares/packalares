@@ -887,6 +887,7 @@ type DeploymentUpdateInfo struct {
 	CurrentDigest   string `json:"currentDigest"`
 	RemoteDigest    string `json:"remoteDigest"`
 	UpdateAvailable bool   `json:"updateAvailable"`
+	PodStatus       string `json:"podStatus"` // Running, Pending, ContainerCreating, Terminating, Error
 }
 
 func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
@@ -895,24 +896,43 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	ns := config.FrameworkNamespace()
 
-	deployments, err := s.K8s.Clientset.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{})
-	if err != nil {
-		respondError(w, fmt.Sprintf("list deployments: %v", err))
-		return
+	// Scan all packalares namespaces
+	namespaces := []string{
+		config.FrameworkNamespace(),
+		config.PlatformNamespace(),
+		config.MonitoringNamespace(),
+		config.UserNamespace(config.Username()),
 	}
 
-	// Get running pod image digests
-	pods, err := s.K8s.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
-	podDigests := make(map[string]string) // image name -> digest
-	if err == nil {
+	type podInfo struct {
+		digest string
+		status string
+	}
+
+	// Collect pod digests and status across all namespaces
+	podDigests := make(map[string]podInfo) // "ns/image" -> podInfo
+	for _, ns := range namespaces {
+		pods, err := s.K8s.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{})
+		if err != nil {
+			continue
+		}
 		for _, pod := range pods.Items {
+			status := string(pod.Status.Phase) // Running, Pending, Succeeded, Failed
+			if pod.DeletionTimestamp != nil {
+				status = "Terminating"
+			} else {
+				for _, cs := range pod.Status.ContainerStatuses {
+					if cs.State.Waiting != nil {
+						status = cs.State.Waiting.Reason // ContainerCreating, CrashLoopBackOff, ErrImagePull, etc.
+					}
+				}
+			}
+
 			for _, cs := range pod.Status.ContainerStatuses {
-				// imageID is like "ghcr.io/packalares/auth@sha256:abc123..."
 				if strings.Contains(cs.ImageID, "@sha256:") {
 					parts := strings.SplitN(cs.ImageID, "@", 2)
-					podDigests[cs.Image] = parts[1]
+					podDigests[ns+"/"+cs.Image] = podInfo{digest: parts[1], status: status}
 				}
 			}
 		}
@@ -921,22 +941,25 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 	var results []DeploymentUpdateInfo
 	httpClient := &http.Client{Timeout: 10 * time.Second}
 
-	// Collect containers from Deployments
 	type workload struct {
 		name       string
 		namespace  string
 		containers []corev1.Container
 	}
 	var workloads []workload
-	for _, dep := range deployments.Items {
-		workloads = append(workloads, workload{dep.Name, dep.Namespace, dep.Spec.Template.Spec.Containers})
-	}
 
-	// Also collect DaemonSets
-	daemonsets, dsErr := s.K8s.Clientset.AppsV1().DaemonSets(ns).List(ctx, metav1.ListOptions{})
-	if dsErr == nil {
-		for _, ds := range daemonsets.Items {
-			workloads = append(workloads, workload{ds.Name, ds.Namespace, ds.Spec.Template.Spec.Containers})
+	for _, ns := range namespaces {
+		deployments, err := s.K8s.Clientset.AppsV1().Deployments(ns).List(ctx, metav1.ListOptions{})
+		if err == nil {
+			for _, dep := range deployments.Items {
+				workloads = append(workloads, workload{dep.Name, dep.Namespace, dep.Spec.Template.Spec.Containers})
+			}
+		}
+		daemonsets, err := s.K8s.Clientset.AppsV1().DaemonSets(ns).List(ctx, metav1.ListOptions{})
+		if err == nil {
+			for _, ds := range daemonsets.Items {
+				workloads = append(workloads, workload{ds.Name, ds.Namespace, ds.Spec.Template.Spec.Containers})
+			}
 		}
 	}
 
@@ -950,13 +973,17 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 			currentImage, currentTag := parseImageTag(image)
 			shortName := strings.TrimPrefix(currentImage, "ghcr.io/packalares/")
 
-			// Get current running digest from pod status
-			currentDigest := podDigests[image]
+			pi := podDigests[wl.namespace+"/"+image]
+			currentDigest := pi.digest
 			if currentDigest == "" {
 				currentDigest = "unknown"
 			}
+			podStatus := pi.status
+			if podStatus == "" {
+				podStatus = "Unknown"
+			}
 
-			// Get remote digest from GHCR manifest API (requires token)
+			// Get remote digest from GHCR manifest API
 			remoteDigest := ""
 			tokenURL := fmt.Sprintf("https://ghcr.io/token?scope=repository:packalares/%s:pull", shortName)
 			var ghcrToken string
@@ -997,6 +1024,7 @@ func (s *Server) handleUpdates(w http.ResponseWriter, r *http.Request) {
 				CurrentDigest:   currentDigest[:min(len(currentDigest), 19)],
 				RemoteDigest:    remoteDigest[:min(len(remoteDigest), 19)],
 				UpdateAvailable: updateAvailable,
+				PodStatus:       podStatus,
 			})
 		}
 	}
@@ -1015,19 +1043,38 @@ func (s *Server) handleUpdateRestart(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 
-	// Parse deployment name from URL: /api/settings/updates/{name}
+	// Parse "namespace/name" or just "name" from URL
 	path := strings.TrimPrefix(r.URL.Path, "/api/settings/updates/")
-	name := strings.TrimSuffix(path, "/")
-	if name == "" {
+	path = strings.TrimSuffix(path, "/")
+	if path == "" {
 		respondError(w, "deployment name is required")
 		return
 	}
 
-	ns := config.FrameworkNamespace()
+	var ns, name string
+	if strings.Contains(path, "/") {
+		parts := strings.SplitN(path, "/", 2)
+		ns = parts[0]
+		name = parts[1]
+	} else {
+		ns = config.FrameworkNamespace()
+		name = path
+	}
 
 	// Try Deployment first, then DaemonSet
 	dep, depErr := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
 	if depErr == nil {
+		// Delete existing pods first to avoid hostPort conflict deadlock
+		selector, _ := metav1.LabelSelectorAsSelector(dep.Spec.Selector)
+		if selector != nil {
+			s.K8s.Clientset.CoreV1().Pods(ns).DeleteCollection(ctx,
+				metav1.DeleteOptions{},
+				metav1.ListOptions{LabelSelector: selector.String()},
+			)
+			// Brief pause for pods to terminate
+			time.Sleep(2 * time.Second)
+		}
+
 		if dep.Spec.Template.Annotations == nil {
 			dep.Spec.Template.Annotations = make(map[string]string)
 		}
@@ -1039,12 +1086,21 @@ func (s *Server) handleUpdateRestart(w http.ResponseWriter, r *http.Request) {
 		}
 		klog.Infof("triggered rolling restart for deployment/%s in %s", name, ns)
 	} else {
-		// Try DaemonSet
 		ds, dsErr := s.K8s.Clientset.AppsV1().DaemonSets(ns).Get(ctx, name, metav1.GetOptions{})
 		if dsErr != nil {
-			respondError(w, fmt.Sprintf("workload %q not found as deployment or daemonset", name))
+			respondError(w, fmt.Sprintf("workload %q not found in %s", name, ns))
 			return
 		}
+		// Delete existing pods first
+		selector, _ := metav1.LabelSelectorAsSelector(ds.Spec.Selector)
+		if selector != nil {
+			s.K8s.Clientset.CoreV1().Pods(ns).DeleteCollection(ctx,
+				metav1.DeleteOptions{},
+				metav1.ListOptions{LabelSelector: selector.String()},
+			)
+			time.Sleep(2 * time.Second)
+		}
+
 		if ds.Spec.Template.Annotations == nil {
 			ds.Spec.Template.Annotations = make(map[string]string)
 		}
@@ -1057,9 +1113,10 @@ func (s *Server) handleUpdateRestart(w http.ResponseWriter, r *http.Request) {
 		klog.Infof("triggered rolling restart for daemonset/%s in %s", name, ns)
 	}
 	respondJSON(w, http.StatusOK, map[string]interface{}{
-		"name":    name,
-		"status":  "restarting",
-		"message": fmt.Sprintf("Rolling restart triggered for %s", name),
+		"name":      name,
+		"namespace": ns,
+		"status":    "restarting",
+		"message":   fmt.Sprintf("Rolling restart triggered for %s/%s", ns, name),
 	})
 }
 

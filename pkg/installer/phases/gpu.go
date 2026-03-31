@@ -2,6 +2,7 @@ package phases
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"runtime"
@@ -40,55 +41,55 @@ func GetGPUName() string {
 }
 
 // InstallGPU installs NVIDIA driver, container toolkit, and deploys HAMi.
-func InstallGPU(opts *InstallOptions) error {
+func InstallGPU(opts *InstallOptions, w io.Writer) error {
 	if !DetectGPU() {
-		fmt.Println("  No NVIDIA GPU detected, skipping")
+		fmt.Fprintln(w, "  No NVIDIA GPU detected, skipping")
 		return nil
 	}
 
-	fmt.Printf("  NVIDIA GPU detected: %s\n", GetGPUName())
+	fmt.Fprintf(w, "  NVIDIA GPU detected: %s\n", GetGPUName())
 
 	// Step 1: Install NVIDIA driver
-	if err := installNVIDIADriver(opts.GPUMethod); err != nil {
+	if err := installNVIDIADriver(opts.GPUMethod, w); err != nil {
 		return fmt.Errorf("install nvidia driver: %w", err)
 	}
 
 	// Step 2: Install NVIDIA container toolkit
-	if err := installContainerToolkit(); err != nil {
+	if err := installContainerToolkit(w); err != nil {
 		return fmt.Errorf("install container toolkit: %w", err)
 	}
 
 	// Step 3: Configure K3s containerd to use nvidia runtime
-	if err := configureContainerdNvidia(); err != nil {
+	if err := configureContainerdNvidia(w); err != nil {
 		return fmt.Errorf("configure containerd: %w", err)
 	}
 
 	// Step 4: Deploy HAMi via official Helm chart
-	if err := deployHAMi(); err != nil {
+	if err := deployHAMi(w); err != nil {
 		return fmt.Errorf("deploy hami: %w", err)
 	}
 
 	// Step 5: Deploy DCGM exporter for GPU metrics
 	if err := applyManifestFile("deploy/framework/dcgm-exporter.yaml", opts); err != nil {
-		fmt.Printf("  Warning: DCGM exporter failed: %v (non-fatal)\n", err)
+		fmt.Fprintf(w, "  Warning: DCGM exporter failed: %v (non-fatal)\n", err)
 	}
 
-	fmt.Println("  GPU setup complete")
+	fmt.Fprintln(w, "  GPU setup complete")
 	return nil
 }
 
-func installNVIDIADriver(method string) error {
+func installNVIDIADriver(method string, w io.Writer) error {
 	// Already installed?
 	if _, err := exec.Command("nvidia-smi").Output(); err == nil {
-		fmt.Println("  NVIDIA driver already installed")
+		fmt.Fprintln(w, "  NVIDIA driver already installed")
 		return nil
 	}
 
 	switch method {
 	case GPUMethodUbuntu:
-		return installDriverUbuntu()
+		return installDriverUbuntu(w)
 	default:
-		return installDriverCUDA()
+		return installDriverCUDA(w)
 	}
 }
 
@@ -102,8 +103,8 @@ func ubuntuVersionCode() string {
 }
 
 // installDriverCUDA installs via the NVIDIA CUDA repository (nvidia-open package).
-func installDriverCUDA() error {
-	fmt.Println("  Installing NVIDIA driver via CUDA repo (nvidia-open) ...")
+func installDriverCUDA(w io.Writer) error {
+	fmt.Fprintln(w, "  Installing NVIDIA driver via CUDA repo (nvidia-open) ...")
 
 	ver := ubuntuVersionCode()
 	// NVIDIA repo uses x86_64/sbsa, not amd64/arm64
@@ -125,20 +126,20 @@ func installDriverCUDA() error {
 
 	for _, args := range cmds {
 		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd.Stdout = w
+		cmd.Stderr = w
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("%s failed: %w", args[0], err)
 		}
 	}
 
 	os.Remove("/tmp/cuda-keyring.deb")
-	return verifyDriverOrReboot()
+	return verifyDriverOrReboot(w)
 }
 
 // installDriverUbuntu installs via ubuntu-drivers autoinstall.
-func installDriverUbuntu() error {
-	fmt.Println("  Installing NVIDIA driver via ubuntu-drivers autoinstall ...")
+func installDriverUbuntu(w io.Writer) error {
+	fmt.Fprintln(w, "  Installing NVIDIA driver via ubuntu-drivers autoinstall ...")
 
 	cmds := [][]string{
 		{"apt-get", "update", "-qq"},
@@ -148,25 +149,25 @@ func installDriverUbuntu() error {
 
 	for _, args := range cmds {
 		cmd := exec.Command(args[0], args[1:]...)
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd.Stdout = w
+		cmd.Stderr = w
 		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("%s failed: %w", args[0], err)
 		}
 	}
 
-	return verifyDriverOrReboot()
+	return verifyDriverOrReboot(w)
 }
 
 // verifyDriverOrReboot checks if nvidia-smi works. If not, signals a reboot is needed.
-func verifyDriverOrReboot() error {
+func verifyDriverOrReboot(w io.Writer) error {
 	out, err := exec.Command("nvidia-smi").Output()
 	if err == nil {
 		// Working — print the driver/GPU line
 		lines := strings.Split(string(out), "\n")
 		for _, line := range lines {
 			if strings.Contains(line, "Driver Version") {
-				fmt.Printf("  %s\n", strings.TrimSpace(line))
+				fmt.Fprintf(w, "  %s\n", strings.TrimSpace(line))
 				break
 			}
 		}
@@ -174,18 +175,18 @@ func verifyDriverOrReboot() error {
 	}
 
 	// nvidia-smi failed — driver installed but kernel module not loaded (needs reboot)
-	fmt.Println("  GPU driver installed but kernel module not loaded.")
-	fmt.Println("  A reboot is required before GPU setup can continue.")
+	fmt.Fprintln(w, "  GPU driver installed but kernel module not loaded.")
+	fmt.Fprintln(w, "  A reboot is required before GPU setup can continue.")
 	return ErrRebootRequired
 }
 
-func installContainerToolkit() error {
+func installContainerToolkit(w io.Writer) error {
 	if _, err := exec.LookPath("nvidia-container-runtime"); err == nil {
-		fmt.Println("  NVIDIA container toolkit already installed")
+		fmt.Fprintln(w, "  NVIDIA container toolkit already installed")
 		return nil
 	}
 
-	fmt.Println("  Installing NVIDIA container toolkit ...")
+	fmt.Fprintln(w, "  Installing NVIDIA container toolkit ...")
 
 	cmds := [][]string{
 		{"bash", "-c", `curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg`},
@@ -204,8 +205,8 @@ func installContainerToolkit() error {
 	return nil
 }
 
-func configureContainerdNvidia() error {
-	fmt.Println("  Configuring K3s containerd for NVIDIA runtime ...")
+func configureContainerdNvidia(w io.Writer) error {
+	fmt.Fprintln(w, "  Configuring K3s containerd for NVIDIA runtime ...")
 
 	os.MkdirAll("/etc/containerd/conf.d", 0755)
 
@@ -227,13 +228,13 @@ func configureContainerdNvidia() error {
 	}
 
 	// Restart K3s to pick up the new containerd config
-	fmt.Println("  Restarting K3s ...")
+	fmt.Fprintln(w, "  Restarting K3s ...")
 	if err := exec.Command("systemctl", "restart", "k3s").Run(); err != nil {
 		return fmt.Errorf("restart k3s: %w", err)
 	}
 
 	// Wait for K3s to be ready
-	fmt.Println("  Waiting for K3s ...")
+	fmt.Fprintln(w, "  Waiting for K3s ...")
 	for i := 0; i < 30; i++ {
 		if exec.Command("kubectl", "get", "nodes").Run() == nil {
 			break
@@ -244,8 +245,8 @@ func configureContainerdNvidia() error {
 	return nil
 }
 
-func deployHAMi() error {
-	fmt.Println("  Deploying HAMi GPU scheduler (official Helm chart) ...")
+func deployHAMi(w io.Writer) error {
+	fmt.Fprintln(w, "  Deploying HAMi GPU scheduler (official Helm chart) ...")
 
 	// Add HAMi Helm repo
 	if out, err := exec.Command("helm", "repo", "add", "hami",
@@ -271,7 +272,7 @@ func deployHAMi() error {
 	// Label the node so HAMi device-plugin DaemonSet can schedule
 	nodeName, _ := os.Hostname()
 	exec.Command("kubectl", "label", "node", nodeName, "gpu=on", "--overwrite").Run()
-	fmt.Printf("  Labeled node %s with gpu=on\n", nodeName)
+	fmt.Fprintf(w, "  Labeled node %s with gpu=on\n", nodeName)
 
 	return nil
 }

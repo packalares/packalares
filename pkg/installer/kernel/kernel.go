@@ -2,6 +2,7 @@ package kernel
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -38,8 +39,8 @@ var sysctlSettings = map[string]string{
 	"vm.swappiness":                       "10",
 }
 
-func LoadModules() error {
-	fmt.Println("  Loading kernel modules ...")
+func LoadModules(w io.Writer) error {
+	fmt.Fprintln(w, "  Loading kernel modules ...")
 
 	// Write modules to /etc/modules-load.d for persistence
 	var moduleLines []string
@@ -58,7 +59,7 @@ func LoadModules() error {
 	for _, mod := range requiredModules {
 		cmd := exec.Command("modprobe", mod)
 		if out, err := cmd.CombinedOutput(); err != nil {
-			fmt.Printf("  Warning: could not load module %s: %s\n", mod, strings.TrimSpace(string(out)))
+			fmt.Fprintf(w, "  Warning: could not load module %s: %s\n", mod, strings.TrimSpace(string(out)))
 			// Not fatal — some modules may not be available on all kernels
 		}
 	}
@@ -66,8 +67,8 @@ func LoadModules() error {
 	return nil
 }
 
-func ApplySysctl() error {
-	fmt.Println("  Applying sysctl settings ...")
+func ApplySysctl(w io.Writer) error {
+	fmt.Fprintln(w, "  Applying sysctl settings ...")
 
 	var lines []string
 	for k, v := range sysctlSettings {

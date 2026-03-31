@@ -3,6 +3,7 @@ package phases
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 
@@ -12,7 +13,7 @@ import (
 // generateTLSCert creates a CA and signs a wildcard TLS certificate, then
 // stores it as a K8s Secret. The CA cert is also stored as a ConfigMap so
 // users can download and install it for browser trust.
-func generateTLSCert(opts *InstallOptions) error {
+func generateTLSCert(opts *InstallOptions, w io.Writer) error {
 	certDir := "/etc/packalares/ssl"
 	os.MkdirAll(certDir, 0755)
 
@@ -28,7 +29,7 @@ func generateTLSCert(opts *InstallOptions) error {
 	serverIP := os.Getenv("SERVER_IP")
 
 	if _, err := os.Stat(certFile); os.IsNotExist(err) {
-		fmt.Printf("  Generating Packalares CA and TLS certificate for *.%s ...\n", zone)
+		fmt.Fprintf(w, "  Generating Packalares CA and TLS certificate for *.%s ...\n", zone)
 
 		// Step 1: Generate CA key + cert
 		cmd := exec.Command("openssl", "req", "-x509", "-nodes", "-days", "3650",
@@ -84,11 +85,11 @@ func generateTLSCert(opts *InstallOptions) error {
 		os.Remove(sanConf)
 		os.Remove(certDir + "/ca.srl")
 	} else {
-		fmt.Println("  TLS certificate already exists")
+		fmt.Fprintln(w, "  TLS certificate already exists")
 	}
 
 	// Create K8s TLS Secret
-	fmt.Printf("  Creating K8s Secret %s in %s ...\n", secretName, ns)
+	fmt.Fprintf(w, "  Creating K8s Secret %s in %s ...\n", secretName, ns)
 	cmd := exec.Command("kubectl", "create", "secret", "tls", secretName,
 		"--cert="+certFile,
 		"--key="+keyFile,
@@ -122,6 +123,6 @@ func generateTLSCert(opts *InstallOptions) error {
 		}
 	}
 
-	fmt.Printf("  TLS certificate ready for *.%s\n", zone)
+	fmt.Fprintf(w, "  TLS certificate ready for *.%s\n", zone)
 	return nil
 }

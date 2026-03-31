@@ -2,6 +2,7 @@ package helm
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -9,14 +10,14 @@ import (
 	"github.com/packalares/packalares/pkg/installer/binaries"
 )
 
-func Install(baseDir, arch string) error {
+func Install(baseDir, arch string, w io.Writer) error {
 	// Check if helm already available
 	if _, err := exec.LookPath("helm"); err == nil {
-		fmt.Println("  Helm already installed")
+		fmt.Fprintln(w, "  Helm already installed")
 		return nil
 	}
 
-	fmt.Println("  Downloading Helm ...")
+	fmt.Fprintln(w, "  Downloading Helm ...")
 
 	dlDir := filepath.Join(baseDir, "downloads")
 	os.MkdirAll(dlDir, 0755)
@@ -53,6 +54,6 @@ func Install(baseDir, arch string) error {
 		return fmt.Errorf("write helm binary: %w", err)
 	}
 
-	fmt.Println("  Helm installed")
+	fmt.Fprintln(w, "  Helm installed")
 	return nil
 }

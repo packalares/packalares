@@ -17,7 +17,7 @@ import (
 
 // createLLDAPServiceAccount creates the svc-packalares service account in LLDAP.
 // This runs during install so the auth service never needs the admin password at runtime.
-func createLLDAPServiceAccount(opts *InstallOptions) error {
+func createLLDAPServiceAccount(opts *InstallOptions, w io.Writer) error {
 	// Resolve LLDAP ClusterIP via kubectl — installer runs on host, can't use K8s DNS
 	ns := config.PlatformNamespace()
 	lldapHost := fmt.Sprintf("lldap-svc.%s", ns)
@@ -41,7 +41,7 @@ func createLLDAPServiceAccount(opts *InstallOptions) error {
 	}
 
 	// Wait for LLDAP to be ready
-	fmt.Println("  Waiting for LLDAP ...")
+	fmt.Fprintln(w, "  Waiting for LLDAP ...")
 	httpURL := fmt.Sprintf("http://%s:%d", lldapHost, httpPort)
 	for i := 0; i < 60; i++ {
 		resp, err := http.Get(httpURL + "/api/graphql")
@@ -53,7 +53,7 @@ func createLLDAPServiceAccount(opts *InstallOptions) error {
 	}
 
 	// Get admin token
-	fmt.Println("  Creating service account ...")
+	fmt.Fprintln(w, "  Creating service account ...")
 	token, err := lldapLogin(httpURL, adminUser, adminPassword)
 	if err != nil {
 		return fmt.Errorf("admin login: %w", err)
@@ -74,7 +74,7 @@ func createLLDAPServiceAccount(opts *InstallOptions) error {
 		return fmt.Errorf("set password: %w", err)
 	}
 
-	fmt.Printf("  Service account %q created\n", svcUser)
+	fmt.Fprintf(w, "  Service account %q created\n", svcUser)
 	return nil
 }
 

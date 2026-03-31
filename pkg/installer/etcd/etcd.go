@@ -8,6 +8,7 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"io"
 	"math/big"
 	"net"
 	"os"
@@ -52,7 +53,7 @@ WantedBy=multi-user.target
 `
 )
 
-func Install(baseDir string) error {
+func Install(baseDir string, w io.Writer) error {
 	// Verify binary exists
 	if _, err := os.Stat("/usr/local/bin/etcd"); os.IsNotExist(err) {
 		return fmt.Errorf("etcd binary not found — run download phase first")
@@ -66,7 +67,7 @@ func Install(baseDir string) error {
 	}
 
 	// Generate TLS certificates
-	fmt.Println("  Generating etcd TLS certificates ...")
+	fmt.Fprintln(w, "  Generating etcd TLS certificates ...")
 	if err := generateCerts(); err != nil {
 		return fmt.Errorf("generate etcd certs: %w", err)
 	}
@@ -91,7 +92,7 @@ func Install(baseDir string) error {
 	}
 
 	// Wait for etcd to be healthy
-	fmt.Println("  Waiting for etcd to be healthy ...")
+	fmt.Fprintln(w, "  Waiting for etcd to be healthy ...")
 	for i := 0; i < 30; i++ {
 		cmd := exec.Command("/usr/local/bin/etcdctl",
 			"--cacert", certDir+"/ca.pem",
@@ -101,7 +102,7 @@ func Install(baseDir string) error {
 			"endpoint", "health",
 		)
 		if err := cmd.Run(); err == nil {
-			fmt.Println("  etcd is healthy")
+			fmt.Fprintln(w, "  etcd is healthy")
 			return nil
 		}
 		time.Sleep(2 * time.Second)

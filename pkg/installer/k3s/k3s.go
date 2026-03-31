@@ -2,6 +2,7 @@ package k3s
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -12,7 +13,7 @@ const (
 	etcdCertDir = "/etc/ssl/etcd/ssl"
 )
 
-func Install(baseDir, registry string) error {
+func Install(baseDir, registry string, w io.Writer) error {
 	// Verify binary exists
 	if _, err := os.Stat("/usr/local/bin/k3s"); os.IsNotExist(err) {
 		return fmt.Errorf("k3s binary not found — run download phase first")
@@ -65,7 +66,7 @@ func Install(baseDir, registry string) error {
 	}
 
 	// Wait for K3s to be ready
-	fmt.Println("  Waiting for K3s to be ready ...")
+	fmt.Fprintln(w, "  Waiting for K3s to be ready ...")
 	kubeconfig := "/etc/rancher/k3s/k3s.yaml"
 	for i := 0; i < 60; i++ {
 		cmd := exec.Command("kubectl", "--kubeconfig", kubeconfig, "get", "nodes")
@@ -80,7 +81,7 @@ func Install(baseDir, registry string) error {
 	exec.Command("cp", kubeconfig, os.Getenv("HOME")+"/.kube/config").Run()
 	exec.Command("chmod", "600", os.Getenv("HOME")+"/.kube/config").Run()
 
-	fmt.Println("  K3s installed and running")
+	fmt.Fprintln(w, "  K3s installed and running")
 	return nil
 }
 

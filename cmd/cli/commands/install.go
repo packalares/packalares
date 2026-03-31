@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/mattn/go-isatty"
 	"github.com/packalares/packalares/pkg/installer/phases"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +43,16 @@ func newInstallCmd() *cobra.Command {
 				promptInstallOptions(&opts)
 			}
 
-			if err := phases.RunInstall(&opts); err != nil {
+			isTTY := isatty.IsTerminal(os.Stdout.Fd()) || isatty.IsCygwinTerminal(os.Stdout.Fd())
+
+			var err error
+			if isTTY {
+				err = runInstallTUI(&opts)
+			} else {
+				err = phases.RunInstall(&opts)
+			}
+
+			if err != nil {
 				if errors.Is(err, phases.ErrRebootRequired) {
 					// Clean exit — state saved, user will resume after reboot.
 					return

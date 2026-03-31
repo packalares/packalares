@@ -347,7 +347,7 @@ func (h *Handler) handleServerInit(w http.ResponseWriter, r *http.Request) {
 	// Try reading user info from BFL service
 	bflURL := os.Getenv("BFL_URL")
 	if bflURL == "" {
-		bflURL = "http://" + config.BFLDNS() + ":8080"
+		bflURL = "http://" + config.BFLDNS() + ":80"
 	}
 	resp2, err := http.Get(bflURL + "/bfl/backend/v1/user-info")
 	if err == nil {

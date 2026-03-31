@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -118,8 +119,8 @@ func generateHostctlToken() string {
 	return hex.EncodeToString(b)
 }
 
-func deployCRDsAndNamespaces(opts *InstallOptions) error {
-	fmt.Println("  Creating namespaces, CRDs, and RBAC ...")
+func deployCRDsAndNamespaces(opts *InstallOptions, w io.Writer) error {
+	fmt.Fprintln(w, "  Creating namespaces, CRDs, and RBAC ...")
 
 	if err := applyManifestFile("deploy/crds/crds-and-namespaces.yaml", opts); err != nil {
 		return fmt.Errorf("apply CRDs: %w", err)
@@ -129,7 +130,7 @@ func deployCRDsAndNamespaces(opts *InstallOptions) error {
 	userNS := config.UserNamespace(opts.Username)
 	nsYaml := fmt.Sprintf("apiVersion: v1\nkind: Namespace\nmetadata:\n  name: %s\n", userNS)
 	if err := kubectlApply(nsYaml); err != nil {
-		fmt.Printf("  Warning: create namespace %s: %v\n", userNS, err)
+		fmt.Fprintf(w, "  Warning: create namespace %s: %v\n", userNS, err)
 	}
 
 	// Create User CRD for admin user
@@ -149,15 +150,15 @@ spec:
 `, opts.Username, config.APIGroup(), config.APIGroup(), config.UserZone(),
 		opts.Username, opts.Username, config.Domain())
 	if err := kubectlApply(userCRD); err != nil {
-		fmt.Printf("  Warning: create User CRD: %v\n", err)
+		fmt.Fprintf(w, "  Warning: create User CRD: %v\n", err)
 	}
 
-	fmt.Printf("  Namespaces: %s, %s, %s, %s\n",
+	fmt.Fprintf(w, "  Namespaces: %s, %s, %s, %s\n",
 		config.PlatformNamespace(), config.FrameworkNamespace(), "monitoring", userNS)
 	return nil
 }
 
-func deployPlatformCharts(opts *InstallOptions) error {
+func deployPlatformCharts(opts *InstallOptions, w io.Writer) error {
 	manifests := []string{
 		"deploy/platform/citus.yaml",
 		"deploy/platform/nats.yaml",
@@ -168,7 +169,7 @@ func deployPlatformCharts(opts *InstallOptions) error {
 
 	for _, path := range manifests {
 		name := strings.TrimSuffix(strings.TrimPrefix(path, "deploy/platform/"), ".yaml")
-		fmt.Printf("  Deploying %s ...\n", name)
+		fmt.Fprintf(w, "  Deploying %s ...\n", name)
 		if err := applyManifestFile(path, opts); err != nil {
 			return fmt.Errorf("deploy %s: %w", name, err)
 		}
@@ -176,12 +177,12 @@ func deployPlatformCharts(opts *InstallOptions) error {
 	return nil
 }
 
-func deployFrameworkCharts(opts *InstallOptions) error {
+func deployFrameworkCharts(opts *InstallOptions, w io.Writer) error {
 	// Generate hostctl token if not already set
 	if os.Getenv("HOSTCTL_TOKEN") == "" {
 		token := generateHostctlToken()
 		os.Setenv("HOSTCTL_TOKEN", token)
-		fmt.Println("  Generated hostctl authentication token")
+		fmt.Fprintln(w, "  Generated hostctl authentication token")
 	}
 
 	manifests := []string{
@@ -205,11 +206,11 @@ func deployFrameworkCharts(opts *InstallOptions) error {
 	for _, path := range manifests {
 		// Skip tailscale if no auth key configured
 		if path == "deploy/framework/tailscale.yaml" && opts.TailscaleAuthKey == "" {
-			fmt.Println("  Skipping tailscale (no auth key configured)")
+			fmt.Fprintln(w, "  Skipping tailscale (no auth key configured)")
 			continue
 		}
 		name := strings.TrimSuffix(strings.TrimPrefix(path, "deploy/framework/"), ".yaml")
-		fmt.Printf("  Deploying %s ...\n", name)
+		fmt.Fprintf(w, "  Deploying %s ...\n", name)
 		if err := applyManifestFile(path, opts); err != nil {
 			return fmt.Errorf("deploy %s: %w", name, err)
 		}
@@ -217,7 +218,7 @@ func deployFrameworkCharts(opts *InstallOptions) error {
 	return nil
 }
 
-func deployAppCharts(opts *InstallOptions) error {
+func deployAppCharts(opts *InstallOptions, w io.Writer) error {
 	// Ensure user namespace exists
 	userNS := config.UserNamespace(opts.Username)
 	ensureNamespace(userNS)
@@ -229,7 +230,7 @@ func deployAppCharts(opts *InstallOptions) error {
 
 	for _, path := range manifests {
 		name := strings.TrimSuffix(strings.TrimPrefix(path, "deploy/apps/"), ".yaml")
-		fmt.Printf("  Deploying %s ...\n", name)
+		fmt.Fprintf(w, "  Deploying %s ...\n", name)
 		if err := applyManifestFile(path, opts); err != nil {
 			return fmt.Errorf("deploy %s: %w", name, err)
 		}
@@ -237,7 +238,7 @@ func deployAppCharts(opts *InstallOptions) error {
 	return nil
 }
 
-func deployMonitoring(opts *InstallOptions) error {
+func deployMonitoring(opts *InstallOptions, w io.Writer) error {
 	manifests := []struct {
 		name string
 		path string
@@ -248,7 +249,7 @@ func deployMonitoring(opts *InstallOptions) error {
 	}
 
 	for _, m := range manifests {
-		fmt.Printf("  Deploying %s ...\n", m.name)
+		fmt.Fprintf(w, "  Deploying %s ...\n", m.name)
 		if err := applyManifestFile(m.path, opts); err != nil {
 			return fmt.Errorf("deploy %s: %w", m.name, err)
 		}
@@ -256,14 +257,14 @@ func deployMonitoring(opts *InstallOptions) error {
 	return nil
 }
 
-func deployKubeBlocks(opts *InstallOptions) error {
-	fmt.Println("  Deploying KubeBlocks ...")
+func deployKubeBlocks(opts *InstallOptions, w io.Writer) error {
+	fmt.Fprintln(w, "  Deploying KubeBlocks ...")
 	manifest := generateKubeBlocksManifest(opts.Registry)
 	return kubectlApply(manifest)
 }
 
-func waitForAllPods() error {
-	fmt.Println("  Waiting for all pods to be ready ...")
+func waitForAllPods(w io.Writer) error {
+	fmt.Fprintln(w, "  Waiting for all pods to be ready ...")
 
 	namespaces := []string{
 		config.PlatformNamespace(),
@@ -286,7 +287,7 @@ func waitForAllPods() error {
 			return nil
 		}
 		if i%10 == 0 {
-			fmt.Printf("  Still waiting for pods (attempt %d/%d) ...\n", i+1, maxRetries)
+			fmt.Fprintf(w, "  Still waiting for pods (attempt %d/%d) ...\n", i+1, maxRetries)
 		}
 		time.Sleep(10 * time.Second)
 	}
