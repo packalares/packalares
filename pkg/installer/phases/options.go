@@ -35,6 +35,12 @@ const (
 	SystemdDir       = "/etc/systemd/system"
 )
 
+const (
+	GPUMethodNone   = ""
+	GPUMethodCUDA   = "cuda"
+	GPUMethodUbuntu = "ubuntu"
+)
+
 type InstallOptions struct {
 	Username            string
 	Password            string
@@ -47,6 +53,7 @@ type InstallOptions struct {
 	TailscaleAuthKey    string
 	TailscaleControlURL string
 	SkipPrecheck        bool
+	GPUMethod           string
 }
 
 func (o *InstallOptions) applyDefaults() {

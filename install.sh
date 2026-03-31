@@ -26,8 +26,8 @@ set -euo pipefail
 # --- Configuration ---
 PACKALARES_VERSION="${PACKALARES_VERSION:-1.0.0}"
 PACKALARES_BASE_DIR="${PACKALARES_BASE_DIR:-/opt/packalares}"
-PACKALARES_USERNAME="${PACKALARES_USERNAME:-admin}"
-PACKALARES_DOMAIN="${PACKALARES_DOMAIN:-olares.local}"
+PACKALARES_USERNAME="${PACKALARES_USERNAME:-}"
+PACKALARES_DOMAIN="${PACKALARES_DOMAIN:-}"
 RELEASE_BASE_URL="${RELEASE_BASE_URL:-https://github.com/packalares/packalares/releases/download}"
 
 # --- Colors ---

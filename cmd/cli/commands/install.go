@@ -62,6 +62,7 @@ func newInstallCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opts.TailscaleAuthKey, "tailscale-auth-key", "", "Tailscale auth key for VPN access")
 	cmd.Flags().StringVar(&opts.TailscaleControlURL, "tailscale-control-url", "", "Tailscale/Headscale control URL")
 	cmd.Flags().BoolVar(&opts.SkipPrecheck, "skip-precheck", false, "skip system requirements check")
+	cmd.Flags().StringVar(&opts.GPUMethod, "gpu", "", "GPU driver install method: cuda or ubuntu")
 
 	return cmd
 }
@@ -86,6 +87,25 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 
 	opts.Username = prompt(reader, "  Username", opts.Username)
 	opts.Domain = prompt(reader, "  Domain", opts.Domain)
+
+	// GPU prompt — only if GPU detected and not already set via flag
+	if opts.GPUMethod == "" && phases.DetectGPU() {
+		gpuName := phases.GetGPUName()
+		fmt.Println()
+		fmt.Printf("  NVIDIA GPU detected: %s\n", gpuName)
+		fmt.Println()
+		fmt.Println("  GPU driver install method:")
+		fmt.Println("    1) NVIDIA CUDA repo (nvidia-open, latest driver) [recommended]")
+		fmt.Println("    2) Ubuntu drivers (ubuntu-drivers autoinstall)")
+		fmt.Println()
+		choice := prompt(reader, "  Select [1/2]", "1")
+		switch choice {
+		case "2":
+			opts.GPUMethod = phases.GPUMethodUbuntu
+		default:
+			opts.GPUMethod = phases.GPUMethodCUDA
+		}
+	}
 
 	fmt.Println()
 }

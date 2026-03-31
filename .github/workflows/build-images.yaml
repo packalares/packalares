@@ -1,4 +1,4 @@
-name: Build All Images
+name: Build Images
 
 on:
   push:
@@ -11,83 +11,181 @@ on:
       - 'frontend-app/**'
       - 'build/**'
       - 'deploy/**'
+      - 'market/**'
       - 'install.sh'
       - 'go.mod'
       - 'go.sum'
       - '.github/workflows/build-images.yaml'
   workflow_dispatch:
+    inputs:
+      build_all:
+        description: 'Build all images (ignore change detection)'
+        type: boolean
+        default: false
 
 env:
   REGISTRY: ghcr.io
   ORG: packalares
 
 jobs:
+  # Detect which images need rebuilding based on changed files
+  detect:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.filter.outputs.matrix }}
+      cli: ${{ steps.filter.outputs.cli }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed images
+        id: filter
+        run: |
+          # On workflow_dispatch with build_all, or if detection fails, build everything
+          if [ "${{ github.event.inputs.build_all }}" = "true" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Building all images (manual trigger)"
+            BUILD_ALL=true
+          else
+            BUILD_ALL=false
+          fi
+
+          # Get changed files
+          CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "BUILD_ALL")
+          if echo "$CHANGED" | grep -q "BUILD_ALL"; then
+            BUILD_ALL=true
+          fi
+
+          # Image-to-path mapping
+          # Format: image_name:path1,path2,...
+          declare -A IMAGE_PATHS
+          IMAGE_PATHS[bfl]="internal/bfl,cmd/bfl,build/Dockerfile.bfl,pkg"
+          IMAGE_PATHS[l4proxy]="internal/l4proxy,cmd/l4proxy,build/Dockerfile.l4proxy,pkg"
+          IMAGE_PATHS[auth]="internal/auth,cmd/auth,build/Dockerfile.auth,pkg"
+          IMAGE_PATHS[middleware]="internal/middleware,cmd/middleware,build/Dockerfile.middleware,pkg"
+          IMAGE_PATHS[systemserver]="internal/systemserver,cmd/systemserver,build/Dockerfile.systemserver,pkg"
+          IMAGE_PATHS[appservice]="internal/appservice,cmd/appservice,build/appservice,pkg"
+          IMAGE_PATHS[market]="internal/market,cmd/market,build/market,market,pkg"
+          IMAGE_PATHS[files]="internal/files,cmd/files,build/files,pkg"
+          IMAGE_PATHS[mounts]="internal/mounts,cmd/mounts,build/mounts,pkg"
+          IMAGE_PATHS[monitor]="internal/monitor,cmd/monitor,build/monitor,pkg"
+          IMAGE_PATHS[kubesphere]="internal/kubesphere,cmd/kubesphere,build/Dockerfile.kubesphere,pkg"
+          IMAGE_PATHS[samba]="build/samba"
+          IMAGE_PATHS[desktop]="frontend-app,build/Dockerfile.desktop"
+          IMAGE_PATHS[desktop-dev]="frontend-app,build/Dockerfile.desktop-dev"
+          IMAGE_PATHS[tapr]="internal/tapr,cmd/tapr,build/Dockerfile.tapr,pkg"
+          IMAGE_PATHS[envoy-init]="build/envoy-init"
+          IMAGE_PATHS[mdns]="internal/mdns,cmd/mdns,build/Dockerfile.mdns,pkg"
+          IMAGE_PATHS[hostctl]="internal/hostctl,cmd/hostctl,build/Dockerfile.hostctl,pkg"
+          IMAGE_PATHS[hf-downloader]="internal/hfdownload,cmd/hf-downloader,build/hf-downloader,pkg"
+
+          # Image-to-dockerfile mapping
+          declare -A IMAGE_DOCKERFILE
+          IMAGE_DOCKERFILE[bfl]="build/Dockerfile.bfl"
+          IMAGE_DOCKERFILE[l4proxy]="build/Dockerfile.l4proxy"
+          IMAGE_DOCKERFILE[auth]="build/Dockerfile.auth"
+          IMAGE_DOCKERFILE[middleware]="build/Dockerfile.middleware"
+          IMAGE_DOCKERFILE[systemserver]="build/Dockerfile.systemserver"
+          IMAGE_DOCKERFILE[appservice]="build/appservice/Dockerfile"
+          IMAGE_DOCKERFILE[market]="build/market/Dockerfile"
+          IMAGE_DOCKERFILE[files]="build/files/Dockerfile"
+          IMAGE_DOCKERFILE[mounts]="build/mounts/Dockerfile"
+          IMAGE_DOCKERFILE[monitor]="build/monitor/Dockerfile"
+          IMAGE_DOCKERFILE[kubesphere]="build/Dockerfile.kubesphere"
+          IMAGE_DOCKERFILE[samba]="build/samba/Dockerfile"
+          IMAGE_DOCKERFILE[desktop]="build/Dockerfile.desktop"
+          IMAGE_DOCKERFILE[desktop-dev]="build/Dockerfile.desktop-dev"
+          IMAGE_DOCKERFILE[tapr]="build/Dockerfile.tapr"
+          IMAGE_DOCKERFILE[envoy-init]="build/envoy-init/Dockerfile"
+          IMAGE_DOCKERFILE[mdns]="build/Dockerfile.mdns"
+          IMAGE_DOCKERFILE[hostctl]="build/Dockerfile.hostctl"
+          IMAGE_DOCKERFILE[hf-downloader]="build/hf-downloader/Dockerfile"
+
+          # Image-to-context mapping
+          declare -A IMAGE_CONTEXT
+          IMAGE_CONTEXT[samba]="build/samba"
+          IMAGE_CONTEXT[envoy-init]="build/envoy-init"
+          # All others default to "."
+
+          # Shared paths that trigger ALL Go images
+          SHARED_PATHS="go.mod go.sum pkg/ .github/workflows/build-images.yaml"
+
+          # Check if shared paths changed
+          SHARED_CHANGED=false
+          for sp in $SHARED_PATHS; do
+            if echo "$CHANGED" | grep -q "^${sp}"; then
+              SHARED_CHANGED=true
+              break
+            fi
+          done
+
+          # Build the matrix
+          MATRIX_ITEMS="["
+          FIRST=true
+
+          for img in "${!IMAGE_PATHS[@]}"; do
+            SHOULD_BUILD=false
+
+            if [ "$BUILD_ALL" = "true" ]; then
+              SHOULD_BUILD=true
+            elif [ "$SHARED_CHANGED" = "true" ]; then
+              # Shared code changed — build all Go images (skip samba, envoy-init which aren't Go)
+              if [ "$img" != "samba" ] && [ "$img" != "envoy-init" ]; then
+                SHOULD_BUILD=true
+              fi
+            else
+              # Check if any of this image's paths changed
+              IFS=',' read -ra PATHS <<< "${IMAGE_PATHS[$img]}"
+              for p in "${PATHS[@]}"; do
+                if echo "$CHANGED" | grep -q "^${p}"; then
+                  SHOULD_BUILD=true
+                  break
+                fi
+              done
+            fi
+
+            if [ "$SHOULD_BUILD" = "true" ]; then
+              DOCKERFILE="${IMAGE_DOCKERFILE[$img]}"
+              CONTEXT="${IMAGE_CONTEXT[$img]:-.}"
+
+              if [ "$FIRST" = "true" ]; then
+                FIRST=false
+              else
+                MATRIX_ITEMS+=","
+              fi
+              MATRIX_ITEMS+="{\"name\":\"${img}\",\"dockerfile\":\"${DOCKERFILE}\",\"context\":\"${CONTEXT}\"}"
+            fi
+          done
+
+          MATRIX_ITEMS+="]"
+
+          # Check if CLI needs building
+          CLI_BUILD=false
+          if [ "$BUILD_ALL" = "true" ] || [ "$SHARED_CHANGED" = "true" ]; then
+            CLI_BUILD=true
+          elif echo "$CHANGED" | grep -q "^cmd/cli\|^pkg/\|^internal/\|^install.sh\|^VERSION"; then
+            CLI_BUILD=true
+          fi
+
+          echo "matrix={\"include\":${MATRIX_ITEMS}}" >> "$GITHUB_OUTPUT"
+          echo "cli=${CLI_BUILD}" >> "$GITHUB_OUTPUT"
+
+          # Log what we're building
+          COUNT=$(echo "$MATRIX_ITEMS" | python3 -c "import json,sys; print(len(json.loads(sys.stdin.read())))" 2>/dev/null || echo "?")
+          echo "Images to build: $COUNT"
+          echo "$MATRIX_ITEMS" | python3 -c "import json,sys; [print(f'  - {i[\"name\"]}') for i in json.loads(sys.stdin.read())]" 2>/dev/null || true
+
   build:
+    needs: detect
+    if: ${{ fromJSON(needs.detect.outputs.matrix).include[0] != null }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: bfl
-            dockerfile: build/Dockerfile.bfl
-            context: .
-          - name: l4proxy
-            dockerfile: build/Dockerfile.l4proxy
-            context: .
-          - name: auth
-            dockerfile: build/Dockerfile.auth
-            context: .
-          - name: middleware
-            dockerfile: build/Dockerfile.middleware
-            context: .
-          - name: systemserver
-            dockerfile: build/Dockerfile.systemserver
-            context: .
-          - name: appservice
-            dockerfile: build/appservice/Dockerfile
-            context: .
-          - name: market
-            dockerfile: build/market/Dockerfile
-            context: .
-          - name: files
-            dockerfile: build/files/Dockerfile
-            context: .
-          - name: mounts
-            dockerfile: build/mounts/Dockerfile
-            context: .
-          - name: monitor
-            dockerfile: build/monitor/Dockerfile
-            context: .
-          - name: kubesphere
-            dockerfile: build/Dockerfile.kubesphere
-            context: .
-          - name: samba
-            dockerfile: build/samba/Dockerfile
-            context: build/samba
-          - name: desktop
-            dockerfile: build/Dockerfile.desktop
-            context: .
-          - name: desktop-dev
-            dockerfile: build/Dockerfile.desktop-dev
-            context: .
-          - name: tapr
-            dockerfile: build/Dockerfile.tapr
-            context: .
-          - name: envoy-init
-            dockerfile: build/envoy-init/Dockerfile
-            context: build/envoy-init
-          - name: mdns
-            dockerfile: build/Dockerfile.mdns
-            context: .
-          - name: hostctl
-            dockerfile: build/Dockerfile.hostctl
-            context: .
-          - name: hf-downloader
-            dockerfile: build/hf-downloader/Dockerfile
-            context: .
+      matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
 
     steps:
       - name: Checkout
@@ -124,6 +222,8 @@ jobs:
       #     image: ${{ env.REGISTRY }}/${{ env.ORG }}/${{ matrix.name }}:latest
 
   build-cli:
+    needs: detect
+    if: ${{ needs.detect.outputs.cli == 'true' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write

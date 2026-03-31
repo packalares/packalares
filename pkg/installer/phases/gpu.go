@@ -17,6 +17,25 @@ func DetectGPU() bool {
 	return strings.Contains(strings.ToLower(string(out)), "nvidia")
 }
 
+// GetGPUName returns the NVIDIA GPU model name from lspci, or "Unknown NVIDIA GPU".
+func GetGPUName() string {
+	out, err := exec.Command("lspci").Output()
+	if err != nil {
+		return "Unknown NVIDIA GPU"
+	}
+	for _, line := range strings.Split(string(out), "\n") {
+		lower := strings.ToLower(line)
+		if strings.Contains(lower, "nvidia") && strings.Contains(lower, "vga") {
+			// Format: "02:00.0 VGA compatible controller: NVIDIA Corporation Device 2c18 (rev a1)"
+			parts := strings.SplitN(line, ": ", 3)
+			if len(parts) >= 3 {
+				return strings.TrimSpace(parts[2])
+			}
+		}
+	}
+	return "Unknown NVIDIA GPU"
+}
+
 // InstallGPU installs NVIDIA driver, container toolkit, and deploys HAMi.
 func InstallGPU(opts *InstallOptions) error {
 	if !DetectGPU() {
@@ -24,10 +43,10 @@ func InstallGPU(opts *InstallOptions) error {
 		return nil
 	}
 
-	fmt.Println("  NVIDIA GPU detected")
+	fmt.Printf("  NVIDIA GPU detected: %s\n", GetGPUName())
 
 	// Step 1: Install NVIDIA driver
-	if err := installNVIDIADriver(); err != nil {
+	if err := installNVIDIADriver(opts.GPUMethod); err != nil {
 		return fmt.Errorf("install nvidia driver: %w", err)
 	}
 
@@ -55,51 +74,99 @@ func InstallGPU(opts *InstallOptions) error {
 	return nil
 }
 
-func installNVIDIADriver() error {
+func installNVIDIADriver(method string) error {
+	// Already installed?
 	if _, err := exec.Command("nvidia-smi").Output(); err == nil {
 		fmt.Println("  NVIDIA driver already installed")
 		return nil
 	}
 
-	fmt.Println("  Installing NVIDIA driver ...")
+	switch method {
+	case GPUMethodUbuntu:
+		return installDriverUbuntu()
+	default:
+		return installDriverCUDA()
+	}
+}
+
+// ubuntuVersionCode returns the Ubuntu version without dots, e.g. "2404" for 24.04.
+func ubuntuVersionCode() string {
+	out, err := exec.Command("bash", "-c", `. /etc/os-release && echo "$VERSION_ID"`).Output()
+	if err != nil {
+		return "2404" // fallback
+	}
+	return strings.TrimSpace(strings.ReplaceAll(string(out), ".", ""))
+}
+
+// installDriverCUDA installs via the NVIDIA CUDA repository (nvidia-open package).
+func installDriverCUDA() error {
+	fmt.Println("  Installing NVIDIA driver via CUDA repo (nvidia-open) ...")
+
+	ver := ubuntuVersionCode()
+	arch := getArch()
+	url := fmt.Sprintf("https://developer.download.nvidia.com/compute/cuda/repos/ubuntu%s/%s/cuda-keyring_1.1-1_all.deb", ver, arch)
 
 	cmds := [][]string{
+		{"bash", "-c", fmt.Sprintf("wget -q %s -O /tmp/cuda-keyring.deb", url)},
+		{"dpkg", "-i", "/tmp/cuda-keyring.deb"},
 		{"apt-get", "update", "-qq"},
-		{"apt-get", "install", "-y", "-qq", "ubuntu-drivers-common"},
-		{"ubuntu-drivers", "install", "--gpgpu"},
+		{"apt-get", "install", "-y", "-qq", "nvidia-open"},
 	}
 
 	for _, args := range cmds {
 		cmd := exec.Command(args[0], args[1:]...)
-		if out, err := cmd.CombinedOutput(); err != nil {
-			if args[0] == "ubuntu-drivers" {
-				fmt.Println("  ubuntu-drivers failed, trying direct install ...")
-				alt := exec.Command("apt-get", "install", "-y", "-qq", "nvidia-driver-535-server")
-				if altOut, altErr := alt.CombinedOutput(); altErr != nil {
-					return fmt.Errorf("%s: %s\n%w", args[0], string(altOut), altErr)
-				}
-				continue
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("%s failed: %w", args[0], err)
+		}
+	}
+
+	os.Remove("/tmp/cuda-keyring.deb")
+	return verifyDriverOrReboot()
+}
+
+// installDriverUbuntu installs via ubuntu-drivers autoinstall.
+func installDriverUbuntu() error {
+	fmt.Println("  Installing NVIDIA driver via ubuntu-drivers autoinstall ...")
+
+	cmds := [][]string{
+		{"apt-get", "update", "-qq"},
+		{"apt-get", "install", "-y", "-qq", "ubuntu-drivers-common"},
+		{"ubuntu-drivers", "autoinstall"},
+	}
+
+	for _, args := range cmds {
+		cmd := exec.Command(args[0], args[1:]...)
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("%s failed: %w", args[0], err)
+		}
+	}
+
+	return verifyDriverOrReboot()
+}
+
+// verifyDriverOrReboot checks if nvidia-smi works. If not, signals a reboot is needed.
+func verifyDriverOrReboot() error {
+	out, err := exec.Command("nvidia-smi").Output()
+	if err == nil {
+		// Working — print the driver/GPU line
+		lines := strings.Split(string(out), "\n")
+		for _, line := range lines {
+			if strings.Contains(line, "Driver Version") {
+				fmt.Printf("  %s\n", strings.TrimSpace(line))
+				break
 			}
-			return fmt.Errorf("%s: %s\n%w", args[0], string(out), err)
 		}
+		return nil
 	}
 
-	// Install nvidia-utils (provides nvidia-smi)
-	exec.Command("apt-get", "install", "-y", "-qq", "nvidia-utils-server").Run()
-
-	// Verify — may need reboot for kernel module
-	if out, err := exec.Command("nvidia-smi").Output(); err != nil {
-		if exec.Command("dpkg", "-l", "nvidia-driver*").Run() == nil {
-			fmt.Println("  GPU driver installed. Reboot required to load kernel module.")
-			fmt.Println("  After reboot, run: packalares install")
-			return fmt.Errorf("GPU driver requires reboot to load kernel module: %w", ErrRebootRequired)
-		}
-		return fmt.Errorf("nvidia-smi failed after install: %w", err)
-	} else {
-		fmt.Printf("  %s\n", strings.Split(string(out), "\n")[2])
-	}
-
-	return nil
+	// nvidia-smi failed — driver installed but kernel module not loaded (needs reboot)
+	fmt.Println("  GPU driver installed but kernel module not loaded.")
+	fmt.Println("  A reboot is required before GPU setup can continue.")
+	return ErrRebootRequired
 }
 
 func installContainerToolkit() error {
@@ -130,13 +197,9 @@ func installContainerToolkit() error {
 func configureContainerdNvidia() error {
 	fmt.Println("  Configuring K3s containerd for NVIDIA runtime ...")
 
-	// nvidia-ctk writes to /etc/containerd/conf.d/99-nvidia.toml by default.
-	// K3s needs a config template that imports from conf.d.
-	// We write the template FIRST, then run nvidia-ctk which writes to conf.d.
 	os.MkdirAll("/etc/containerd/conf.d", 0755)
 
 	// Run nvidia-ctk to write the NVIDIA runtime config to conf.d
-	// Don't use --config flag — let nvidia-ctk write to conf.d by default
 	cmd := exec.Command("nvidia-ctk", "runtime", "configure",
 		"--runtime=containerd",
 		"--set-as-default")
@@ -145,7 +208,7 @@ func configureContainerdNvidia() error {
 	}
 
 	// Create K3s containerd template that imports the nvidia config.
-	// This must be written AFTER nvidia-ctk so it doesn't get overwritten.
+	// Written AFTER nvidia-ctk so it doesn't get overwritten.
 	os.MkdirAll("/var/lib/rancher/k3s/agent/etc/containerd", 0755)
 	tmpl := `imports = ["/etc/containerd/conf.d/*.toml"]
 `
