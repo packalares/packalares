@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 
 	"github.com/packalares/packalares/pkg/installer/phases"
@@ -85,6 +87,8 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 	fmt.Println("  Packalares Installer")
 	fmt.Println()
 
+	printHardwareInfo()
+
 	opts.Username = prompt(reader, "  Username", opts.Username)
 	opts.Domain = prompt(reader, "  Domain", opts.Domain)
 
@@ -118,4 +122,70 @@ func prompt(reader *bufio.Reader, label, defaultVal string) string {
 		return defaultVal
 	}
 	return input
+}
+
+func printHardwareInfo() {
+	fmt.Println("  Hardware")
+	fmt.Println()
+
+	// CPU
+	if out, err := exec.Command("bash", "-c", `lscpu | grep "Model name" | sed 's/.*: *//'`).Output(); err == nil {
+		name := strings.TrimSpace(string(out))
+		if name != "" {
+			fmt.Printf("    CPU     %s (%d cores)\n", name, runtime.NumCPU())
+		}
+	}
+
+	// Memory
+	if out, err := exec.Command("bash", "-c", `free -h | awk '/^Mem:/{print $2}'`).Output(); err == nil {
+		mem := strings.TrimSpace(string(out))
+		if mem != "" {
+			fmt.Printf("    Memory  %s\n", mem)
+		}
+	}
+
+	// Storage
+	if out, err := exec.Command("bash", "-c", `df -h / | awk 'NR==2{print $2 " total, " $4 " free"}'`).Output(); err == nil {
+		disk := strings.TrimSpace(string(out))
+		if disk != "" {
+			fmt.Printf("    Disk    %s\n", disk)
+		}
+	}
+
+	// GPU
+	if phases.DetectGPU() {
+		fmt.Printf("    GPU     %s\n", phases.GetGPUName())
+	}
+
+	// NPU
+	if out, err := exec.Command("lspci").Output(); err == nil {
+		for _, line := range strings.Split(string(out), "\n") {
+			if strings.Contains(strings.ToLower(line), "npu") || strings.Contains(strings.ToLower(line), "processing accelerator") {
+				parts := strings.SplitN(line, ": ", 3)
+				if len(parts) >= 3 {
+					fmt.Printf("    NPU     %s\n", strings.TrimSpace(parts[2]))
+				}
+				break
+			}
+		}
+	}
+
+	// Network
+	if out, err := exec.Command("lspci").Output(); err == nil {
+		for _, line := range strings.Split(string(out), "\n") {
+			lower := strings.ToLower(line)
+			parts := strings.SplitN(line, ": ", 3)
+			if len(parts) < 3 {
+				continue
+			}
+			name := strings.TrimSpace(parts[2])
+			if strings.Contains(lower, "ethernet") {
+				fmt.Printf("    Net     %s\n", name)
+			} else if strings.Contains(lower, "network controller") || strings.Contains(lower, "wi-fi") {
+				fmt.Printf("    WiFi    %s\n", name)
+			}
+		}
+	}
+
+	fmt.Println()
 }

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -19,14 +20,18 @@ func DetectGPU() bool {
 
 // GetGPUName returns the NVIDIA GPU model name from lspci, or "Unknown NVIDIA GPU".
 func GetGPUName() string {
-	out, err := exec.Command("lspci").Output()
+	// Use lspci -nn for detailed names even without driver loaded
+	out, err := exec.Command("lspci", "-nn").Output()
 	if err != nil {
-		return "Unknown NVIDIA GPU"
+		// Fallback to plain lspci
+		out, err = exec.Command("lspci").Output()
+		if err != nil {
+			return "Unknown NVIDIA GPU"
+		}
 	}
 	for _, line := range strings.Split(string(out), "\n") {
 		lower := strings.ToLower(line)
-		if strings.Contains(lower, "nvidia") && strings.Contains(lower, "vga") {
-			// Format: "02:00.0 VGA compatible controller: NVIDIA Corporation Device 2c18 (rev a1)"
+		if strings.Contains(lower, "nvidia") && (strings.Contains(lower, "vga") || strings.Contains(lower, "3d controller")) {
 			parts := strings.SplitN(line, ": ", 3)
 			if len(parts) >= 3 {
 				return strings.TrimSpace(parts[2])
@@ -103,7 +108,14 @@ func installDriverCUDA() error {
 	fmt.Println("  Installing NVIDIA driver via CUDA repo (nvidia-open) ...")
 
 	ver := ubuntuVersionCode()
-	arch := getArch()
+	// NVIDIA repo uses x86_64/sbsa, not amd64/arm64
+	arch := runtime.GOARCH
+	switch arch {
+	case "amd64":
+		arch = "x86_64"
+	case "arm64":
+		arch = "sbsa"
+	}
 	url := fmt.Sprintf("https://developer.download.nvidia.com/compute/cuda/repos/ubuntu%s/%s/cuda-keyring_1.1-1_all.deb", ver, arch)
 
 	cmds := [][]string{
