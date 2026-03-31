@@ -31,6 +31,7 @@ var iamUserGVR = schema.GroupVersionResource{
 type K8sClient struct {
 	Clientset     kubernetes.Interface
 	DynamicClient dynamic.Interface
+	RestConfig    *rest.Config
 	Namespace     string
 	Username      string
 }
@@ -80,6 +81,7 @@ func NewK8sClient() (*K8sClient, error) {
 	return &K8sClient{
 		Clientset:     clientset,
 		DynamicClient: dynClient,
+		RestConfig:    config,
 		Namespace:     ns,
 		Username:      username,
 	}, nil

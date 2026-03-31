@@ -1,6 +1,7 @@
 package bfl
 
 import (
+	"bytes"
 	"context"
 	"crypto/x509"
 	"encoding/pem"
@@ -13,6 +14,7 @@ import (
 	"github.com/packalares/packalares/pkg/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/klog/v2"
 )
 
@@ -268,11 +270,12 @@ func (s *Server) getTailscaleIP(ctx context.Context) string {
 	ns := config.FrameworkNamespace()
 
 	// Try pod first
-	_, depErr := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, "tailscale", metav1.GetOptions{})
-	if depErr == nil {
-		out, err := exec.CommandContext(ctx, "kubectl", "exec", "deploy/tailscale", "-n", ns, "--",
-			"tailscale", "ip", "-4").Output()
-		if err == nil {
+	pods, podErr := s.K8s.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
+		LabelSelector: "app=tailscale",
+	})
+	if podErr == nil && len(pods.Items) > 0 && pods.Items[0].Status.Phase == corev1.PodRunning {
+		out := s.execInPod(ctx, pods.Items[0].Name, ns, "tailscale", []string{"tailscale", "ip", "-4"})
+		if len(out) > 0 {
 			ip := strings.TrimSpace(string(out))
 			if ip != "" {
 				return ip
@@ -296,22 +299,15 @@ func (s *Server) getTailscaleIP(ctx context.Context) string {
 func (s *Server) getTailscaleStatus(ctx context.Context) *TailscaleStatusResponse {
 	ns := config.FrameworkNamespace()
 
-	// Try pod first
+	// Find the tailscale pod
 	var statusJSON []byte
-	_, depErr := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, "tailscale", metav1.GetOptions{})
-	if depErr == nil {
-		out, err := exec.CommandContext(ctx, "kubectl", "exec", "deploy/tailscale", "-n", ns, "--",
-			"tailscale", "status", "--json").Output()
-		if err == nil {
-			statusJSON = out
-		}
-	}
-
-	// Try host if pod didn't work
-	if len(statusJSON) == 0 {
-		out, err := exec.CommandContext(ctx, "tailscale", "status", "--json").Output()
-		if err == nil {
-			statusJSON = out
+	pods, err := s.K8s.Clientset.CoreV1().Pods(ns).List(ctx, metav1.ListOptions{
+		LabelSelector: "app=tailscale",
+	})
+	if err == nil && len(pods.Items) > 0 {
+		pod := pods.Items[0]
+		if pod.Status.Phase == corev1.PodRunning {
+			statusJSON = s.execInPod(ctx, pod.Name, ns, "tailscale", []string{"tailscale", "status", "--json"})
 		}
 	}
 
@@ -320,6 +316,36 @@ func (s *Server) getTailscaleStatus(ctx context.Context) *TailscaleStatusRespons
 	}
 
 	return parseTailscaleStatus(statusJSON)
+}
+
+// execInPod runs a command inside a pod container via K8s API and returns stdout.
+func (s *Server) execInPod(ctx context.Context, podName, namespace, container string, command []string) []byte {
+	req := s.K8s.Clientset.CoreV1().RESTClient().Post().
+		Resource("pods").
+		Name(podName).
+		Namespace(namespace).
+		SubResource("exec").
+		Param("container", container).
+		Param("stdout", "true").
+		Param("stderr", "false")
+	for _, c := range command {
+		req.Param("command", c)
+	}
+
+	restExec, err := remotecommand.NewSPDYExecutor(s.K8s.RestConfig, "POST", req.URL())
+	if err != nil {
+		return nil
+	}
+
+	var stdout bytes.Buffer
+	err = restExec.StreamWithContext(ctx, remotecommand.StreamOptions{
+		Stdout: &stdout,
+	})
+	if err != nil {
+		return nil
+	}
+
+	return stdout.Bytes()
 }
 
 // getCustomDomain reads the custom domain from the packalares-network ConfigMap.
