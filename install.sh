@@ -244,7 +244,11 @@ run_install() {
         args+=("--tailscale-control-url" "$OLARES_TAILSCALE_CONTROL_URL")
     fi
 
-    packalares install "${args[@]}" < /dev/tty
+    if [ -t 0 ] || (exec 0</dev/tty) 2>/dev/null; then
+        packalares install "${args[@]}" < /dev/tty
+    else
+        packalares install "${args[@]}"
+    fi
 }
 
 # --- Activation ---
