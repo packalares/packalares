@@ -9,7 +9,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -597,9 +596,13 @@ func (s *Server) handleTailscaleSettings(w http.ResponseWriter, r *http.Request)
 			respondJSON(w, http.StatusOK, map[string]interface{}{"auth_key": "", "hostname": "packalares", "control_url": ""})
 			return
 		}
-		// Strip --login-server= prefix from extra-args to return clean URL
-		controlURL := string(secret.Data["extra-args"])
-		controlURL = strings.TrimPrefix(controlURL, "--login-server=")
+		// Extract --login-server= value from extra-args
+		controlURL := ""
+		for _, part := range strings.Fields(string(secret.Data["extra-args"])) {
+			if strings.HasPrefix(part, "--login-server=") {
+				controlURL = strings.TrimPrefix(part, "--login-server=")
+			}
+		}
 		respondJSON(w, http.StatusOK, map[string]interface{}{
 			"auth_key":    string(secret.Data["auth-key"]),
 			"hostname":    string(secret.Data["hostname"]),
@@ -617,10 +620,12 @@ func (s *Server) handleTailscaleSettings(w http.ResponseWriter, r *http.Request)
 			return
 		}
 
-		extraArgs := ""
+		var extraParts []string
+		extraParts = append(extraParts, "--accept-routes")
 		if req.ControlURL != "" {
-			extraArgs = "--login-server=" + req.ControlURL
+			extraParts = append(extraParts, "--login-server="+req.ControlURL)
 		}
+		extraArgs := strings.Join(extraParts, " ")
 		hostname := req.Hostname
 		if hostname == "" {
 			hostname = "packalares"
@@ -672,7 +677,14 @@ func (s *Server) handleTailscaleSettings(w http.ResponseWriter, r *http.Request)
 			}
 		} else {
 			// Restart to pick up new config
-			exec.CommandContext(ctx, "kubectl", "rollout", "restart", "deployment/tailscale", "-n", ns).Run()
+			dep, _ := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, "tailscale", metav1.GetOptions{})
+			if dep != nil {
+				if dep.Spec.Template.Annotations == nil {
+					dep.Spec.Template.Annotations = make(map[string]string)
+				}
+				dep.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
+				s.K8s.Clientset.AppsV1().Deployments(ns).Update(ctx, dep, metav1.UpdateOptions{})
+			}
 		}
 
 		// After deployment create/restart, regenerate cert with Tailscale IP

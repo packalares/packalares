@@ -81,7 +81,7 @@ type: Opaque
 stringData:
   auth-key: ""
   hostname: "packalares"
-  extra-args: ""
+  extra-args: "--accept-routes"
 ---
 # State secret — Tailscale stores its state here
 apiVersion: v1
