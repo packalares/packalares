@@ -112,7 +112,8 @@ type installModel struct {
 	reboot  bool
 
 	// Final error message for display
-	errMsg string
+	errMsg   string
+	password string // captured generated password
 }
 
 func newInstallModel(eventCh <-chan phases.PhaseEvent) installModel {
@@ -216,6 +217,10 @@ func (m *installModel) handlePhaseEvent(ev phases.PhaseEvent) []tea.Cmd {
 		m.updateViewportContent()
 
 	case phases.EventPhaseLog:
+		// Capture generated password
+		if strings.HasPrefix(ev.Message, "Generated admin password: ") {
+			m.password = strings.TrimPrefix(ev.Message, "Generated admin password: ")
+		}
 		m.logs = append(m.logs, ev.Message)
 		if len(m.logs) > m.maxLogLines {
 			m.logs = m.logs[len(m.logs)-m.maxLogLines:]
@@ -256,8 +261,10 @@ func (m *installModel) handlePhaseEvent(ev phases.PhaseEvent) []tea.Cmd {
 	case phases.EventInstallComplete:
 		m.done = true
 		cmds = append(cmds, m.progress.SetPercent(1.0))
-		// Don't quit yet — let the progress animation finish.
-		// The nil message from channel close will trigger quit.
+		// Quit after brief delay so progress bar animation completes
+		cmds = append(cmds, tea.Tick(500*time.Millisecond, func(time.Time) tea.Msg {
+			return tea.Quit()
+		}))
 	}
 
 	return cmds
@@ -424,6 +431,11 @@ func runInstallTUI(opts *phases.InstallOptions) error {
 	}
 
 	m := finalModel.(installModel)
+
+	// Print password after TUI exits (alt-screen restored)
+	if m.password != "" {
+		fmt.Printf("\n  Generated admin password: %s\n", m.password)
+	}
 
 	if m.reboot {
 		return phases.ErrRebootRequired
