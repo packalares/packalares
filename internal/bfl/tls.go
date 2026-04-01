@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/packalares/packalares/pkg/config"
+	nginxbuilder "github.com/packalares/packalares/pkg/nginx"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/tools/remotecommand"
@@ -186,53 +187,53 @@ func (s *Server) regenerateTLSCert(ctx context.Context, serverIP, tailscaleIP, z
 	return nil
 }
 
-// updateNginxServerName patches the proxy-config ConfigMap to update
-// the IP server block's server_name directive with the given list of IPs/hosts.
-func (s *Server) updateNginxServerName(ctx context.Context, names []string) error {
+// regenerateNginxConfig reads the template ConfigMap, replaces placeholders
+// with current values, writes the final config to proxy-config, and restarts proxy.
+func (s *Server) regenerateNginxConfig(ctx context.Context) error {
 	ns := config.FrameworkNamespace()
+
+	tmplCM, err := s.K8s.Clientset.CoreV1().ConfigMaps(ns).Get(ctx, "proxy-config-template", metav1.GetOptions{})
+	if err != nil {
+		return fmt.Errorf("get proxy-config-template: %w", err)
+	}
+
+	params := nginxbuilder.Params{
+		Zone:         config.UserZone(),
+		ServerIP:     s.getNodeIP(ctx),
+		TailscaleIP:  s.getTailscaleIP(ctx),
+		CustomDomain: s.getCustomDomain(ctx),
+		FrameworkNS:  config.FrameworkNamespace(),
+		UserNS:       config.UserNamespace(config.Username()),
+		Resolver:     getClusterDNS(),
+	}
+
+	finalData := make(map[string]string)
+	for key, tmpl := range tmplCM.Data {
+		finalData[key] = nginxbuilder.Build(tmpl, params)
+	}
 
 	cm, err := s.K8s.Clientset.CoreV1().ConfigMaps(ns).Get(ctx, "proxy-config", metav1.GetOptions{})
 	if err != nil {
 		return fmt.Errorf("get proxy-config: %w", err)
 	}
-
-	conf := cm.Data["nginx.conf"]
-	if conf == "" {
-		return fmt.Errorf("nginx.conf is empty in proxy-config ConfigMap")
-	}
-
-	// Find and replace the server_name line in the IP ACCESS server block.
-	// The IP block is the first server block (default_server).
-	// Look for: server_name <something>;  after "listen 443 ssl default_server"
-	idx := strings.Index(conf, "listen 443 ssl default_server")
-	if idx < 0 {
-		return fmt.Errorf("cannot find IP server block in nginx.conf")
-	}
-
-	// Find server_name after this point
-	remaining := conf[idx:]
-	snIdx := strings.Index(remaining, "server_name ")
-	if snIdx < 0 {
-		return fmt.Errorf("cannot find server_name in IP server block")
-	}
-
-	// Find the end of the server_name line (semicolon)
-	lineStart := idx + snIdx
-	endIdx := strings.Index(conf[lineStart:], ";")
-	if endIdx < 0 {
-		return fmt.Errorf("cannot find server_name terminator")
-	}
-
-	// Replace the server_name line
-	newServerName := "server_name " + strings.Join(names, " ")
-	conf = conf[:lineStart] + newServerName + conf[lineStart+endIdx:]
-
-	cm.Data["nginx.conf"] = conf
+	cm.Data = finalData
 	if _, err := s.K8s.Clientset.CoreV1().ConfigMaps(ns).Update(ctx, cm, metav1.UpdateOptions{}); err != nil {
 		return fmt.Errorf("update proxy-config: %w", err)
 	}
 
 	return nil
+}
+
+func getClusterDNS() string {
+	data, err := os.ReadFile("/etc/resolv.conf")
+	if err == nil {
+		for _, line := range strings.Split(string(data), "\n") {
+			if strings.HasPrefix(line, "nameserver ") {
+				return strings.TrimPrefix(line, "nameserver ")
+			}
+		}
+	}
+	return "10.233.0.10"
 }
 
 // restartProxy deletes proxy pods to trigger a reload with the new config/certs.
@@ -247,6 +248,39 @@ func (s *Server) restartProxy(ctx context.Context) {
 	}
 	for _, p := range pods.Items {
 		_ = s.K8s.Clientset.CoreV1().Pods(ns).Delete(ctx, p.Name, metav1.DeleteOptions{})
+	}
+}
+
+// setAuthCustomDomain updates the auth deployment's CUSTOM_DOMAIN env var.
+func (s *Server) setAuthCustomDomain(ctx context.Context, domain string) {
+	ns := config.FrameworkNamespace()
+	dep, err := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, "auth", metav1.GetOptions{})
+	if err != nil {
+		klog.Warningf("get auth deployment: %v", err)
+		return
+	}
+
+	// Update or add CUSTOM_DOMAIN env var
+	found := false
+	for i, env := range dep.Spec.Template.Spec.Containers[0].Env {
+		if env.Name == "CUSTOM_DOMAIN" {
+			dep.Spec.Template.Spec.Containers[0].Env[i].Value = domain
+			found = true
+			break
+		}
+	}
+	if !found {
+		dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env,
+			corev1.EnvVar{Name: "CUSTOM_DOMAIN", Value: domain})
+	}
+
+	if dep.Spec.Template.Annotations == nil {
+		dep.Spec.Template.Annotations = make(map[string]string)
+	}
+	dep.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
+
+	if _, err := s.K8s.Clientset.AppsV1().Deployments(ns).Update(ctx, dep, metav1.UpdateOptions{}); err != nil {
+		klog.Warningf("update auth deployment: %v", err)
 	}
 }
 

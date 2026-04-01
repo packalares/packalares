@@ -14,6 +14,7 @@ import (
 
 	"github.com/packalares/packalares/deploy"
 	"github.com/packalares/packalares/pkg/config"
+	nginxbuilder "github.com/packalares/packalares/pkg/nginx"
 )
 
 func kubectlApply(yamlContent string) error {
@@ -177,6 +178,101 @@ func deployPlatformCharts(opts *InstallOptions, w io.Writer) error {
 	return nil
 }
 
+// deployProxyConfig creates proxy-config-template and proxy-config ConfigMaps,
+// then applies the proxy DaemonSet.
+func deployProxyConfig(opts *InstallOptions, w io.Writer) error {
+	ns := config.FrameworkNamespace()
+
+	// Read template files from embed
+	templateFiles := map[string]string{
+		"nginx.conf": "proxy/nginx.conf.tmpl",
+	}
+	includeFiles := []string{
+		"proxy/includes/upstreams.conf",
+		"proxy/includes/auth-subrequest.conf",
+		"proxy/includes/public-api.conf",
+		"proxy/includes/protected-api.conf",
+		"proxy/includes/websocket.conf",
+		"proxy/includes/static-assets.conf",
+		"proxy/includes/cors.conf",
+	}
+
+	// Build template data (raw templates with placeholders)
+	tmplData := make(map[string]string)
+	for key, path := range templateFiles {
+		data, err := deploy.Manifests.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", path, err)
+		}
+		tmplData[key] = string(data)
+	}
+	for _, path := range includeFiles {
+		data, err := deploy.Manifests.ReadFile(path)
+		if err != nil {
+			return fmt.Errorf("read %s: %w", path, err)
+		}
+		// Key is the filename without path prefix
+		key := strings.TrimPrefix(path, "proxy/includes/")
+		tmplData["includes/"+key] = string(data)
+	}
+
+	// Create proxy-config-template ConfigMap (raw templates)
+	fmt.Fprintln(w, "  Creating proxy-config-template ...")
+	tmplYAML := buildConfigMapYAML("proxy-config-template", ns, tmplData)
+	if err := kubectlApply(tmplYAML); err != nil {
+		return fmt.Errorf("apply proxy-config-template: %w", err)
+	}
+
+	// Build final config using nginx builder
+	params := nginxbuilder.Params{
+		Zone:        config.UserZone(),
+		ServerIP:    os.Getenv("SERVER_IP"),
+		FrameworkNS: config.FrameworkNamespace(),
+		UserNS:      config.UserNamespace(opts.Username),
+		Resolver:    getInstallerClusterDNS(),
+	}
+
+	finalData := make(map[string]string)
+	for key, tmpl := range tmplData {
+		finalData[key] = nginxbuilder.Build(tmpl, params)
+	}
+
+	// Create proxy-config ConfigMap (final, for nginx to use)
+	fmt.Fprintln(w, "  Creating proxy-config ...")
+	finalYAML := buildConfigMapYAML("proxy-config", ns, finalData)
+	if err := kubectlApply(finalYAML); err != nil {
+		return fmt.Errorf("apply proxy-config: %w", err)
+	}
+
+	// Apply the proxy DaemonSet
+	fmt.Fprintln(w, "  Deploying proxy ...")
+	return applyManifestFile("deploy/proxy/proxy-deployment.yaml", opts)
+}
+
+// buildConfigMapYAML generates a ConfigMap YAML string from a map of key→value.
+func buildConfigMapYAML(name, namespace string, data map[string]string) string {
+	var sb strings.Builder
+	sb.WriteString("apiVersion: v1\nkind: ConfigMap\nmetadata:\n")
+	sb.WriteString(fmt.Sprintf("  name: %s\n  namespace: %s\n", name, namespace))
+	sb.WriteString("data:\n")
+	for key, value := range data {
+		sb.WriteString(fmt.Sprintf("  %s: |\n", key))
+		for _, line := range strings.Split(value, "\n") {
+			sb.WriteString("    " + line + "\n")
+		}
+	}
+	return sb.String()
+}
+
+func getInstallerClusterDNS() string {
+	out, err := exec.Command("kubectl", "get", "svc", "-n", "kube-system", "kube-dns",
+		"-o", "jsonpath={.spec.clusterIP}").Output()
+	if err == nil && len(out) > 0 {
+		return strings.TrimSpace(string(out))
+	}
+	return "10.233.0.10"
+}
+
 func deployFrameworkCharts(opts *InstallOptions, w io.Writer) error {
 	// Generate hostctl token if not already set
 	if os.Getenv("HOSTCTL_TOKEN") == "" {
@@ -200,7 +296,6 @@ func deployFrameworkCharts(opts *InstallOptions, w io.Writer) error {
 		"deploy/framework/samba/samba-server.yaml",
 		"deploy/framework/tailscale.yaml",
 		"deploy/framework/mdns.yaml",
-		"deploy/proxy/proxy-deployment.yaml",
 	}
 
 	for _, path := range manifests {
@@ -215,6 +310,12 @@ func deployFrameworkCharts(opts *InstallOptions, w io.Writer) error {
 			return fmt.Errorf("deploy %s: %w", name, err)
 		}
 	}
+
+	// Deploy proxy (template ConfigMaps + DaemonSet)
+	if err := deployProxyConfig(opts, w); err != nil {
+		return fmt.Errorf("deploy proxy: %w", err)
+	}
+
 	return nil
 }
 

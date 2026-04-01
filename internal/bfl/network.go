@@ -182,12 +182,13 @@ func (s *Server) handleCustomDomain(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Update nginx server_name in the IP block
-	names := buildServerNames(serverIP, tailscaleIP, req.Domain)
-	if err := s.updateNginxServerName(ctx, names); err != nil {
-		klog.Warningf("update nginx server_name: %v", err)
-		// Non-fatal — cert is already updated
+	// Regenerate nginx config from template with new domain
+	if err := s.regenerateNginxConfig(ctx); err != nil {
+		klog.Warningf("regenerate nginx config: %v", err)
 	}
+
+	// Set CUSTOM_DOMAIN env var on auth deployment
+	s.setAuthCustomDomain(ctx, req.Domain)
 
 	// Restart proxy to pick up new cert and config
 	go s.restartProxy(context.Background())
@@ -196,23 +197,6 @@ func (s *Server) handleCustomDomain(w http.ResponseWriter, r *http.Request) {
 	respondSuccess(w)
 }
 
-// buildServerNames returns the list of server_name values for the IP server block.
-func buildServerNames(serverIP, tailscaleIP, customDomain string) []string {
-	var names []string
-	if serverIP != "" {
-		names = append(names, serverIP)
-	}
-	if tailscaleIP != "" {
-		names = append(names, tailscaleIP)
-	}
-	if customDomain != "" {
-		names = append(names, customDomain, "*."+customDomain)
-	}
-	if len(names) == 0 {
-		names = append(names, "_")
-	}
-	return names
-}
 
 // ---------------------------------------------------------------------------
 // Tailscale enable/disable hooks for cert regeneration
@@ -259,9 +243,8 @@ func (s *Server) afterTailscaleEnabled(ctx context.Context) {
 		return
 	}
 
-	names := buildServerNames(serverIP, tsIP, customDomain)
-	if err := s.updateNginxServerName(ctx, names); err != nil {
-		klog.Errorf("post-tailscale nginx update: %v", err)
+	if err := s.regenerateNginxConfig(ctx); err != nil {
+		klog.Errorf("post-tailscale nginx regen: %v", err)
 	}
 
 	s.restartProxy(ctx)
@@ -289,9 +272,8 @@ func (s *Server) afterTailscaleDisabled(ctx context.Context) {
 		return
 	}
 
-	names := buildServerNames(serverIP, "", customDomain)
-	if err := s.updateNginxServerName(ctx, names); err != nil {
-		klog.Errorf("post-tailscale-disable nginx update: %v", err)
+	if err := s.regenerateNginxConfig(ctx); err != nil {
+		klog.Errorf("post-tailscale-disable nginx regen: %v", err)
 	}
 
 	s.restartProxy(ctx)

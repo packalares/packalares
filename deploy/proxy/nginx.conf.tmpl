@@ -1,0 +1,160 @@
+events { worker_connections 1024; }
+http {
+  include /etc/nginx/mime.types;
+  default_type application/octet-stream;
+  map $http_upgrade $connection_upgrade { default upgrade; "" close; }
+  resolver {{RESOLVER}} valid=30s ipv6=off;
+
+  add_header X-Content-Type-Options "nosniff" always;
+  add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+  # Shared SSL (applied to all server blocks)
+  ssl_certificate /etc/tls/tls.crt;
+  ssl_certificate_key /etc/tls/tls.key;
+  ssl_protocols TLSv1.2 TLSv1.3;
+
+  {{REDIRECT_MAPS}}
+
+  map $http_origin $cors_origin {
+    default "";
+    {{CORS_ENTRIES}}
+  }
+
+  # ═══ IP ACCESS ═══
+  server {
+    listen 443 ssl default_server;
+    server_name {{SERVER_NAMES_IP}};
+
+    include /etc/nginx/includes/upstreams.conf;
+    include /etc/nginx/includes/auth-subrequest.conf;
+    error_page 401 = @login_redirect;
+    location @login_redirect { return 302 /login?rd=$request_uri; }
+
+    include /etc/nginx/includes/public-api.conf;
+    include /etc/nginx/includes/protected-api.conf;
+    include /etc/nginx/includes/websocket.conf;
+    include /etc/nginx/includes/static-assets.conf;
+
+    location = /ca.crt { alias /etc/ca/ca.crt; default_type application/x-x509-ca-cert; }
+    location /login  { proxy_pass http://$desktop_up:80; }
+    location /wizard { proxy_pass http://$desktop_up:80; }
+    location = / { auth_request /_auth; return 302 /desktop; }
+
+    location ~ ^/apps/([a-z0-9][a-z0-9-]*)(/.*)?$ {
+      auth_request /_auth;
+      rewrite ^/apps/[^/]+(/.*)$ $1 break;
+      rewrite ^/apps/[^/]+$ / break;
+      proxy_pass http://$ss_up:8080;
+      proxy_set_header Host $1.{{ZONE}};
+      proxy_set_header X-Real-IP $remote_addr;
+      proxy_http_version 1.1;
+      proxy_set_header Upgrade $http_upgrade;
+      proxy_set_header Connection $connection_upgrade;
+    }
+
+    location / { auth_request /_auth; proxy_pass http://$desktop_up:80; proxy_set_header Host $host; }
+  }
+
+  # ═══ ZONE ACCESS ═══
+  server {
+    listen 443 ssl;
+    server_name {{SERVER_NAMES_ZONE}};
+
+    include /etc/nginx/includes/upstreams.conf;
+    include /etc/nginx/includes/auth-subrequest.conf;
+    error_page 401 = @to_auth;
+    location @to_auth { return 302 https://{{AUTH_REDIRECT}}; }
+
+    location = / {
+      auth_request /_auth;
+      error_page 401 = @to_auth;
+      return 302 https://{{DESKTOP_REDIRECT}};
+    }
+    location / {
+      auth_request /_auth;
+      error_page 401 = @to_auth;
+      return 302 https://{{DESKTOP_REDIRECT}}$request_uri;
+    }
+  }
+
+  # ═══ API SUBDOMAIN ═══
+  server {
+    listen 443 ssl;
+    server_name {{SERVER_NAMES_API}};
+
+    include /etc/nginx/includes/upstreams.conf;
+    include /etc/nginx/includes/cors.conf;
+    include /etc/nginx/includes/auth-subrequest.conf;
+    error_page 401 = @api_auth_error;
+    location @api_auth_error { return 401 '{"error":"unauthorized"}'; }
+
+    include /etc/nginx/includes/public-api.conf;
+    include /etc/nginx/includes/protected-api.conf;
+    include /etc/nginx/includes/websocket.conf;
+  }
+
+  # ═══ DESKTOP SUBDOMAIN ═══
+  server {
+    listen 443 ssl;
+    server_name {{SERVER_NAMES_DESKTOP}};
+
+    include /etc/nginx/includes/upstreams.conf;
+    include /etc/nginx/includes/auth-subrequest.conf;
+    error_page 401 = @lr;
+    location @lr { return 302 https://{{AUTH_REDIRECT}}/login?rd=https://$host$request_uri; }
+
+    include /etc/nginx/includes/static-assets.conf;
+    location / { auth_request /_auth; proxy_pass http://$desktop_up:80; }
+  }
+
+  # ═══ SYSTEM APP SUBDOMAINS ═══
+  server {
+    listen 443 ssl;
+    server_name {{SERVER_NAMES_SYSAPPS}};
+
+    include /etc/nginx/includes/upstreams.conf;
+    include /etc/nginx/includes/auth-subrequest.conf;
+    error_page 401 = @lr;
+    location @lr { return 302 https://{{AUTH_REDIRECT}}/login?rd=https://$host$request_uri; }
+
+    include /etc/nginx/includes/protected-api.conf;
+    include /etc/nginx/includes/public-api.conf;
+    include /etc/nginx/includes/websocket.conf;
+    include /etc/nginx/includes/static-assets.conf;
+    location / { auth_request /_auth; proxy_pass http://$desktop_up:80; }
+  }
+
+  # ═══ AUTH SUBDOMAIN ═══
+  server {
+    listen 443 ssl;
+    server_name {{SERVER_NAMES_AUTH}};
+
+    include /etc/nginx/includes/upstreams.conf;
+    include /etc/nginx/includes/auth-subrequest.conf;
+    include /etc/nginx/includes/static-assets.conf;
+
+    location = / { rewrite ^ /login last; }
+    location /login { proxy_pass http://$desktop_up:80; }
+    location /api/auth/ { proxy_pass http://$auth_up:9091; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+    location /api/user/info { proxy_pass http://$bfl_up:80/bfl/backend/v1/user-info; proxy_set_header Host $host; }
+    location /bfl/info/ { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; }
+    location /bfl/iam/ { proxy_pass http://$bfl_up:80; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
+    location = /ca.crt { alias /etc/ca/ca.crt; default_type application/x-x509-ca-cert; }
+    location / { proxy_pass http://$desktop_up:80; }
+  }
+
+  # ═══ INSTALLED APPS — wildcard ═══
+  server {
+    listen 443 ssl;
+    server_name {{SERVER_NAMES_WILDCARD}};
+
+    include /etc/nginx/includes/upstreams.conf;
+    include /etc/nginx/includes/auth-subrequest.conf;
+    error_page 401 = @lr;
+    location @lr { return 302 https://{{AUTH_REDIRECT}}/login?rd=https://$host$request_uri; }
+
+    location / { auth_request /_auth; proxy_pass http://$ss_up:8080; proxy_http_version 1.1; proxy_set_header Upgrade $http_upgrade; proxy_set_header Connection $connection_upgrade; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; proxy_buffering off; }
+  }
+
+  server { listen 80; server_name _; return 301 https://$host$request_uri; }
+}

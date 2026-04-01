@@ -549,29 +549,18 @@ func (s *Server) isDomainPublic(domain string) bool {
 }
 
 // cookieDomainForRequest returns the appropriate cookie domain.
-// If accessed via IP, returns "" (no domain = origin-only cookie).
-// If accessed via hostname, returns the UserZone for subdomain sharing.
 func (s *Server) cookieDomainForRequest(r *http.Request) string {
 	host := r.Host
 	if h, _, err := net.SplitHostPort(host); err == nil {
 		host = h
 	}
-	// If the request comes via IP, don't set cookie domain
 	if net.ParseIP(host) != nil {
 		return ""
 	}
-	// If accessed via the internal zone, use zone as cookie domain
-	if strings.HasSuffix(host, s.cfg.UserZone) || host == s.cfg.UserZone {
-		return s.cfg.UserZone
+	if s.cfg.CustomDomain != "" && (host == s.cfg.CustomDomain || strings.HasSuffix(host, "."+s.cfg.CustomDomain)) {
+		return s.cfg.CustomDomain
 	}
-	// Custom domain — extract base domain (strip first subdomain if present)
-	// e.g. auth.olares.bitbot.ro → olares.bitbot.ro
-	parts := strings.SplitN(host, ".", 2)
-	if len(parts) == 2 && strings.Contains(parts[1], ".") {
-		return parts[1]
-	}
-	// Top-level custom domain (e.g. olares.bitbot.ro)
-	return host
+	return s.cfg.UserZone
 }
 
 func (s *Server) sendUnauthorizedRedirect(w http.ResponseWriter, r *http.Request) {

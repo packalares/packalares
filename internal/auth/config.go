@@ -31,9 +31,11 @@ type Config struct {
 	// ListenAddr is the address to listen on (default ":9091").
 	ListenAddr string
 
-	// UserZone is the user's domain zone (e.g., "alice.packalares.local").
-	// Session cookies are scoped to this domain.
+	// UserZone is the user's domain zone.
 	UserZone string
+
+	// CustomDomain is an optional custom domain for external access.
+	CustomDomain string
 
 	// JWTSecret is the HMAC key for signing JWT tokens (HS512).
 	JWTSecret string
@@ -111,6 +113,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if v := get("USER_ZONE"); v != "" {
 		cfg.UserZone = v
+	}
+	if v := get("CUSTOM_DOMAIN"); v != "" {
+		cfg.CustomDomain = v
 	}
 	if v := get("JWT_SECRET"); v != "" {
 		cfg.JWTSecret = v
