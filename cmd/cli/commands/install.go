@@ -153,7 +153,17 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 		}
 	}
 
-	// --- Static IP ---
+	// --- WiFi connect (before static IP, so IP is correct) ---
+	if opts.NetworkType == "wifi" && opts.WifiSSID != "" {
+		fmt.Println()
+		if err := phases.ConnectWifi(opts.WifiSSID, opts.WifiPassword, os.Stdout); err != nil {
+			fmt.Printf("  WiFi connection failed: %v\n", err)
+			fmt.Println("  Continuing with Ethernet.")
+			opts.NetworkType = "ethernet"
+		}
+	}
+
+	// --- Static IP (after WiFi so we have the right IP) ---
 	currentIP := phases.GetCurrentIP()
 	if currentIP != "" {
 		fmt.Println()
@@ -164,39 +174,31 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 		}
 	}
 
-	// --- WiFi connect ---
-	if opts.NetworkType == "wifi" && opts.WifiSSID != "" {
+	// --- WiFi reboot (if WiFi connected, reboot to finalize) ---
+	if opts.NetworkType == "wifi" {
+		newIP := phases.GetCurrentIP()
 		fmt.Println()
-		if err := phases.ConnectWifi(opts.WifiSSID, opts.WifiPassword, os.Stdout); err != nil {
-			fmt.Printf("  WiFi connection failed: %v\n", err)
-			fmt.Println("  Continuing with Ethernet.")
-			opts.NetworkType = "ethernet"
-		} else {
-			newIP := phases.GetCurrentIP()
-			fmt.Println()
-			fmt.Printf("  WiFi connected. New IP: %s\n", newIP)
-			fmt.Println()
-			fmt.Println("  A reboot is needed to complete the network switch.")
-			fmt.Printf("  After reboot, SSH to %s and login as root.\n", newIP)
-			fmt.Println("  The installer will resume automatically.")
-			fmt.Println()
+		fmt.Printf("  WiFi connected. IP: %s\n", newIP)
+		fmt.Println()
+		fmt.Println("  A reboot is needed to complete the network switch.")
+		fmt.Printf("  After reboot, SSH to %s and login as root.\n", newIP)
+		fmt.Println("  The installer will resume automatically.")
+		fmt.Println()
 
-			// Save state so install resumes after reboot
-			state := &phases.InstallState{
-				Options: *opts,
-			}
-			if err := phases.SaveInstallStatePublic(state); err != nil {
-				fmt.Printf("  Warning: could not save state: %v\n", err)
-			}
-			if err := phases.CreateLoginHook(); err != nil {
-				fmt.Printf("  Warning: could not create login hook: %v\n", err)
-			}
-
-			prompt(reader, "  Press Enter to reboot", "")
-
-			exec.Command("reboot").Run()
-			os.Exit(0)
+		state := &phases.InstallState{
+			Options: *opts,
 		}
+		if err := phases.SaveInstallStatePublic(state); err != nil {
+			fmt.Printf("  Warning: could not save state: %v\n", err)
+		}
+		if err := phases.CreateLoginHook(); err != nil {
+			fmt.Printf("  Warning: could not create login hook: %v\n", err)
+		}
+
+		prompt(reader, "  Press Enter to reboot", "")
+
+		exec.Command("reboot").Run()
+		os.Exit(0)
 	}
 
 	fmt.Println()
