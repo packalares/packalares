@@ -231,8 +231,9 @@ func RunInstallWithEvents(opts *InstallOptions, events chan<- PhaseEvent) error 
 		}
 	}
 
-	// All phases done — clean up state file.
+	// All phases done — clean up state file and login hook.
 	removeInstallState()
+	os.Remove("/etc/profile.d/packalares-resume.sh")
 
 	events <- PhaseEvent{
 		Type:  EventInstallComplete,
@@ -284,6 +285,9 @@ func RunInstall(opts *InstallOptions) error {
 
 func buildPhases(opts *InstallOptions, arch string) []phase {
 	return []phase{
+		{"Configure system", func(w io.Writer) error {
+			return configureSystem(opts, w)
+		}},
 		{"Precheck", func(w io.Writer) error {
 			if opts.SkipPrecheck {
 				fmt.Fprintln(w, "Skipping precheck (--skip-precheck)")

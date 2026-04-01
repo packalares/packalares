@@ -1391,27 +1391,18 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request, use
 		return
 	}
 
-	// Update wizard status if not completed
 	user, err := s.K8s.GetUser(ctx, userName)
 	if err != nil {
 		respondError(w, fmt.Sprintf("reset password: get user: %v", err))
 		return
 	}
+	isWizardSetup := !IsWizardComplete(user)
 
-	if !IsWizardComplete(user) {
-		SetUserAnnotation(user, AnnoWizardStatus, string(Completed))
-		if err := s.K8s.UpdateUser(ctx, user); err != nil {
-			respondError(w, fmt.Sprintf("reset password: update user: %v", err))
-			return
-		}
-	}
-
-	// Change password via LDAP — bind as the user with their current password
+	// Connect to LDAP
 	lldapHost := os.Getenv("LLDAP_HOST")
 	if lldapHost == "" {
 		lldapHost = "lldap-svc." + config.PlatformNamespace()
 	}
-
 	ldapAddr := lldapHost + ":3890"
 	conn, err := ldapv3.Dial("tcp", ldapAddr)
 	if err != nil {
@@ -1423,21 +1414,60 @@ func (s *Server) handleResetPassword(w http.ResponseWriter, r *http.Request, use
 	baseDN := "dc=packalares,dc=local"
 	userDN := fmt.Sprintf("uid=%s,ou=people,%s", ldapv3.EscapeFilter(userName), baseDN)
 
-	// Bind as the user — verifies current password
-	if err := conn.Bind(userDN, pr.CurrentPassword); err != nil {
-		respondError(w, "reset password: current password is incorrect")
-		return
+	if isWizardSetup {
+		// Initial setup — user doesn't know generated password.
+		// Bind as admin and set password directly.
+		adminPassword := os.Getenv("LLDAP_ADMIN_PASSWORD")
+		adminDN := fmt.Sprintf("uid=admin,ou=people,%s", baseDN)
+		if err := conn.Bind(adminDN, adminPassword); err != nil {
+			respondError(w, fmt.Sprintf("reset password: admin bind: %v", err))
+			return
+		}
+
+		pwReq := ldapv3.NewPasswordModifyRequest(userDN, "", pr.Password)
+		if _, err := conn.PasswordModify(pwReq); err != nil {
+			respondError(w, fmt.Sprintf("reset password: ldap modify: %v", err))
+			return
+		}
+
+		// Mark wizard complete after password is set
+		SetUserAnnotation(user, AnnoWizardStatus, string(Completed))
+		if err := s.K8s.UpdateUser(ctx, user); err != nil {
+			klog.Warningf("reset password: update wizard status: %v", err)
+		}
+
+		// Delete wizard deployment and service
+		go s.deleteWizard(context.Background())
+
+		klog.Infof("wizard password set for user %s", userName)
+	} else {
+		// Post-setup — require current password
+		if err := conn.Bind(userDN, pr.CurrentPassword); err != nil {
+			respondError(w, "reset password: current password is incorrect")
+			return
+		}
+
+		pwReq := ldapv3.NewPasswordModifyRequest(userDN, pr.CurrentPassword, pr.Password)
+		if _, err := conn.PasswordModify(pwReq); err != nil {
+			respondError(w, fmt.Sprintf("reset password: ldap modify: %v", err))
+			return
+		}
+
+		klog.Infof("password changed for user %s", userName)
 	}
 
-	// Change to new password
-	pwReq := ldapv3.NewPasswordModifyRequest(userDN, pr.CurrentPassword, pr.Password)
-	if _, err := conn.PasswordModify(pwReq); err != nil {
-		respondError(w, fmt.Sprintf("reset password: ldap modify: %v", err))
-		return
-	}
-
-	klog.Infof("password reset for user %s", userName)
 	respondSuccess(w)
+}
+
+func (s *Server) deleteWizard(ctx context.Context) {
+	ns := config.UserNamespace(config.Username())
+	if err := s.K8s.Clientset.AppsV1().Deployments(ns).Delete(ctx, "wizard", metav1.DeleteOptions{}); err != nil {
+		klog.Warningf("delete wizard deployment: %v", err)
+	}
+	if err := s.K8s.Clientset.CoreV1().Services(ns).Delete(ctx, "wizard-svc", metav1.DeleteOptions{}); err != nil {
+		klog.Warningf("delete wizard service: %v", err)
+	}
+	klog.Info("wizard deployment and service deleted")
 }
 
 // ---------------------------------------------------------------------------

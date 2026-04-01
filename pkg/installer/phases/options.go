@@ -54,6 +54,12 @@ type InstallOptions struct {
 	TailscaleControlURL string
 	SkipPrecheck        bool
 	GPUMethod           string
+	Hostname            string
+	Timezone            string
+	NetworkType         string // "ethernet" or "wifi"
+	WifiSSID            string
+	WifiPassword        string
+	StaticIP            bool
 }
 
 func (o *InstallOptions) applyDefaults() {
@@ -227,4 +233,15 @@ func saveInstallState(st *InstallState) error {
 // removeInstallState deletes the state file.
 func removeInstallState() {
 	os.Remove(StateFilePath)
+}
+
+// SaveInstallStatePublic is the exported version of saveInstallState for use by CLI prompts.
+func SaveInstallStatePublic(st *InstallState) error {
+	return saveInstallState(st)
+}
+
+// HasInstallState returns true if a state file exists (resuming install).
+func HasInstallState() bool {
+	_, err := os.Stat(StateFilePath)
+	return err == nil
 }

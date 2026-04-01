@@ -38,8 +38,11 @@ func newInstallCmd() *cobra.Command {
  14. Deploy KubeBlocks
  15. Wait for all pods to be ready`,
 		Run: func(cmd *cobra.Command, args []string) {
-			// Interactive prompts if username/domain not passed as flags
-			if !cmd.Flags().Changed("username") && !cmd.Flags().Changed("domain") {
+			// Skip prompts if resuming from state file (e.g. after WiFi reboot)
+			resuming := phases.HasInstallState()
+
+			// Interactive prompts if not resuming and no flags passed
+			if !resuming && !cmd.Flags().Changed("username") && !cmd.Flags().Changed("domain") {
 				promptInstallOptions(&opts)
 			}
 
@@ -82,7 +85,7 @@ func newInstallCmd() *cobra.Command {
 func promptInstallOptions(opts *phases.InstallOptions) {
 	reader := bufio.NewReader(os.Stdin)
 
-	// Apply defaults first so we can show them
+	// Apply defaults first
 	if opts.Username == "" {
 		opts.Username = "admin"
 	}
@@ -99,10 +102,22 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 
 	printHardwareInfo()
 
+	// --- Account ---
 	opts.Username = prompt(reader, "  Username", opts.Username)
 	opts.Domain = prompt(reader, "  Domain", opts.Domain)
 
-	// GPU prompt — only if GPU detected and not already set via flag
+	// --- System ---
+	fmt.Println()
+	currentHostname, _ := os.Hostname()
+	if currentHostname == "" {
+		currentHostname = "packalares"
+	}
+	opts.Hostname = prompt(reader, "  Hostname", currentHostname)
+
+	currentTZ := getCurrentTimezone()
+	opts.Timezone = prompt(reader, "  Timezone", currentTZ)
+
+	// --- GPU ---
 	if opts.GPUMethod == "" && phases.DetectGPU() {
 		gpuName := phases.GetGPUName()
 		fmt.Println()
@@ -121,7 +136,116 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 		}
 	}
 
+	// --- Network ---
+	if phases.DetectWifi() {
+		fmt.Println()
+		fmt.Println("  Network connection:")
+		fmt.Println("    1) Ethernet (keep current)")
+		fmt.Println("    2) WiFi")
+		fmt.Println()
+		netChoice := prompt(reader, "  Select [1/2]", "1")
+		if netChoice == "2" {
+			opts.NetworkType = "wifi"
+			promptWifi(reader, opts)
+		} else {
+			opts.NetworkType = "ethernet"
+		}
+	}
+
+	// --- Static IP ---
+	currentIP := phases.GetCurrentIP()
+	if currentIP != "" {
+		fmt.Println()
+		fmt.Printf("  Current IP: %s\n", currentIP)
+		staticChoice := prompt(reader, "  Configure static IP? [y/n]", "n")
+		if staticChoice == "y" || staticChoice == "Y" {
+			opts.StaticIP = true
+		}
+	}
+
+	// --- WiFi reboot ---
+	if opts.NetworkType == "wifi" && opts.WifiSSID != "" {
+		fmt.Println()
+		fmt.Println("  Connecting to WiFi ...")
+		if err := phases.ConnectWifi(opts.WifiSSID, opts.WifiPassword, os.Stdout); err != nil {
+			fmt.Printf("  WiFi connection failed: %v\n", err)
+			fmt.Println("  Continuing with Ethernet.")
+			opts.NetworkType = "ethernet"
+		} else {
+			newIP := phases.GetCurrentIP()
+			fmt.Println()
+			fmt.Printf("  WiFi connected. New IP: %s\n", newIP)
+			fmt.Println()
+			fmt.Println("  A reboot is needed to complete the network switch.")
+			fmt.Printf("  After reboot, SSH to %s and login as root.\n", newIP)
+			fmt.Println("  The installer will resume automatically.")
+			fmt.Println()
+
+			// Save state so install resumes after reboot
+			state := &phases.InstallState{
+				Options: *opts,
+			}
+			if err := phases.SaveInstallStatePublic(state); err != nil {
+				fmt.Printf("  Warning: could not save state: %v\n", err)
+			}
+			if err := phases.CreateLoginHook(); err != nil {
+				fmt.Printf("  Warning: could not create login hook: %v\n", err)
+			}
+
+			prompt(reader, "  Press Enter to reboot", "")
+
+			exec.Command("reboot").Run()
+			os.Exit(0)
+		}
+	}
+
 	fmt.Println()
+}
+
+func promptWifi(reader *bufio.Reader, opts *phases.InstallOptions) {
+	fmt.Println()
+	fmt.Println("  Scanning WiFi networks ...")
+	networks, err := phases.ScanWifiNetworks()
+	if err != nil || len(networks) == 0 {
+		fmt.Println("  No WiFi networks found.")
+		opts.NetworkType = "ethernet"
+		return
+	}
+
+	for i, n := range networks {
+		security := n.Security
+		if security == "" {
+			security = "Open"
+		}
+		fmt.Printf("    %d) %s (%s, signal: %s%%)\n", i+1, n.SSID, security, n.Signal)
+	}
+	fmt.Printf("    %d) Enter SSID manually\n", len(networks)+1)
+	fmt.Println()
+
+	choice := prompt(reader, "  Select network", "1")
+	idx := 0
+	fmt.Sscanf(choice, "%d", &idx)
+
+	if idx >= 1 && idx <= len(networks) {
+		opts.WifiSSID = networks[idx-1].SSID
+	} else {
+		opts.WifiSSID = prompt(reader, "  SSID", "")
+	}
+
+	if opts.WifiSSID != "" {
+		opts.WifiPassword = prompt(reader, "  Password", "")
+	}
+}
+
+func getCurrentTimezone() string {
+	out, err := exec.Command("timedatectl", "show", "--property=Timezone", "--value").Output()
+	if err == nil {
+		tz := strings.TrimSpace(string(out))
+		if tz != "" {
+			return tz
+		}
+	}
+	return "UTC"
 }
 
 func prompt(reader *bufio.Reader, label, defaultVal string) string {
