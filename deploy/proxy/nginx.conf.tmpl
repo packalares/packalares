@@ -103,6 +103,7 @@ http {
     error_page 401 = @lr;
     location @lr { return 302 https://{{AUTH_REDIRECT}}/login?rd=https://$host$request_uri; }
 
+    include /etc/nginx/includes/websocket.conf;
     include /etc/nginx/includes/static-assets.conf;
     location / { auth_request /_auth; proxy_pass http://$desktop_up:80; }
   }

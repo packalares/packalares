@@ -61,10 +61,6 @@ export function getDesktopUrl(): string {
 //   IP: wss://host/ws
 //   Subdomain: wss://api.zone/ws
 export function getWsUrl(): string {
-  const base = getApiBase();
-  if (base) {
-    return base.replace('https://', 'wss://') + '/ws';
-  }
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   return proto + '//' + window.location.host + '/ws';
 }
