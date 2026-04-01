@@ -179,7 +179,7 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 				continue
 			}
 		} else {
-			wifiIP := phases.GetCurrentIP()
+			wifiIP := phases.GetWifiIP()
 			fmt.Printf("  WiFi connected successfully. IP: %s\n", wifiIP)
 			break
 		}
@@ -198,7 +198,7 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 
 	// --- WiFi reboot (if WiFi connected, reboot to finalize) ---
 	if opts.NetworkType == "wifi" {
-		newIP := phases.GetCurrentIP()
+		newIP := phases.GetWifiIP()
 		fmt.Println()
 		fmt.Println("  A reboot is needed to complete the network switch.")
 		fmt.Printf("  After reboot, SSH to %s and login as root.\n", newIP)
