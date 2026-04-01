@@ -5,33 +5,8 @@
       <img class="desktop-bg" :src="wallpaper" />
     </div>
 
-    <!-- Daily Info: bottom-right time/date/stats (matching Olares DailyDescription) -->
-    <div class="daily-info">
-      <div class="daily-weather">
-        <div class="daily-time">{{ clockTime }}</div>
-        <div class="daily-date-block">
-          <p class="daily-week">{{ weekDay }}</p>
-          <p class="daily-date">{{ dateStr }}</p>
-        </div>
-      </div>
-      <div class="daily-stats">
-        <div class="stat-item" v-for="s in stats" :key="s.name">
-          <q-knob
-            readonly
-            :model-value="s.value"
-            size="24px"
-            font-size="80px"
-            :thickness="0.5"
-            :color="s.color"
-            track-color="grey-8"
-          />
-          <div class="stat-text">
-            <p class="text-uppercase">{{ s.name }}</p>
-            <p>{{ s.value }}%</p>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- Desktop Widgets -->
+    <DesktopWidgets />
 
     <!-- Dock Bar -->
     <div class="dock-bar glass">
@@ -270,7 +245,7 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { api } from 'boot/axios';
 import { useUserStore } from 'stores/user';
-import { useMonitorStore } from 'stores/monitor';
+import DesktopWidgets from 'src/components/DesktopWidgets.vue';
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -312,7 +287,6 @@ interface SavedWindow {
 // ─── Stores ──────────────────────────────────────────────────
 
 const userStore = useUserStore();
-const monitorStore = useMonitorStore();
 
 // ─── State ───────────────────────────────────────────────────
 
@@ -347,9 +321,6 @@ function handleSettingsMsg(data: any) {
 wpChannel.onmessage = (e) => handleSettingsMsg(e.data);
 window.addEventListener('message', (e) => handleSettingsMsg(e.data));
 
-const clockTime = ref('');
-const weekDay = ref('');
-const dateStr = ref('');
 
 // Resolve icon URL — on subdomain, /api/* paths need to go through the IP or API subdomain
 function resolveIconUrl(icon: string): string {
@@ -501,31 +472,6 @@ function restoreWindowState() {
 }
 
 // ─── Clock ───────────────────────────────────────────────────
-
-let clockInterval: ReturnType<typeof setInterval> | null = null;
-
-function updateClock() {
-  const now = new Date();
-  const h = now.getHours().toString().padStart(2, '0');
-  const m = now.getMinutes().toString().padStart(2, '0');
-  clockTime.value = `${h}:${m}`;
-
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  weekDay.value = days[now.getDay()];
-
-  const y = now.getFullYear();
-  const mo = (now.getMonth() + 1).toString().padStart(2, '0');
-  const d = now.getDate().toString().padStart(2, '0');
-  dateStr.value = `${y}/${mo}/${d}`;
-}
-
-// ─── Stats ───────────────────────────────────────────────────
-
-const stats = computed(() => [
-  { name: 'CPU', value: Math.round(monitorStore.cpuUsage || 0), color: 'light-blue-5' },
-  { name: 'MEM', value: monitorStore.memTotal ? Math.round((monitorStore.memUsed / monitorStore.memTotal) * 100) : 0, color: 'green-5' },
-  { name: 'DISK', value: monitorStore.diskTotal ? Math.round((monitorStore.diskUsed / monitorStore.diskTotal) * 100) : 0, color: 'orange-5' },
-]);
 
 // ─── Computed ────────────────────────────────────────────────
 
@@ -846,9 +792,6 @@ onMounted(async () => {
   const savedTheme = localStorage.getItem('packalares_theme') || 'dark';
   applyTheme(savedTheme);
 
-  updateClock();
-  clockInterval = setInterval(updateClock, 1000);
-
   window.addEventListener('keydown', onKeydown);
 
   await loadInit();
@@ -858,7 +801,6 @@ onMounted(async () => {
 });
 
 onUnmounted(() => {
-  if (clockInterval) clearInterval(clockInterval);
   if (saveTimer) clearTimeout(saveTimer);
   window.removeEventListener('keydown', onKeydown);
   document.removeEventListener('mousemove', onDragMove);
@@ -894,70 +836,6 @@ onUnmounted(() => {
   min-width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-/* ═══════════════════════════════════════════════════════════
-   DAILY INFO (bottom-right, matching Olares DailyDescription)
-   ═══════════════════════════════════════════════════════════ */
-.daily-info {
-  position: absolute;
-  bottom: 122px;
-  right: 165px;
-  z-index: 1;
-}
-.daily-weather {
-  display: flex;
-  height: 72px;
-}
-.daily-time {
-  font-size: 70px;
-  font-family: Roboto, sans-serif;
-  font-weight: 700;
-  color: #fff;
-  line-height: 72px;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
-}
-.daily-date-block {
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  padding-top: 14px;
-  margin-left: 14px;
-  p { margin: 0; }
-}
-.daily-week {
-  font-size: 20px;
-  font-family: Roboto, sans-serif;
-  font-weight: 700;
-  color: #fff;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
-}
-.daily-date {
-  font-size: 12px;
-  font-family: Roboto, sans-serif;
-  font-weight: 400;
-  color: #fff;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
-}
-.daily-stats {
-  display: flex;
-  margin-top: 15px;
-  gap: 16px;
-}
-.stat-item {
-  display: flex;
-  align-items: center;
-  opacity: 0.8;
-  p { margin: 0; }
-}
-.stat-text {
-  font-size: 12px;
-  font-family: Roboto, sans-serif;
-  font-weight: 400;
-  color: #fff;
-  line-height: 14px;
-  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.16);
-  margin-left: 8px;
 }
 
 /* ═══════════════════════════════════════════════════════════
