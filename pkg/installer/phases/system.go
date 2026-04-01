@@ -39,7 +39,25 @@ func configureSystem(opts *InstallOptions, w io.Writer) error {
 		}
 	}
 
+	// Wait for DNS to be ready (important after WiFi reboot)
+	waitForDNS(w)
+
 	return nil
+}
+
+// waitForDNS waits until DNS resolution works (systemd-resolved may take a moment after reboot).
+func waitForDNS(w io.Writer) {
+	for i := 0; i < 15; i++ {
+		if exec.Command("host", "-W", "2", "github.com").Run() == nil {
+			return
+		}
+		if i == 0 {
+			fmt.Fprint(w, "  Waiting for DNS ")
+		}
+		fmt.Fprint(w, ".")
+		time.Sleep(2 * time.Second)
+	}
+	fmt.Fprintln(w, " ready")
 }
 
 // --- Netplan handling ---
