@@ -25,6 +25,13 @@ export const useMonitorStore = defineStore('monitor', {
     powerGPU: 0,
     powerTotal: 0,
     fans: [] as Array<{ name: string; rpm: number }>,
+    gpuName: '',
+    gpuUtil: 0,
+    gpuMemUsed: 0,
+    gpuMemTotal: 0,
+    gpuTemp: 0,
+    gpuPowerDraw: 0,
+    gpuPowerLimit: 0,
     uptime: 0,
     load: [0, 0, 0],
     weather: {

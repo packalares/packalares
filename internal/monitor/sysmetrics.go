@@ -28,6 +28,7 @@ type SystemMetrics struct {
 	Power     PowerMetrics  `json:"power"`
 	Temps     TempMetrics   `json:"temps"`
 	Fans      FanMetrics    `json:"fans"`
+	GPU       *GPUMetrics   `json:"gpu,omitempty"`
 	Uptime    float64       `json:"uptime"`
 	Load      [3]float64    `json:"load"`
 	Hostname  string        `json:"hostname,omitempty"`
@@ -60,6 +61,17 @@ type FanReading struct {
 type SwapMetrics struct {
 	Used  uint64 `json:"used"`
 	Total uint64 `json:"total"`
+}
+
+// GPUMetrics reports GPU utilization from Prometheus DCGM.
+type GPUMetrics struct {
+	Name        string  `json:"name"`
+	Utilization int     `json:"utilization"`
+	MemUsedMB   uint64  `json:"mem_used_mb"`
+	MemTotalMB  uint64  `json:"mem_total_mb"`
+	Temperature int     `json:"temperature"`
+	PowerDraw   float64 `json:"power_draw"`
+	PowerLimit  float64 `json:"power_limit"`
 }
 
 // MemoryMetrics reports used and total memory in bytes.
@@ -139,6 +151,7 @@ func CollectSystemMetrics(prometheusURL string) (*SystemMetrics, error) {
 		Power:      power,
 		Temps:      readTemperatures(),
 		Fans:       readFanSpeeds(),
+		GPU:        readGPUMetrics(prometheusURL),
 		Uptime:     uptime,
 		Load:      load,
 		Hostname:  sysInfo.hostname,
@@ -563,6 +576,75 @@ func readTemperatures() TempMetrics {
 	// GPU temperature comes from DCGM (already in gpu.go), skip here
 
 	return t
+}
+
+// --- GPU Metrics (from Prometheus DCGM) ---
+
+func readGPUMetrics(prometheusURL string) *GPUMetrics {
+	if prometheusURL == "" {
+		return nil
+	}
+
+	type promResult struct {
+		Metric map[string]string `json:"metric"`
+		Value  []interface{}     `json:"value"`
+	}
+	type promResponse struct {
+		Status string `json:"status"`
+		Data   struct {
+			Result []promResult `json:"result"`
+		} `json:"data"`
+	}
+
+	query := func(q string) *promResponse {
+		url := fmt.Sprintf("%s/api/v1/query?query=%s", prometheusURL, q)
+		client := &http.Client{Timeout: 3 * time.Second}
+		r, err := client.Get(url)
+		if err != nil {
+			return nil
+		}
+		defer r.Body.Close()
+		var pr promResponse
+		json.NewDecoder(r.Body).Decode(&pr)
+		if pr.Status == "success" && len(pr.Data.Result) > 0 {
+			return &pr
+		}
+		return nil
+	}
+
+	getVal := func(pr *promResponse) float64 {
+		if pr == nil || len(pr.Data.Result) == 0 || len(pr.Data.Result[0].Value) < 2 {
+			return 0
+		}
+		v, _ := strconv.ParseFloat(fmt.Sprint(pr.Data.Result[0].Value[1]), 64)
+		return v
+	}
+
+	utilResult := query("DCGM_FI_DEV_GPU_UTIL")
+	if utilResult == nil {
+		return nil
+	}
+
+	name := ""
+	if len(utilResult.Data.Result) > 0 {
+		name = utilResult.Data.Result[0].Metric["modelName"]
+	}
+
+	memUsed := getVal(query("DCGM_FI_DEV_FB_USED"))
+	memFree := getVal(query("DCGM_FI_DEV_FB_FREE"))
+	temp := getVal(query("DCGM_FI_DEV_GPU_TEMP"))
+	power := getVal(query("DCGM_FI_DEV_POWER_USAGE"))
+	powerLimit := getVal(query("DCGM_FI_DEV_ENFORCED_POWER_LIMIT"))
+
+	return &GPUMetrics{
+		Name:        name,
+		Utilization: int(getVal(utilResult)),
+		MemUsedMB:   uint64(memUsed),
+		MemTotalMB:  uint64(memUsed + memFree),
+		Temperature: int(temp),
+		PowerDraw:   power,
+		PowerLimit:  powerLimit,
+	}
 }
 
 // --- CPU Frequency ---

@@ -99,6 +99,16 @@ export const useWebSocketStore = defineStore('websocket', {
               monitorStore.netRx = net.rx_bytes_per_sec || 0;
               monitorStore.netTx = net.tx_bytes_per_sec || 0;
             }
+            const gpu = d.gpu as Record<string, unknown>;
+            if (gpu) {
+              monitorStore.gpuName = (gpu.name as string) || '';
+              monitorStore.gpuUtil = (gpu.utilization as number) || 0;
+              monitorStore.gpuMemUsed = (gpu.mem_used_mb as number) || 0;
+              monitorStore.gpuMemTotal = (gpu.mem_total_mb as number) || 0;
+              monitorStore.gpuTemp = (gpu.temperature as number) || 0;
+              monitorStore.gpuPowerDraw = (gpu.power_draw as number) || 0;
+              monitorStore.gpuPowerLimit = (gpu.power_limit as number) || 0;
+            }
           }
           break;
         }
