@@ -560,8 +560,18 @@ func (s *Server) cookieDomainForRequest(r *http.Request) string {
 	if net.ParseIP(host) != nil {
 		return ""
 	}
-	// For hostname access, scope cookie to the user zone
-	return s.cfg.UserZone
+	// If accessed via the internal zone, use zone as cookie domain
+	if strings.HasSuffix(host, s.cfg.UserZone) || host == s.cfg.UserZone {
+		return s.cfg.UserZone
+	}
+	// Custom domain — extract base domain (strip first subdomain if present)
+	// e.g. auth.olares.bitbot.ro → olares.bitbot.ro
+	parts := strings.SplitN(host, ".", 2)
+	if len(parts) == 2 && strings.Contains(parts[1], ".") {
+		return parts[1]
+	}
+	// Top-level custom domain (e.g. olares.bitbot.ro)
+	return host
 }
 
 func (s *Server) sendUnauthorizedRedirect(w http.ResponseWriter, r *http.Request) {
