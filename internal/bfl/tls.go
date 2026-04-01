@@ -251,27 +251,33 @@ func (s *Server) restartProxy(ctx context.Context) {
 	}
 }
 
-// setAuthCustomDomain updates the auth deployment's CUSTOM_DOMAIN env var.
-func (s *Server) setAuthCustomDomain(ctx context.Context, domain string) {
+// setCustomDomainOnServices updates CUSTOM_DOMAIN env var on auth and app-service.
+func (s *Server) setCustomDomainOnServices(ctx context.Context, domain string) {
+	for _, name := range []string{"auth", "app-service"} {
+		s.setDeploymentEnv(ctx, name, "CUSTOM_DOMAIN", domain)
+	}
+}
+
+// setDeploymentEnv sets an env var on a deployment and triggers a rolling restart.
+func (s *Server) setDeploymentEnv(ctx context.Context, name, key, value string) {
 	ns := config.FrameworkNamespace()
-	dep, err := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, "auth", metav1.GetOptions{})
+	dep, err := s.K8s.Clientset.AppsV1().Deployments(ns).Get(ctx, name, metav1.GetOptions{})
 	if err != nil {
-		klog.Warningf("get auth deployment: %v", err)
+		klog.Warningf("get deployment %s: %v", name, err)
 		return
 	}
 
-	// Update or add CUSTOM_DOMAIN env var
 	found := false
 	for i, env := range dep.Spec.Template.Spec.Containers[0].Env {
-		if env.Name == "CUSTOM_DOMAIN" {
-			dep.Spec.Template.Spec.Containers[0].Env[i].Value = domain
+		if env.Name == key {
+			dep.Spec.Template.Spec.Containers[0].Env[i].Value = value
 			found = true
 			break
 		}
 	}
 	if !found {
 		dep.Spec.Template.Spec.Containers[0].Env = append(dep.Spec.Template.Spec.Containers[0].Env,
-			corev1.EnvVar{Name: "CUSTOM_DOMAIN", Value: domain})
+			corev1.EnvVar{Name: key, Value: value})
 	}
 
 	if dep.Spec.Template.Annotations == nil {
@@ -280,7 +286,7 @@ func (s *Server) setAuthCustomDomain(ctx context.Context, domain string) {
 	dep.Spec.Template.Annotations["kubectl.kubernetes.io/restartedAt"] = time.Now().Format(time.RFC3339)
 
 	if _, err := s.K8s.Clientset.AppsV1().Deployments(ns).Update(ctx, dep, metav1.UpdateOptions{}); err != nil {
-		klog.Warningf("update auth deployment: %v", err)
+		klog.Warningf("update deployment %s: %v", name, err)
 	}
 }
 

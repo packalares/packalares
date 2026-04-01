@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -219,29 +220,21 @@ func verifySession(r *http.Request) error {
 func AuthWebSocketHandler() http.Handler {
 	wsHandler := WebSocketHandler()
 	zone := config.UserZone()
+	customDomain := os.Getenv("CUSTOM_DOMAIN")
 	wsServer := websocket.Server{
 		Handler: wsHandler,
 		Handshake: func(cfg *websocket.Config, r *http.Request) error {
 			origin := r.Header.Get("Origin")
 			if origin == "" {
-				return nil // non-browser clients
-			}
-			// Allow https://ZONE, https://*.ZONE, and https://SERVER_IP
-			allowed := "https://" + zone
-			if origin == allowed {
 				return nil
 			}
-			// Allow server IP
+			host := strings.TrimPrefix(strings.TrimPrefix(origin, "https://"), "http://")
+			if isAllowedOrigin(host, zone, customDomain) {
+				return nil
+			}
 			serverIP := os.Getenv("SERVER_IP")
-			if serverIP != "" && origin == "https://"+serverIP {
+			if serverIP != "" && host == serverIP {
 				return nil
-			}
-			// Check subdomain: strip https://, check suffix
-			if len(origin) > 8 {
-				host := origin[8:] // strip "https://"
-				if len(host) > len(zone)+1 && host[len(host)-len(zone)-1] == '.' && host[len(host)-len(zone):] == zone {
-					return nil
-				}
 			}
 			return fmt.Errorf("origin %q not allowed", origin)
 		},
@@ -334,4 +327,15 @@ func WebSocketHandler() websocket.Handler {
 		// Wait for the writer goroutine to finish.
 		<-done
 	}
+}
+
+// isAllowedOrigin checks if a host matches the zone or custom domain (including subdomains).
+func isAllowedOrigin(host, zone, customDomain string) bool {
+	if host == zone || strings.HasSuffix(host, "."+zone) {
+		return true
+	}
+	if customDomain != "" && (host == customDomain || strings.HasSuffix(host, "."+customDomain)) {
+		return true
+	}
+	return false
 }

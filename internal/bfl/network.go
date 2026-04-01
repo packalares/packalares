@@ -188,7 +188,7 @@ func (s *Server) handleCustomDomain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Set CUSTOM_DOMAIN env var on auth deployment
-	s.setAuthCustomDomain(ctx, req.Domain)
+	s.setCustomDomainOnServices(ctx, req.Domain)
 
 	// Restart proxy to pick up new cert and config
 	go s.restartProxy(context.Background())
