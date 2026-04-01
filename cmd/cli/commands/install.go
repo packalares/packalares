@@ -160,6 +160,9 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 			fmt.Printf("  WiFi connection failed: %v\n", err)
 			fmt.Println("  Continuing with Ethernet.")
 			opts.NetworkType = "ethernet"
+		} else {
+			wifiIP := phases.GetCurrentIP()
+			fmt.Printf("  WiFi connected successfully. IP: %s\n", wifiIP)
 		}
 	}
 
