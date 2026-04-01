@@ -32,7 +32,7 @@ func showStatus() error {
 	fmt.Println()
 
 	// Check systemd services
-	services := []string{"k3s", "etcd", "containerd"}
+	services := []string{"k3s", "etcd"}
 	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(w, "SERVICE\tSTATUS")
 	fmt.Fprintln(w, "-------\t------")
@@ -56,9 +56,10 @@ func showStatus() error {
 	ctx := context.Background()
 	namespaces := []string{
 		config.PlatformNamespace(),
-		"user-system",
+		config.FrameworkNamespace(),
+		config.MonitoringNamespace(),
+		config.UserNamespace(config.Username()),
 		"kube-system",
-		"kubesphere-system",
 	}
 
 	for _, ns := range namespaces {

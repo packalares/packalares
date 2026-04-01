@@ -196,29 +196,12 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 		}
 	}
 
-	// --- WiFi reboot (if WiFi connected, reboot to finalize) ---
+	// If WiFi connected, show the WiFi IP for reference
 	if opts.NetworkType == "wifi" {
-		newIP := phases.GetWifiIP()
-		fmt.Println()
-		fmt.Println("  A reboot is needed to complete the network switch.")
-		fmt.Printf("  After reboot, SSH to %s and login as root.\n", newIP)
-		fmt.Println("  The installer will resume automatically.")
-		fmt.Println()
-
-		state := &phases.InstallState{
-			Options: *opts,
+		wifiIP := phases.GetWifiIP()
+		if wifiIP != "" {
+			fmt.Printf("\n  Server will be accessible via WiFi at: %s\n", wifiIP)
 		}
-		if err := phases.SaveInstallStatePublic(state); err != nil {
-			fmt.Printf("  Warning: could not save state: %v\n", err)
-		}
-		if err := phases.CreateLoginHook(); err != nil {
-			fmt.Printf("  Warning: could not create login hook: %v\n", err)
-		}
-
-		prompt(reader, "  Press Enter to reboot", "")
-
-		exec.Command("reboot").Run()
-		os.Exit(0)
 	}
 
 	fmt.Println()
