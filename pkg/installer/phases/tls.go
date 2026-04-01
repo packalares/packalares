@@ -86,6 +86,19 @@ func generateTLSCert(opts *InstallOptions, w io.Writer) error {
 		os.Remove(certDir + "/ca.srl")
 	} else {
 		fmt.Fprintln(w, "  TLS certificate already exists")
+		// Ensure CA files exist (may have been lost during cleanup)
+		if _, err := os.Stat(caCertFile); os.IsNotExist(err) {
+			fmt.Fprintln(w, "  CA certificate missing, regenerating ...")
+			cmd := exec.Command("openssl", "req", "-x509", "-nodes", "-days", "3650",
+				"-newkey", "ec", "-pkeyopt", "ec_paramgen_curve:prime256v1",
+				"-keyout", caKeyFile,
+				"-out", caCertFile,
+				"-subj", "/CN=Packalares CA/O=Packalares",
+			)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				fmt.Fprintf(w, "  Warning: CA regeneration failed: %s %v\n", string(out), err)
+			}
+		}
 	}
 
 	// Create K8s TLS Secret
