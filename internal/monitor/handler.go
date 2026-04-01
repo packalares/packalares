@@ -27,6 +27,9 @@ func NewHandler(prometheusURL, lokiURL string) *Handler {
 
 // RegisterRoutes wires up monitoring API routes.
 func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
+	// Prometheus metrics endpoint (scraped by Prometheus)
+	mux.HandleFunc("/metrics", HandlePrometheusMetrics)
+
 	// Packalares native endpoints
 	mux.HandleFunc("/api/metrics", h.handleMetrics)
 	mux.HandleFunc("/api/system/info", h.handleSystemInfo)

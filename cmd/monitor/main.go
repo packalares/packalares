@@ -74,6 +74,9 @@ func startMetricsPublisher(prometheusURL string) {
 		metrics.CPUUsage = math.Round(metrics.CPUUsage*10) / 10
 		metrics.Uptime = math.Round(metrics.Uptime)
 
+		// Update Prometheus exporter cache
+		monitor.UpdateLatestMetrics(metrics)
+
 		data, err := json.Marshal(metrics)
 		if err != nil {
 			continue

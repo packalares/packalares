@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -16,21 +17,49 @@ import (
 
 // SystemMetrics is the JSON response for GET /api/metrics.
 type SystemMetrics struct {
-	CPUUsage float64       `json:"cpu_usage"`
-	CPUCores []float64     `json:"cpu_cores,omitempty"`
-	Memory   MemoryMetrics `json:"memory"`
-	Disk     DiskMetrics   `json:"disk"`
-	DiskIO   DiskIOMetrics `json:"disk_io"`
-	Network  NetMetrics    `json:"network"`
-	Power    PowerMetrics  `json:"power"`
-	Uptime   float64       `json:"uptime"`
-	Load     [3]float64    `json:"load"`
-	Hostname string        `json:"hostname,omitempty"`
-	OSVersion string       `json:"os_version,omitempty"`
-	Kernel   string        `json:"kernel,omitempty"`
-	Arch     string        `json:"arch,omitempty"`
-	CPUModel string        `json:"cpu_model,omitempty"`
-	CPUCount int           `json:"cpu_count,omitempty"`
+	CPUUsage  float64       `json:"cpu_usage"`
+	CPUCores  []float64     `json:"cpu_cores,omitempty"`
+	CPUFreqMHz float64      `json:"cpu_freq_mhz"`
+	Memory    MemoryMetrics `json:"memory"`
+	Swap      SwapMetrics   `json:"swap"`
+	Disk      DiskMetrics   `json:"disk"`
+	DiskIO    DiskIOMetrics `json:"disk_io"`
+	Network   NetMetrics    `json:"network"`
+	Power     PowerMetrics  `json:"power"`
+	Temps     TempMetrics   `json:"temps"`
+	Fans      FanMetrics    `json:"fans"`
+	Uptime    float64       `json:"uptime"`
+	Load      [3]float64    `json:"load"`
+	Hostname  string        `json:"hostname,omitempty"`
+	OSVersion string        `json:"os_version,omitempty"`
+	Kernel    string        `json:"kernel,omitempty"`
+	Arch      string        `json:"arch,omitempty"`
+	CPUModel  string        `json:"cpu_model,omitempty"`
+	CPUCount  int           `json:"cpu_count,omitempty"`
+}
+
+// TempMetrics reports temperature readings in degrees Celsius.
+type TempMetrics struct {
+	CPU  float64 `json:"cpu"`
+	GPU  float64 `json:"gpu,omitempty"`
+	NVMe float64 `json:"nvme,omitempty"`
+}
+
+// FanMetrics reports fan speeds in RPM.
+type FanMetrics struct {
+	Fans []FanReading `json:"fans,omitempty"`
+}
+
+// FanReading is a single fan sensor reading.
+type FanReading struct {
+	Name string  `json:"name"`
+	RPM  float64 `json:"rpm"`
+}
+
+// SwapMetrics reports swap usage in bytes.
+type SwapMetrics struct {
+	Used  uint64 `json:"used"`
+	Total uint64 `json:"total"`
 }
 
 // MemoryMetrics reports used and total memory in bytes.
@@ -99,14 +128,18 @@ func CollectSystemMetrics(prometheusURL string) (*SystemMetrics, error) {
 	sysInfo := readSystemInfo()
 
 	return &SystemMetrics{
-		CPUUsage:  cpuUsage,
-		CPUCores:  cpuCores,
-		Memory:    MemoryMetrics{Used: memUsed, Total: memTotal},
-		Disk:      DiskMetrics{Used: diskUsed, Total: diskTotal},
-		DiskIO:    diskIO,
-		Network:   net,
-		Power:     power,
-		Uptime:    uptime,
+		CPUUsage:   cpuUsage,
+		CPUCores:   cpuCores,
+		CPUFreqMHz: readCPUFreq(),
+		Memory:     MemoryMetrics{Used: memUsed, Total: memTotal},
+		Swap:       readSwap(),
+		Disk:       DiskMetrics{Used: diskUsed, Total: diskTotal},
+		DiskIO:     diskIO,
+		Network:    net,
+		Power:      power,
+		Temps:      readTemperatures(),
+		Fans:       readFanSpeeds(),
+		Uptime:     uptime,
 		Load:      load,
 		Hostname:  sysInfo.hostname,
 		OSVersion: sysInfo.osVersion,
@@ -456,6 +489,166 @@ func raplToWatts(energyUJ uint64) float64 {
 	prevRAPLEnergy = energyUJ
 	prevRAPLTime = now
 	return watts
+}
+
+// --- Temperature ---
+
+func readTemperatures() TempMetrics {
+	var t TempMetrics
+
+	// CPU temperature from thermal zones
+	// Look for zones with type containing "cpu", "x86_pkg", "coretemp", or "acpitz"
+	matches, _ := filepath.Glob("/sys/class/thermal/thermal_zone*/temp")
+	for _, tempFile := range matches {
+		zoneDir := filepath.Dir(tempFile)
+		typeData, err := os.ReadFile(filepath.Join(zoneDir, "type"))
+		if err != nil {
+			continue
+		}
+		zoneType := strings.TrimSpace(strings.ToLower(string(typeData)))
+
+		data, err := os.ReadFile(tempFile)
+		if err != nil {
+			continue
+		}
+		val, err := strconv.ParseFloat(strings.TrimSpace(string(data)), 64)
+		if err != nil {
+			continue
+		}
+		tempC := val / 1000.0
+
+		if strings.Contains(zoneType, "x86_pkg") ||
+			strings.Contains(zoneType, "coretemp") ||
+			strings.Contains(zoneType, "cpu") {
+			if tempC > t.CPU {
+				t.CPU = tempC
+			}
+		}
+	}
+
+	// Fallback: hwmon for CPU temp
+	if t.CPU == 0 {
+		hwmonMatches, _ := filepath.Glob("/sys/class/hwmon/hwmon*/temp1_input")
+		for _, f := range hwmonMatches {
+			nameFile := filepath.Join(filepath.Dir(f), "name")
+			nameData, _ := os.ReadFile(nameFile)
+			name := strings.TrimSpace(strings.ToLower(string(nameData)))
+			if strings.Contains(name, "coretemp") || strings.Contains(name, "k10temp") || strings.Contains(name, "cpu") {
+				data, err := os.ReadFile(f)
+				if err == nil {
+					val, _ := strconv.ParseFloat(strings.TrimSpace(string(data)), 64)
+					t.CPU = val / 1000.0
+				}
+				break
+			}
+		}
+	}
+
+	// NVMe temperature from hwmon
+	hwmonMatches, _ := filepath.Glob("/sys/class/hwmon/hwmon*/temp1_input")
+	for _, f := range hwmonMatches {
+		nameFile := filepath.Join(filepath.Dir(f), "name")
+		nameData, _ := os.ReadFile(nameFile)
+		name := strings.TrimSpace(strings.ToLower(string(nameData)))
+		if strings.Contains(name, "nvme") {
+			data, err := os.ReadFile(f)
+			if err == nil {
+				val, _ := strconv.ParseFloat(strings.TrimSpace(string(data)), 64)
+				t.NVMe = val / 1000.0
+			}
+			break
+		}
+	}
+
+	// GPU temperature comes from DCGM (already in gpu.go), skip here
+
+	return t
+}
+
+// --- CPU Frequency ---
+
+func readCPUFreq() float64 {
+	// Average current frequency across all cores
+	matches, _ := filepath.Glob("/sys/devices/system/cpu/cpu*/cpufreq/scaling_cur_freq")
+	if len(matches) == 0 {
+		return 0
+	}
+	var total float64
+	var count int
+	for _, f := range matches {
+		data, err := os.ReadFile(f)
+		if err != nil {
+			continue
+		}
+		khz, err := strconv.ParseFloat(strings.TrimSpace(string(data)), 64)
+		if err != nil {
+			continue
+		}
+		total += khz / 1000.0 // KHz to MHz
+		count++
+	}
+	if count == 0 {
+		return 0
+	}
+	return total / float64(count)
+}
+
+// --- Swap ---
+
+func readSwap() SwapMetrics {
+	data, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return SwapMetrics{}
+	}
+	var total, free uint64
+	for _, line := range strings.Split(string(data), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		val, _ := strconv.ParseUint(fields[1], 10, 64)
+		val *= 1024 // kB to bytes
+		switch fields[0] {
+		case "SwapTotal:":
+			total = val
+		case "SwapFree:":
+			free = val
+		}
+	}
+	return SwapMetrics{Used: total - free, Total: total}
+}
+
+// --- Fan Speeds ---
+
+func readFanSpeeds() FanMetrics {
+	var fans []FanReading
+	hwmonDirs, _ := filepath.Glob("/sys/class/hwmon/hwmon*")
+	for _, dir := range hwmonDirs {
+		nameData, _ := os.ReadFile(filepath.Join(dir, "name"))
+		sensorName := strings.TrimSpace(string(nameData))
+
+		fanFiles, _ := filepath.Glob(filepath.Join(dir, "fan*_input"))
+		for _, f := range fanFiles {
+			data, err := os.ReadFile(f)
+			if err != nil {
+				continue
+			}
+			rpm, err := strconv.ParseFloat(strings.TrimSpace(string(data)), 64)
+			if err != nil || rpm == 0 {
+				continue
+			}
+			// Build label from sensor name + fan index
+			base := filepath.Base(f)
+			idx := strings.TrimSuffix(strings.TrimPrefix(base, "fan"), "_input")
+			label := sensorName
+			if label == "" {
+				label = "fan"
+			}
+			label += "_" + idx
+			fans = append(fans, FanReading{Name: label, RPM: rpm})
+		}
+	}
+	return FanMetrics{Fans: fans}
 }
 
 func execCommand(name string, args ...string) (string, error) {

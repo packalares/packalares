@@ -67,6 +67,38 @@ export const useWebSocketStore = defineStore('websocket', {
             }
             monitorStore.uptime = (d.uptime as number) || 0;
             monitorStore.load = (d.load as [number, number, number]) || [0, 0, 0];
+            monitorStore.cpuFreqMHz = (d.cpu_freq_mhz as number) || 0;
+            const swap = d.swap as Record<string, number>;
+            if (swap) {
+              monitorStore.swapUsed = swap.used || 0;
+              monitorStore.swapTotal = swap.total || 0;
+            }
+            const temps = d.temps as Record<string, number>;
+            if (temps) {
+              monitorStore.tempCPU = temps.cpu || 0;
+              monitorStore.tempGPU = temps.gpu || 0;
+              monitorStore.tempNVMe = temps.nvme || 0;
+            }
+            const power = d.power as Record<string, number>;
+            if (power) {
+              monitorStore.powerCPU = power.cpu_watts || 0;
+              monitorStore.powerGPU = power.gpu_watts || 0;
+              monitorStore.powerTotal = power.total_watts || 0;
+            }
+            const fans = d.fans as { fans?: Array<{ name: string; rpm: number }> };
+            if (fans?.fans) {
+              monitorStore.fans = fans.fans;
+            }
+            const diskIO = d.disk_io as Record<string, number>;
+            if (diskIO) {
+              monitorStore.diskRead = diskIO.read_bytes_per_sec || 0;
+              monitorStore.diskWrite = diskIO.write_bytes_per_sec || 0;
+            }
+            const net = d.network as Record<string, number>;
+            if (net) {
+              monitorStore.netRx = net.rx_bytes_per_sec || 0;
+              monitorStore.netTx = net.tx_bytes_per_sec || 0;
+            }
           }
           break;
         }
