@@ -100,7 +100,12 @@ func TLSSecretName() string { return configOr("network.tls_secret_name", "TLS_SE
 // ─── Domain ─────────────────────────────────────────────
 
 func Domain() string  { return configOr("system.domain", "SYSTEM_DOMAIN", "olares.local") }
-func Username() string { return configOr("user.name", "USERNAME", "") }
+func Username() string {
+	if v := configOr("user.name", "USERNAME", ""); v != "" {
+		return v
+	}
+	return os.Getenv("OWNER")
+}
 func Hostname() string { return configOr("system.hostname", "HOSTNAME", "packalares") }
 func Timezone() string { return configOr("system.timezone", "TZ", "UTC") }
 
