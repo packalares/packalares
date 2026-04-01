@@ -1,7 +1,7 @@
 <template>
   <div class="widgets-container" v-if="visible">
     <!-- Toggle button -->
-    <div class="widget-toggle" @click="visible = !visible">
+    <div class="widget-toggle" @click="toggleWidgets(false)">
       <q-icon name="sym_r_widgets" size="18px" />
     </div>
 
@@ -67,7 +67,7 @@
 
     <!-- Temperature Widget -->
     <div
-      v-if="enabledWidgets.temps && (m.tempCPU > 0 || m.tempGPU > 0)"
+      v-if="enabledWidgets.temps"
       class="widget widget-temps"
       :style="widgetStyle('temps')"
       @mousedown="startDrag($event, 'temps')"
@@ -77,16 +77,16 @@
         <span>Temperature</span>
       </div>
       <div class="temp-grid">
-        <div class="temp-item" v-if="m.tempCPU > 0">
-          <span class="temp-val" :style="{ color: tempColor(m.tempCPU) }">{{ Math.round(m.tempCPU) }}</span>
+        <div class="temp-item">
+          <span class="temp-val" :style="{ color: m.tempCPU > 0 ? tempColor(m.tempCPU) : 'rgba(255,255,255,0.3)' }">{{ m.tempCPU > 0 ? Math.round(m.tempCPU) : '--' }}</span>
           <span class="temp-unit">CPU</span>
         </div>
         <div class="temp-item" v-if="m.tempGPU > 0">
           <span class="temp-val" :style="{ color: tempColor(m.tempGPU) }">{{ Math.round(m.tempGPU) }}</span>
           <span class="temp-unit">GPU</span>
         </div>
-        <div class="temp-item" v-if="m.tempNVMe > 0">
-          <span class="temp-val" :style="{ color: tempColor(m.tempNVMe) }">{{ Math.round(m.tempNVMe) }}</span>
+        <div class="temp-item">
+          <span class="temp-val" :style="{ color: m.tempNVMe > 0 ? tempColor(m.tempNVMe) : 'rgba(255,255,255,0.3)' }">{{ m.tempNVMe > 0 ? Math.round(m.tempNVMe) : '--' }}</span>
           <span class="temp-unit">NVMe</span>
         </div>
       </div>
@@ -94,7 +94,7 @@
 
     <!-- Power Widget -->
     <div
-      v-if="enabledWidgets.power && m.powerTotal > 0"
+      v-if="enabledWidgets.power"
       class="widget widget-power"
       :style="widgetStyle('power')"
       @mousedown="startDrag($event, 'power')"
@@ -103,10 +103,10 @@
         <q-icon name="sym_r_bolt" size="14px" />
         <span>Power</span>
       </div>
-      <div class="power-total">{{ m.powerTotal.toFixed(0) }}<span class="power-unit">W</span></div>
+      <div class="power-total">{{ m.powerTotal > 0 ? m.powerTotal.toFixed(0) : '--' }}<span class="power-unit">W</span></div>
       <div class="power-breakdown">
-        <span v-if="m.powerCPU > 0">CPU {{ m.powerCPU.toFixed(0) }}W</span>
-        <span v-if="m.powerGPU > 0">GPU {{ m.powerGPU.toFixed(0) }}W</span>
+        <span>CPU {{ m.powerCPU > 0 ? m.powerCPU.toFixed(0) + 'W' : '--' }}</span>
+        <span>GPU {{ m.powerGPU > 0 ? m.powerGPU.toFixed(0) + 'W' : '--' }}</span>
       </div>
     </div>
 
@@ -141,7 +141,7 @@
   </div>
 
   <!-- Toggle button when hidden -->
-  <div v-if="!visible" class="widget-toggle widget-toggle-hidden" @click="visible = true">
+  <div v-if="!visible" class="widget-toggle widget-toggle-hidden" @click="toggleWidgets(true)">
     <q-icon name="sym_r_widgets" size="18px" />
   </div>
 </template>
@@ -151,7 +151,12 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useMonitorStore } from 'stores/monitor';
 
 const m = useMonitorStore();
-const visible = ref(true);
+const visible = ref(localStorage.getItem('packalares_widgets_visible') !== 'false');
+
+function toggleWidgets(show: boolean) {
+  visible.value = show;
+  localStorage.setItem('packalares_widgets_visible', String(show));
+}
 
 // Widget positions (saved to localStorage)
 const defaultPositions: Record<string, { x: number; y: number }> = {
@@ -306,7 +311,7 @@ onUnmounted(() => {
   position: absolute;
   inset: 0;
   pointer-events: none;
-  z-index: 50;
+  z-index: 5;
 }
 
 .widget {
@@ -320,7 +325,7 @@ onUnmounted(() => {
   color: #fff;
   cursor: grab;
   user-select: none;
-  min-width: 160px;
+  width: 190px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
   transition: box-shadow 0.2s;
 
@@ -485,7 +490,7 @@ onUnmounted(() => {
   position: absolute;
   top: 12px;
   right: 12px;
-  z-index: 51;
+  z-index: 6;
   width: 32px;
   height: 32px;
   border-radius: 10px;
