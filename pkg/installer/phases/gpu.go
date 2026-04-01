@@ -31,9 +31,9 @@ func GetGPUName() string {
 	for _, line := range strings.Split(string(out), "\n") {
 		lower := strings.ToLower(line)
 		if strings.Contains(lower, "nvidia") && (strings.Contains(lower, "vga") || strings.Contains(lower, "3d controller")) {
-			parts := strings.SplitN(line, ": ", 3)
-			if len(parts) >= 3 {
-				return strings.TrimSpace(parts[2])
+			parts := strings.SplitN(line, ": ", 2)
+			if len(parts) >= 2 {
+				return strings.TrimSpace(parts[1])
 			}
 		}
 	}
