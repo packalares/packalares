@@ -196,8 +196,6 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 	if opts.NetworkType == "wifi" {
 		newIP := phases.GetCurrentIP()
 		fmt.Println()
-		fmt.Printf("  WiFi connected. IP: %s\n", newIP)
-		fmt.Println()
 		fmt.Println("  A reboot is needed to complete the network switch.")
 		fmt.Printf("  After reboot, SSH to %s and login as root.\n", newIP)
 		fmt.Println("  The installer will resume automatically.")
