@@ -338,6 +338,10 @@ func removeKernelConfig() error {
 	removeGlob("/etc/sysctl.d/99-packalares*")
 	removeGlob("/etc/sysctl.d/99-k8s*")
 
+	// Remove packalares netplan config (restores default DHCP)
+	removeGlob("/etc/netplan/99-packalares*")
+	exec.Command("netplan", "apply").Run()
+
 	// Reload sysctl
 	exec.Command("sysctl", "--system").Run()
 

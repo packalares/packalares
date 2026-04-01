@@ -40,7 +40,7 @@ func configureSystem(opts *InstallOptions, w io.Writer) error {
 	return nil
 }
 
-// configureStaticIP writes a netplan config with the current IP as static.
+// configureStaticIP converts the current DHCP config to static on the active interface.
 func configureStaticIP(opts *InstallOptions, w io.Writer) error {
 	iface, ip, gateway, err := detectNetworkInfo()
 	if err != nil {
@@ -50,46 +50,10 @@ func configureStaticIP(opts *InstallOptions, w io.Writer) error {
 	dns := detectDNS()
 	fmt.Fprintf(w, "  Configuring static IP: %s on %s (gateway: %s)\n", ip, iface, gateway)
 
-	// Determine if this is a WiFi or Ethernet interface
-	isWifi := opts.NetworkType == "wifi"
+	// Update the existing packalares netplan file
+	config := buildNetplanConfig(opts, iface, ip, gateway, dns)
 
-	var config string
-	if isWifi && opts.WifiSSID != "" {
-		config = fmt.Sprintf(`network:
-  version: 2
-  renderer: networkd
-  wifis:
-    %s:
-      dhcp4: false
-      addresses:
-        - %s/24
-      routes:
-        - to: default
-          via: %s
-      nameservers:
-        addresses: [%s]
-      access-points:
-        "%s":
-          password: "%s"
-`, iface, ip, gateway, dns, opts.WifiSSID, opts.WifiPassword)
-	} else {
-		config = fmt.Sprintf(`network:
-  version: 2
-  renderer: networkd
-  ethernets:
-    %s:
-      dhcp4: false
-      addresses:
-        - %s/24
-      routes:
-        - to: default
-          via: %s
-      nameservers:
-        addresses: [%s]
-`, iface, ip, gateway, dns)
-	}
-
-	if err := os.WriteFile("/etc/netplan/99-packalares-static.yaml", []byte(config), 0600); err != nil {
+	if err := os.WriteFile("/etc/netplan/99-packalares.yaml", []byte(config), 0600); err != nil {
 		return fmt.Errorf("write netplan: %w", err)
 	}
 
@@ -244,27 +208,32 @@ func ScanWifiNetworks() ([]WifiNetwork, error) {
 	return networks, nil
 }
 
-// ConnectWifi writes a netplan WiFi config and applies it.
+// ConnectWifi writes a unified netplan config that sets WiFi as primary
+// and disables the default route on Ethernet, then applies it.
 func ConnectWifi(ssid, password string, w io.Writer) error {
-	iface := getWifiInterface()
-	if iface == "" {
+	wifiIface := getWifiInterface()
+	if wifiIface == "" {
 		return fmt.Errorf("no wifi interface found")
 	}
 
-	fmt.Fprintf(w, "  Configuring WiFi: %s on %s ...\n", ssid, iface)
+	// Detect current Ethernet interface
+	ethIface, _, _, _ := detectNetworkInfo()
 
-	config := fmt.Sprintf(`network:
-  version: 2
-  renderer: networkd
-  wifis:
-    %s:
-      dhcp4: true
-      access-points:
-        "%s":
-          password: "%s"
-`, iface, ssid, password)
+	fmt.Fprintf(w, "  Configuring WiFi: %s on %s ...\n", ssid, wifiIface)
 
-	if err := os.WriteFile("/etc/netplan/99-packalares-wifi.yaml", []byte(config), 0600); err != nil {
+	// Build netplan: WiFi with DHCP as primary, Ethernet with high metric (fallback)
+	var sb strings.Builder
+	sb.WriteString("network:\n  version: 2\n  renderer: networkd\n")
+
+	// Ethernet: keep DHCP but with high route metric so WiFi is preferred
+	if ethIface != "" {
+		sb.WriteString(fmt.Sprintf("  ethernets:\n    %s:\n      dhcp4: true\n      dhcp4-overrides:\n        route-metric: 200\n", ethIface))
+	}
+
+	// WiFi: DHCP with low metric (preferred)
+	sb.WriteString(fmt.Sprintf("  wifis:\n    %s:\n      dhcp4: true\n      dhcp4-overrides:\n        route-metric: 100\n      access-points:\n        \"%s\":\n          password: \"%s\"\n", wifiIface, ssid, password))
+
+	if err := os.WriteFile("/etc/netplan/99-packalares.yaml", []byte(sb.String()), 0600); err != nil {
 		return fmt.Errorf("write netplan: %w", err)
 	}
 
@@ -278,7 +247,7 @@ func ConnectWifi(ssid, password string, w io.Writer) error {
 	for i := 0; i < maxWait; i++ {
 		fmt.Fprintf(w, "\r  Waiting for WiFi connection ... %ds/%ds", i+1, maxWait)
 		time.Sleep(1 * time.Second)
-		ipOut, err := exec.Command("ip", "-4", "addr", "show", iface).Output()
+		ipOut, err := exec.Command("ip", "-4", "addr", "show", wifiIface).Output()
 		if err == nil {
 			for _, line := range strings.Split(string(ipOut), "\n") {
 				if strings.Contains(line, "inet ") {
@@ -297,6 +266,36 @@ func ConnectWifi(ssid, password string, w io.Writer) error {
 	return fmt.Errorf("no IP received after %ds", maxWait)
 }
 
+// buildNetplanConfig builds a unified netplan config based on current options.
+func buildNetplanConfig(opts *InstallOptions, iface, ip, gateway, dns string) string {
+	var sb strings.Builder
+	sb.WriteString("network:\n  version: 2\n  renderer: networkd\n")
+
+	if opts.NetworkType == "wifi" && opts.WifiSSID != "" {
+		wifiIface := getWifiInterface()
+		ethIface, _, _, _ := detectNetworkInfo()
+
+		// Ethernet: DHCP fallback with high metric
+		if ethIface != "" && ethIface != wifiIface {
+			sb.WriteString(fmt.Sprintf("  ethernets:\n    %s:\n      dhcp4: true\n      dhcp4-overrides:\n        route-metric: 200\n", ethIface))
+		}
+
+		// WiFi: static or DHCP
+		sb.WriteString(fmt.Sprintf("  wifis:\n    %s:\n", wifiIface))
+		if opts.StaticIP {
+			sb.WriteString(fmt.Sprintf("      dhcp4: false\n      addresses:\n        - %s/24\n      routes:\n        - to: default\n          via: %s\n      nameservers:\n        addresses: [%s]\n", ip, gateway, dns))
+		} else {
+			sb.WriteString("      dhcp4: true\n      dhcp4-overrides:\n        route-metric: 100\n")
+		}
+		sb.WriteString(fmt.Sprintf("      access-points:\n        \"%s\":\n          password: \"%s\"\n", opts.WifiSSID, opts.WifiPassword))
+	} else {
+		// Ethernet: static
+		sb.WriteString(fmt.Sprintf("  ethernets:\n    %s:\n      dhcp4: false\n      addresses:\n        - %s/24\n      routes:\n        - to: default\n          via: %s\n      nameservers:\n        addresses: [%s]\n", iface, ip, gateway, dns))
+	}
+
+	return sb.String()
+}
+
 // GetCurrentIP returns the IP of the default route interface.
 func GetCurrentIP() string {
 	_, ip, _, err := detectNetworkInfo()
@@ -306,15 +305,59 @@ func GetCurrentIP() string {
 	return ip
 }
 
-// CreateLoginHook writes the profile.d script for auto-resume after reboot.
+// removeLoginHook removes the resume hook from /root/.bashrc.
+func removeLoginHook() {
+	data, err := os.ReadFile("/root/.bashrc")
+	if err != nil {
+		return
+	}
+	marker := "# packalares-install-resume"
+	if !strings.Contains(string(data), marker) {
+		return
+	}
+	// Remove everything between marker lines
+	var lines []string
+	inBlock := false
+	for _, line := range strings.Split(string(data), "\n") {
+		if strings.Contains(line, marker) {
+			inBlock = !inBlock
+			continue
+		}
+		if !inBlock {
+			lines = append(lines, line)
+		}
+	}
+	os.WriteFile("/root/.bashrc", []byte(strings.Join(lines, "\n")), 0644)
+	// Also remove old profile.d hook if present
+	os.Remove("/etc/profile.d/packalares-resume.sh")
+}
+
+// CreateLoginHook appends a resume check to /root/.bashrc.
 func CreateLoginHook() error {
-	hook := `#!/bin/bash
-if [ -f /etc/packalares/install-state.json ] && [ "$(id -u)" = "0" ]; then
+	marker := "# packalares-install-resume"
+	hook := `
+# packalares-install-resume
+if [ -f /etc/packalares/install-state.json ]; then
     echo ""
     echo "  Resuming Packalares installation..."
     echo ""
     packalares install
+    # Remove hook after install completes or fails
+    sed -i '/# packalares-install-resume/,/sed.*packalares-install-resume/d' /root/.bashrc
 fi
 `
-	return os.WriteFile("/etc/profile.d/packalares-resume.sh", []byte(hook), 0755)
+	// Check if already added
+	existing, _ := os.ReadFile("/root/.bashrc")
+	if strings.Contains(string(existing), marker) {
+		return nil
+	}
+
+	f, err := os.OpenFile("/root/.bashrc", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("open .bashrc: %w", err)
+	}
+	defer f.Close()
+
+	_, err = f.WriteString(hook)
+	return err
 }

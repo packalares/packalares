@@ -233,7 +233,7 @@ func RunInstallWithEvents(opts *InstallOptions, events chan<- PhaseEvent) error 
 
 	// All phases done — clean up state file and login hook.
 	removeInstallState()
-	os.Remove("/etc/profile.d/packalares-resume.sh")
+	removeLoginHook()
 
 	events <- PhaseEvent{
 		Type:  EventInstallComplete,
