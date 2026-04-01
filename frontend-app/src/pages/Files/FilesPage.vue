@@ -314,16 +314,39 @@ const contextMenu = reactive<{
   fileIdx: null,
 });
 
-const sidebarFolders = [
+const sidebarFolders = ref<{path:string;label:string;icon:string}[]>([
   {path:'/',label:'All Files',icon:'folder'},
-  {path:'/Home',label:'Home',icon:'home'},
-  {path:'/Home/Documents',label:'Documents',icon:'description'},
-  {path:'/Home/Downloads',label:'Downloads',icon:'download'},
-  {path:'/Home/Pictures',label:'Pictures',icon:'image'},
-  {path:'/Home/Videos',label:'Videos',icon:'videocam'},
-  {path:'/Home/Music',label:'Music',icon:'music_note'},
-  {path:'/Mounts',label:'Mounts',icon:'lan'},
-];
+]);
+
+const folderIcons: Record<string, string> = {
+  Home: 'home', Documents: 'description', Downloads: 'download',
+  Pictures: 'image', Videos: 'videocam', Music: 'music_note',
+  Mounts: 'lan', Desktop: 'desktop_windows',
+};
+
+async function loadSidebar() {
+  try {
+    const root: any = await api.get('/api/files/resources/');
+    const rootItems = (root.items || []).filter((f: any) => f.isDir);
+    const entries: {path:string;label:string;icon:string}[] = [
+      {path:'/',label:'All Files',icon:'folder'},
+    ];
+    for (const f of rootItems) {
+      entries.push({path:'/'+f.name, label:f.name, icon: folderIcons[f.name] || 'folder'});
+      // Load subfolders for Home
+      if (f.name === 'Home') {
+        try {
+          const home: any = await api.get('/api/files/resources/Home');
+          const homeItems = (home.items || []).filter((h: any) => h.isDir);
+          for (const h of homeItems) {
+            entries.push({path:'/Home/'+h.name, label:h.name, icon: folderIcons[h.name] || 'folder'});
+          }
+        } catch {}
+      }
+    }
+    sidebarFolders.value = entries;
+  } catch {}
+}
 
 // ----- Computed -----
 const breadcrumbs = computed(() => {
@@ -973,6 +996,7 @@ function fmtDate(d: string): string {
 
 // ----- Lifecycle -----
 onMounted(() => {
+  loadSidebar();
   loadFiles(currentPath.value);
   nextTick(() => pageRef.value?.focus());
 });

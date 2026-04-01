@@ -316,7 +316,29 @@ func deployFrameworkCharts(opts *InstallOptions, w io.Writer) error {
 		return fmt.Errorf("deploy proxy: %w", err)
 	}
 
+	// Create default user data directories
+	createDefaultDirs(w)
+
 	return nil
+}
+
+func createDefaultDirs(w io.Writer) {
+	dirs := []string{
+		"/packalares/data/Home",
+		"/packalares/data/Home/Documents",
+		"/packalares/data/Home/Downloads",
+		"/packalares/data/Home/Pictures",
+		"/packalares/data/Home/Videos",
+		"/packalares/data/Home/Music",
+	}
+	for _, d := range dirs {
+		os.MkdirAll(d, 0755)
+	}
+	// Set ownership so files-server (uid 100) can write
+	for _, d := range dirs {
+		exec.Command("chown", "-R", "100:101", d).Run()
+	}
+	fmt.Fprintln(w, "  Created default user directories")
 }
 
 func deployAppCharts(opts *InstallOptions, w io.Writer) error {
