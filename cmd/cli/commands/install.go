@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/mattn/go-isatty"
@@ -236,8 +237,7 @@ func promptWifi(reader *bufio.Reader, opts *phases.InstallOptions) {
 	fmt.Println()
 
 	choice := prompt(reader, "  Select network", "1")
-	idx := 0
-	fmt.Sscanf(choice, "%d", &idx)
+	idx, _ := strconv.Atoi(strings.TrimSpace(choice))
 
 	if idx >= 1 && idx <= len(networks) {
 		opts.WifiSSID = networks[idx-1].SSID
