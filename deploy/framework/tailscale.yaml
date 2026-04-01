@@ -23,6 +23,7 @@ spec:
       containers:
       - name: tailscale
         image: ghcr.io/packalares/tailscale:stable
+        imagePullPolicy: Always
         securityContext:
           capabilities:
             add: ["NET_ADMIN", "NET_RAW"]

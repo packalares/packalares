@@ -21,6 +21,7 @@ spec:
       containers:
       - name: nginx
         image: ghcr.io/packalares/nginx:stable-alpine
+        imagePullPolicy: Always
         ports:
         - containerPort: 443
           hostPort: 443
