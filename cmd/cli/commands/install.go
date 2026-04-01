@@ -154,15 +154,30 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 	}
 
 	// --- WiFi connect (before static IP, so IP is correct) ---
-	if opts.NetworkType == "wifi" && opts.WifiSSID != "" {
+	for opts.NetworkType == "wifi" && opts.WifiSSID != "" {
 		fmt.Println()
 		if err := phases.ConnectWifi(opts.WifiSSID, opts.WifiPassword, os.Stdout); err != nil {
 			fmt.Printf("  WiFi connection failed: %v\n", err)
-			fmt.Println("  Continuing with Ethernet.")
-			opts.NetworkType = "ethernet"
+			fmt.Println()
+			fmt.Println("    1) Try again")
+			fmt.Println("    2) Choose different network")
+			fmt.Println("    3) Continue with Ethernet")
+			fmt.Println()
+			retry := prompt(reader, "  Select [1/2/3]", "1")
+			switch retry {
+			case "2":
+				promptWifi(reader, opts)
+				continue
+			case "3":
+				opts.NetworkType = "ethernet"
+				opts.WifiSSID = ""
+			default:
+				continue
+			}
 		} else {
 			wifiIP := phases.GetCurrentIP()
 			fmt.Printf("  WiFi connected successfully. IP: %s\n", wifiIP)
+			break
 		}
 	}
 
