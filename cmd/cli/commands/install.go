@@ -163,10 +163,9 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 		}
 	}
 
-	// --- WiFi reboot ---
+	// --- WiFi connect ---
 	if opts.NetworkType == "wifi" && opts.WifiSSID != "" {
 		fmt.Println()
-		fmt.Println("  Connecting to WiFi ...")
 		if err := phases.ConnectWifi(opts.WifiSSID, opts.WifiPassword, os.Stdout); err != nil {
 			fmt.Printf("  WiFi connection failed: %v\n", err)
 			fmt.Println("  Continuing with Ethernet.")
@@ -204,10 +203,24 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 
 func promptWifi(reader *bufio.Reader, opts *phases.InstallOptions) {
 	fmt.Println()
+
+	// Install deps first so we can scan
+	fmt.Println("  Installing WiFi dependencies ...")
+	if err := phases.InstallWifiDeps(os.Stdout); err != nil {
+		fmt.Printf("  Failed to install WiFi dependencies: %v\n", err)
+		fmt.Println("  Falling back to Ethernet.")
+		opts.NetworkType = "ethernet"
+		return
+	}
+
 	fmt.Println("  Scanning WiFi networks ...")
 	networks, err := phases.ScanWifiNetworks()
 	if err != nil || len(networks) == 0 {
-		fmt.Println("  No WiFi networks found.")
+		fmt.Printf("  No WiFi networks found.")
+		if err != nil {
+			fmt.Printf(" (%v)", err)
+		}
+		fmt.Println()
 		opts.NetworkType = "ethernet"
 		return
 	}
@@ -217,7 +230,7 @@ func promptWifi(reader *bufio.Reader, opts *phases.InstallOptions) {
 		if security == "" {
 			security = "Open"
 		}
-		fmt.Printf("    %d) %s (%s, signal: %s%%)\n", i+1, n.SSID, security, n.Signal)
+		fmt.Printf("    %d) %s (%s, signal: %s dBm)\n", i+1, n.SSID, security, n.Signal)
 	}
 	fmt.Printf("    %d) Enter SSID manually\n", len(networks)+1)
 	fmt.Println()
