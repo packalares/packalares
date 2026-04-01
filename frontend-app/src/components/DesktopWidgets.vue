@@ -5,7 +5,7 @@
       <q-icon name="sym_r_widgets" size="18px" />
     </div>
 
-    <!-- Clock Widget -->
+    <!-- Clock + Weather Widget -->
     <div
       v-if="enabledWidgets.clock"
       class="widget widget-clock"
@@ -14,6 +14,14 @@
     >
       <div class="clock-time">{{ clockTime }}</div>
       <div class="clock-date">{{ weekDay }}, {{ dateStr }}</div>
+      <div v-if="m.weather.city" class="weather-row">
+        <q-icon :name="'sym_r_' + (m.weather.icon || 'partly_cloudy_day')" size="20px" class="weather-icon" />
+        <span class="weather-temp">{{ Math.round(m.weather.temperature) }}&deg;</span>
+        <span class="weather-city">{{ m.weather.city }}</span>
+      </div>
+      <div v-if="m.weather.description" class="weather-desc">
+        {{ m.weather.description }} &middot; Wind {{ m.weather.windSpeed?.toFixed(0) }} km/h
+      </div>
     </div>
 
     <!-- System Widget -->
@@ -371,6 +379,30 @@ onUnmounted(() => {
   font-size: 13px;
   color: rgba(255, 255, 255, 0.6);
   margin-top: 4px;
+}
+.weather-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 10px;
+}
+.weather-icon {
+  color: #fbbf24;
+}
+.weather-temp {
+  font-size: 20px;
+  font-weight: 300;
+}
+.weather-city {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+.weather-desc {
+  text-align: center;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 2px;
 }
 
 // ─── System Gauges ───

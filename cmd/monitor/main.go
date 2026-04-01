@@ -35,6 +35,9 @@ func main() {
 	// Start metrics pusher to KVRocks
 	go startMetricsPublisher(prometheusURL)
 
+	// Start weather fetcher (IP geolocation + Open-Meteo, 30min refresh)
+	monitor.StartWeatherLoop()
+
 	addr := ":" + port
 	log.Printf("monitoring-server starting on %s (prometheus: %s)", addr, prometheusURL)
 	if err := http.ListenAndServe(addr, mux); err != nil {
@@ -83,6 +86,13 @@ func startMetricsPublisher(prometheusURL string) {
 		}
 		// SET with 15s TTL — if monitoring-server dies, stale data expires
 		rdb.Set(ctx, "packalares:metrics", data, 15*time.Second)
+
+		// Weather (cached, updates every 30min — just write latest to KVRocks)
+		if w := monitor.GetWeather(); w != nil {
+			if wData, err := json.Marshal(w); err == nil {
+				rdb.Set(ctx, "packalares:weather", wData, 35*time.Minute)
+			}
+		}
 	}
 }
 

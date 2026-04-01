@@ -102,8 +102,22 @@ export const useWebSocketStore = defineStore('websocket', {
           }
           break;
         }
+        case 'weather': {
+          const monitorStore = useMonitorStore();
+          const w = msg.data as Record<string, unknown>;
+          if (w) {
+            monitorStore.weather = {
+              temperature: (w.temperature as number) || 0,
+              icon: (w.icon as string) || '',
+              description: (w.description as string) || '',
+              city: (w.city as string) || '',
+              country: (w.country as string) || '',
+              windSpeed: (w.wind_speed as number) || 0,
+            };
+          }
+          break;
+        }
         case 'app_state': {
-          // App state change notification
           console.log('App state:', msg.data);
           break;
         }

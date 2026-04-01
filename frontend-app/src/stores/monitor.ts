@@ -27,5 +27,13 @@ export const useMonitorStore = defineStore('monitor', {
     fans: [] as Array<{ name: string; rpm: number }>,
     uptime: 0,
     load: [0, 0, 0],
+    weather: {
+      temperature: 0,
+      icon: '',
+      description: '',
+      city: '',
+      country: '',
+      windSpeed: 0,
+    },
   }),
 });

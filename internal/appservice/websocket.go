@@ -172,6 +172,12 @@ func StartMetricsPusher() {
 
 			var metrics json.RawMessage = data
 			hub.Broadcast(WSMessage{Type: "metrics", Data: metrics})
+
+			// Weather (separate message, only if available)
+			if wData, err := rdb.Get(ctx, "packalares:weather").Bytes(); err == nil {
+				var weather json.RawMessage = wData
+				hub.Broadcast(WSMessage{Type: "weather", Data: weather})
+			}
 		}
 	}()
 
