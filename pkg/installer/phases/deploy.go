@@ -211,9 +211,9 @@ func deployProxyConfig(opts *InstallOptions, w io.Writer) error {
 		if err != nil {
 			return fmt.Errorf("read %s: %w", path, err)
 		}
-		// Key is the filename without path prefix
-		key := strings.TrimPrefix(path, "proxy/includes/")
-		tmplData["includes/"+key] = string(data)
+		// ConfigMap keys can't have slashes — use underscore prefix
+		key := "includes_" + strings.TrimPrefix(path, "proxy/includes/")
+		tmplData[key] = string(data)
 	}
 
 	// Create proxy-config-template ConfigMap (raw templates)

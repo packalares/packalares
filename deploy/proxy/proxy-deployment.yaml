@@ -49,19 +49,19 @@ spec:
         configMap:
           name: proxy-config
           items:
-          - key: includes/upstreams.conf
+          - key: includes_upstreams.conf
             path: upstreams.conf
-          - key: includes/auth-subrequest.conf
+          - key: includes_auth-subrequest.conf
             path: auth-subrequest.conf
-          - key: includes/public-api.conf
+          - key: includes_public-api.conf
             path: public-api.conf
-          - key: includes/protected-api.conf
+          - key: includes_protected-api.conf
             path: protected-api.conf
-          - key: includes/websocket.conf
+          - key: includes_websocket.conf
             path: websocket.conf
-          - key: includes/static-assets.conf
+          - key: includes_static-assets.conf
             path: static-assets.conf
-          - key: includes/cors.conf
+          - key: includes_cors.conf
             path: cors.conf
       - name: tls
         secret:
