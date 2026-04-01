@@ -429,9 +429,8 @@ if [ -f /etc/packalares/install-state.json ]; then
     echo "  Resuming Packalares installation..."
     echo ""
     packalares install
-    # Remove hook after install completes or fails
-    sed -i '/# packalares-install-resume/,/sed.*packalares-install-resume/d' /root/.bashrc
 fi
+# packalares-install-resume
 `
 	existing, _ := os.ReadFile("/root/.bashrc")
 	if strings.Contains(string(existing), marker) {
