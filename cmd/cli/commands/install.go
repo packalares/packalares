@@ -159,12 +159,15 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 		if err := phases.ConnectWifi(opts.WifiSSID, opts.WifiPassword, os.Stdout); err != nil {
 			fmt.Printf("  WiFi connection failed: %v\n", err)
 			fmt.Println()
-			fmt.Println("    1) Try again")
+			fmt.Println("    1) Re-enter password")
 			fmt.Println("    2) Choose different network")
 			fmt.Println("    3) Continue with Ethernet")
 			fmt.Println()
 			retry := prompt(reader, "  Select [1/2/3]", "1")
 			switch retry {
+			case "1":
+				opts.WifiPassword = prompt(reader, "  Password", "")
+				continue
 			case "2":
 				promptWifi(reader, opts)
 				continue
@@ -172,6 +175,7 @@ func promptInstallOptions(opts *phases.InstallOptions) {
 				opts.NetworkType = "ethernet"
 				opts.WifiSSID = ""
 			default:
+				opts.WifiPassword = prompt(reader, "  Password", "")
 				continue
 			}
 		} else {

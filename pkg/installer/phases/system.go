@@ -274,9 +274,10 @@ func ConnectWifi(ssid, password string, w io.Writer) error {
 	}
 
 	// Wait for WiFi to get an IP
-	fmt.Fprintln(w, "  Waiting for WiFi connection ...")
-	for i := 0; i < 15; i++ {
-		time.Sleep(2 * time.Second)
+	maxWait := 30
+	for i := 0; i < maxWait; i++ {
+		fmt.Fprintf(w, "\r  Waiting for WiFi connection ... %ds/%ds", i+1, maxWait)
+		time.Sleep(1 * time.Second)
 		ipOut, err := exec.Command("ip", "-4", "addr", "show", iface).Output()
 		if err == nil {
 			for _, line := range strings.Split(string(ipOut), "\n") {
@@ -284,15 +285,16 @@ func ConnectWifi(ssid, password string, w io.Writer) error {
 					fields := strings.Fields(strings.TrimSpace(line))
 					if len(fields) >= 2 {
 						ip := strings.Split(fields[1], "/")[0]
-						fmt.Fprintf(w, "  WiFi connected: %s (%s)\n", ssid, ip)
+						fmt.Fprintf(w, "\r  WiFi connected: %s (%s)                \n", ssid, ip)
 						return nil
 					}
 				}
 			}
 		}
 	}
+	fmt.Fprintln(w)
 
-	return fmt.Errorf("WiFi connected but no IP received after 30s")
+	return fmt.Errorf("no IP received after %ds", maxWait)
 }
 
 // GetCurrentIP returns the IP of the default route interface.
