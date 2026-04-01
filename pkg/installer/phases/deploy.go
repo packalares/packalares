@@ -330,6 +330,7 @@ func createDefaultDirs(w io.Writer) {
 		"/packalares/data/Home/Pictures",
 		"/packalares/data/Home/Videos",
 		"/packalares/data/Home/Music",
+		"/packalares/data/Mounts",
 	}
 	for _, d := range dirs {
 		os.MkdirAll(d, 0755)
