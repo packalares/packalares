@@ -6,8 +6,8 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 go build -ldflags="-s -w" -o /monitor-server ./cmd/monitor
 
-FROM alpine:3.19
-RUN apk add --no-cache ca-certificates tzdata
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates tzdata && rm -rf /var/lib/apt/lists/*
 COPY --from=builder /monitor-server /usr/local/bin/monitor-server
 EXPOSE 8000
 ENV PROMETHEUS_URL=http://prometheus.kubesphere-monitoring-system.svc:9090
