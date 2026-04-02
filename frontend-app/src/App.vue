@@ -11,9 +11,13 @@ onMounted(() => {
   const theme = localStorage.getItem('packalares_theme') || 'dark';
   applyTheme(theme);
 
-  // Start WebSocket app-wide for live metrics
-  const wsStore = useWebSocketStore();
-  wsStore.start();
+  // Start WebSocket only when authenticated (not on login/auth pages)
+  const host = window.location.hostname;
+  const isAuth = host.startsWith('auth.') || window.location.pathname.startsWith('/login');
+  if (!isAuth) {
+    const wsStore = useWebSocketStore();
+    wsStore.start();
+  }
 
   // Listen for theme changes from other iframes/tabs (same-origin)
   const channel = new BroadcastChannel('packalares_settings');
