@@ -291,7 +291,7 @@ async function fetchUserInfo() {
     return;
   }
 
-  // Check wizard status and auth state
+  // Check wizard status
   try {
     const infoRes = await fetch('/api/user/info');
     if (infoRes.ok) {
@@ -299,13 +299,6 @@ async function fetchUserInfo() {
       const d = json?.data ?? json;
       if (d && d.wizard_complete === false) {
         window.location.href = '/wizard';
-        return;
-      }
-      // Already authenticated — redirect to desktop
-      if (d && d.name) {
-        const params = new URLSearchParams(window.location.search);
-        const rd = params.get('rd');
-        window.location.replace(rd ? decodeURIComponent(rd) : getDesktopUrl());
         return;
       }
     }
