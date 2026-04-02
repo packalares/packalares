@@ -1,12 +1,29 @@
 <template>
-  <div v-if="ready" class="desktop-root" @click="onDesktopClick" @contextmenu.prevent>
+  <div v-if="ready" class="desktop-root" @click="onDesktopClick" @contextmenu.prevent="onContextMenu">
     <!-- Wallpaper -->
     <div class="desktop-bg-container">
       <img class="desktop-bg" :src="wallpaper" />
     </div>
 
     <!-- Desktop Widgets -->
-    <DesktopWidgets />
+    <DesktopWidgets ref="widgetsRef" />
+
+    <!-- Desktop Context Menu -->
+    <div
+      v-if="desktopCtx.show"
+      class="desktop-ctx-menu glass"
+      :style="{ left: desktopCtx.x + 'px', top: desktopCtx.y + 'px' }"
+      @click.stop
+    >
+      <div class="ctx-item" @click="ctxRefresh">
+        <q-icon name="sym_r_refresh" size="14px" />
+        <span>Refresh</span>
+      </div>
+      <div class="ctx-item" @click="ctxResetWidgets">
+        <q-icon name="sym_r_reset_wrench" size="14px" />
+        <span>Reset Widgets</span>
+      </div>
+    </div>
 
     <!-- Dock Bar -->
     <div class="dock-bar glass">
@@ -384,13 +401,34 @@ const launchSearch = ref('');
 const showSearchOverlay = ref(false);
 const searchQuery = ref('');
 
-// Context menu
+// Context menu (dock apps)
 const contextMenu = reactive({
   show: false,
   x: 0,
   y: 0,
   app: null as AppInfo | null,
 });
+
+// Desktop right-click context menu
+const desktopCtx = reactive({ show: false, x: 0, y: 0 });
+const widgetsRef = ref<InstanceType<typeof DesktopWidgets> | null>(null);
+
+function onContextMenu(e: MouseEvent) {
+  contextMenu.show = false;
+  desktopCtx.x = e.clientX;
+  desktopCtx.y = e.clientY;
+  desktopCtx.show = true;
+}
+
+function ctxRefresh() {
+  desktopCtx.show = false;
+  window.location.reload();
+}
+
+function ctxResetWidgets() {
+  desktopCtx.show = false;
+  widgetsRef.value?.resetPositions();
+}
 
 // Drag/resize tracking
 const dragging = ref<string | null>(null);
@@ -723,6 +761,7 @@ function onSearchResultClick(app: AppInfo) {
 
 function onDesktopClick() {
   contextMenu.show = false;
+  desktopCtx.show = false;
 }
 
 // ─── Keyboard shortcuts ─────────────────────────────────────
@@ -1264,5 +1303,29 @@ onUnmounted(() => {
   &:hover {
     background: rgba(255, 255, 255, 0.08);
   }
+}
+
+/* ═══ Desktop Context Menu ═══ */
+.desktop-ctx-menu {
+  position: fixed;
+  z-index: 100;
+  min-width: 160px;
+  padding: 4px 0;
+  border-radius: 10px;
+  background: rgba(30, 30, 30, 0.85);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  &:hover { background: rgba(255, 255, 255, 0.1); }
 }
 </style>
