@@ -1,9 +1,10 @@
 <template>
   <div class="settings-page">
     <div class="page-header">
-      <h2>VPN</h2>
-      <p class="page-desc">Configure VPN access. Only one VPN can be active at a time.</p>
+      <div class="page-title">VPN</div>
+      <div class="page-description">Configure VPN access. Only one VPN can be active at a time.</div>
     </div>
+    <div class="page-scroll">
 
     <!-- VPN Status -->
     <div class="settings-card">
@@ -35,7 +36,7 @@
     </div>
 
     <!-- Tailscale -->
-    <div class="settings-card q-mt-md">
+    <div class="settings-card q-mt-sm">
       <div class="card-header">
         <div class="card-header-icon card-header-icon--network">
           <q-icon name="sym_r_cloud" size="18px" />
@@ -120,7 +121,7 @@
     </div>
 
     <!-- WireGuard -->
-    <div class="settings-card q-mt-md">
+    <div class="settings-card q-mt-sm">
       <div class="card-header">
         <div class="card-header-icon card-header-icon--security">
           <q-icon name="sym_r_shield" size="18px" />
@@ -211,6 +212,7 @@ AllowedIPs = 0.0.0.0/0"
           @click="disableWireGuard"
         />
       </div>
+    </div>
     </div>
   </div>
 </template>
