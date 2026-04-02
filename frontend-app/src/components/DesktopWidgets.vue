@@ -4,23 +4,37 @@
       <q-icon name="sym_r_widgets" size="18px" />
     </div>
 
-    <!-- Clock + Weather -->
+    <!-- Clock -->
     <div
       v-if="enabledWidgets.clock"
       class="widget widget-clock"
       :style="widgetStyle('clock')"
       @mousedown="startDrag($event, 'clock')"
     >
-      <div class="clock-top">
-        <div class="clock-time">{{ clockTime }}</div>
-        <div v-if="m.weather.city" class="weather-side">
-          <q-icon :name="'sym_r_' + (m.weather.icon || 'partly_cloudy_day')" size="24px" class="weather-icon" />
-          <span class="weather-temp">{{ Math.round(m.weather.temperature) }}&deg;</span>
+      <div class="clock-time">{{ clockTime }}</div>
+      <div class="clock-date">{{ weekDay }}, {{ dateStr }}</div>
+    </div>
+
+    <!-- Weather -->
+    <div
+      v-if="enabledWidgets.weather && m.weather.city"
+      class="widget widget-weather"
+      :style="widgetStyle('weather')"
+      @mousedown="startDrag($event, 'weather')"
+    >
+      <div class="weather-top">
+        <div class="weather-left">
+          <div class="weather-city">{{ m.weather.city }}</div>
+          <div class="weather-temp-big">{{ Math.round(m.weather.temperature) }}&deg;</div>
+        </div>
+        <div class="weather-right">
+          <q-icon :name="'sym_r_' + (m.weather.icon || 'partly_cloudy_day')" size="36px" class="weather-cond-icon" />
+          <div class="weather-cond-text">{{ m.weather.description }}</div>
         </div>
       </div>
-      <div class="clock-date">{{ weekDay }}, {{ dateStr }}</div>
-      <div v-if="m.weather.city" class="weather-detail">
-        {{ m.weather.description }} &middot; {{ m.weather.city }} &middot; Wind {{ m.weather.windSpeed?.toFixed(0) }} km/h
+      <div class="weather-bottom">
+        <span>Wind {{ m.weather.windSpeed?.toFixed(0) }} km/h</span>
+        <span>{{ m.weather.country }}</span>
       </div>
     </div>
 
@@ -212,11 +226,12 @@ const RIGHT_MARGIN = 20;
 
 const defaultPositions: Record<string, { x: number; y: number }> = {
   clock:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 20 },
-  system:  { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 140 },
-  temps:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 300 },
-  power:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 400 },
-  network: { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 490 },
-  gpu:     { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 590 },
+  weather: { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 110 },
+  system:  { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 230 },
+  temps:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 390 },
+  power:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 490 },
+  network: { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 580 },
+  gpu:     { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 680 },
 };
 
 const positions = ref<Record<string, { x: number; y: number }>>(loadPositions());
@@ -239,7 +254,7 @@ function loadEnabled(): Record<string, boolean> {
     const saved = localStorage.getItem('packalares_widget_enabled');
     if (saved) return JSON.parse(saved);
   } catch {}
-  return { clock: true, system: true, temps: true, power: true, network: true, gpu: true };
+  return { clock: true, weather: true, system: true, temps: true, power: true, network: true, gpu: true };
 }
 
 function widgetStyle(id: string) {
@@ -409,13 +424,8 @@ onUnmounted(() => {
   margin-top: 8px;
 }
 
-// ─── Clock + Weather ───
+// ─── Clock ───
 .widget-clock { padding: 18px 20px; }
-.clock-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
 .clock-time {
   font-size: 44px;
   font-weight: 200;
@@ -423,23 +433,53 @@ onUnmounted(() => {
   line-height: 1;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
-.weather-side {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding-top: 4px;
-}
-.weather-icon { color: #fbbf24; }
-.weather-temp { font-size: 22px; font-weight: 300; }
 .clock-date {
   font-size: 12px;
   color: rgba(255, 255, 255, 0.6);
   margin-top: 6px;
 }
-.weather-detail {
+
+// ─── Weather ───
+.widget-weather { padding: 14px 16px; }
+.weather-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.weather-left { flex: 1; }
+.weather-city {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1;
+}
+.weather-temp-big {
+  font-size: 42px;
+  font-weight: 200;
+  letter-spacing: -2px;
+  line-height: 1;
+  margin-top: 2px;
+}
+.weather-right {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: 2px;
+}
+.weather-cond-icon { color: #fbbf24; }
+.weather-cond-text {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+  max-width: 80px;
+}
+.weather-bottom {
+  display: flex;
+  justify-content: space-between;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.35);
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 // ─── Gauges ───
