@@ -74,13 +74,13 @@ func InstallGPU(opts *InstallOptions, w io.Writer) error {
 		fmt.Fprintf(w, "  Warning: DCGM exporter failed: %v (non-fatal)\n", err)
 	}
 
-	// Step 6: Patch monitoring-server with nvidia runtime for nvidia-smi access
-	fmt.Fprintln(w, "  Patching monitoring-server with nvidia runtime...")
+	// Step 6: Patch monitoring-server with privileged + NVIDIA access for nvidia-smi
+	fmt.Fprintln(w, "  Patching monitoring-server for GPU access...")
 	patchCmd := exec.Command("kubectl", "patch", "deploy", "-n", opts.FrameworkNS,
 		"monitoring-server", "--type=json", "-p",
-		`[{"op":"add","path":"/spec/template/spec/runtimeClassName","value":"nvidia"}]`)
+		`[{"op":"add","path":"/spec/template/spec/containers/0/securityContext","value":{"privileged":true}},{"op":"add","path":"/spec/template/spec/containers/0/env/-","value":{"name":"NVIDIA_VISIBLE_DEVICES","value":"all"}}]`)
 	if out, err := patchCmd.CombinedOutput(); err != nil {
-		fmt.Fprintf(w, "  Warning: monitoring-server nvidia patch failed: %s (non-fatal)\n", string(out))
+		fmt.Fprintf(w, "  Warning: monitoring-server GPU patch failed: %s (non-fatal)\n", string(out))
 	}
 
 	fmt.Fprintln(w, "  GPU setup complete")
