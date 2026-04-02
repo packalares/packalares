@@ -4,22 +4,188 @@
       <q-icon name="sym_r_widgets" size="18px" />
     </div>
 
-    <!-- Clock -->
-    <div
-      v-if="enabledWidgets.clock"
-      class="widget widget-clock"
-      :style="widgetStyle('clock')"
-      @mousedown="startDrag($event, 'clock')"
-    >
-      <div class="clock-time">{{ clockTime }}</div>
-      <div class="clock-date">{{ weekDay }}, {{ dateStr }}</div>
+    <!-- Right panel: grid layout -->
+    <div class="right-panel" :class="{ 'right-panel--custom': hasCustomPositions }">
+      <!-- Top row: clock + power side by side -->
+      <div class="top-row">
+        <div
+          v-if="enabledWidgets.clock"
+          class="widget widget-clock"
+          :style="customStyle('clock')"
+          @mousedown="startDrag($event, 'clock')"
+        >
+          <div class="clock-time">{{ clockTime }}</div>
+          <div class="clock-date">{{ weekDay }}<br>{{ dateStr }}</div>
+        </div>
+        <div
+          v-if="enabledWidgets.power"
+          class="widget widget-power"
+          :style="customStyle('power')"
+          @mousedown="startDrag($event, 'power')"
+        >
+          <div class="widget-header">
+            <q-icon name="sym_r_bolt" size="14px" />
+            <span>Power</span>
+          </div>
+          <div class="power-total">{{ m.powerTotal > 0 ? m.powerTotal.toFixed(0) : '--' }}<span class="power-unit">W</span></div>
+          <div class="power-breakdown">
+            <span>CPU {{ m.powerCPU > 0 ? m.powerCPU.toFixed(0) + 'W' : '--' }}</span>
+            <span>GPU {{ m.powerGPU > 0 ? m.powerGPU.toFixed(0) + 'W' : '--' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- System -->
+      <div
+        v-if="enabledWidgets.system"
+        class="widget"
+        :style="customStyle('system')"
+        @mousedown="startDrag($event, 'system')"
+      >
+        <div class="widget-header">
+          <q-icon name="sym_r_monitor_heart" size="14px" />
+          <span>System</span>
+        </div>
+        <div class="gauge-row">
+          <div class="gauge-item">
+            <svg viewBox="0 0 36 36" class="gauge-svg">
+              <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path class="gauge-fill" :stroke="gaugeColor(cpuPct)" :stroke-dasharray="cpuPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <div class="gauge-label">
+              <span class="gauge-val">{{ cpuPct }}</span>
+              <span class="gauge-unit">CPU</span>
+            </div>
+          </div>
+          <div class="gauge-item">
+            <svg viewBox="0 0 36 36" class="gauge-svg">
+              <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path class="gauge-fill" :stroke="gaugeColor(memPct)" :stroke-dasharray="memPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <div class="gauge-label">
+              <span class="gauge-val">{{ memPct }}</span>
+              <span class="gauge-unit">MEM</span>
+            </div>
+          </div>
+          <div class="gauge-item">
+            <svg viewBox="0 0 36 36" class="gauge-svg">
+              <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path class="gauge-fill" :stroke="gaugeColor(diskPct)" :stroke-dasharray="diskPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <div class="gauge-label">
+              <span class="gauge-val">{{ diskPct }}</span>
+              <span class="gauge-unit">DSK</span>
+            </div>
+          </div>
+        </div>
+        <div class="widget-footer">
+          <span>{{ formatUptime(m.uptime) }}</span>
+          <span v-if="m.cpuFreqMHz > 0">{{ (m.cpuFreqMHz / 1000).toFixed(1) }} GHz</span>
+          <span>{{ m.load[0]?.toFixed(1) }} load</span>
+        </div>
+        <div v-if="m.fans.length" class="widget-footer" style="margin-top:2px">
+          <span v-for="f in m.fans" :key="f.name">{{ f.name.replace(/_/g,' ') }}: {{ f.rpm }} RPM</span>
+        </div>
+      </div>
+
+      <!-- Temperature -->
+      <div
+        v-if="enabledWidgets.temps"
+        class="widget"
+        :style="customStyle('temps')"
+        @mousedown="startDrag($event, 'temps')"
+      >
+        <div class="widget-header">
+          <q-icon name="sym_r_thermostat" size="14px" />
+          <span>Temperature</span>
+        </div>
+        <div class="temp-grid">
+          <div class="temp-item">
+            <span class="temp-val" :style="{ color: m.tempCPU > 0 ? tempColor(m.tempCPU) : 'rgba(255,255,255,0.3)' }">{{ m.tempCPU > 0 ? Math.round(m.tempCPU) : '--' }}</span>
+            <span class="temp-unit">CPU</span>
+          </div>
+          <div class="temp-item" v-if="m.gpuTemp > 0 || m.tempGPU > 0">
+            <span class="temp-val" :style="{ color: tempColor(m.gpuTemp || m.tempGPU) }">{{ Math.round(m.gpuTemp || m.tempGPU) }}</span>
+            <span class="temp-unit">GPU</span>
+          </div>
+          <div class="temp-item">
+            <span class="temp-val" :style="{ color: m.tempNVMe > 0 ? tempColor(m.tempNVMe) : 'rgba(255,255,255,0.3)' }">{{ m.tempNVMe > 0 ? Math.round(m.tempNVMe) : '--' }}</span>
+            <span class="temp-unit">NVMe</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Network -->
+      <div
+        v-if="enabledWidgets.network"
+        class="widget"
+        :style="customStyle('network')"
+        @mousedown="startDrag($event, 'network')"
+      >
+        <div class="widget-header">
+          <q-icon name="sym_r_speed" size="14px" />
+          <span>Network</span>
+        </div>
+        <div class="net-row">
+          <div class="net-item">
+            <q-icon name="sym_r_arrow_downward" size="12px" class="net-icon-down" />
+            <span class="net-val">{{ formatRate(m.netRx) }}</span>
+          </div>
+          <div class="net-item">
+            <q-icon name="sym_r_arrow_upward" size="12px" class="net-icon-up" />
+            <span class="net-val">{{ formatRate(m.netTx) }}</span>
+          </div>
+        </div>
+        <div class="net-sparkline">
+          <svg viewBox="0 0 120 30" preserveAspectRatio="none" class="sparkline-svg">
+            <polyline :points="rxSparkline" class="spark-rx" />
+            <polyline :points="txSparkline" class="spark-tx" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- GPU -->
+      <div
+        v-if="enabledWidgets.gpu && m.gpuName"
+        class="widget"
+        :style="customStyle('gpu')"
+        @mousedown="startDrag($event, 'gpu')"
+      >
+        <div class="widget-header">
+          <q-icon name="sym_r_memory" size="14px" />
+          <span>GPU</span>
+          <span class="gpu-header-info">{{ shortGPUName }} {{ gpuMemGB }}GB</span>
+        </div>
+        <div class="gauge-row">
+          <div class="gauge-item">
+            <svg viewBox="0 0 36 36" class="gauge-svg">
+              <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path class="gauge-fill" :stroke="gaugeColor(m.gpuUtil)" :stroke-dasharray="m.gpuUtil + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <div class="gauge-label">
+              <span class="gauge-val">{{ m.gpuUtil }}</span>
+              <span class="gauge-unit">UTIL</span>
+            </div>
+          </div>
+          <div class="gauge-item">
+            <svg viewBox="0 0 36 36" class="gauge-svg">
+              <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              <path class="gauge-fill" :stroke="gaugeColor(gpuMemPct)" :stroke-dasharray="gpuMemPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            </svg>
+            <div class="gauge-label">
+              <span class="gauge-val">{{ gpuMemPct }}</span>
+              <span class="gauge-unit">VRAM</span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <!-- Weather -->
+    <!-- Weather: bottom-left -->
     <div
       v-if="enabledWidgets.weather && m.weather.city"
       class="widget widget-weather"
-      :style="widgetStyle('weather')"
+      :style="customStyle('weather')"
       @mousedown="startDrag($event, 'weather')"
     >
       <div class="weather-top">
@@ -35,169 +201,6 @@
       <div class="weather-bottom">
         <span>Wind {{ m.weather.windSpeed?.toFixed(0) }} km/h</span>
         <span>{{ m.weather.country }}</span>
-      </div>
-    </div>
-
-    <!-- System -->
-    <div
-      v-if="enabledWidgets.system"
-      class="widget widget-system"
-      :style="widgetStyle('system')"
-      @mousedown="startDrag($event, 'system')"
-    >
-      <div class="widget-header">
-        <q-icon name="sym_r_monitor_heart" size="14px" />
-        <span>System</span>
-      </div>
-      <div class="gauge-row">
-        <div class="gauge-item">
-          <svg viewBox="0 0 36 36" class="gauge-svg">
-            <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-            <path class="gauge-fill" :stroke="gaugeColor(cpuPct)" :stroke-dasharray="cpuPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-          </svg>
-          <div class="gauge-label">
-            <span class="gauge-val">{{ cpuPct }}</span>
-            <span class="gauge-unit">CPU</span>
-          </div>
-        </div>
-        <div class="gauge-item">
-          <svg viewBox="0 0 36 36" class="gauge-svg">
-            <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-            <path class="gauge-fill" :stroke="gaugeColor(memPct)" :stroke-dasharray="memPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-          </svg>
-          <div class="gauge-label">
-            <span class="gauge-val">{{ memPct }}</span>
-            <span class="gauge-unit">MEM</span>
-          </div>
-        </div>
-        <div class="gauge-item">
-          <svg viewBox="0 0 36 36" class="gauge-svg">
-            <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-            <path class="gauge-fill" :stroke="gaugeColor(diskPct)" :stroke-dasharray="diskPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-          </svg>
-          <div class="gauge-label">
-            <span class="gauge-val">{{ diskPct }}</span>
-            <span class="gauge-unit">DSK</span>
-          </div>
-        </div>
-      </div>
-      <div class="widget-footer">
-        <span>{{ formatUptime(m.uptime) }}</span>
-        <span v-if="m.cpuFreqMHz > 0">{{ (m.cpuFreqMHz / 1000).toFixed(1) }} GHz</span>
-        <span>{{ m.load[0]?.toFixed(1) }} load</span>
-      </div>
-      <div v-if="m.fans.length" class="widget-footer" style="margin-top:2px">
-        <span v-for="f in m.fans" :key="f.name">{{ f.name.replace(/_/g,' ') }}: {{ f.rpm }} RPM</span>
-      </div>
-    </div>
-
-    <!-- Temperature -->
-    <div
-      v-if="enabledWidgets.temps"
-      class="widget widget-temps"
-      :style="widgetStyle('temps')"
-      @mousedown="startDrag($event, 'temps')"
-    >
-      <div class="widget-header">
-        <q-icon name="sym_r_thermostat" size="14px" />
-        <span>Temperature</span>
-      </div>
-      <div class="temp-grid">
-        <div class="temp-item">
-          <span class="temp-val" :style="{ color: m.tempCPU > 0 ? tempColor(m.tempCPU) : 'rgba(255,255,255,0.3)' }">{{ m.tempCPU > 0 ? Math.round(m.tempCPU) : '--' }}</span>
-          <span class="temp-unit">CPU</span>
-        </div>
-        <div class="temp-item" v-if="m.gpuTemp > 0 || m.tempGPU > 0">
-          <span class="temp-val" :style="{ color: tempColor(m.gpuTemp || m.tempGPU) }">{{ Math.round(m.gpuTemp || m.tempGPU) }}</span>
-          <span class="temp-unit">GPU</span>
-        </div>
-        <div class="temp-item">
-          <span class="temp-val" :style="{ color: m.tempNVMe > 0 ? tempColor(m.tempNVMe) : 'rgba(255,255,255,0.3)' }">{{ m.tempNVMe > 0 ? Math.round(m.tempNVMe) : '--' }}</span>
-          <span class="temp-unit">NVMe</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Power -->
-    <div
-      v-if="enabledWidgets.power"
-      class="widget widget-power"
-      :style="widgetStyle('power')"
-      @mousedown="startDrag($event, 'power')"
-    >
-      <div class="widget-header">
-        <q-icon name="sym_r_bolt" size="14px" />
-        <span>Power</span>
-      </div>
-      <div class="power-total">{{ m.powerTotal > 0 ? m.powerTotal.toFixed(0) : '--' }}<span class="power-unit">W</span></div>
-      <div class="power-breakdown">
-        <span>CPU {{ m.powerCPU > 0 ? m.powerCPU.toFixed(0) + 'W' : '--' }}</span>
-        <span>GPU {{ m.powerGPU > 0 ? m.powerGPU.toFixed(0) + 'W' : '--' }}</span>
-      </div>
-    </div>
-
-    <!-- Network -->
-    <div
-      v-if="enabledWidgets.network"
-      class="widget widget-network"
-      :style="widgetStyle('network')"
-      @mousedown="startDrag($event, 'network')"
-    >
-      <div class="widget-header">
-        <q-icon name="sym_r_speed" size="14px" />
-        <span>Network</span>
-      </div>
-      <div class="net-row">
-        <div class="net-item">
-          <q-icon name="sym_r_arrow_downward" size="12px" class="net-icon-down" />
-          <span class="net-val">{{ formatRate(m.netRx) }}</span>
-        </div>
-        <div class="net-item">
-          <q-icon name="sym_r_arrow_upward" size="12px" class="net-icon-up" />
-          <span class="net-val">{{ formatRate(m.netTx) }}</span>
-        </div>
-      </div>
-      <div class="net-sparkline">
-        <svg viewBox="0 0 120 30" preserveAspectRatio="none" class="sparkline-svg">
-          <polyline :points="rxSparkline" class="spark-rx" />
-          <polyline :points="txSparkline" class="spark-tx" />
-        </svg>
-      </div>
-    </div>
-
-    <!-- GPU (only if detected) -->
-    <div
-      v-if="enabledWidgets.gpu && m.gpuName"
-      class="widget widget-gpu"
-      :style="widgetStyle('gpu')"
-      @mousedown="startDrag($event, 'gpu')"
-    >
-      <div class="widget-header">
-        <q-icon name="sym_r_memory" size="14px" />
-        <span>GPU</span>
-        <span class="gpu-header-info">{{ shortGPUName }} {{ gpuMemGB }}GB</span>
-      </div>
-      <div class="gauge-row">
-        <div class="gauge-item">
-          <svg viewBox="0 0 36 36" class="gauge-svg">
-            <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-            <path class="gauge-fill" :stroke="gaugeColor(m.gpuUtil)" :stroke-dasharray="m.gpuUtil + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-          </svg>
-          <div class="gauge-label">
-            <span class="gauge-val">{{ m.gpuUtil }}</span>
-            <span class="gauge-unit">UTIL</span>
-          </div>
-        </div>
-        <div class="gauge-item">
-          <svg viewBox="0 0 36 36" class="gauge-svg">
-            <path class="gauge-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-            <path class="gauge-fill" :stroke="gaugeColor(gpuMemPct)" :stroke-dasharray="gpuMemPct + ', 100'" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-          </svg>
-          <div class="gauge-label">
-            <span class="gauge-val">{{ gpuMemPct }}</span>
-            <span class="gauge-unit">VRAM</span>
-          </div>
-        </div>
       </div>
     </div>
   </div>
@@ -219,40 +222,25 @@ function toggleWidgets(show: boolean) {
   localStorage.setItem('packalares_widgets_visible', String(show));
 }
 
-// Layout constants
-const W = 240;        // full widget width
-const HW = 114;       // half widget width
-const RM = 8;         // right margin from screen edge
-const GAP = 6;        // vertical gap between widgets
-const R = -(W + RM);  // right-column x (negative = from right edge)
-
-const defaultPositions: Record<string, { x: number; y: number }> = {
-  clock:   { x: R, y: 8 },
-  power:   { x: -(HW + RM), y: 8 },
-  system:  { x: R, y: 8 + 70 + GAP },
-  temps:   { x: R, y: 8 + 70 + GAP + 130 + GAP },
-  network: { x: R, y: 8 + 70 + GAP + 130 + GAP + 85 + GAP },
-  gpu:     { x: R, y: 8 + 70 + GAP + 130 + GAP + 85 + GAP + 95 + GAP },
-  weather: { x: 8, y: -(44 + 110) },
-};
-
-const positions = ref<Record<string, { x: number; y: number }>>(loadPositions());
+// Custom positions (dragged by user) — only set when user drags
+const customPositions = ref<Record<string, { x: number; y: number }>>(loadCustomPositions());
+const hasCustomPositions = computed(() => Object.keys(customPositions.value).length > 0);
 const enabledWidgets = ref<Record<string, boolean>>(loadEnabled());
 
-function loadPositions(): Record<string, { x: number; y: number }> {
+function loadCustomPositions(): Record<string, { x: number; y: number }> {
   try {
     const saved = localStorage.getItem('packalares_widget_positions');
     if (saved) return JSON.parse(saved);
   } catch {}
-  return { ...defaultPositions };
+  return {};
 }
 
-function savePositions() {
-  localStorage.setItem('packalares_widget_positions', JSON.stringify(positions.value));
+function saveCustomPositions() {
+  localStorage.setItem('packalares_widget_positions', JSON.stringify(customPositions.value));
 }
 
 function resetPositions() {
-  positions.value = { ...defaultPositions };
+  customPositions.value = {};
   localStorage.removeItem('packalares_widget_positions');
 }
 
@@ -266,12 +254,11 @@ function loadEnabled(): Record<string, boolean> {
   return { clock: true, weather: true, system: true, temps: true, power: true, network: true, gpu: true };
 }
 
-function widgetStyle(id: string) {
-  const p = positions.value[id] || defaultPositions[id] || { x: 0, y: 0 };
-  const s: Record<string, string> = { position: 'absolute' };
-  if (p.x < 0) { s.right = Math.abs(p.x) + 'px'; } else { s.left = p.x + 'px'; }
-  if (p.y < 0) { s.bottom = Math.abs(p.y) + 'px'; } else { s.top = p.y + 'px'; }
-  return s;
+// Only apply style when widget has been manually dragged
+function customStyle(id: string): Record<string, string> | undefined {
+  const p = customPositions.value[id];
+  if (!p) return undefined;
+  return { position: 'fixed', left: p.x + 'px', top: p.y + 'px', zIndex: '5' };
 }
 
 // Drag
@@ -292,12 +279,12 @@ function startDrag(e: MouseEvent, id: string) {
 
 function onDrag(e: MouseEvent) {
   if (!dragWidget) return;
-  positions.value[dragWidget] = { x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y };
+  customPositions.value[dragWidget] = { x: e.clientX - dragOffset.x, y: e.clientY - dragOffset.y };
 }
 
 function stopDrag() {
   dragWidget = '';
-  savePositions();
+  saveCustomPositions();
   document.removeEventListener('mousemove', onDrag);
   document.removeEventListener('mouseup', stopDrag);
 }
@@ -311,8 +298,8 @@ let clockTimer: ReturnType<typeof setInterval>;
 function updateClock() {
   const now = new Date();
   clockTime.value = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  weekDay.value = now.toLocaleDateString([], { weekday: 'long' });
-  dateStr.value = now.toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' });
+  weekDay.value = now.toLocaleDateString([], { weekday: 'short' });
+  dateStr.value = now.toLocaleDateString([], { month: 'short', day: 'numeric' });
 }
 
 // Computed
@@ -395,6 +382,32 @@ onUnmounted(() => {
   z-index: 5;
 }
 
+// ─── Right panel: CSS Grid ───
+.right-panel {
+  pointer-events: none;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 240px;
+}
+
+.top-row {
+  display: flex;
+  gap: 8px;
+}
+
+// ─── Weather: bottom-left ───
+.widget-weather {
+  position: absolute;
+  bottom: 52px;
+  left: 12px;
+  padding: 14px 16px;
+}
+
+// ─── Base widget ───
 .widget {
   pointer-events: auto;
   background: rgba(0, 0, 0, 0.45);
@@ -407,6 +420,7 @@ onUnmounted(() => {
   cursor: grab;
   user-select: none;
   width: 240px;
+  box-sizing: border-box;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 0.5px 0 rgba(255, 255, 255, 0.1);
   transition: box-shadow 0.2s;
   &:hover { box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4), inset 0 0.5px 0 rgba(255, 255, 255, 0.15); }
@@ -433,25 +447,39 @@ onUnmounted(() => {
   margin-top: 8px;
 }
 
-// ─── Clock (half-width) ───
-.widget-clock { padding: 12px; width: 114px; height: 70px; box-sizing: border-box; overflow: hidden; }
+// ─── Clock (half-width in top-row) ───
+.widget-clock {
+  flex: 1;
+  width: auto;
+  padding: 12px;
+}
 .clock-time {
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 300;
   letter-spacing: -0.5px;
   line-height: 1;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
   white-space: nowrap;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 .clock-date {
-  font-size: 9px;
+  font-size: 10px;
   color: rgba(255, 255, 255, 0.5);
-  margin-top: 6px;
-  line-height: 1.3;
+  margin-top: 8px;
+  line-height: 1.4;
 }
 
+// ─── Power (half-width in top-row) ───
+.widget-power {
+  flex: 1;
+  width: auto;
+  padding: 12px;
+}
+.widget-power .widget-header { margin-bottom: 6px; font-size: 10px; }
+.power-total { font-size: 24px; font-weight: 300; text-align: center; line-height: 1; }
+.power-unit { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
+.power-breakdown { display: flex; justify-content: center; gap: 8px; font-size: 9px; color: rgba(255, 255, 255, 0.4); margin-top: 4px; }
+
 // ─── Weather ───
-.widget-weather { padding: 14px 16px; }
 .weather-top {
   display: flex;
   justify-content: space-between;
@@ -511,13 +539,6 @@ onUnmounted(() => {
   &::after { content: '\00B0'; font-size: 16px; }
 }
 .temp-unit { display: block; font-size: 9px; text-transform: uppercase; color: rgba(255, 255, 255, 0.4); margin-top: 2px; }
-
-// ─── Power (half-width) ───
-.widget-power { width: 114px; height: 70px; box-sizing: border-box; padding: 12px; overflow: hidden; }
-.widget-power .widget-header { margin-bottom: 4px; }
-.power-total { font-size: 22px; font-weight: 300; text-align: center; line-height: 1; }
-.power-unit { font-size: 11px; color: rgba(255, 255, 255, 0.5); }
-.power-breakdown { display: flex; justify-content: center; gap: 6px; font-size: 8px; color: rgba(255, 255, 255, 0.4); margin-top: 4px; }
 
 // ─── Network ───
 .net-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
