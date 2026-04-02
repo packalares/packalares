@@ -222,20 +222,18 @@ function toggleWidgets(show: boolean) {
 // Layout constants
 const W = 240;        // full widget width
 const HW = 114;       // half widget width
-const HG = 12;        // gap between half widgets (W - 2*HW = 12)
-const RM = 16;        // right margin from screen edge
-const GAP = 8;        // vertical gap between widgets
+const RM = 8;         // right margin from screen edge
+const GAP = 6;        // vertical gap between widgets
 const R = -(W + RM);  // right-column x (negative = from right edge)
 
-// Heights: clock=70, power=70, system=140, temps=90, network=100, gpu=90
 const defaultPositions: Record<string, { x: number; y: number }> = {
-  clock:   { x: R, y: 16 },
-  power:   { x: -(HW + RM), y: 16 },
-  system:  { x: R, y: 16 + 70 + GAP },
-  temps:   { x: R, y: 16 + 70 + GAP + 140 + GAP },
-  network: { x: R, y: 16 + 70 + GAP + 140 + GAP + 90 + GAP },
-  gpu:     { x: R, y: 16 + 70 + GAP + 140 + GAP + 90 + GAP + 100 + GAP },
-  weather: { x: 20, y: -(80 + 110) },
+  clock:   { x: R, y: 8 },
+  power:   { x: -(HW + RM), y: 8 },
+  system:  { x: R, y: 8 + 70 + GAP },
+  temps:   { x: R, y: 8 + 70 + GAP + 130 + GAP },
+  network: { x: R, y: 8 + 70 + GAP + 130 + GAP + 85 + GAP },
+  gpu:     { x: R, y: 8 + 70 + GAP + 130 + GAP + 85 + GAP + 95 + GAP },
+  weather: { x: 8, y: -(44 + 110) },
 };
 
 const positions = ref<Record<string, { x: number; y: number }>>(loadPositions());
