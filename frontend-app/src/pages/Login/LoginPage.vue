@@ -291,6 +291,17 @@ async function fetchUserInfo() {
     return;
   }
 
+  // If already authenticated, redirect away from login
+  try {
+    const checkRes = await fetch('/api/auth/check', { credentials: 'include' });
+    if (checkRes.ok) {
+      const params = new URLSearchParams(window.location.search);
+      const rd = params.get('rd');
+      window.location.replace(rd ? decodeURIComponent(rd) : getDesktopUrl());
+      return;
+    }
+  } catch {}
+
   // Check wizard status
   try {
     const infoRes = await fetch('/api/user/info');
