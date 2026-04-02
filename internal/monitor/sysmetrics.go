@@ -580,6 +580,36 @@ func readTemperatures() TempMetrics {
 
 // --- GPU Metrics (from Prometheus DCGM) ---
 
+// gpuPowerLimitCached is read once from nvidia-smi at first call.
+var gpuPowerLimitCached float64 = -1
+
+func readGPUPowerLimit() float64 {
+	if gpuPowerLimitCached >= 0 {
+		return gpuPowerLimitCached
+	}
+	gpuPowerLimitCached = 0
+
+	out, err := exec.Command("nvidia-smi",
+		"--query-gpu=power.default_limit,power.max_limit",
+		"--format=csv,noheader,nounits").Output()
+	if err != nil {
+		return 0
+	}
+	parts := strings.Split(strings.TrimSpace(string(out)), ", ")
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "[N/A]" || p == "" {
+			continue
+		}
+		v, err := strconv.ParseFloat(p, 64)
+		if err == nil && v > 0 {
+			gpuPowerLimitCached = v
+			return v
+		}
+	}
+	return 0
+}
+
 func readGPUMetrics(prometheusURL string) *GPUMetrics {
 	if prometheusURL == "" {
 		return nil
@@ -634,7 +664,7 @@ func readGPUMetrics(prometheusURL string) *GPUMetrics {
 	memFree := getVal(query("DCGM_FI_DEV_FB_FREE"))
 	temp := getVal(query("DCGM_FI_DEV_GPU_TEMP"))
 	power := getVal(query("DCGM_FI_DEV_POWER_USAGE"))
-	powerLimit := getVal(query("DCGM_FI_DEV_ENFORCED_POWER_LIMIT"))
+	powerLimit := readGPUPowerLimit()
 
 	return &GPUMetrics{
 		Name:        name,
