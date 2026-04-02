@@ -226,20 +226,6 @@ func (s *Server) afterTailscaleEnabled(ctx context.Context) {
 		return
 	}
 
-	serverIP := s.getNodeIP(ctx)
-	zone := ""
-	user, err := s.K8s.GetUser(ctx, "")
-	if err == nil {
-		zone = GetUserZone(user)
-	}
-	if zone == "" {
-		klog.Warning("zone not set, skipping post-tailscale cert regen")
-		return
-	}
-
-	customDomain := s.getCustomDomain(ctx)
-
-	// Use unified VPN state
 	s.afterVPNEnabled(ctx, VPNTailscale, tsIP)
 }
 
