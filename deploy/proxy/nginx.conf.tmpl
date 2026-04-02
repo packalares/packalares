@@ -134,7 +134,12 @@ http {
     include /etc/nginx/includes/auth-subrequest.conf;
     include /etc/nginx/includes/static-assets.conf;
 
-    location = /api/auth/check { auth_request /_auth; add_header Content-Type application/json; return 200 '{"ok":true}'; }
+    location = /api/auth/check {
+      proxy_pass http://$auth_up:9091/api/verify;
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header Cookie $http_cookie;
+    }
     location = / { rewrite ^ /login last; }
     location /login { proxy_pass http://$desktop_up:80; }
     location /api/auth/ { proxy_pass http://$auth_up:9091; proxy_set_header Host $host; proxy_set_header Cookie $http_cookie; }
