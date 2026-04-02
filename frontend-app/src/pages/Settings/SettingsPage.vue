@@ -52,6 +52,7 @@ interface NavItem { icon: string; label: string; path: string; }
 const navItems: NavItem[] = [
   { icon: 'sym_r_computer', label: 'System', path: '/settings/system' },
   { icon: 'sym_r_language', label: 'Network', path: '/settings/network' },
+  { icon: 'sym_r_vpn_lock', label: 'VPN', path: '/settings/vpn' },
   { icon: 'sym_r_storage', label: 'Storage', path: '/settings/storage' },
   { icon: 'sym_r_memory', label: 'GPU', path: '/settings/gpu' },
   { icon: 'sym_r_palette', label: 'Appearance', path: '/settings/appearance' },

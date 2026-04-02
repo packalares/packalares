@@ -23,8 +23,8 @@
             <span class="info-value">{{ networkInfo.serverIP || netInfo.ip }}</span>
           </div>
           <div class="info-row">
-            <span class="info-label">Tailscale IP</span>
-            <span class="info-value">{{ networkInfo.tailscaleIP || '--' }}</span>
+            <span class="info-label">VPN IP</span>
+            <span class="info-value">{{ networkInfo.vpnIP || networkInfo.tailscaleIP || '--' }}</span>
           </div>
         </div>
         <q-separator class="card-separator" />

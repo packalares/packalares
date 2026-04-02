@@ -22,6 +22,7 @@ const routes: RouteRecordRaw[] = [
           { path: 'account', component: () => import('pages/Settings/Account/AccountPage.vue') },
           { path: 'system', component: () => import('pages/Settings/System/SystemPage.vue') },
           { path: 'network', component: () => import('pages/Settings/Network/NetworkPage.vue') },
+          { path: 'vpn', component: () => import('pages/Settings/VPN/VPNPage.vue') },
           { path: 'storage', component: () => import('pages/Settings/Storage/StoragePage.vue') },
           { path: 'gpu', component: () => import('pages/Settings/GPU/GpuPage.vue') },
           { path: 'appearance', component: () => import('pages/Settings/Appearance/AppearancePage.vue') },
