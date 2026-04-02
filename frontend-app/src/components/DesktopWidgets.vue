@@ -161,8 +161,8 @@
       <div class="widget-header">
         <q-icon name="sym_r_memory" size="14px" />
         <span>GPU</span>
+        <span class="gpu-header-info">{{ shortGPUName }} {{ gpuMemGB }}GB</span>
       </div>
-      <div class="gpu-name">{{ shortGPUName }}</div>
       <div class="gauge-row">
         <div class="gauge-item">
           <svg viewBox="0 0 36 36" class="gauge-svg">
@@ -184,13 +184,6 @@
             <span class="gauge-unit">VRAM</span>
           </div>
         </div>
-      </div>
-      <div class="widget-footer">
-        <span>{{ m.gpuTemp }}&deg;C</span>
-        <span>{{ m.gpuMemUsed }}MB / {{ m.gpuMemTotal }}MB</span>
-      </div>
-      <div class="widget-footer" style="margin-top:2px">
-        <span>{{ m.gpuPowerDraw.toFixed(0) }}W / {{ m.gpuPowerLimit.toFixed(0) }}W</span>
       </div>
     </div>
   </div>
@@ -309,6 +302,7 @@ const shortGPUName = computed(() => {
   if (!n) return '';
   return n.replace(/NVIDIA /, '').replace(/GeForce /, '').replace(/ Laptop GPU/, '');
 });
+const gpuMemGB = computed(() => m.gpuMemTotal ? Math.round(m.gpuMemTotal / 1024) : 0);
 
 // Sparkline
 const rxHistory = ref<number[]>(Array(30).fill(0));
@@ -484,7 +478,7 @@ onUnmounted(() => {
 .spark-tx { fill: none; stroke: #3b82f6; stroke-width: 1.5; }
 
 // ─── GPU ───
-.gpu-name { font-size: 11px; color: rgba(255, 255, 255, 0.5); text-align: center; margin-bottom: 8px; }
+.gpu-header-info { margin-left: auto; font-weight: 400; font-size: 10px; text-transform: none; letter-spacing: 0; }
 
 // ─── Toggle ───
 .widget-toggle, .widget-toggle-hidden {
