@@ -32,6 +32,8 @@ export default route(function () {
   });
 
   router.beforeEach((to) => {
+    const sub = getSubdomain();
+
     // Wizard only accessible on auth subdomain or IP
     if (to.path === '/wizard') {
       const host = window.location.hostname;
@@ -40,9 +42,16 @@ export default route(function () {
       if (!isIP && !isAuth) return '/';
     }
 
+    // On a known subdomain: enforce path belongs to this subdomain
+    if (sub && sub !== 'auth') {
+      const expectedPrefix = '/' + sub;
+      if (to.path !== '/' && !to.path.startsWith(expectedPrefix)) {
+        return '/';
+      }
+    }
+
     // Unknown paths → redirect to correct root for this subdomain
     if (to.matched.length === 0 || to.matched[0]?.path === '/:catchAll(.*)*') {
-      const sub = getSubdomain();
       if (sub && subdomainRoutes[sub]) {
         return subdomainRoutes[sub];
       }

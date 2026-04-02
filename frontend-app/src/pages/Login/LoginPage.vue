@@ -273,9 +273,25 @@ function getRedirectUrl(responseRedirect?: string): string {
   return '/desktop/';
 }
 
+// ---------- Helpers ----------
+function getDesktopUrl(): string {
+  const host = window.location.hostname;
+  const parts = host.split('.');
+  if (parts.length >= 3) {
+    return 'https://desktop.' + parts.slice(1).join('.');
+  }
+  return '/desktop';
+}
+
 // ---------- Fetch user info ----------
 async function fetchUserInfo() {
-  // Check wizard status (auth redirect handled by nginx)
+  // Break out of iframe if embedded
+  if (window.self !== window.top) {
+    try { (window.top as Window).location.href = window.location.href; } catch {}
+    return;
+  }
+
+  // Check wizard status and auth state
   try {
     const infoRes = await fetch('/api/user/info');
     if (infoRes.ok) {
@@ -283,6 +299,13 @@ async function fetchUserInfo() {
       const d = json?.data ?? json;
       if (d && d.wizard_complete === false) {
         window.location.href = '/wizard';
+        return;
+      }
+      // Already authenticated — redirect to desktop
+      if (d && d.name) {
+        const params = new URLSearchParams(window.location.search);
+        const rd = params.get('rd');
+        window.location.replace(rd ? decodeURIComponent(rd) : getDesktopUrl());
         return;
       }
     }

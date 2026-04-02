@@ -315,7 +315,13 @@ function confirmLogout() {
     persistent: true,
   }).onOk(async () => {
     try { await api.post('/api/auth/logout'); } catch {}
-    window.location.href = '/login';
+    const host = window.location.hostname;
+    const parts = host.split('.');
+    const authUrl = parts.length >= 3
+      ? 'https://auth.' + parts.slice(1).join('.') + '/login'
+      : '/login';
+    const w = window.top || window;
+    w.location.href = authUrl;
   });
 }
 
