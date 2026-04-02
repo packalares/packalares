@@ -178,117 +178,6 @@
         </div>
       </div>
 
-      <!-- Tailscale VPN -->
-      <div class="settings-card q-mt-lg">
-        <div class="card-header">
-          <div class="card-header-icon card-header-icon--vpn">
-            <q-icon name="sym_r_vpn_lock" size="18px" />
-          </div>
-          <div class="card-header-text">
-            <div class="card-header-title">VPN / Tailscale</div>
-            <div class="card-header-subtitle">Connect to your Tailscale network for secure remote access</div>
-          </div>
-          <div class="card-header-actions">
-            <span
-              class="status-badge"
-              :class="tsStatusBadgeClass"
-            >{{ tsStatusLabel }}</span>
-          </div>
-        </div>
-
-        <!-- Status section (shown when tailscale has data) -->
-        <template v-if="tsLive.enabled">
-          <div class="info-grid-2col">
-            <div class="info-row">
-              <span class="info-label">Status</span>
-              <span class="info-value" style="display:flex;align-items:center;gap:6px">
-                <span
-                  class="status-dot"
-                  :class="tsLive.connected ? 'dot-green' : 'dot-red'"
-                ></span>
-                {{ tsLive.connected ? 'Connected' : 'Disconnected' }}
-              </span>
-            </div>
-            <div class="info-row">
-              <span class="info-label">Tailscale IP</span>
-              <span class="info-value">{{ tsLive.ip || '--' }}</span>
-            </div>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Hostname</span>
-            <span class="info-value">{{ tsLive.hostname || '--' }}</span>
-          </div>
-          <template v-if="tsLive.peers && tsLive.peers.length">
-            <q-separator class="card-separator" />
-            <div style="padding:0 16px 8px">
-              <div style="font-size:11px;color:var(--ink-3);margin-bottom:6px;font-weight:600">Peers</div>
-              <table class="data-table" style="margin:0">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>IP</th>
-                    <th style="text-align:right">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr v-for="peer in tsLive.peers" :key="peer.name + peer.ip">
-                    <td class="td-label">{{ peer.name }}</td>
-                    <td class="td-mono">{{ peer.ip }}</td>
-                    <td style="text-align:right">
-                      <span
-                        class="status-badge"
-                        :class="peer.online ? 'status-connected' : 'status-disconnected'"
-                        style="font-size:10px"
-                      >{{ peer.online ? 'online' : 'offline' }}</span>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          </template>
-          <q-separator class="card-separator" />
-        </template>
-
-        <!-- Config form -->
-        <div class="form-grid cols-1">
-          <div class="form-group">
-            <label class="form-label">Auth Key</label>
-            <q-input
-              v-model="tsAuthKey"
-              dense dark outlined
-              placeholder="tskey-auth-..."
-              type="password"
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Control URL</label>
-            <q-input
-              v-model="tsControlURL"
-              dense dark outlined
-              placeholder="https://controlplane.tailscale.com"
-            />
-          </div>
-          <div class="form-group">
-            <label class="form-label">Hostname</label>
-            <q-input
-              v-model="tsHostname"
-              dense dark outlined
-              placeholder="packalares"
-            />
-          </div>
-        </div>
-        <div class="card-footer">
-          <span v-if="saveMsg" class="footer-msg" :class="saveMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ saveMsg }}</span>
-          <q-btn
-            unelevated dense
-            label="Save & Connect"
-            class="btn-primary"
-            :loading="saving"
-            @click="saveTailscale"
-          />
-        </div>
-      </div>
-
       <!-- Exposed Ports -->
       <div class="settings-card q-mt-lg">
         <div class="card-header">
@@ -330,7 +219,7 @@
               <td style="text-align:right"><span class="port-badge">6443</span></td>
             </tr>
             <tr>
-              <td class="td-label">Tailscale P2P</td>
+              <td class="td-label">VPN (Tailscale/WG)</td>
               <td class="td-mono">UDP</td>
               <td style="text-align:right"><span class="port-badge">41641</span></td>
             </tr>
@@ -342,19 +231,13 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { api } from 'boot/axios';
 import { useQuasar } from 'quasar';
 
 const $q = useQuasar();
 const netInfo = ref({ ip: '--', domain: '--', zone: '--' });
 const ipAccessEnabled = ref(true);
-const tsAuthKey = ref('');
-const tsControlURL = ref('');
-const tsHostname = ref('packalares');
-const tsStatus = ref('not configured');
-const saving = ref(false);
-const saveMsg = ref('');
 
 const sshStatus = reactive({
   enabled: false,
@@ -380,31 +263,6 @@ const customDomainInput = ref('');
 const domainSaving = ref(false);
 const domainMsg = ref('');
 
-// Tailscale live status
-const tsLive = reactive({
-  enabled: false,
-  connected: false,
-  ip: '',
-  hostname: '',
-  peers: [] as Array<{ name: string; ip: string; online: boolean; lastSeen: string }>,
-  acceptRoutes: false,
-});
-
-let tsPollingTimer: ReturnType<typeof setInterval> | null = null;
-
-const tsStatusLabel = computed(() => {
-  if (tsLive.enabled && tsLive.connected) return 'connected';
-  if (tsLive.enabled && !tsLive.connected) return 'disconnected';
-  if (tsStatus.value === 'connecting') return 'connecting';
-  return tsStatus.value;
-});
-
-const tsStatusBadgeClass = computed(() => {
-  if (tsLive.enabled && tsLive.connected) return 'status-connected';
-  if (tsLive.enabled && !tsLive.connected) return 'status-disconnected';
-  if (tsStatus.value === 'connecting') return 'status-connecting';
-  return 'status-disconnected';
-});
 
 function portRule(val: number): boolean | string {
   if (val === 22) return true;
@@ -439,30 +297,6 @@ async function loadNetworkInfo() {
   }
 }
 
-async function loadTailscaleStatus() {
-  try {
-    const r: any = await api.get('/bfl/backend/v1/tailscale/status');
-    const d = r?.data?.data ?? r?.data ?? r;
-    if (d) {
-      tsLive.enabled = d.enabled ?? false;
-      tsLive.connected = d.connected ?? false;
-      tsLive.ip = d.ip || '';
-      tsLive.hostname = d.hostname || '';
-      tsLive.peers = d.peers || [];
-      tsLive.acceptRoutes = d.acceptRoutes ?? false;
-
-      // Update top-level status
-      if (tsLive.enabled && tsLive.connected) {
-        tsStatus.value = 'connected';
-      } else if (tsLive.enabled) {
-        tsStatus.value = 'disconnected';
-      }
-    }
-  } catch {
-    // Tailscale status endpoint may not be available
-  }
-}
-
 onMounted(async () => {
   try {
     const r: any = await api.get('/api/user/info');
@@ -474,19 +308,6 @@ onMounted(async () => {
       netInfo.value.domain = parts.length >= 2 ? parts.slice(1).join('.') : '--';
     }
   } catch {}
-
-  try {
-    const ts: any = await api.get('/api/settings/tailscale');
-    tsAuthKey.value = ts?.auth_key || ts?.data?.auth_key || '';
-    tsControlURL.value = ts?.control_url || ts?.data?.control_url || '';
-    tsHostname.value = ts?.hostname || ts?.data?.hostname || 'packalares';
-    tsStatus.value = tsAuthKey.value ? 'configured' : 'not configured';
-  } catch {
-    // API failed — leave fields empty, user re-enters
-    tsAuthKey.value = '';
-    tsControlURL.value = '';
-    tsHostname.value = 'packalares';
-  }
 
   // Load SSH status
   try {
@@ -508,18 +329,7 @@ onMounted(async () => {
     ipAccessEnabled.value = ip?.data?.enabled ?? ip?.enabled ?? true;
   } catch {}
 
-  // Load network info and Tailscale status
-  await Promise.all([loadNetworkInfo(), loadTailscaleStatus()]);
-
-  // Poll Tailscale status every 10 seconds
-  tsPollingTimer = setInterval(loadTailscaleStatus, 10000);
-});
-
-onUnmounted(() => {
-  if (tsPollingTimer) {
-    clearInterval(tsPollingTimer);
-    tsPollingTimer = null;
-  }
+  await loadNetworkInfo();
 });
 
 async function toggleIPAccess(val: boolean) {
@@ -568,32 +378,6 @@ async function applySSH() {
     sshMsg.value = 'Error: ' + (e.message || 'unknown');
   }
   sshSaving.value = false;
-}
-
-async function saveTailscale() {
-  saving.value = true;
-  saveMsg.value = '';
-  try {
-    await api.post('/api/settings/tailscale', {
-      auth_key: tsAuthKey.value,
-      hostname: tsHostname.value,
-      control_url: tsControlURL.value,
-    });
-    saveMsg.value = 'Saved. Tailscale restarting...';
-    tsStatus.value = tsAuthKey.value ? 'connecting' : 'not configured';
-    try {
-      const ts: any = await api.get('/api/settings/tailscale');
-      tsAuthKey.value = ts?.auth_key || ts?.data?.auth_key || '';
-      tsControlURL.value = ts?.control_url || ts?.data?.control_url || '';
-      tsHostname.value = ts?.hostname || ts?.data?.hostname || 'packalares';
-      tsStatus.value = tsAuthKey.value ? 'connecting' : 'not configured';
-    } catch {}
-    // Refresh Tailscale status after a short delay
-    setTimeout(loadTailscaleStatus, 5000);
-  } catch (e: any) {
-    saveMsg.value = 'Error: ' + (e.message || 'unknown');
-  }
-  saving.value = false;
 }
 
 async function saveCustomDomain() {
