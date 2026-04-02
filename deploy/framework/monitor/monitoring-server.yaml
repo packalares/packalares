@@ -86,6 +86,8 @@ spec:
           value: "http://prometheus-svc.{{MONITORING_NAMESPACE}}:9090"
         - name: PORT
           value: "8000"
+        - name: LD_LIBRARY_PATH
+          value: "/host-nvidia-lib"
         livenessProbe:
           httpGet:
             path: /healthz
@@ -98,6 +100,16 @@ spec:
             port: 8000
           initialDelaySeconds: 3
           periodSeconds: 10
+        volumeMounts:
+        - name: nvidia-smi
+          mountPath: /usr/bin/nvidia-smi
+          readOnly: true
+        - name: nvidia-lib
+          mountPath: /host-nvidia-lib
+          readOnly: true
+        - name: powercap
+          mountPath: /sys/class/powercap
+          readOnly: true
         resources:
           requests:
             cpu: 25m
@@ -105,6 +117,19 @@ spec:
           limits:
             cpu: 500m
             memory: 256Mi
+      volumes:
+      - name: nvidia-smi
+        hostPath:
+          path: /usr/bin/nvidia-smi
+          type: FileOrCreate
+      - name: nvidia-lib
+        hostPath:
+          path: /usr/lib/x86_64-linux-gnu
+          type: DirectoryOrCreate
+      - name: powercap
+        hostPath:
+          path: /sys/class/powercap
+          type: DirectoryOrCreate
 
 ---
 apiVersion: v1
