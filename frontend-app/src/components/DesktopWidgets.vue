@@ -15,7 +15,7 @@
           @mousedown="startDrag($event, 'clock')"
         >
           <div class="clock-time">{{ clockTime }}</div>
-          <div class="clock-date">{{ weekDay }}<br>{{ dateStr }}</div>
+          <div class="clock-date">{{ weekDay }}, {{ dateStr }}</div>
         </div>
         <div
           v-if="enabledWidgets.power"
@@ -386,7 +386,7 @@ onUnmounted(() => {
 .right-panel {
   pointer-events: none;
   position: absolute;
-  top: 12px;
+  top: 48px;
   right: 12px;
   display: flex;
   flex-direction: column;
@@ -451,10 +451,14 @@ onUnmounted(() => {
 .widget-clock {
   flex: 1;
   width: auto;
-  padding: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 .clock-time {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 300;
   letter-spacing: -0.5px;
   line-height: 1;
@@ -462,22 +466,27 @@ onUnmounted(() => {
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 .clock-date {
-  font-size: 10px;
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
-  margin-top: 8px;
-  line-height: 1.4;
+  margin-top: 6px;
+  line-height: 1;
+  text-align: center;
 }
 
 // ─── Power (half-width in top-row) ───
 .widget-power {
   flex: 1;
   width: auto;
-  padding: 12px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
-.widget-power .widget-header { margin-bottom: 6px; font-size: 10px; }
-.power-total { font-size: 24px; font-weight: 300; text-align: center; line-height: 1; }
-.power-unit { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
-.power-breakdown { display: flex; justify-content: center; gap: 8px; font-size: 9px; color: rgba(255, 255, 255, 0.4); margin-top: 4px; }
+.widget-power .widget-header { margin-bottom: 4px; font-size: 9px; }
+.power-total { font-size: 22px; font-weight: 300; text-align: center; line-height: 1; }
+.power-unit { font-size: 11px; color: rgba(255, 255, 255, 0.5); }
+.power-breakdown { display: flex; justify-content: center; gap: 8px; font-size: 9px; color: rgba(255, 255, 255, 0.4); margin-top: 6px; }
 
 // ─── Weather ───
 .weather-top {
