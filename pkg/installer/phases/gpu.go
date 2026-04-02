@@ -8,6 +8,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	"github.com/packalares/packalares/pkg/config"
 )
 
 // DetectGPU checks if NVIDIA GPU is present via lspci.
@@ -76,7 +78,7 @@ func InstallGPU(opts *InstallOptions, w io.Writer) error {
 
 	// Step 6: Patch monitoring-server with privileged + NVIDIA access for nvidia-smi
 	fmt.Fprintln(w, "  Patching monitoring-server for GPU access...")
-	patchCmd := exec.Command("kubectl", "patch", "deploy", "-n", opts.FrameworkNS,
+	patchCmd := exec.Command("kubectl", "patch", "deploy", "-n", config.FrameworkNamespace(),
 		"monitoring-server", "--type=json", "-p",
 		`[{"op":"add","path":"/spec/template/spec/containers/0/securityContext","value":{"privileged":true}},{"op":"add","path":"/spec/template/spec/containers/0/env/-","value":{"name":"NVIDIA_VISIBLE_DEVICES","value":"all"}}]`)
 	if out, err := patchCmd.CombinedOutput(); err != nil {
