@@ -23,15 +23,8 @@
           :style="customStyle('power')"
           @mousedown="startDrag($event, 'power')"
         >
-          <div class="widget-header">
-            <q-icon name="sym_r_bolt" size="14px" />
-            <span>Power</span>
-          </div>
+          <q-icon name="sym_r_bolt" size="16px" class="power-icon" />
           <div class="power-total">{{ m.powerTotal > 0 ? m.powerTotal.toFixed(0) : '--' }}<span class="power-unit">W</span></div>
-          <div class="power-breakdown">
-            <span>CPU {{ m.powerCPU > 0 ? m.powerCPU.toFixed(0) + 'W' : '--' }}</span>
-            <span>GPU {{ m.powerGPU > 0 ? m.powerGPU.toFixed(0) + 'W' : '--' }}</span>
-          </div>
         </div>
       </div>
 
@@ -386,7 +379,7 @@ onUnmounted(() => {
 .right-panel {
   pointer-events: none;
   position: absolute;
-  top: 48px;
+  top: 56px;
   right: 12px;
   display: flex;
   flex-direction: column;
@@ -482,11 +475,11 @@ onUnmounted(() => {
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  gap: 4px;
 }
-.widget-power .widget-header { margin-bottom: 4px; font-size: 9px; }
-.power-total { font-size: 22px; font-weight: 300; text-align: center; line-height: 1; }
-.power-unit { font-size: 11px; color: rgba(255, 255, 255, 0.5); }
-.power-breakdown { display: flex; justify-content: center; gap: 8px; font-size: 9px; color: rgba(255, 255, 255, 0.4); margin-top: 6px; }
+.power-icon { color: rgba(255, 255, 255, 0.4); }
+.power-total { font-size: 26px; font-weight: 300; text-align: center; line-height: 1; }
+.power-unit { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
 
 // ─── Weather ───
 .weather-top {
