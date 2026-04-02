@@ -23,7 +23,7 @@ import (
 // It reads the CA key and cert from the packalares-ca ConfigMap / secret,
 // generates a new CSR, builds the SAN extension, signs with CA (10-year validity),
 // and updates the zone-tls K8s Secret.
-func (s *Server) regenerateTLSCert(ctx context.Context, serverIP, tailscaleIP, zone, customDomain string) error {
+func (s *Server) regenerateTLSCert(ctx context.Context, serverIP, vpnIP, zone, customDomain string) error {
 	ns := config.FrameworkNamespace()
 	tlsSecretName := config.TLSSecretName()
 
@@ -97,8 +97,8 @@ func (s *Server) regenerateTLSCert(ctx context.Context, serverIP, tailscaleIP, z
 	if serverIP != "" {
 		sans = append(sans, "IP:"+serverIP)
 	}
-	if tailscaleIP != "" {
-		sans = append(sans, "IP:"+tailscaleIP)
+	if vpnIP != "" {
+		sans = append(sans, "IP:"+vpnIP)
 	}
 	if customDomain != "" {
 		sans = append(sans, "DNS:"+customDomain, "DNS:*."+customDomain)
@@ -183,7 +183,7 @@ func (s *Server) regenerateTLSCert(ctx context.Context, serverIP, tailscaleIP, z
 		s.K8s.Clientset.CoreV1().Secrets(s.K8s.Namespace).Update(ctx, sslSecret, metav1.UpdateOptions{})
 	}
 
-	klog.Infof("TLS cert regenerated for zone=%s serverIP=%s tailscaleIP=%s customDomain=%s", zone, serverIP, tailscaleIP, customDomain)
+	klog.Infof("TLS cert regenerated for zone=%s serverIP=%s vpnIP=%s customDomain=%s", zone, serverIP, vpnIP, customDomain)
 	return nil
 }
 
@@ -200,7 +200,7 @@ func (s *Server) regenerateNginxConfig(ctx context.Context) error {
 	params := nginxbuilder.Params{
 		Zone:         config.UserZone(),
 		ServerIP:     s.getNodeIP(ctx),
-		TailscaleIP:  s.getTailscaleIP(ctx),
+		VPNIP:        s.getActiveVPNIP(ctx),
 		CustomDomain: s.getCustomDomain(ctx),
 		FrameworkNS:  config.FrameworkNamespace(),
 		UserNS:       config.UserNamespace(config.Username()),

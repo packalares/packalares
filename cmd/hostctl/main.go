@@ -36,6 +36,9 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/ssh/status", withAuth(token, handleSSHStatus))
 	mux.HandleFunc("/ssh/config", withAuth(token, handleSSHConfig))
+	mux.HandleFunc("/wireguard/enable", withAuth(token, handleWGEnable))
+	mux.HandleFunc("/wireguard/disable", withAuth(token, handleWGDisable))
+	mux.HandleFunc("/wireguard/status", withAuth(token, handleWGStatus))
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("ok"))
@@ -257,4 +260,288 @@ func respondErr(w http.ResponseWriter, code int, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+}
+
+func nsenterOutput(args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	cmdArgs := append(nsenterPrefix[1:], args...)
+	out, err := exec.CommandContext(ctx, nsenterPrefix[0], cmdArgs...).CombinedOutput()
+	return strings.TrimSpace(string(out)), err
+}
+
+// ---------------------------------------------------------------------------
+// WireGuard handlers
+// ---------------------------------------------------------------------------
+
+type WGEnableRequest struct {
+	Config     string `json:"config"`
+	KillSwitch bool   `json:"killSwitch"`
+}
+
+type WGStatusResponse struct {
+	Active    bool   `json:"active"`
+	IP        string `json:"ip"`
+	PublicKey string `json:"publicKey"`
+	Endpoint  string `json:"endpoint"`
+	Handshake string `json:"latestHandshake"`
+	Transfer  string `json:"transfer"`
+	KillSwitch bool  `json:"killSwitch"`
+}
+
+// parseWGAddress extracts the Address (IP) from a WireGuard config.
+func parseWGAddress(config string) string {
+	for _, line := range strings.Split(config, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(strings.ToLower(line), "address") {
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				addr := strings.TrimSpace(parts[1])
+				// Strip CIDR suffix
+				if idx := strings.Index(addr, "/"); idx > 0 {
+					addr = addr[:idx]
+				}
+				return addr
+			}
+		}
+	}
+	return ""
+}
+
+// parseWGDNS extracts the DNS server from a WireGuard config.
+func parseWGDNS(config string) string {
+	for _, line := range strings.Split(config, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(strings.ToLower(line), "dns") {
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				dns := strings.TrimSpace(parts[1])
+				// Take first DNS if multiple
+				if idx := strings.Index(dns, ","); idx > 0 {
+					dns = strings.TrimSpace(dns[:idx])
+				}
+				return dns
+			}
+		}
+	}
+	return ""
+}
+
+// parseWGEndpoint extracts the Endpoint IP and port from a WireGuard config.
+func parseWGEndpoint(config string) (ip string, port string) {
+	for _, line := range strings.Split(config, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(strings.ToLower(line), "endpoint") {
+			parts := strings.SplitN(line, "=", 2)
+			if len(parts) == 2 {
+				ep := strings.TrimSpace(parts[1])
+				if colonIdx := strings.LastIndex(ep, ":"); colonIdx > 0 {
+					return ep[:colonIdx], ep[colonIdx+1:]
+				}
+				return ep, "51820"
+			}
+		}
+	}
+	return "", ""
+}
+
+func handleWGEnable(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		respondErr(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var req WGEnableRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondErr(w, http.StatusBadRequest, fmt.Sprintf("invalid request: %v", err))
+		return
+	}
+
+	if !strings.Contains(req.Config, "[Interface]") || !strings.Contains(req.Config, "[Peer]") {
+		respondErr(w, http.StatusBadRequest, "config must contain [Interface] and [Peer] sections")
+		return
+	}
+
+	ip := parseWGAddress(req.Config)
+	if ip == "" {
+		respondErr(w, http.StatusBadRequest, "could not parse Address from config")
+		return
+	}
+
+	log.Printf("[wg] enabling WireGuard with IP %s, killSwitch=%v", ip, req.KillSwitch)
+
+	// Ensure wireguard-tools is installed
+	if _, err := nsenterOutput("which", "wg"); err != nil {
+		log.Printf("[wg] wireguard-tools not found, installing...")
+		if err := nsenterRun("apt-get", "install", "-y", "wireguard-tools"); err != nil {
+			respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to install wireguard-tools: %v", err))
+			return
+		}
+	}
+
+	// Stop existing WG interface if active
+	_ = nsenterRun("wg-quick", "down", "wg0")
+
+	// Write config to /etc/wireguard/wg0.conf
+	if err := nsenterRun("mkdir", "-p", "/etc/wireguard"); err != nil {
+		respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to create /etc/wireguard: %v", err))
+		return
+	}
+	if err := nsenterRun("bash", "-c", fmt.Sprintf("cat > /etc/wireguard/wg0.conf << 'WGEOF'\n%s\nWGEOF", req.Config)); err != nil {
+		respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to write wg0.conf: %v", err))
+		return
+	}
+	if err := nsenterRun("chmod", "600", "/etc/wireguard/wg0.conf"); err != nil {
+		log.Printf("[wg] warning: chmod failed: %v", err)
+	}
+
+	// Bring up WireGuard
+	if out, err := nsenterOutput("wg-quick", "up", "wg0"); err != nil {
+		respondErr(w, http.StatusInternalServerError, fmt.Sprintf("wg-quick up failed: %s (%v)", out, err))
+		return
+	}
+
+	// Enable boot persistence
+	_ = nsenterRun("systemctl", "enable", "wg-quick@wg0")
+
+	// Apply kill-switch if requested
+	if req.KillSwitch {
+		applyWGKillSwitch(req.Config)
+	}
+
+	log.Printf("[wg] WireGuard enabled on %s", ip)
+	respondJSON(w, http.StatusOK, map[string]interface{}{
+		"success": true,
+		"ip":      ip,
+	})
+}
+
+func handleWGDisable(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		respondErr(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	log.Printf("[wg] disabling WireGuard")
+
+	// Remove kill-switch rules
+	removeWGKillSwitch()
+
+	// Bring down WireGuard
+	_ = nsenterRun("wg-quick", "down", "wg0")
+
+	// Disable boot persistence
+	_ = nsenterRun("systemctl", "disable", "wg-quick@wg0")
+
+	// Remove config
+	_ = nsenterRun("rm", "-f", "/etc/wireguard/wg0.conf")
+
+	log.Printf("[wg] WireGuard disabled")
+	respondJSON(w, http.StatusOK, map[string]string{"status": "disabled"})
+}
+
+func handleWGStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		respondErr(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	status := WGStatusResponse{}
+
+	// Check if wg0 interface exists
+	out, err := nsenterOutput("wg", "show", "wg0")
+	if err != nil {
+		respondJSON(w, http.StatusOK, status)
+		return
+	}
+
+	status.Active = true
+
+	// Parse wg show output
+	for _, line := range strings.Split(out, "\n") {
+		line = strings.TrimSpace(line)
+		if strings.HasPrefix(line, "public key:") {
+			status.PublicKey = strings.TrimSpace(strings.TrimPrefix(line, "public key:"))
+		} else if strings.HasPrefix(line, "endpoint:") {
+			status.Endpoint = strings.TrimSpace(strings.TrimPrefix(line, "endpoint:"))
+		} else if strings.HasPrefix(line, "latest handshake:") {
+			status.Handshake = strings.TrimSpace(strings.TrimPrefix(line, "latest handshake:"))
+		} else if strings.HasPrefix(line, "transfer:") {
+			status.Transfer = strings.TrimSpace(strings.TrimPrefix(line, "transfer:"))
+		}
+	}
+
+	// Get IP from interface
+	ipOut, err := nsenterOutput("ip", "-4", "addr", "show", "wg0")
+	if err == nil {
+		for _, line := range strings.Split(ipOut, "\n") {
+			line = strings.TrimSpace(line)
+			if strings.HasPrefix(line, "inet ") {
+				parts := strings.Fields(line)
+				if len(parts) >= 2 {
+					addr := parts[1]
+					if idx := strings.Index(addr, "/"); idx > 0 {
+						addr = addr[:idx]
+					}
+					status.IP = addr
+				}
+			}
+		}
+	}
+
+	// Check if kill-switch is active
+	iptOut, _ := nsenterOutput("iptables", "-L", "WG_OUT", "-n")
+	status.KillSwitch = strings.Contains(iptOut, "REJECT")
+
+	respondJSON(w, http.StatusOK, status)
+}
+
+// applyWGKillSwitch creates iptables rules that block all non-WG/non-LAN traffic.
+func applyWGKillSwitch(config string) {
+	endpointIP, endpointPort := parseWGEndpoint(config)
+	dns := parseWGDNS(config)
+
+	// Create WG_OUT chain
+	_ = nsenterRun("iptables", "-N", "WG_OUT")
+	_ = nsenterRun("iptables", "-F", "WG_OUT")
+
+	// Allow loopback
+	_ = nsenterRun("iptables", "-A", "WG_OUT", "-o", "lo", "-j", "ACCEPT")
+	// Allow LAN
+	_ = nsenterRun("iptables", "-A", "WG_OUT", "-d", "10.0.0.0/8", "-j", "ACCEPT")
+	_ = nsenterRun("iptables", "-A", "WG_OUT", "-d", "172.16.0.0/12", "-j", "ACCEPT")
+	_ = nsenterRun("iptables", "-A", "WG_OUT", "-d", "192.168.0.0/16", "-j", "ACCEPT")
+	// Allow WG interface
+	_ = nsenterRun("iptables", "-A", "WG_OUT", "-o", "wg0", "-j", "ACCEPT")
+	// Allow WG endpoint handshake
+	if endpointIP != "" {
+		_ = nsenterRun("iptables", "-A", "WG_OUT", "-d", endpointIP, "-p", "udp", "--dport", endpointPort, "-j", "ACCEPT")
+	}
+	// Reject everything else
+	_ = nsenterRun("iptables", "-A", "WG_OUT", "-j", "REJECT")
+	// Insert into OUTPUT chain
+	_ = nsenterRun("iptables", "-I", "OUTPUT", "-j", "WG_OUT")
+
+	// DNS redirect through tunnel
+	if dns != "" {
+		_ = nsenterRun("iptables", "-t", "nat", "-N", "WG_DNS_REDIRECT")
+		_ = nsenterRun("iptables", "-t", "nat", "-F", "WG_DNS_REDIRECT")
+		_ = nsenterRun("iptables", "-t", "nat", "-A", "WG_DNS_REDIRECT", "-d", dns, "-j", "RETURN")
+		_ = nsenterRun("iptables", "-t", "nat", "-A", "WG_DNS_REDIRECT", "-p", "udp", "--dport", "53", "-j", "DNAT", "--to-destination", dns+":53")
+		_ = nsenterRun("iptables", "-t", "nat", "-A", "WG_DNS_REDIRECT", "-p", "tcp", "--dport", "53", "-j", "DNAT", "--to-destination", dns+":53")
+		_ = nsenterRun("iptables", "-t", "nat", "-I", "OUTPUT", "-j", "WG_DNS_REDIRECT")
+	}
+
+	log.Printf("[wg] kill-switch applied (endpoint=%s:%s, dns=%s)", endpointIP, endpointPort, dns)
+}
+
+// removeWGKillSwitch removes the iptables kill-switch rules.
+func removeWGKillSwitch() {
+	_ = nsenterRun("iptables", "-D", "OUTPUT", "-j", "WG_OUT")
+	_ = nsenterRun("iptables", "-F", "WG_OUT")
+	_ = nsenterRun("iptables", "-X", "WG_OUT")
+	_ = nsenterRun("iptables", "-t", "nat", "-D", "OUTPUT", "-j", "WG_DNS_REDIRECT")
+	_ = nsenterRun("iptables", "-t", "nat", "-F", "WG_DNS_REDIRECT")
+	_ = nsenterRun("iptables", "-t", "nat", "-X", "WG_DNS_REDIRECT")
+	log.Printf("[wg] kill-switch removed")
 }

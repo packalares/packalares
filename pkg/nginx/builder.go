@@ -9,7 +9,7 @@ import (
 type Params struct {
 	Zone         string
 	ServerIP     string
-	TailscaleIP  string
+	VPNIP  string
 	CustomDomain string
 	FrameworkNS  string
 	UserNS       string
@@ -27,8 +27,8 @@ func Build(tmpl string, p Params) string {
 	if p.ServerIP != "" {
 		ipNames = append(ipNames, p.ServerIP)
 	}
-	if p.TailscaleIP != "" {
-		ipNames = append(ipNames, p.TailscaleIP)
+	if p.VPNIP != "" {
+		ipNames = append(ipNames, p.VPNIP)
 	}
 	if len(ipNames) == 0 {
 		ipNames = append(ipNames, "_")
@@ -82,8 +82,8 @@ func buildCORSEntries(p Params) string {
 	if p.ServerIP != "" {
 		lines = append(lines, fmt.Sprintf(`"https://%s" $http_origin;`, p.ServerIP))
 	}
-	if p.TailscaleIP != "" {
-		lines = append(lines, fmt.Sprintf(`"https://%s" $http_origin;`, p.TailscaleIP))
+	if p.VPNIP != "" {
+		lines = append(lines, fmt.Sprintf(`"https://%s" $http_origin;`, p.VPNIP))
 	}
 	if p.CustomDomain != "" {
 		lines = append(lines, fmt.Sprintf(`"https://%s" $http_origin;`, p.CustomDomain))

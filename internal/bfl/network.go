@@ -111,7 +111,7 @@ func (s *Server) handleNetworkInfo(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	serverIP := s.getNodeIP(ctx)
-	tailscaleIP := s.getTailscaleIP(ctx)
+	vpnIP := s.getActiveVPNIP(ctx)
 	customDomain := s.getCustomDomain(ctx)
 
 	zone := ""
@@ -127,7 +127,8 @@ func (s *Server) handleNetworkInfo(w http.ResponseWriter, r *http.Request) {
 
 	respondJSON(w, http.StatusOK, &NetworkInfoResponse{
 		ServerIP:     serverIP,
-		TailscaleIP:  tailscaleIP,
+		VPNIP:        vpnIP,
+		TailscaleIP:  vpnIP, // backward compat
 		Zone:         zone,
 		CustomDomain: customDomain,
 		CertSANs:     certSANs,
@@ -164,7 +165,7 @@ func (s *Server) handleCustomDomain(w http.ResponseWriter, r *http.Request) {
 
 	// Gather current network state for cert regeneration
 	serverIP := s.getNodeIP(ctx)
-	tailscaleIP := s.getTailscaleIP(ctx)
+	vpnIP := s.getActiveVPNIP(ctx)
 
 	zone := ""
 	user, err := s.K8s.GetUser(ctx, "")
@@ -177,7 +178,7 @@ func (s *Server) handleCustomDomain(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Regenerate TLS cert
-	if err := s.regenerateTLSCert(ctx, serverIP, tailscaleIP, zone, req.Domain); err != nil {
+	if err := s.regenerateTLSCert(ctx, serverIP, vpnIP, zone, req.Domain); err != nil {
 		respondError(w, fmt.Sprintf("regenerate TLS cert: %v", err))
 		return
 	}
@@ -238,45 +239,12 @@ func (s *Server) afterTailscaleEnabled(ctx context.Context) {
 
 	customDomain := s.getCustomDomain(ctx)
 
-	if err := s.regenerateTLSCert(ctx, serverIP, tsIP, zone, customDomain); err != nil {
-		klog.Errorf("post-tailscale cert regen: %v", err)
-		return
-	}
-
-	if err := s.regenerateNginxConfig(ctx); err != nil {
-		klog.Errorf("post-tailscale nginx regen: %v", err)
-	}
-
-	s.restartProxy(ctx)
-	klog.Infof("cert and proxy updated after Tailscale enable (tsIP=%s)", tsIP)
+	// Use unified VPN state
+	s.afterVPNEnabled(ctx, VPNTailscale, tsIP)
 }
 
-// afterTailscaleDisabled should be called after the Tailscale deployment is removed.
-// It regenerates the cert without the Tailscale IP and updates nginx.
+// afterTailscaleDisabled delegates to the unified VPN disabled flow.
 func (s *Server) afterTailscaleDisabled(ctx context.Context) {
-	serverIP := s.getNodeIP(ctx)
-	zone := ""
-	user, err := s.K8s.GetUser(ctx, "")
-	if err == nil {
-		zone = GetUserZone(user)
-	}
-	if zone == "" {
-		klog.Warning("zone not set, skipping post-tailscale-disable cert regen")
-		return
-	}
-
-	customDomain := s.getCustomDomain(ctx)
-
-	if err := s.regenerateTLSCert(ctx, serverIP, "", zone, customDomain); err != nil {
-		klog.Errorf("post-tailscale-disable cert regen: %v", err)
-		return
-	}
-
-	if err := s.regenerateNginxConfig(ctx); err != nil {
-		klog.Errorf("post-tailscale-disable nginx regen: %v", err)
-	}
-
-	s.restartProxy(ctx)
-	klog.Infof("cert and proxy updated after Tailscale disable")
+	s.afterVPNDisabled(ctx)
 }
 

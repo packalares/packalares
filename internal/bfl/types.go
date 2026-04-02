@@ -269,7 +269,8 @@ type TailscaleStatusResponse struct {
 // NetworkInfoResponse is the API response for /bfl/backend/v1/network/info.
 type NetworkInfoResponse struct {
 	ServerIP     string   `json:"serverIP"`
-	TailscaleIP  string   `json:"tailscaleIP"`
+	VPNIP        string   `json:"vpnIP"`
+	TailscaleIP  string   `json:"tailscaleIP"` // backward compat
 	Zone         string   `json:"zone"`
 	CustomDomain string   `json:"customDomain"`
 	CertSANs     []string `json:"certSANs"`
