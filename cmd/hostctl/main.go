@@ -345,6 +345,85 @@ func parseWGEndpoint(config string) (ip string, port string) {
 	return "", ""
 }
 
+// buildWGConfig injects PostUp/PostDown scripts into the user's WG config
+// when kill-switch is enabled. The scripts handle iptables kill-switch and
+// DNS redirection, matching the ugos-wireguard-client pattern.
+func buildWGConfig(userConfig string, killSwitch bool) string {
+	if !killSwitch {
+		return userConfig
+	}
+
+	endpointIP, endpointPort := parseWGEndpoint(userConfig)
+	dns := parseWGDNS(userConfig)
+
+	// Build PostUp script content
+	upScript := `#!/bin/bash
+source /etc/wireguard/wg0.env
+# Kill-switch: block all non-WG/non-LAN outbound
+iptables -N WG_OUT 2>/dev/null; iptables -F WG_OUT
+iptables -A WG_OUT -o lo -j ACCEPT
+iptables -A WG_OUT -d 10.0.0.0/8 -j ACCEPT
+iptables -A WG_OUT -d 172.16.0.0/12 -j ACCEPT
+iptables -A WG_OUT -d 192.168.0.0/16 -j ACCEPT
+iptables -A WG_OUT -o wg0 -j ACCEPT
+[ -n "$WG_ENDPOINT_IP" ] && iptables -A WG_OUT -d $WG_ENDPOINT_IP -p udp --dport $WG_ENDPOINT_PORT -j ACCEPT
+iptables -A WG_OUT -j REJECT
+iptables -C OUTPUT -j WG_OUT 2>/dev/null || iptables -I OUTPUT -j WG_OUT
+# DNS redirect through tunnel
+if [ -n "$WG_DNS" ]; then
+  iptables -t nat -N WG_DNS_REDIRECT 2>/dev/null; iptables -t nat -F WG_DNS_REDIRECT
+  iptables -t nat -A WG_DNS_REDIRECT -d $WG_DNS -j RETURN
+  iptables -t nat -A WG_DNS_REDIRECT -p udp --dport 53 -j DNAT --to-destination $WG_DNS:53
+  iptables -t nat -A WG_DNS_REDIRECT -p tcp --dport 53 -j DNAT --to-destination $WG_DNS:53
+  iptables -t nat -C OUTPUT -j WG_DNS_REDIRECT 2>/dev/null || iptables -t nat -I OUTPUT -j WG_DNS_REDIRECT
+fi
+`
+
+	// PostDown only removes DNS redirect — kill-switch stays active (safe)
+	downScript := `#!/bin/bash
+iptables -t nat -D OUTPUT -j WG_DNS_REDIRECT 2>/dev/null
+iptables -t nat -F WG_DNS_REDIRECT 2>/dev/null
+iptables -t nat -X WG_DNS_REDIRECT 2>/dev/null
+`
+
+	// Build env file
+	envContent := fmt.Sprintf("WG_ENDPOINT_IP=%s\nWG_ENDPOINT_PORT=%s\nWG_DNS=%s\n", endpointIP, endpointPort, dns)
+
+	// Write helper files
+	_ = nsenterRun("bash", "-c", fmt.Sprintf("cat > /etc/wireguard/wg0.env << 'EOF'\n%sEOF", envContent))
+	_ = nsenterRun("bash", "-c", fmt.Sprintf("cat > /usr/local/bin/wg0-up.sh << 'EOF'\n%sEOF", upScript))
+	_ = nsenterRun("bash", "-c", fmt.Sprintf("cat > /usr/local/bin/wg0-down.sh << 'EOF'\n%sEOF", downScript))
+	_ = nsenterRun("chmod", "+x", "/usr/local/bin/wg0-up.sh", "/usr/local/bin/wg0-down.sh")
+
+	// Inject PostUp/PostDown into the [Interface] section
+	lines := strings.Split(userConfig, "\n")
+	var result []string
+	injected := false
+	for _, line := range lines {
+		result = append(result, line)
+		// Inject after the last [Interface] field before [Peer]
+		if !injected && strings.TrimSpace(line) != "" && !strings.HasPrefix(strings.TrimSpace(line), "[") {
+			// Check if next non-empty line is [Peer]
+			// Instead, inject right before [Peer]
+		}
+	}
+
+	// Simpler: find [Peer] and insert before it
+	result = nil
+	for _, line := range lines {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "[Peer]" && !injected {
+			result = append(result, "PostUp = /usr/local/bin/wg0-up.sh")
+			result = append(result, "PostDown = /usr/local/bin/wg0-down.sh")
+			result = append(result, "")
+			injected = true
+		}
+		result = append(result, line)
+	}
+
+	return strings.Join(result, "\n")
+}
+
 func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		respondErr(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -382,12 +461,15 @@ func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 	// Stop existing WG interface if active
 	_ = nsenterRun("wg-quick", "down", "wg0")
 
+	// Build final config (injects PostUp/PostDown if kill-switch enabled)
+	finalConfig := buildWGConfig(req.Config, req.KillSwitch)
+
 	// Write config to /etc/wireguard/wg0.conf
 	if err := nsenterRun("mkdir", "-p", "/etc/wireguard"); err != nil {
 		respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to create /etc/wireguard: %v", err))
 		return
 	}
-	if err := nsenterRun("bash", "-c", fmt.Sprintf("cat > /etc/wireguard/wg0.conf << 'WGEOF'\n%s\nWGEOF", req.Config)); err != nil {
+	if err := nsenterRun("bash", "-c", fmt.Sprintf("cat > /etc/wireguard/wg0.conf << 'WGEOF'\n%s\nWGEOF", finalConfig)); err != nil {
 		respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to write wg0.conf: %v", err))
 		return
 	}
@@ -395,7 +477,7 @@ func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[wg] warning: chmod failed: %v", err)
 	}
 
-	// Bring up WireGuard
+	// Bring up WireGuard (PostUp script handles kill-switch + DNS)
 	if out, err := nsenterOutput("wg-quick", "up", "wg0"); err != nil {
 		respondErr(w, http.StatusInternalServerError, fmt.Sprintf("wg-quick up failed: %s (%v)", out, err))
 		return
@@ -403,11 +485,6 @@ func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 
 	// Enable boot persistence
 	_ = nsenterRun("systemctl", "enable", "wg-quick@wg0")
-
-	// Apply kill-switch if requested
-	if req.KillSwitch {
-		applyWGKillSwitch(req.Config)
-	}
 
 	log.Printf("[wg] WireGuard enabled on %s", ip)
 	respondJSON(w, http.StatusOK, map[string]interface{}{
@@ -424,19 +501,21 @@ func handleWGDisable(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[wg] disabling WireGuard")
 
-	// Remove kill-switch rules
-	removeWGKillSwitch()
-
-	// Bring down WireGuard
+	// Bring down WireGuard (PostDown removes DNS redirect only)
 	_ = nsenterRun("wg-quick", "down", "wg0")
+
+	// Full cleanup: also remove kill-switch (PostDown leaves it active for safety,
+	// but on explicit disable we want full cleanup)
+	removeWGKillSwitch()
 
 	// Disable boot persistence
 	_ = nsenterRun("systemctl", "disable", "wg-quick@wg0")
 
-	// Remove config
-	_ = nsenterRun("rm", "-f", "/etc/wireguard/wg0.conf")
+	// Remove config and helper scripts
+	_ = nsenterRun("rm", "-f", "/etc/wireguard/wg0.conf", "/etc/wireguard/wg0.env")
+	_ = nsenterRun("rm", "-f", "/usr/local/bin/wg0-up.sh", "/usr/local/bin/wg0-down.sh")
 
-	log.Printf("[wg] WireGuard disabled")
+	log.Printf("[wg] WireGuard disabled and fully cleaned")
 	respondJSON(w, http.StatusOK, map[string]string{"status": "disabled"})
 }
 
@@ -496,46 +575,8 @@ func handleWGStatus(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, status)
 }
 
-// applyWGKillSwitch creates iptables rules that block all non-WG/non-LAN traffic.
-func applyWGKillSwitch(config string) {
-	endpointIP, endpointPort := parseWGEndpoint(config)
-	dns := parseWGDNS(config)
-
-	// Create WG_OUT chain
-	_ = nsenterRun("iptables", "-N", "WG_OUT")
-	_ = nsenterRun("iptables", "-F", "WG_OUT")
-
-	// Allow loopback
-	_ = nsenterRun("iptables", "-A", "WG_OUT", "-o", "lo", "-j", "ACCEPT")
-	// Allow LAN
-	_ = nsenterRun("iptables", "-A", "WG_OUT", "-d", "10.0.0.0/8", "-j", "ACCEPT")
-	_ = nsenterRun("iptables", "-A", "WG_OUT", "-d", "172.16.0.0/12", "-j", "ACCEPT")
-	_ = nsenterRun("iptables", "-A", "WG_OUT", "-d", "192.168.0.0/16", "-j", "ACCEPT")
-	// Allow WG interface
-	_ = nsenterRun("iptables", "-A", "WG_OUT", "-o", "wg0", "-j", "ACCEPT")
-	// Allow WG endpoint handshake
-	if endpointIP != "" {
-		_ = nsenterRun("iptables", "-A", "WG_OUT", "-d", endpointIP, "-p", "udp", "--dport", endpointPort, "-j", "ACCEPT")
-	}
-	// Reject everything else
-	_ = nsenterRun("iptables", "-A", "WG_OUT", "-j", "REJECT")
-	// Insert into OUTPUT chain
-	_ = nsenterRun("iptables", "-I", "OUTPUT", "-j", "WG_OUT")
-
-	// DNS redirect through tunnel
-	if dns != "" {
-		_ = nsenterRun("iptables", "-t", "nat", "-N", "WG_DNS_REDIRECT")
-		_ = nsenterRun("iptables", "-t", "nat", "-F", "WG_DNS_REDIRECT")
-		_ = nsenterRun("iptables", "-t", "nat", "-A", "WG_DNS_REDIRECT", "-d", dns, "-j", "RETURN")
-		_ = nsenterRun("iptables", "-t", "nat", "-A", "WG_DNS_REDIRECT", "-p", "udp", "--dport", "53", "-j", "DNAT", "--to-destination", dns+":53")
-		_ = nsenterRun("iptables", "-t", "nat", "-A", "WG_DNS_REDIRECT", "-p", "tcp", "--dport", "53", "-j", "DNAT", "--to-destination", dns+":53")
-		_ = nsenterRun("iptables", "-t", "nat", "-I", "OUTPUT", "-j", "WG_DNS_REDIRECT")
-	}
-
-	log.Printf("[wg] kill-switch applied (endpoint=%s:%s, dns=%s)", endpointIP, endpointPort, dns)
-}
-
-// removeWGKillSwitch removes the iptables kill-switch rules.
+// removeWGKillSwitch fully removes all iptables kill-switch and DNS redirect rules.
+// Called only on explicit disable — PostDown only removes DNS (kill-switch stays for safety).
 func removeWGKillSwitch() {
 	_ = nsenterRun("iptables", "-D", "OUTPUT", "-j", "WG_OUT")
 	_ = nsenterRun("iptables", "-F", "WG_OUT")
