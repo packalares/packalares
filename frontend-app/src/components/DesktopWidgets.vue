@@ -227,15 +227,14 @@ const BOTTOM_MARGIN = 60; // above dock
 
 const defaultPositions: Record<string, { x: number; y: number }> = {
   // Right column
-  system:  { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 20 },
-  temps:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 180 },
-  network: { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 280 },
-  gpu:     { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 380 },
-  // Bottom-left pair (clock + power side by side)
-  clock:   { x: 20, y: -(BOTTOM_MARGIN + 90) },
-  power:   { x: 20 + HALF_WIDTH + 12, y: -(BOTTOM_MARGIN + 90) },
-  // Bottom-left weather (below clock/power pair)
-  weather: { x: 20, y: -(BOTTOM_MARGIN + 210) },
+  clock:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 20 },
+  system:  { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 110 },
+  temps:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 270 },
+  power:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 370 },
+  network: { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 470 },
+  gpu:     { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 570 },
+  // Bottom-left
+  weather: { x: 20, y: -(BOTTOM_MARGIN + 120) },
 };
 
 const positions = ref<Record<string, { x: number; y: number }>>(loadPositions());
@@ -435,20 +434,19 @@ onUnmounted(() => {
   margin-top: 8px;
 }
 
-// ─── Clock (half-width) ───
-.widget-clock { padding: 12px 14px; width: 114px; }
+// ─── Clock ───
+.widget-clock { padding: 18px 20px; }
 .clock-time {
-  font-size: 28px;
+  font-size: 44px;
   font-weight: 200;
-  letter-spacing: -1px;
+  letter-spacing: -2px;
   line-height: 1;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 .clock-date {
-  font-size: 9px;
+  font-size: 12px;
   color: rgba(255, 255, 255, 0.6);
   margin-top: 6px;
-  line-height: 1.3;
 }
 
 // ─── Weather ───
@@ -513,12 +511,10 @@ onUnmounted(() => {
 }
 .temp-unit { display: block; font-size: 9px; text-transform: uppercase; color: rgba(255, 255, 255, 0.4); margin-top: 2px; }
 
-// ─── Power (half-width) ───
-.widget-power { width: 114px; padding: 12px 14px; }
-.widget-power .widget-header { margin-bottom: 4px; }
-.power-total { font-size: 28px; font-weight: 300; text-align: center; line-height: 1; }
-.power-unit { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
-.power-breakdown { display: flex; justify-content: center; gap: 8px; font-size: 9px; color: rgba(255, 255, 255, 0.4); margin-top: 4px; }
+// ─── Power ───
+.power-total { font-size: 36px; font-weight: 300; text-align: center; line-height: 1; }
+.power-unit { font-size: 16px; color: rgba(255, 255, 255, 0.5); }
+.power-breakdown { display: flex; justify-content: center; gap: 12px; font-size: 10px; color: rgba(255, 255, 255, 0.4); margin-top: 4px; }
 
 // ─── Network ───
 .net-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
