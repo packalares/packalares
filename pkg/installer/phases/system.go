@@ -39,6 +39,14 @@ func configureSystem(opts *InstallOptions, w io.Writer) error {
 		}
 	}
 
+	// Ensure wireguard-tools is available for VPN settings
+	if _, err := exec.LookPath("wg"); err != nil {
+		fmt.Fprintln(w, "  Installing wireguard-tools...")
+		if err := exec.Command("apt-get", "install", "-y", "-qq", "wireguard-tools").Run(); err != nil {
+			fmt.Fprintf(w, "  Warning: wireguard-tools install failed: %v (non-fatal)\n", err)
+		}
+	}
+
 	// Wait for DNS to be ready (important after WiFi reboot)
 	waitForDNS(w)
 
