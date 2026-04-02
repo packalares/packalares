@@ -222,19 +222,20 @@ function toggleWidgets(show: boolean) {
 // Layout constants
 const WIDGET_WIDTH = 240;
 const HALF_WIDTH = 114;
-const RIGHT_MARGIN = 20;
-const BOTTOM_MARGIN = 60; // above dock
+const RIGHT_MARGIN = 12;
+const BOTTOM_MARGIN = 70; // above dock
+const GAP = 10;
 
 const defaultPositions: Record<string, { x: number; y: number }> = {
-  // Right column
-  clock:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 20 },
-  system:  { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 110 },
-  temps:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 270 },
-  power:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 370 },
-  network: { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 470 },
-  gpu:     { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 570 },
+  // Right column — clock + power side by side at top, then full-width below
+  clock:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 16 },
+  power:   { x: -(HALF_WIDTH + RIGHT_MARGIN), y: 16 },
+  system:  { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 16 + 80 + GAP },
+  temps:   { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 16 + 80 + GAP + 150 + GAP },
+  network: { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 16 + 80 + GAP + 150 + GAP + 100 + GAP },
+  gpu:     { x: -(WIDGET_WIDTH + RIGHT_MARGIN), y: 16 + 80 + GAP + 150 + GAP + 100 + GAP + 110 + GAP },
   // Bottom-left
-  weather: { x: 20, y: -(BOTTOM_MARGIN + 120) },
+  weather: { x: 20, y: -(BOTTOM_MARGIN + 110) },
 };
 
 const positions = ref<Record<string, { x: number; y: number }>>(loadPositions());
@@ -434,19 +435,20 @@ onUnmounted(() => {
   margin-top: 8px;
 }
 
-// ─── Clock ───
-.widget-clock { padding: 18px 20px; }
+// ─── Clock (half-width) ───
+.widget-clock { padding: 14px 16px; width: 114px; height: 80px; box-sizing: border-box; }
 .clock-time {
-  font-size: 44px;
+  font-size: 26px;
   font-weight: 200;
-  letter-spacing: -2px;
+  letter-spacing: -1px;
   line-height: 1;
   text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
 }
 .clock-date {
-  font-size: 12px;
+  font-size: 10px;
   color: rgba(255, 255, 255, 0.6);
-  margin-top: 6px;
+  margin-top: 8px;
+  line-height: 1.3;
 }
 
 // ─── Weather ───
@@ -511,10 +513,12 @@ onUnmounted(() => {
 }
 .temp-unit { display: block; font-size: 9px; text-transform: uppercase; color: rgba(255, 255, 255, 0.4); margin-top: 2px; }
 
-// ─── Power ───
-.power-total { font-size: 36px; font-weight: 300; text-align: center; line-height: 1; }
-.power-unit { font-size: 16px; color: rgba(255, 255, 255, 0.5); }
-.power-breakdown { display: flex; justify-content: center; gap: 12px; font-size: 10px; color: rgba(255, 255, 255, 0.4); margin-top: 4px; }
+// ─── Power (half-width) ───
+.widget-power { width: 114px; height: 80px; box-sizing: border-box; padding: 14px 16px; }
+.widget-power .widget-header { margin-bottom: 4px; }
+.power-total { font-size: 26px; font-weight: 300; text-align: center; line-height: 1; }
+.power-unit { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
+.power-breakdown { display: flex; justify-content: center; gap: 6px; font-size: 9px; color: rgba(255, 255, 255, 0.4); margin-top: 4px; }
 
 // ─── Network ───
 .net-row { display: flex; justify-content: space-between; margin-bottom: 6px; }
