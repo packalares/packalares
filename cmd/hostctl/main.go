@@ -405,7 +405,6 @@ func buildWGConfig(userConfig string, killSwitch bool) string {
 		clusterCIDRs := detectClusterCIDRs()
 		clusterDNS := detectClusterDNS()
 		dns := parseWGDNS(userConfig)
-		endpointIP, _ := parseWGEndpoint(userConfig)
 
 		upScript := fmt.Sprintf(`#!/bin/bash
 # Routing: send everything through WG except cluster traffic
