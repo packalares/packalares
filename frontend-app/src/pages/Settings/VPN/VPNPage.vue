@@ -200,12 +200,10 @@
         <div class="form-grid cols-1">
           <div class="form-group">
             <label class="form-label">Configuration</label>
-            <q-input
+            <textarea
               v-model="wgConfig"
-              type="textarea"
-              dense dark outlined
-              :rows="8"
-              input-class="mono-textarea"
+              class="wg-config-textarea"
+              rows="10"
               placeholder="[Interface]
 PrivateKey = ...
 Address = 10.8.0.2/32
@@ -215,7 +213,8 @@ DNS = 10.8.0.1
 PublicKey = ...
 Endpoint = vpn.example.com:51820
 AllowedIPs = 0.0.0.0/0"
-            />
+              spellcheck="false"
+            ></textarea>
           </div>
         </div>
         <q-separator class="card-separator" />
@@ -389,10 +388,21 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
-:deep(.mono-textarea) {
-  font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
-  font-size: 12px !important;
-  line-height: 1.5 !important;
-  min-height: 160px !important;
+.wg-config-textarea {
+  width: 100%;
+  min-height: 180px;
+  padding: 10px 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--ink-1);
+  background: var(--bg-3, rgba(255,255,255,0.05));
+  border: 1px solid var(--border, rgba(255,255,255,0.12));
+  border-radius: 6px;
+  resize: vertical;
+  outline: none;
+  box-sizing: border-box;
+  &:focus { border-color: var(--accent, #60a5fa); }
+  &::placeholder { color: var(--ink-3, rgba(255,255,255,0.3)); }
 }
 </style>
