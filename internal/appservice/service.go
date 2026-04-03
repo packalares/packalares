@@ -3,6 +3,8 @@ package appservice
 import (
 	"context"
 	"crypto/md5"
+	cryptoRand "crypto/rand"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -426,6 +428,8 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		"olaresEnv": map[string]interface{}{
 			"OLARES_USER_HUGGINGFACE_SERVICE": os.Getenv("OLARES_USER_HUGGINGFACE_SERVICE"),
 			"OLARES_USER_HUGGINGFACE_TOKEN":   os.Getenv("OLARES_USER_HUGGINGFACE_TOKEN"),
+			"ADMIN_USERNAME":                  s.owner,
+			"ADMIN_PASSWORD":                  generateAppPassword(req.Name),
 		},
 		"sharedlib":      "/packalares/data/sharedlib",
 		"downloadCdnURL": "https://cdn.olares.com",
@@ -974,6 +978,59 @@ func (s *Service) ListInstalledModels(ctx context.Context) (map[string][]Install
 	}
 
 	return result, nil
+}
+
+// AppCredentials holds admin credentials for an installed app.
+type AppCredentials struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+// GetAppCredentials reads admin credentials from an app's Helm release values.
+func (s *Service) GetAppCredentials(ctx context.Context, appName string) (*AppCredentials, error) {
+	cmd := exec.CommandContext(ctx, "helm", "get", "values", appName, "-n", s.namespace, "-a", "-o", "json")
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("app %s not found or not installed", appName)
+	}
+
+	var vals map[string]interface{}
+	if err := json.Unmarshal(out, &vals); err != nil {
+		return nil, fmt.Errorf("parse values: %w", err)
+	}
+
+	env, ok := vals["olaresEnv"].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("no credentials found for %s", appName)
+	}
+
+	username, _ := env["ADMIN_USERNAME"].(string)
+	password, _ := env["ADMIN_PASSWORD"].(string)
+
+	if username == "" && password == "" {
+		return nil, fmt.Errorf("no credentials configured for %s", appName)
+	}
+
+	return &AppCredentials{
+		Username: username,
+		Password: password,
+	}, nil
+}
+
+// generateAppPassword generates a random password for an app's admin user.
+func generateAppPassword(appName string) string {
+	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	b := make([]byte, 16)
+	// Use crypto/rand for secure randomness
+	if _, err := cryptoRand.Read(b); err != nil {
+		// Fallback: hash the app name with a timestamp
+		h := md5.Sum([]byte(appName + fmt.Sprint(time.Now().UnixNano())))
+		return fmt.Sprintf("%x", h)[:16]
+	}
+	for i := range b {
+		b[i] = chars[int(b[i])%len(chars)]
+	}
+	return string(b)
 }
 
 // ensurePostgresDB creates a PostgreSQL database if it doesn't already exist.

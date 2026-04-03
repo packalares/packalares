@@ -34,6 +34,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/app-service/v1/resume", h.handleResume)
 	mux.HandleFunc("/app-service/v1/stop", h.handleStop)
 	mux.HandleFunc("/app-service/v1/start", h.handleStart)
+	mux.HandleFunc("/app-service/v1/app-credentials/", h.handleAppCredentials)
 
 	// Model endpoints
 	mux.HandleFunc("/app-service/v1/models/status", h.handleModelStatus)
@@ -528,6 +529,30 @@ func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		klog.Errorf("write json: %v", err)
 	}
+}
+
+// handleAppCredentials returns admin credentials for an installed app.
+// GET /app-service/v1/app-credentials/<appName>
+func (h *Handler) handleAppCredentials(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	appName := strings.TrimPrefix(r.URL.Path, "/app-service/v1/app-credentials/")
+	appName = strings.TrimSuffix(appName, "/")
+	if appName == "" {
+		writeError(w, http.StatusBadRequest, "app name required")
+		return
+	}
+
+	creds, err := h.svc.GetAppCredentials(r.Context(), appName)
+	if err != nil {
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(creds)
 }
 
 // writeError writes a JSON error response.
