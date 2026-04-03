@@ -251,7 +251,7 @@ function loadEnabled(): Record<string, boolean> {
 function customStyle(id: string): Record<string, string> | undefined {
   const p = customPositions.value[id];
   if (!p) return undefined;
-  return { position: 'fixed', left: p.x + 'px', top: p.y + 'px', zIndex: '5' };
+  return { position: 'fixed', left: p.x + 'px', top: p.y + 'px', bottom: 'auto', right: 'auto', zIndex: '5' };
 }
 
 // Drag
