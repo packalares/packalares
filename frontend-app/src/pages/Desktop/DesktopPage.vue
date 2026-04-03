@@ -5,6 +5,36 @@
       <img class="desktop-bg" :src="wallpaper" />
     </div>
 
+    <!-- Top Bar (macOS style) -->
+    <div class="top-bar">
+      <div class="top-bar-left">
+        <q-icon name="sym_r_grid_view" size="14px" class="top-bar-logo" />
+      </div>
+      <div class="top-bar-center">
+        <!-- Minimized windows -->
+        <div
+          v-for="win in minimizedWindows"
+          :key="win.id"
+          class="top-bar-min-app"
+          @click.stop="restoreWindow(win.id)"
+          :title="win.title"
+        >
+          <q-icon :name="'sym_r_' + (getAppById(win.appId)?.icon || 'web')" size="14px" />
+          <span>{{ win.title }}</span>
+        </div>
+      </div>
+      <div class="top-bar-right">
+        <span v-if="m.powerTotal > 0" class="top-bar-item">
+          <q-icon name="sym_r_bolt" size="13px" />
+          {{ m.powerTotal.toFixed(0) }}W
+        </span>
+        <span class="top-bar-item top-bar-clock">{{ topBarTime }}</span>
+        <span class="top-bar-item top-bar-toggle" @click.stop="toggleWidgetsFromBar">
+          <q-icon name="sym_r_widgets" size="14px" />
+        </span>
+      </div>
+    </div>
+
     <!-- Desktop Widgets -->
     <DesktopWidgets ref="widgetsRef" />
 
@@ -107,7 +137,7 @@
     <div class="windows-layer" ref="windowsLayerRef">
       <template v-for="win in windows" :key="win.id">
         <div
-          v-if="win.visible"
+          v-show="win.visible"
           class="app-window"
           :class="{ 'window-maximized': win.maximized, 'window-active': win.id === activeWindowId }"
           :style="windowStyle(win)"
@@ -262,7 +292,10 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch, nextTick } from 'vue';
 import { api } from 'boot/axios';
 import { useUserStore } from 'stores/user';
+import { useMonitorStore } from 'stores/monitor';
 import DesktopWidgets from 'src/components/DesktopWidgets.vue';
+
+const m = useMonitorStore();
 
 // ─── Types ───────────────────────────────────────────────────
 
@@ -566,6 +599,13 @@ function openWindow(app: AppInfo) {
   if (existing) {
     existing.visible = true;
     bringToFront(existing.id);
+    // Navigate existing iframe to app's default URL (dock = fresh view)
+    try {
+      const iframe = document.querySelector(`iframe[data-app-id="${app.id}"]`) as HTMLIFrameElement;
+      if (iframe?.contentWindow && app.url !== existing.url) {
+        iframe.contentWindow.location.href = app.url;
+      }
+    } catch {}
     saveWindowState();
     return;
   }
@@ -609,6 +649,36 @@ function minimizeWindow(winId: string) {
   if (win) {
     win.visible = false;
     saveWindowState();
+  }
+}
+
+function restoreWindow(winId: string) {
+  const win = windows.value.find((w) => w.id === winId);
+  if (win) {
+    win.visible = true;
+    bringToFront(winId);
+    saveWindowState();
+  }
+}
+
+const minimizedWindows = computed(() => windows.value.filter(w => !w.visible));
+
+// Top bar clock
+const topBarTime = ref('');
+let topBarTimer: ReturnType<typeof setInterval>;
+
+function updateTopBarTime() {
+  const now = new Date();
+  const day = now.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' });
+  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  topBarTime.value = `${day}  ${time}`;
+}
+
+function toggleWidgetsFromBar() {
+  const w = widgetsRef.value;
+  if (w) {
+    const current = localStorage.getItem('packalares_widgets_visible') !== 'false';
+    w.toggleWidgets(!current);
   }
 }
 
@@ -826,6 +896,10 @@ onMounted(async () => {
   } catch {}
 
   ready.value = true;
+
+  // Top bar clock
+  updateTopBarTime();
+  topBarTimer = setInterval(updateTopBarTime, 1000);
 
   // Apply saved theme
   const savedTheme = localStorage.getItem('packalares_theme') || 'dark';
@@ -1303,6 +1377,74 @@ onUnmounted(() => {
   &:hover {
     background: rgba(255, 255, 255, 0.08);
   }
+}
+
+/* ═══ Top Bar ═══ */
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 84px;
+  right: 0;
+  height: 28px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  font-weight: 500;
+  user-select: none;
+}
+.top-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.top-bar-logo { color: rgba(255, 255, 255, 0.5); }
+.top-bar-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 16px;
+  overflow-x: auto;
+}
+.top-bar-min-app {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.06);
+  white-space: nowrap;
+  &:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
+}
+.top-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.top-bar-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+}
+.top-bar-clock { font-weight: 500; color: rgba(255, 255, 255, 0.85); }
+.top-bar-toggle {
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  &:hover { background: rgba(255, 255, 255, 0.1); }
 }
 
 /* ═══ Desktop Context Menu ═══ */

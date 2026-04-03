@@ -1,33 +1,7 @@
 <template>
   <div class="widgets-container" v-if="visible">
-    <div class="widget-toggle" @click="toggleWidgets(false)">
-      <q-icon name="sym_r_widgets" size="18px" />
-    </div>
-
     <!-- Right panel: grid layout -->
     <div class="right-panel" :class="{ 'right-panel--custom': hasCustomPositions }">
-      <!-- Top row: clock + power side by side -->
-      <div class="top-row">
-        <div
-          v-if="enabledWidgets.clock"
-          class="widget widget-clock"
-          :style="customStyle('clock')"
-          @mousedown="startDrag($event, 'clock')"
-        >
-          <div class="clock-time">{{ clockTime }}</div>
-          <div class="clock-date">{{ weekDay }}, {{ dateStr }}</div>
-        </div>
-        <div
-          v-if="enabledWidgets.power"
-          class="widget widget-power"
-          :style="customStyle('power')"
-          @mousedown="startDrag($event, 'power')"
-        >
-          <q-icon name="sym_r_bolt" size="16px" class="power-icon" />
-          <div class="power-total">{{ m.powerTotal > 0 ? m.powerTotal.toFixed(0) : '--' }}<span class="power-unit">W</span></div>
-        </div>
-      </div>
-
       <!-- System -->
       <div
         v-if="enabledWidgets.system"
@@ -198,9 +172,6 @@
     </div>
   </div>
 
-  <div v-if="!visible" class="widget-toggle widget-toggle-hidden" @click="toggleWidgets(true)">
-    <q-icon name="sym_r_widgets" size="18px" />
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -237,7 +208,7 @@ function resetPositions() {
   localStorage.removeItem('packalares_widget_positions');
 }
 
-defineExpose({ resetPositions });
+defineExpose({ resetPositions, toggleWidgets });
 
 function loadEnabled(): Record<string, boolean> {
   try {
@@ -375,21 +346,16 @@ onUnmounted(() => {
   z-index: 5;
 }
 
-// ─── Right panel: CSS Grid ───
+// ─── Right panel ───
 .right-panel {
   pointer-events: none;
   position: absolute;
-  top: 56px;
+  top: 40px;
   right: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
   width: 240px;
-}
-
-.top-row {
-  display: flex;
-  gap: 8px;
 }
 
 // ─── Weather: bottom-left ───
@@ -440,46 +406,6 @@ onUnmounted(() => {
   margin-top: 8px;
 }
 
-// ─── Clock (half-width in top-row) ───
-.widget-clock {
-  flex: 1;
-  width: auto;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-}
-.clock-time {
-  font-size: 22px;
-  font-weight: 300;
-  letter-spacing: -0.5px;
-  line-height: 1;
-  white-space: nowrap;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-.clock-date {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-top: 6px;
-  line-height: 1;
-  text-align: center;
-}
-
-// ─── Power (half-width in top-row) ───
-.widget-power {
-  flex: 1;
-  width: auto;
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  gap: 4px;
-}
-.power-icon { color: rgba(255, 255, 255, 0.4); }
-.power-total { font-size: 26px; font-weight: 300; text-align: center; line-height: 1; }
-.power-unit { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
 
 // ─── Weather ───
 .weather-top {
