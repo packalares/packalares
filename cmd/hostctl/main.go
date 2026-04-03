@@ -520,7 +520,8 @@ iptables -t nat -X WG_DNS_REDIRECT 2>/dev/null
 	_ = nsenterRun("chmod", "+x", "/usr/local/bin/wg0-up.sh", "/usr/local/bin/wg0-down.sh")
 
 	// Inject PostUp/PostDown before the first [Peer] section
-	lines := strings.Split(userConfig, "\n")
+	// Use `config` (with Table=off) not `userConfig`
+	lines := strings.Split(config, "\n")
 	var result []string
 	injected := false
 	for _, line := range lines {
@@ -695,10 +696,28 @@ func handleWGStatus(w http.ResponseWriter, r *http.Request) {
 
 // detectClusterCIDRs finds K8s cluster CIDRs by reading the K3s service-cidr
 // and cluster-cidr from the K3s config, falling back to route table inspection.
-func detectClusterCIDRs() []string {
-	cidrs := make(map[string]bool)
+// isValidCIDR checks if a string looks like a valid CIDR (x.x.x.x/N, not 0.0.0.0/0).
+func isValidCIDR(s string) bool {
+	s = strings.TrimSpace(s)
+	if !strings.Contains(s, "/") || !strings.Contains(s, ".") {
+		return false
+	}
+	// Reject 0.0.0.0/0 and similar catch-all
+	ip := strings.Split(s, "/")[0]
+	if ip == "0.0.0.0" || ip == "" {
+		return false
+	}
+	// Must start with a digit
+	if len(ip) == 0 || ip[0] < '0' || ip[0] > '9' {
+		return false
+	}
+	return true
+}
 
-	// Method 1: Read K3s config for explicit CIDRs
+func detectClusterCIDRs() []string {
+	seen := make(map[string]bool)
+
+	// Method 1: Read K3s config for service-cidr and cluster-cidr
 	cfgOut, err := nsenterOutput("cat", "/etc/rancher/k3s/config.yaml")
 	if err == nil {
 		for _, line := range strings.Split(cfgOut, "\n") {
@@ -706,56 +725,48 @@ func detectClusterCIDRs() []string {
 			if strings.HasPrefix(line, "service-cidr:") || strings.HasPrefix(line, "cluster-cidr:") {
 				parts := strings.SplitN(line, ":", 2)
 				if len(parts) == 2 {
-					cidr := strings.TrimSpace(strings.Trim(parts[1], "\"'"))
-					if cidr != "" {
-						cidrs[cidr] = true
+					cidr := strings.TrimSpace(parts[1])
+					cidr = strings.Trim(cidr, "\"' ")
+					if isValidCIDR(cidr) {
+						seen[cidr] = true
 					}
 				}
 			}
 		}
 	}
 
-	// Method 2: Find blackhole routes (pod CIDRs) and service ClusterIP range
+	// Method 2: Find blackhole routes (pod CIDRs assigned to this node)
 	routeOut, _ := nsenterOutput("ip", "route", "show", "table", "main")
 	for _, line := range strings.Split(routeOut, "\n") {
 		if strings.HasPrefix(line, "blackhole ") {
 			parts := strings.Fields(line)
-			if len(parts) >= 2 {
-				cidrs[parts[1]] = true
+			if len(parts) >= 2 && isValidCIDR(parts[1]) {
+				seen[parts[1]] = true
 			}
 		}
 	}
 
-	// Method 3: Check iptables for KUBE-SERVICES destination ranges
-	iptOut, _ := nsenterOutput("iptables", "-t", "nat", "-L", "KUBE-SERVICES", "-n")
-	for _, line := range strings.Split(iptOut, "\n") {
-		if strings.Contains(line, "cluster IP") {
-			fields := strings.Fields(line)
-			for _, f := range fields {
-				if strings.Contains(f, ".") && strings.Contains(f, "/") {
-					cidrs[f] = true
-				}
+	// If we found specific CIDRs, also add the parent /16 to cover the full range
+	for cidr := range seen {
+		ip := strings.Split(cidr, "/")[0]
+		octets := strings.Split(ip, ".")
+		if len(octets) >= 2 {
+			parent := octets[0] + "." + octets[1] + ".0.0/16"
+			if isValidCIDR(parent) {
+				seen[parent] = true
 			}
 		}
 	}
 
-	// If we found specific CIDRs, also cover the parent /16
-	// to catch any services we missed
-	for cidr := range cidrs {
-		parts := strings.Split(strings.Split(cidr, "/")[0], ".")
-		if len(parts) >= 2 {
-			parent := parts[0] + "." + parts[1] + ".0.0/16"
-			cidrs[parent] = true
-		}
-	}
-
-	result := make([]string, 0, len(cidrs))
-	for cidr := range cidrs {
+	result := make([]string, 0, len(seen))
+	for cidr := range seen {
 		result = append(result, cidr)
 	}
 
 	if len(result) == 0 {
-		log.Printf("[wg] WARNING: could not detect cluster CIDRs, K8s traffic may route through tunnel")
+		log.Printf("[wg] WARNING: could not detect cluster CIDRs")
+	} else {
+		log.Printf("[wg] detected cluster CIDRs: %v", result)
 	}
 	return result
 }
