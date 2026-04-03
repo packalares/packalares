@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -326,10 +327,18 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		klog.V(2).Infof("ensure namespace %s: %v (may already exist)", s.namespace, err)
 	}
 
+	// --- Step 3b: Provision middleware databases declared in manifest ---
+	if manifest != nil && manifest.Middleware != nil && manifest.Middleware.Postgres != nil {
+		for _, db := range manifest.Middleware.Postgres.Databases {
+			if db.Name != "" {
+				if err := s.ensurePostgresDB(bgCtx, db.Name); err != nil {
+					klog.Warningf("provision postgres db %q: %v (non-fatal)", db.Name, err)
+				}
+			}
+		}
+	}
+
 	// --- Step 4: Write standard values into the chart's values.yaml ---
-	// Instead of --set, modify values.yaml directly so ALL template references work.
-	// The middleware operator (separate pod) handles DB provisioning via CRDs that
-	// the chart's templates create -- we just need to supply connection info.
 	zone := config.UserZone()
 
 	pgHost := config.CitusHost()
@@ -965,4 +974,44 @@ func (s *Service) ListInstalledModels(ctx context.Context) (map[string][]Install
 	}
 
 	return result, nil
+}
+
+// ensurePostgresDB creates a PostgreSQL database if it doesn't already exist.
+// Connects to the Citus coordinator via psql in the citus pod.
+func (s *Service) ensurePostgresDB(ctx context.Context, dbName string) error {
+	// Sanitize db name — only allow alphanumeric + underscore
+	for _, c := range dbName {
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+			return fmt.Errorf("invalid database name: %s", dbName)
+		}
+	}
+
+	pgHost := config.CitusHost()
+	pgPort := config.CitusPort()
+	pgUser := config.CitusUser()
+	pgPass := config.CitusPassword()
+
+	// Use psql via the citus pod to create the database
+	sql := fmt.Sprintf("SELECT 1 FROM pg_database WHERE datname='%s'", dbName)
+	checkCmd := exec.CommandContext(ctx, "kubectl", "exec", "-n", "os-system", "citus-coordinator-0", "--",
+		"psql", "-h", pgHost, "-p", pgPort, "-U", pgUser, "-d", "postgres", "-tAc", sql)
+	checkCmd.Env = append(os.Environ(), "PGPASSWORD="+pgPass)
+	out, err := checkCmd.CombinedOutput()
+	if err == nil && strings.TrimSpace(string(out)) == "1" {
+		klog.V(2).Infof("postgres db %q already exists", dbName)
+		return nil
+	}
+
+	// Create the database
+	createSQL := fmt.Sprintf("CREATE DATABASE \"%s\" OWNER \"%s\"", dbName, pgUser)
+	createCmd := exec.CommandContext(ctx, "kubectl", "exec", "-n", "os-system", "citus-coordinator-0", "--",
+		"psql", "-h", pgHost, "-p", pgPort, "-U", pgUser, "-d", "postgres", "-c", createSQL)
+	createCmd.Env = append(os.Environ(), "PGPASSWORD="+pgPass)
+	createOut, err := createCmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("create database %s: %s (%w)", dbName, strings.TrimSpace(string(createOut)), err)
+	}
+
+	klog.Infof("postgres database %q created", dbName)
+	return nil
 }

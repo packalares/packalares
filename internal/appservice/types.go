@@ -97,6 +97,39 @@ type AppConfiguration struct {
 	Spec            AppSpec          `json:"spec" yaml:"spec"`
 	Permission      Permission       `json:"permission" yaml:"permission"`
 	Options         Options          `json:"options" yaml:"options"`
+	Middleware      *MiddlewareSpec  `json:"middleware,omitempty" yaml:"middleware,omitempty"`
+}
+
+// MiddlewareSpec declares middleware dependencies for an app.
+type MiddlewareSpec struct {
+	Postgres *MiddlewarePostgres `json:"postgres,omitempty" yaml:"postgres,omitempty"`
+	Redis    *MiddlewareRedis    `json:"redis,omitempty" yaml:"redis,omitempty"`
+	MongoDB  *MiddlewareMongoDB  `json:"mongodb,omitempty" yaml:"mongodb,omitempty"`
+}
+
+// MiddlewarePostgres declares PostgreSQL database requirements.
+type MiddlewarePostgres struct {
+	Username  string              `json:"username,omitempty" yaml:"username,omitempty"`
+	Password  string              `json:"password,omitempty" yaml:"password,omitempty"`
+	Databases []MiddlewareDBEntry `json:"databases,omitempty" yaml:"databases,omitempty"`
+}
+
+// MiddlewareRedis declares Redis requirements.
+type MiddlewareRedis struct {
+	Namespace string `json:"namespace,omitempty" yaml:"namespace,omitempty"`
+}
+
+// MiddlewareMongoDB declares MongoDB requirements.
+type MiddlewareMongoDB struct {
+	Username  string              `json:"username,omitempty" yaml:"username,omitempty"`
+	Password  string              `json:"password,omitempty" yaml:"password,omitempty"`
+	Databases []MiddlewareDBEntry `json:"databases,omitempty" yaml:"databases,omitempty"`
+}
+
+// MiddlewareDBEntry is a single database to provision.
+type MiddlewareDBEntry struct {
+	Name        string `json:"name" yaml:"name"`
+	Distributed bool   `json:"distributed,omitempty" yaml:"distributed,omitempty"`
 }
 
 // AppMetaData holds descriptive metadata for an app chart.
