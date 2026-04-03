@@ -486,14 +486,27 @@ func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Keep K8s cluster traffic local — don't route through WG tunnel
+	// Detect cluster CIDRs from existing routes and add priority rules
+	clusterCIDRs := detectClusterCIDRs()
+	for _, cidr := range clusterCIDRs {
+		_ = nsenterRun("ip", "rule", "add", "to", cidr, "lookup", "main", "priority", "100")
+		log.Printf("[wg] cluster route preserved: %s → main table", cidr)
+	}
+
 	// Configure DNS through the tunnel
-	// Write /etc/resolv.conf with WG DNS + cluster DNS (for hostNetwork pods)
+	// Write /etc/resolv.conf with WG DNS + cluster DNS
 	// Save original first for restore on disable
 	dns := parseWGDNS(req.Config)
+	clusterDNS := detectClusterDNS()
 	if dns != "" {
 		_ = nsenterRun("cp", "-f", "/etc/resolv.conf", "/etc/resolv.conf.pre-wg")
-		_ = nsenterWrite("/etc/resolv.conf", "nameserver "+dns+"\nnameserver 10.233.0.10\n")
-		log.Printf("[wg] DNS set to %s + cluster DNS via /etc/resolv.conf", dns)
+		dnsContent := "nameserver " + dns + "\n"
+		if clusterDNS != "" {
+			dnsContent += "nameserver " + clusterDNS + "\n"
+		}
+		_ = nsenterWrite("/etc/resolv.conf", dnsContent)
+		log.Printf("[wg] DNS set to %s + %s via /etc/resolv.conf", dns, clusterDNS)
 	}
 
 	// Enable boot persistence
@@ -513,6 +526,11 @@ func handleWGDisable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Printf("[wg] disabling WireGuard")
+
+	// Remove cluster route preservation rules
+	for _, cidr := range detectClusterCIDRs() {
+		_ = nsenterRun("ip", "rule", "del", "to", cidr, "lookup", "main", "priority", "100")
+	}
 
 	// Bring down WireGuard (PostDown removes DNS redirect only)
 	_ = nsenterRun("wg-quick", "down", "wg0")
@@ -590,6 +608,52 @@ func handleWGStatus(w http.ResponseWriter, r *http.Request) {
 	status.KillSwitch = strings.Contains(iptOut, "REJECT")
 
 	respondJSON(w, http.StatusOK, status)
+}
+
+// detectClusterCIDRs finds K8s service and pod CIDRs from existing routes.
+func detectClusterCIDRs() []string {
+	var cidrs []string
+	// Service CIDR: look for the kubernetes ClusterIP route
+	out, err := nsenterOutput("ip", "route", "show", "table", "main")
+	if err == nil {
+		for _, line := range strings.Split(out, "\n") {
+			// blackhole 10.233.98.0/24 — pod CIDR
+			if strings.HasPrefix(line, "blackhole ") {
+				parts := strings.Fields(line)
+				if len(parts) >= 2 {
+					cidrs = append(cidrs, parts[1])
+				}
+			}
+		}
+	}
+	// Get service CIDR from K8s API server args or use common defaults
+	// K3s default service CIDR is 10.233.0.0/18, pod CIDR is 10.233.64.0/18
+	// Detect by checking if 10.233.0.1 is the kubernetes service
+	svcOut, _ := nsenterOutput("bash", "-c", "kubectl get svc kubernetes -o jsonpath='{.spec.clusterIP}' 2>/dev/null")
+	if strings.HasPrefix(strings.Trim(svcOut, "'"), "10.233.") {
+		cidrs = append(cidrs, "10.233.0.0/16")
+	} else if strings.HasPrefix(strings.Trim(svcOut, "'"), "10.") {
+		// Generic: cover the /16 containing the service IP
+		parts := strings.Split(strings.Trim(svcOut, "'"), ".")
+		if len(parts) >= 2 {
+			cidrs = append(cidrs, parts[0]+"."+parts[1]+".0.0/16")
+		}
+	}
+	// Deduplicate: if we have 10.233.0.0/16, smaller subnets are covered
+	if len(cidrs) == 0 {
+		cidrs = []string{"10.233.0.0/16"} // fallback
+	}
+	return cidrs
+}
+
+// detectClusterDNS finds the cluster DNS IP.
+func detectClusterDNS() string {
+	out, _ := nsenterOutput("bash", "-c", "kubectl get svc -n kube-system kube-dns -o jsonpath='{.spec.clusterIP}' 2>/dev/null")
+	ip := strings.Trim(out, "'")
+	if ip != "" && strings.Contains(ip, ".") {
+		return ip
+	}
+	return "10.233.0.10" // K3s default
 }
 
 // removeWGKillSwitch fully removes all iptables kill-switch and DNS redirect rules.
