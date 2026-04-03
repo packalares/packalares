@@ -430,6 +430,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 			"OLARES_USER_HUGGINGFACE_TOKEN":   os.Getenv("OLARES_USER_HUGGINGFACE_TOKEN"),
 			"ADMIN_USERNAME":                  s.owner,
 			"ADMIN_PASSWORD":                  generateAppPassword(req.Name),
+			"UNIQUE_PASS":                     generateAppPassword(req.Name + "-unique"),
 		},
 		"sharedlib":      "/packalares/data/sharedlib",
 		"downloadCdnURL": "https://cdn.olares.com",
