@@ -389,7 +389,7 @@ onUnmounted(() => {
 </script>
 
 <style scoped lang="scss">
-.mono-textarea {
+:deep(.mono-textarea) {
   font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
   font-size: 12px !important;
   line-height: 1.5 !important;
