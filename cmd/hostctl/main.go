@@ -486,6 +486,14 @@ func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Configure DNS through the tunnel for systemd-resolved
+	dns := parseWGDNS(req.Config)
+	if dns != "" {
+		_ = nsenterRun("resolvectl", "dns", "wg0", dns)
+		_ = nsenterRun("resolvectl", "domain", "wg0", "~.")
+		log.Printf("[wg] DNS set to %s via resolvectl on wg0", dns)
+	}
+
 	// Enable boot persistence
 	_ = nsenterRun("systemctl", "enable", "wg-quick@wg0")
 

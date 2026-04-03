@@ -36,6 +36,12 @@ http {
     include /etc/nginx/includes/static-assets.conf;
 
     location = /ca.crt { alias /etc/ca/ca.crt; default_type application/x-x509-ca-cert; }
+    location = /api/auth/check {
+      proxy_pass http://$auth_up:9091/api/verify;
+      proxy_pass_request_body off;
+      proxy_set_header Content-Length "";
+      proxy_set_header Cookie $http_cookie;
+    }
     location /login  { proxy_pass http://$desktop_up:80; }
     location /wizard { proxy_pass http://$desktop_up:80; }
     location = / { auth_request /_auth; return 302 /desktop; }
