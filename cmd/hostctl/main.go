@@ -359,64 +359,30 @@ func parseWGEndpoint(config string) (ip string, port string) {
 	return "", ""
 }
 
-// rewriteAllowedIPs replaces "0.0.0.0/0" in AllowedIPs with split ranges
-// that exclude K8s cluster CIDRs. This prevents WG routing table from
-// capturing cluster traffic.
-func rewriteAllowedIPs(config string) string {
-	clusterCIDRs := detectClusterCIDRs()
-	if len(clusterCIDRs) == 0 {
-		return config
-	}
+// No rewriteAllowedIPs needed — we let wg-quick handle routing normally
+// and add throw routes for cluster CIDRs in PostUp.
 
-	// Build exclusion: 0.0.0.0/0 minus cluster CIDRs
-	// For simplicity, we use 0.0.0.0/1 + 128.0.0.0/1 (covers all non-10.x)
-	// plus specific 10.x ranges that exclude the cluster
-	// Actually simplest: just add Table = off and manage routing manually
-	// Or: replace AllowedIPs = 0.0.0.0/0 with 0.0.0.0/0 but add Table = off
-	// and handle routing in PostUp
-
-	// Check if config already has Table = off
-	if strings.Contains(strings.ToLower(config), "table =") {
-		return config
-	}
-
-	// Add Table = off to [Interface] section to prevent wg-quick from creating routing rules
-	lines := strings.Split(config, "\n")
-	var result []string
-	for _, line := range lines {
-		result = append(result, line)
-		if strings.TrimSpace(line) == "[Interface]" {
-			result = append(result, "Table = off")
-		}
-	}
-	return strings.Join(result, "\n")
-}
-
-// buildWGConfig processes the user's WG config:
-// - Always adds Table = off (routing managed by PostUp)
-// - When kill-switch is enabled, injects PostUp/PostDown scripts
+// buildWGConfig injects PostUp/PostDown into the user's WG config.
+// wg-quick handles routing normally (creates its own table + fwmark + nft rules).
+// PostUp adds throw routes for cluster CIDRs + DNS config + optional kill-switch.
 func buildWGConfig(userConfig string, killSwitch bool) string {
-	// Always rewrite to prevent wg-quick from creating routing rules
-	// We manage routing ourselves to exclude cluster CIDRs
-	config := rewriteAllowedIPs(userConfig)
+	config := userConfig
 
 	if !killSwitch {
-		// Even without kill-switch, we need PostUp for routing + DNS
+		// Without kill-switch, still need cluster route exclusions + DNS
 		clusterCIDRs := detectClusterCIDRs()
 		clusterDNS := detectClusterDNS()
 		dns := parseWGDNS(userConfig)
 
+		// PostUp: add throw routes for cluster CIDRs to wg-quick's table + set DNS
+		// wg-quick's table = fwmark value (read from wg show)
 		upScript := fmt.Sprintf(`#!/bin/bash
-# Set fwmark so WG tunnel packets bypass our routing rules
-wg set wg0 fwmark 0xca6c
-# Routing: send everything through WG except cluster traffic
-WG_TABLE=51820
-ip route add default dev wg0 table $WG_TABLE
-ip rule add not fwmark 0xca6c table $WG_TABLE
-ip rule add table main suppress_prefixlength 0
-# Exclude cluster CIDRs from WG table
+# Get wg-quick's routing table from the fwmark it set
+WG_TABLE=$(wg show wg0 fwmark 2>/dev/null)
+[ -z "$WG_TABLE" ] && WG_TABLE=51820
+# Add throw routes so cluster traffic bypasses WG tunnel
 %s
-# DNS
+# DNS: use tunnel DNS + cluster DNS
 cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
 echo "nameserver %s" > /etc/resolv.conf
 [ -n "%s" ] && echo "nameserver %s" >> /etc/resolv.conf
@@ -431,10 +397,6 @@ echo "nameserver %s" > /etc/resolv.conf
 			dns, clusterDNS, clusterDNS)
 
 		downScript := `#!/bin/bash
-WG_TABLE=51820
-ip rule del not fwmark 0xca6c table $WG_TABLE 2>/dev/null
-ip rule del table main suppress_prefixlength 0 2>/dev/null
-ip route flush table $WG_TABLE 2>/dev/null
 [ -f /etc/resolv.conf.pre-wg ] && mv /etc/resolv.conf.pre-wg /etc/resolv.conf
 `
 		_ = nsenterWrite("/usr/local/bin/wg0-up.sh", upScript)
@@ -462,20 +424,19 @@ ip route flush table $WG_TABLE 2>/dev/null
 	clusterCIDRs := detectClusterCIDRs()
 	clusterDNS := detectClusterDNS()
 
-	// Build PostUp: routing + DNS + kill-switch
+	// Build PostUp: throw routes for cluster CIDRs + DNS + kill-switch
+	// wg-quick handles all routing/fwmark/nft — we just add cluster exceptions
 	upScript := fmt.Sprintf(`#!/bin/bash
-WG_TABLE=51820
-# Routing: send everything through WG except cluster traffic
-ip route add default dev wg0 table $WG_TABLE
-ip rule add not fwmark 0xca6c table $WG_TABLE
-ip rule add table main suppress_prefixlength 0
-# Exclude cluster CIDRs from WG table
+# Get wg-quick's routing table from the fwmark it set
+WG_TABLE=$(wg show wg0 fwmark 2>/dev/null)
+[ -z "$WG_TABLE" ] && WG_TABLE=51820
+# Add throw routes so cluster traffic bypasses WG tunnel
 %s
-# DNS
+# DNS: use tunnel DNS + cluster DNS
 cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
 echo "nameserver %s" > /etc/resolv.conf
 [ -n "%s" ] && echo "nameserver %s" >> /etc/resolv.conf
-# Kill-switch
+# Kill-switch (iptables)
 iptables -N WG_OUT 2>/dev/null; iptables -F WG_OUT
 iptables -A WG_OUT -o lo -j ACCEPT
 iptables -A WG_OUT -d 10.0.0.0/8 -j ACCEPT
@@ -485,14 +446,6 @@ iptables -A WG_OUT -o wg0 -j ACCEPT
 [ -n "%s" ] && iptables -A WG_OUT -d %s -p udp --dport %s -j ACCEPT
 iptables -A WG_OUT -j REJECT
 iptables -C OUTPUT -j WG_OUT 2>/dev/null || iptables -I OUTPUT -j WG_OUT
-# DNS redirect
-if [ -n "%s" ]; then
-  iptables -t nat -N WG_DNS_REDIRECT 2>/dev/null; iptables -t nat -F WG_DNS_REDIRECT
-  iptables -t nat -A WG_DNS_REDIRECT -d %s -j RETURN
-  iptables -t nat -A WG_DNS_REDIRECT -p udp --dport 53 -j DNAT --to-destination %s:53
-  iptables -t nat -A WG_DNS_REDIRECT -p tcp --dport 53 -j DNAT --to-destination %s:53
-  iptables -t nat -C OUTPUT -j WG_DNS_REDIRECT 2>/dev/null || iptables -t nat -I OUTPUT -j WG_DNS_REDIRECT
-fi
 `,
 		func() string {
 			var s string
@@ -502,18 +455,10 @@ fi
 			return s
 		}(),
 		dns, clusterDNS, clusterDNS,
-		endpointIP, endpointIP, endpointPort,
-		dns, dns, dns, dns)
+		endpointIP, endpointIP, endpointPort)
 
-	// PostDown: remove routing + DNS redirect, keep kill-switch (safe)
+	// PostDown: restore DNS, keep kill-switch (safe on crash)
 	downScript := `#!/bin/bash
-WG_TABLE=51820
-ip rule del not fwmark 0xca6c table $WG_TABLE 2>/dev/null
-ip rule del table main suppress_prefixlength 0 2>/dev/null
-ip route flush table $WG_TABLE 2>/dev/null
-iptables -t nat -D OUTPUT -j WG_DNS_REDIRECT 2>/dev/null
-iptables -t nat -F WG_DNS_REDIRECT 2>/dev/null
-iptables -t nat -X WG_DNS_REDIRECT 2>/dev/null
 [ -f /etc/resolv.conf.pre-wg ] && mv /etc/resolv.conf.pre-wg /etc/resolv.conf
 `
 
