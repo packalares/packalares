@@ -350,7 +350,7 @@ onUnmounted(() => {
 .right-panel {
   pointer-events: none;
   position: absolute;
-  top: 40px;
+  top: 44px;
   right: 12px;
   display: flex;
   flex-direction: column;
