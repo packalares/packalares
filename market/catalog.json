@@ -12341,31 +12341,6 @@
         }
       ],
       "status": "active"
-    },
-    {
-      "name": "gpt2-test",
-      "title": "GPT-2 (vLLM Test)",
-      "type": "model",
-      "backend": "vllm",
-      "modelId": "gpt2-test",
-      "hfRepo": "openai-community/gpt2",
-      "cfgType": "model",
-      "description": "Small 124M parameter model for testing vLLM download flow.",
-      "developer": "OpenAI",
-      "categories": [
-        "Working"
-      ],
-      "requiredMemory": "512Mi",
-      "requiredDisk": "500Mi",
-      "icon": "/api/market/icons/vllmgptoss20bv2.png",
-      "status": "active",
-      "dependencies": [
-        {
-          "name": "packalares",
-          "type": "system",
-          "version": ">= 1.0.0"
-        }
-      ]
     }
   ],
   "categories": [
