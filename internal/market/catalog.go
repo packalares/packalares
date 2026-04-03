@@ -175,8 +175,12 @@ func (c *Catalog) loadLocal(path string) (*EnrichedCatalog, error) {
 
 	// Try enriched format first (has "apps" key at top level)
 	var enriched EnrichedCatalog
-	if err := json.Unmarshal(data, &enriched); err == nil && len(enriched.Apps) > 0 {
+	if err := json.Unmarshal(data, &enriched); err != nil {
+		klog.Warningf("loadLocal %s enriched parse error: %v", path, err)
+	} else if len(enriched.Apps) > 0 {
 		return &enriched, nil
+	} else {
+		klog.Warningf("loadLocal %s enriched parsed OK but 0 apps", path)
 	}
 
 	// Try flat array of apps
