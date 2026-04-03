@@ -10,19 +10,7 @@
       <div class="top-bar-left">
         <q-icon name="sym_r_grid_view" size="14px" class="top-bar-logo" />
       </div>
-      <div class="top-bar-center">
-        <!-- Minimized windows -->
-        <div
-          v-for="win in minimizedWindows"
-          :key="win.id"
-          class="top-bar-min-app"
-          @click.stop="restoreWindow(win.id)"
-          :title="win.title"
-        >
-          <q-icon :name="'sym_r_' + (getAppById(win.appId)?.icon || 'web')" size="14px" />
-          <span>{{ win.title }}</span>
-        </div>
-      </div>
+      <div class="top-bar-center"></div>
       <div class="top-bar-right">
         <span v-if="m.powerTotal > 0" class="top-bar-item">
           <q-icon name="sym_r_bolt" size="13px" />
@@ -137,7 +125,7 @@
     <div class="windows-layer" ref="windowsLayerRef">
       <template v-for="win in windows" :key="win.id">
         <div
-          v-show="win.visible"
+          v-if="win.visible"
           class="app-window"
           :class="{ 'window-maximized': win.maximized, 'window-active': win.id === activeWindowId }"
           :style="windowStyle(win)"
@@ -599,13 +587,6 @@ function openWindow(app: AppInfo) {
   if (existing) {
     existing.visible = true;
     bringToFront(existing.id);
-    // Navigate existing iframe to app's default URL (dock = fresh view)
-    try {
-      const iframe = document.querySelector(`iframe[data-app-id="${app.id}"]`) as HTMLIFrameElement;
-      if (iframe?.contentWindow && app.url !== existing.url) {
-        iframe.contentWindow.location.href = app.url;
-      }
-    } catch {}
     saveWindowState();
     return;
   }
@@ -651,17 +632,6 @@ function minimizeWindow(winId: string) {
     saveWindowState();
   }
 }
-
-function restoreWindow(winId: string) {
-  const win = windows.value.find((w) => w.id === winId);
-  if (win) {
-    win.visible = true;
-    bringToFront(winId);
-    saveWindowState();
-  }
-}
-
-const minimizedWindows = computed(() => windows.value.filter(w => !w.visible));
 
 // Top bar clock
 const topBarTime = ref('');
@@ -1412,19 +1382,6 @@ onUnmounted(() => {
   gap: 4px;
   padding: 0 16px;
   overflow-x: auto;
-}
-.top-bar-min-app {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.06);
-  white-space: nowrap;
-  &:hover { background: rgba(255, 255, 255, 0.12); color: #fff; }
 }
 .top-bar-right {
   display: flex;
