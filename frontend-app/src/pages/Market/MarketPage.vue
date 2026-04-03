@@ -613,6 +613,26 @@
                 <span class="di-label">License</span>
                 <span class="di-value">{{ detailData.license.map((l: any) => l.text).join(', ') }}</span>
               </div>
+              <!-- App Credentials -->
+              <template v-if="appCreds">
+                <div class="di-divider" />
+                <div class="di-row">
+                  <span class="di-label">Admin User</span>
+                  <span class="di-value di-mono">{{ appCreds.username }}</span>
+                </div>
+                <div class="di-row">
+                  <span class="di-label">Admin Pass</span>
+                  <span class="di-value di-mono di-password">
+                    <span>{{ showCreds ? appCreds.password : '••••••••' }}</span>
+                    <q-icon
+                      :name="showCreds ? 'sym_r_visibility_off' : 'sym_r_visibility'"
+                      size="14px"
+                      class="di-eye"
+                      @click.stop="showCreds = !showCreds"
+                    />
+                  </span>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -685,6 +705,8 @@ const categories = ref<Category[]>([]);
 const installedApps = ref<InstalledApp[]>([]);
 const detailApp = ref<MarketApp | null>(null);
 const detailData = ref<MarketApp | null>(null);
+const appCreds = ref<{ username: string; password: string } | null>(null);
+const showCreds = ref(false);
 const detailLoading = ref(false);
 const previewImg = ref('');
 const installingSet = reactive(new Set<string>());
@@ -907,6 +929,8 @@ function progressDetail(name: string): string {
 async function openDetail(app: MarketApp) {
   detailApp.value = app;
   detailData.value = null;
+  appCreds.value = null;
+  showCreds.value = false;
   detailLoading.value = true;
   try {
     const res: any = await api.get('/api/market/app/' + app.name);
@@ -916,6 +940,13 @@ async function openDetail(app: MarketApp) {
   } finally {
     detailLoading.value = false;
   }
+  // Load credentials for installed apps
+  try {
+    const cres: any = await api.get('/api/apps/app-credentials/' + app.name);
+    if (cres?.username || cres?.password) {
+      appCreds.value = cres;
+    }
+  } catch {}
 }
 
 async function fetchApps() {
