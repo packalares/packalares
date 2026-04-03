@@ -359,77 +359,163 @@ func parseWGEndpoint(config string) (ip string, port string) {
 	return "", ""
 }
 
-// buildWGConfig injects PostUp/PostDown scripts into the user's WG config
-// when kill-switch is enabled. The scripts handle iptables kill-switch and
-// DNS redirection, matching the ugos-wireguard-client pattern.
+// rewriteAllowedIPs replaces "0.0.0.0/0" in AllowedIPs with split ranges
+// that exclude K8s cluster CIDRs. This prevents WG routing table from
+// capturing cluster traffic.
+func rewriteAllowedIPs(config string) string {
+	clusterCIDRs := detectClusterCIDRs()
+	if len(clusterCIDRs) == 0 {
+		return config
+	}
+
+	// Build exclusion: 0.0.0.0/0 minus cluster CIDRs
+	// For simplicity, we use 0.0.0.0/1 + 128.0.0.0/1 (covers all non-10.x)
+	// plus specific 10.x ranges that exclude the cluster
+	// Actually simplest: just add Table = off and manage routing manually
+	// Or: replace AllowedIPs = 0.0.0.0/0 with 0.0.0.0/0 but add Table = off
+	// and handle routing in PostUp
+
+	// Check if config already has Table = off
+	if strings.Contains(strings.ToLower(config), "table =") {
+		return config
+	}
+
+	// Add Table = off to [Interface] section to prevent wg-quick from creating routing rules
+	lines := strings.Split(config, "\n")
+	var result []string
+	for _, line := range lines {
+		result = append(result, line)
+		if strings.TrimSpace(line) == "[Interface]" {
+			result = append(result, "Table = off")
+		}
+	}
+	return strings.Join(result, "\n")
+}
+
+// buildWGConfig processes the user's WG config:
+// - Always adds Table = off (routing managed by PostUp)
+// - When kill-switch is enabled, injects PostUp/PostDown scripts
 func buildWGConfig(userConfig string, killSwitch bool) string {
+	// Always rewrite to prevent wg-quick from creating routing rules
+	// We manage routing ourselves to exclude cluster CIDRs
+	config := rewriteAllowedIPs(userConfig)
+
 	if !killSwitch {
-		return userConfig
+		// Even without kill-switch, we need PostUp for routing + DNS
+		clusterCIDRs := detectClusterCIDRs()
+		clusterDNS := detectClusterDNS()
+		dns := parseWGDNS(userConfig)
+		endpointIP, _ := parseWGEndpoint(userConfig)
+
+		upScript := fmt.Sprintf(`#!/bin/bash
+# Routing: send everything through WG except cluster traffic
+WG_TABLE=51820
+ip route add default dev wg0 table $WG_TABLE
+ip rule add not fwmark 0xca6c table $WG_TABLE
+ip rule add table main suppress_prefixlength 0
+# Exclude cluster CIDRs from WG table
+%s
+# DNS
+cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
+echo "nameserver %s" > /etc/resolv.conf
+[ -n "%s" ] && echo "nameserver %s" >> /etc/resolv.conf
+`,
+			func() string {
+				var s string
+				for _, cidr := range clusterCIDRs {
+					s += fmt.Sprintf("ip route add throw %s table $WG_TABLE 2>/dev/null\n", cidr)
+				}
+				return s
+			}(),
+			dns, clusterDNS, clusterDNS)
+
+		downScript := `#!/bin/bash
+WG_TABLE=51820
+ip rule del not fwmark 0xca6c table $WG_TABLE 2>/dev/null
+ip rule del table main suppress_prefixlength 0 2>/dev/null
+ip route flush table $WG_TABLE 2>/dev/null
+[ -f /etc/resolv.conf.pre-wg ] && mv /etc/resolv.conf.pre-wg /etc/resolv.conf
+`
+		_ = nsenterWrite("/usr/local/bin/wg0-up.sh", upScript)
+		_ = nsenterWrite("/usr/local/bin/wg0-down.sh", downScript)
+		_ = nsenterRun("chmod", "+x", "/usr/local/bin/wg0-up.sh", "/usr/local/bin/wg0-down.sh")
+
+		// Inject PostUp/PostDown before [Peer]
+		lines := strings.Split(config, "\n")
+		var result []string
+		injected := false
+		for _, line := range lines {
+			if strings.TrimSpace(line) == "[Peer]" && !injected {
+				result = append(result, "PostUp = /usr/local/bin/wg0-up.sh")
+				result = append(result, "PostDown = /usr/local/bin/wg0-down.sh")
+				result = append(result, "")
+				injected = true
+			}
+			result = append(result, line)
+		}
+		return strings.Join(result, "\n")
 	}
 
 	endpointIP, endpointPort := parseWGEndpoint(userConfig)
 	dns := parseWGDNS(userConfig)
+	clusterCIDRs := detectClusterCIDRs()
+	clusterDNS := detectClusterDNS()
 
-	// Build PostUp script content
-	upScript := `#!/bin/bash
-source /etc/wireguard/wg0.env
-# Preserve K8s cluster routes — keep cluster traffic local
-if [ -n "$CLUSTER_CIDRS" ]; then
-  for cidr in $CLUSTER_CIDRS; do
-    ip rule add to $cidr lookup main priority 100 2>/dev/null
-  done
-fi
-# DNS: write resolv.conf with tunnel DNS + cluster DNS
-if [ -n "$WG_DNS" ]; then
-  cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
-  echo "nameserver $WG_DNS" > /etc/resolv.conf
-  [ -n "$CLUSTER_DNS" ] && echo "nameserver $CLUSTER_DNS" >> /etc/resolv.conf
-fi
-# Kill-switch: block all non-WG/non-LAN outbound
+	// Build PostUp: routing + DNS + kill-switch
+	upScript := fmt.Sprintf(`#!/bin/bash
+WG_TABLE=51820
+# Routing: send everything through WG except cluster traffic
+ip route add default dev wg0 table $WG_TABLE
+ip rule add not fwmark 0xca6c table $WG_TABLE
+ip rule add table main suppress_prefixlength 0
+# Exclude cluster CIDRs from WG table
+%s
+# DNS
+cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
+echo "nameserver %s" > /etc/resolv.conf
+[ -n "%s" ] && echo "nameserver %s" >> /etc/resolv.conf
+# Kill-switch
 iptables -N WG_OUT 2>/dev/null; iptables -F WG_OUT
 iptables -A WG_OUT -o lo -j ACCEPT
 iptables -A WG_OUT -d 10.0.0.0/8 -j ACCEPT
 iptables -A WG_OUT -d 172.16.0.0/12 -j ACCEPT
 iptables -A WG_OUT -d 192.168.0.0/16 -j ACCEPT
 iptables -A WG_OUT -o wg0 -j ACCEPT
-[ -n "$WG_ENDPOINT_IP" ] && iptables -A WG_OUT -d $WG_ENDPOINT_IP -p udp --dport $WG_ENDPOINT_PORT -j ACCEPT
+[ -n "%s" ] && iptables -A WG_OUT -d %s -p udp --dport %s -j ACCEPT
 iptables -A WG_OUT -j REJECT
 iptables -C OUTPUT -j WG_OUT 2>/dev/null || iptables -I OUTPUT -j WG_OUT
-# DNS redirect through tunnel
-if [ -n "$WG_DNS" ]; then
+# DNS redirect
+if [ -n "%s" ]; then
   iptables -t nat -N WG_DNS_REDIRECT 2>/dev/null; iptables -t nat -F WG_DNS_REDIRECT
-  iptables -t nat -A WG_DNS_REDIRECT -d $WG_DNS -j RETURN
-  iptables -t nat -A WG_DNS_REDIRECT -p udp --dport 53 -j DNAT --to-destination $WG_DNS:53
-  iptables -t nat -A WG_DNS_REDIRECT -p tcp --dport 53 -j DNAT --to-destination $WG_DNS:53
+  iptables -t nat -A WG_DNS_REDIRECT -d %s -j RETURN
+  iptables -t nat -A WG_DNS_REDIRECT -p udp --dport 53 -j DNAT --to-destination %s:53
+  iptables -t nat -A WG_DNS_REDIRECT -p tcp --dport 53 -j DNAT --to-destination %s:53
   iptables -t nat -C OUTPUT -j WG_DNS_REDIRECT 2>/dev/null || iptables -t nat -I OUTPUT -j WG_DNS_REDIRECT
 fi
-`
+`,
+		func() string {
+			var s string
+			for _, cidr := range clusterCIDRs {
+				s += fmt.Sprintf("ip route add throw %s table $WG_TABLE 2>/dev/null\n", cidr)
+			}
+			return s
+		}(),
+		dns, clusterDNS, clusterDNS,
+		endpointIP, endpointIP, endpointPort,
+		dns, dns, dns, dns)
 
-	// PostDown: remove DNS redirect and cluster routes, keep kill-switch (safe)
+	// PostDown: remove routing + DNS redirect, keep kill-switch (safe)
 	downScript := `#!/bin/bash
-source /etc/wireguard/wg0.env
-# Remove DNS redirect
+WG_TABLE=51820
+ip rule del not fwmark 0xca6c table $WG_TABLE 2>/dev/null
+ip rule del table main suppress_prefixlength 0 2>/dev/null
+ip route flush table $WG_TABLE 2>/dev/null
 iptables -t nat -D OUTPUT -j WG_DNS_REDIRECT 2>/dev/null
 iptables -t nat -F WG_DNS_REDIRECT 2>/dev/null
 iptables -t nat -X WG_DNS_REDIRECT 2>/dev/null
-# Remove cluster route rules
-if [ -n "$CLUSTER_CIDRS" ]; then
-  for cidr in $CLUSTER_CIDRS; do
-    ip rule del to $cidr lookup main priority 100 2>/dev/null
-  done
-fi
-# Restore DNS
 [ -f /etc/resolv.conf.pre-wg ] && mv /etc/resolv.conf.pre-wg /etc/resolv.conf
 `
 
-	// Build env file — detect cluster CIDRs and DNS for PostUp/PostDown
-	clusterCIDRs := detectClusterCIDRs()
-	clusterDNSforEnv := detectClusterDNS()
-	envContent := fmt.Sprintf("WG_ENDPOINT_IP=%s\nWG_ENDPOINT_PORT=%s\nWG_DNS=%s\nCLUSTER_CIDRS=\"%s\"\nCLUSTER_DNS=%s\n",
-		endpointIP, endpointPort, dns, strings.Join(clusterCIDRs, " "), clusterDNSforEnv)
-
-	// Write helper files
-	_ = nsenterWrite("/etc/wireguard/wg0.env", envContent)
 	_ = nsenterWrite("/usr/local/bin/wg0-up.sh", upScript)
 	_ = nsenterWrite("/usr/local/bin/wg0-down.sh", downScript)
 	_ = nsenterRun("chmod", "+x", "/usr/local/bin/wg0-up.sh", "/usr/local/bin/wg0-down.sh")
@@ -511,25 +597,7 @@ func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// When kill-switch is on, PostUp handles cluster routes + DNS + iptables.
-	// When kill-switch is off, we still need cluster routes + DNS.
-	if !req.KillSwitch {
-		clusterCIDRs := detectClusterCIDRs()
-		for _, cidr := range clusterCIDRs {
-			_ = nsenterRun("ip", "rule", "add", "to", cidr, "lookup", "main", "priority", "100")
-		}
-		dns := parseWGDNS(req.Config)
-		clusterDNS := detectClusterDNS()
-		if dns != "" {
-			_ = nsenterRun("cp", "-f", "/etc/resolv.conf", "/etc/resolv.conf.pre-wg")
-			dnsContent := "nameserver " + dns + "\n"
-			if clusterDNS != "" {
-				dnsContent += "nameserver " + clusterDNS + "\n"
-			}
-			_ = nsenterWrite("/etc/resolv.conf", dnsContent)
-		}
-		log.Printf("[wg] cluster routes and DNS configured (no kill-switch)")
-	}
+	// PostUp handles routing, DNS, and optionally kill-switch
 
 	// Enable boot persistence
 	_ = nsenterRun("systemctl", "enable", "wg-quick@wg0")
@@ -549,21 +617,18 @@ func handleWGDisable(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[wg] disabling WireGuard")
 
-	// Bring down WireGuard (PostDown handles cluster routes + DNS if kill-switch)
+	// Bring down WireGuard (PostDown handles routing + DNS cleanup)
 	_ = nsenterRun("wg-quick", "down", "wg0")
 
-	// Full cleanup: remove kill-switch + cluster routes (PostDown leaves kill-switch for safety)
+	// Full cleanup: remove kill-switch (PostDown leaves it for safety)
 	removeWGKillSwitch()
-	for _, cidr := range detectClusterCIDRs() {
-		_ = nsenterRun("ip", "rule", "del", "to", cidr, "lookup", "main", "priority", "100")
-	}
+
+	// Ensure DNS is restored (in case PostDown failed)
+	_ = nsenterRun("bash", "-c", "[ -f /etc/resolv.conf.pre-wg ] && mv /etc/resolv.conf.pre-wg /etc/resolv.conf || ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf")
+	_ = nsenterRun("systemctl", "restart", "systemd-resolved")
 
 	// Disable boot persistence
 	_ = nsenterRun("systemctl", "disable", "wg-quick@wg0")
-
-	// Restore original DNS
-	_ = nsenterRun("bash", "-c", "[ -f /etc/resolv.conf.pre-wg ] && mv /etc/resolv.conf.pre-wg /etc/resolv.conf || ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf")
-	_ = nsenterRun("systemctl", "restart", "systemd-resolved")
 
 	// Remove config and helper scripts
 	_ = nsenterRun("rm", "-f", "/etc/wireguard/wg0.conf", "/etc/wireguard/wg0.env")
