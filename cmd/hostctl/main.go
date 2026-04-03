@@ -487,13 +487,13 @@ func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Configure DNS through the tunnel
-	// Write /etc/resolv.conf directly — resolvectl doesn't work reliably with kill-switch
+	// Write /etc/resolv.conf with WG DNS + cluster DNS (for hostNetwork pods)
 	// Save original first for restore on disable
 	dns := parseWGDNS(req.Config)
 	if dns != "" {
 		_ = nsenterRun("cp", "-f", "/etc/resolv.conf", "/etc/resolv.conf.pre-wg")
-		_ = nsenterWrite("/etc/resolv.conf", "nameserver "+dns+"\n")
-		log.Printf("[wg] DNS set to %s via /etc/resolv.conf", dns)
+		_ = nsenterWrite("/etc/resolv.conf", "nameserver "+dns+"\nnameserver 10.233.0.10\n")
+		log.Printf("[wg] DNS set to %s + cluster DNS via /etc/resolv.conf", dns)
 	}
 
 	// Enable boot persistence
