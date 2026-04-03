@@ -486,12 +486,14 @@ func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Configure DNS through the tunnel for systemd-resolved
+	// Configure DNS through the tunnel
+	// Write /etc/resolv.conf directly — resolvectl doesn't work reliably with kill-switch
+	// Save original first for restore on disable
 	dns := parseWGDNS(req.Config)
 	if dns != "" {
-		_ = nsenterRun("resolvectl", "dns", "wg0", dns)
-		_ = nsenterRun("resolvectl", "domain", "wg0", "~.")
-		log.Printf("[wg] DNS set to %s via resolvectl on wg0", dns)
+		_ = nsenterRun("cp", "-f", "/etc/resolv.conf", "/etc/resolv.conf.pre-wg")
+		_ = nsenterWrite("/etc/resolv.conf", "nameserver "+dns+"\n")
+		log.Printf("[wg] DNS set to %s via /etc/resolv.conf", dns)
 	}
 
 	// Enable boot persistence
@@ -521,6 +523,10 @@ func handleWGDisable(w http.ResponseWriter, r *http.Request) {
 
 	// Disable boot persistence
 	_ = nsenterRun("systemctl", "disable", "wg-quick@wg0")
+
+	// Restore original DNS
+	_ = nsenterRun("bash", "-c", "[ -f /etc/resolv.conf.pre-wg ] && mv /etc/resolv.conf.pre-wg /etc/resolv.conf || ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf")
+	_ = nsenterRun("systemctl", "restart", "systemd-resolved")
 
 	// Remove config and helper scripts
 	_ = nsenterRun("rm", "-f", "/etc/wireguard/wg0.conf", "/etc/wireguard/wg0.env")
