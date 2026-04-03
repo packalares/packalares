@@ -393,5 +393,6 @@ onUnmounted(() => {
   font-family: 'JetBrains Mono', 'Fira Code', monospace !important;
   font-size: 12px !important;
   line-height: 1.5 !important;
+  min-height: 160px !important;
 }
 </style>
