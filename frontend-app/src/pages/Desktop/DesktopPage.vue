@@ -7,9 +7,6 @@
 
     <!-- Top Bar (macOS style) -->
     <div class="top-bar">
-      <div class="top-bar-left">
-        <q-icon name="sym_r_grid_view" size="14px" class="top-bar-logo" />
-      </div>
       <div class="top-bar-center"></div>
       <div class="top-bar-right">
         <span v-if="m.powerTotal > 0" class="top-bar-item">
@@ -1353,7 +1350,7 @@ onUnmounted(() => {
 .top-bar {
   position: absolute;
   top: 0;
-  left: 84px;
+  left: 0;
   right: 0;
   height: 28px;
   z-index: 50;
@@ -1369,12 +1366,6 @@ onUnmounted(() => {
   font-weight: 500;
   user-select: none;
 }
-.top-bar-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.top-bar-logo { color: rgba(255, 255, 255, 0.5); }
 .top-bar-center {
   flex: 1;
   display: flex;
