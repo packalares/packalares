@@ -407,6 +407,8 @@ func buildWGConfig(userConfig string, killSwitch bool) string {
 		dns := parseWGDNS(userConfig)
 
 		upScript := fmt.Sprintf(`#!/bin/bash
+# Set fwmark so WG tunnel packets bypass our routing rules
+wg set wg0 fwmark 0xca6c
 # Routing: send everything through WG except cluster traffic
 WG_TABLE=51820
 ip route add default dev wg0 table $WG_TABLE
