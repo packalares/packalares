@@ -262,6 +262,20 @@ func respondErr(w http.ResponseWriter, code int, msg string) {
 	json.NewEncoder(w).Encode(map[string]string{"error": msg})
 }
 
+// nsenterWrite writes content to a file on the host via nsenter + tee.
+func nsenterWrite(path, content string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
+	defer cancel()
+	cmdArgs := append(nsenterPrefix[1:], "tee", path)
+	cmd := exec.CommandContext(ctx, nsenterPrefix[0], cmdArgs...)
+	cmd.Stdin = strings.NewReader(content)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("write %s: %s (%w)", path, strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
 func nsenterOutput(args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdTimeout)
 	defer cancel()
@@ -390,26 +404,15 @@ iptables -t nat -X WG_DNS_REDIRECT 2>/dev/null
 	envContent := fmt.Sprintf("WG_ENDPOINT_IP=%s\nWG_ENDPOINT_PORT=%s\nWG_DNS=%s\n", endpointIP, endpointPort, dns)
 
 	// Write helper files
-	_ = nsenterRun("bash", "-c", fmt.Sprintf("cat > /etc/wireguard/wg0.env << 'EOF'\n%sEOF", envContent))
-	_ = nsenterRun("bash", "-c", fmt.Sprintf("cat > /usr/local/bin/wg0-up.sh << 'EOF'\n%sEOF", upScript))
-	_ = nsenterRun("bash", "-c", fmt.Sprintf("cat > /usr/local/bin/wg0-down.sh << 'EOF'\n%sEOF", downScript))
+	_ = nsenterWrite("/etc/wireguard/wg0.env", envContent)
+	_ = nsenterWrite("/usr/local/bin/wg0-up.sh", upScript)
+	_ = nsenterWrite("/usr/local/bin/wg0-down.sh", downScript)
 	_ = nsenterRun("chmod", "+x", "/usr/local/bin/wg0-up.sh", "/usr/local/bin/wg0-down.sh")
 
-	// Inject PostUp/PostDown into the [Interface] section
+	// Inject PostUp/PostDown before the first [Peer] section
 	lines := strings.Split(userConfig, "\n")
 	var result []string
 	injected := false
-	for _, line := range lines {
-		result = append(result, line)
-		// Inject after the last [Interface] field before [Peer]
-		if !injected && strings.TrimSpace(line) != "" && !strings.HasPrefix(strings.TrimSpace(line), "[") {
-			// Check if next non-empty line is [Peer]
-			// Instead, inject right before [Peer]
-		}
-	}
-
-	// Simpler: find [Peer] and insert before it
-	result = nil
 	for _, line := range lines {
 		trimmed := strings.TrimSpace(line)
 		if trimmed == "[Peer]" && !injected {
@@ -469,7 +472,7 @@ func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 		respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to create /etc/wireguard: %v", err))
 		return
 	}
-	if err := nsenterRun("bash", "-c", fmt.Sprintf("cat > /etc/wireguard/wg0.conf << 'WGEOF'\n%s\nWGEOF", finalConfig)); err != nil {
+	if err := nsenterWrite("/etc/wireguard/wg0.conf", finalConfig); err != nil {
 		respondErr(w, http.StatusInternalServerError, fmt.Sprintf("failed to write wg0.conf: %v", err))
 		return
 	}
