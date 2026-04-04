@@ -2,8 +2,11 @@ package market
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"k8s.io/klog/v2"
@@ -229,7 +232,26 @@ func (h *Handler) handleServeChart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// If the request is for index.yaml, generate it dynamically
+	if filename == "index.yaml" {
+		h.serveChartIndex(w, r)
+		return
+	}
+
 	filePath := filepath.Join(h.dataDir, chartsSubdir, filename)
+
+	// If exact file not found, try matching by app name (e.g. "ollama" matches "ollama-1.0.5.tgz")
+	if _, err := os.Stat(filePath); os.IsNotExist(err) {
+		chartsDir := filepath.Join(h.dataDir, chartsSubdir)
+		entries, _ := os.ReadDir(chartsDir)
+		for _, e := range entries {
+			if strings.HasPrefix(e.Name(), filename+"-") && strings.HasSuffix(e.Name(), ".tgz") {
+				filePath = filepath.Join(chartsDir, e.Name())
+				break
+			}
+		}
+	}
+
 	http.ServeFile(w, r, filePath)
 }
 
@@ -307,4 +329,42 @@ func writeError(w http.ResponseWriter, status int, message string) {
 		"message": message,
 	}
 	_ = json.NewEncoder(w).Encode(resp)
+}
+
+// serveChartIndex dynamically generates a Helm repo index.yaml from chart files on disk.
+func (h *Handler) serveChartIndex(w http.ResponseWriter, r *http.Request) {
+	chartsDir := filepath.Join(h.dataDir, chartsSubdir)
+	entries, err := os.ReadDir(chartsDir)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "cannot read charts directory")
+		return
+	}
+
+	re := regexp.MustCompile(`^(.+?)-(\d+\.\d+\.\d+)\.tgz$`)
+	type chartVersion struct {
+		Version string   `yaml:"version" json:"version"`
+		URLs    []string `yaml:"urls" json:"urls"`
+	}
+	index := make(map[string][]chartVersion)
+
+	for _, e := range entries {
+		m := re.FindStringSubmatch(e.Name())
+		if m == nil {
+			continue
+		}
+		name, version := m[1], m[2]
+		index[name] = append(index[name], chartVersion{
+			Version: version,
+			URLs:    []string{e.Name()},
+		})
+	}
+
+	w.Header().Set("Content-Type", "text/yaml")
+	fmt.Fprintf(w, "apiVersion: v1\nentries:\n")
+	for name, versions := range index {
+		fmt.Fprintf(w, "  %s:\n", name)
+		for _, v := range versions {
+			fmt.Fprintf(w, "  - version: %q\n    urls:\n    - %q\n", v.Version, v.URLs[0])
+		}
+	}
 }

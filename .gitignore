@@ -26,6 +26,9 @@ dist/
 # Docs (audit reports, internal notes)
 docs/
 
+# Full market catalog (work copy with all apps)
+market_work/
+
 # Frontend source repos (cloned for reference)
 frontend-src/
 
