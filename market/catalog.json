@@ -31,7 +31,8 @@
       "version": "1.0.4",
       "versionName": "1.11.1",
       "categories": [
-        "Working"
+        "AI",
+        "Productivity"
       ],
       "rating": 0,
       "requiredMemory": "512Mi",
@@ -107,7 +108,7 @@
       "version": "1.0.8",
       "versionName": "1.8.0",
       "categories": [
-        "Working"
+        "Productivity"
       ],
       "rating": 0,
       "requiredMemory": "500Mi",
@@ -182,7 +183,7 @@
       "version": "1.0.7",
       "versionName": "4.105.1",
       "categories": [
-        "Working"
+        "Developer Tools"
       ],
       "rating": 0,
       "requiredMemory": "256Mi",
@@ -254,7 +255,8 @@
       "version": "1.0.5",
       "versionName": "4.10.0",
       "categories": [
-        "Working"
+        "AI",
+        "Productivity"
       ],
       "rating": 0,
       "requiredMemory": "3Gi",
@@ -331,7 +333,7 @@
       "version": "1.0.7",
       "versionName": "2.6.2",
       "categories": [
-        "Working"
+        "Lifestyle"
       ],
       "rating": 0,
       "requiredMemory": "2000Mi",
@@ -403,7 +405,7 @@
       "version": "1.0.5",
       "versionName": "10.11.6",
       "categories": [
-        "Working"
+        "Fun"
       ],
       "rating": 0,
       "requiredMemory": "256Mi",
@@ -474,7 +476,7 @@
       "version": "1.0.4",
       "versionName": "3.7.0",
       "categories": [
-        "Working"
+        "AI"
       ],
       "rating": 0,
       "requiredMemory": "2Gi",
@@ -545,7 +547,7 @@
       "version": "1.0.3",
       "versionName": "2.2.16",
       "categories": [
-        "Working"
+        "Productivity"
       ],
       "rating": 0,
       "requiredMemory": "256Mi",
@@ -615,7 +617,7 @@
       "version": "1.0.14",
       "versionName": "2.4.4",
       "categories": [
-        "Working"
+        "Productivity"
       ],
       "rating": 0,
       "requiredMemory": "1Gi",
@@ -698,7 +700,7 @@
       "version": "1.0.16",
       "versionName": "0.17.7",
       "categories": [
-        "Working"
+        "AI"
       ],
       "rating": 0,
       "requiredMemory": "5Gi",
@@ -771,7 +773,7 @@
       "version": "1.0.23",
       "versionName": "0.8.12",
       "categories": [
-        "Working"
+        "AI"
       ],
       "rating": 0,
       "requiredMemory": "512Mi",
@@ -861,7 +863,8 @@
       "version": "1.0.10",
       "versionName": "0.23.1",
       "categories": [
-        "Working"
+        "AI",
+        "Productivity"
       ],
       "rating": 0,
       "requiredMemory": "4Gi",
@@ -938,7 +941,7 @@
       "version": "1.0.10",
       "versionName": "12.0.0",
       "categories": [
-        "Working"
+        "Developer Tools"
       ],
       "rating": 0,
       "requiredMemory": "4Gi",
@@ -993,7 +996,7 @@
       "developer": "Google",
       "versionName": "gemma3:27b-it-q4_K_M",
       "categories": [
-        "Working"
+        "AI"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "16Gi",
@@ -1045,7 +1048,7 @@
       "developer": "OpenAI",
       "versionName": "openai/gpt-oss-20b",
       "categories": [
-        "Working"
+        "AI"
       ],
       "requiredMemory": "22Gi",
       "requiredDisk": "35Gi",
@@ -1095,7 +1098,7 @@
       "developer": "Alibaba",
       "versionName": "cpatonn/Qwen3-30B-A3B-Instruct-2507-AWQ-4bit",
       "categories": [
-        "Working"
+        "AI"
       ],
       "requiredMemory": "22Gi",
       "requiredDisk": "30Gi",
@@ -1136,7 +1139,8 @@
       "description": "The most powerful local music generation model that outperforms most commercial alternatives",
       "version": "1.0.1",
       "categories": [
-        "Working"
+        "AI",
+        "Creativity"
       ],
       "title": "ACE-Step 1.5",
       "entrances": [

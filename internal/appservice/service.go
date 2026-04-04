@@ -399,8 +399,8 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		"namespace": s.namespace,
 		"sysVersion": "1.12.0",
 		"userspace": map[string]interface{}{
-			"appData":  "/packalares/data/appdata",
-			"appCache": "/packalares/data/appcache",
+			"appData":  "/packalares/Apps/appdata",
+			"appCache": "/packalares/Apps/appcache",
 			"userData": "/packalares/data",
 		},
 		"os": map[string]interface{}{
@@ -432,7 +432,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 			"ADMIN_PASSWORD":                  generateAppPassword(req.Name),
 			"UNIQUE_PASS":                     generateAppPassword(req.Name + "-unique"),
 		},
-		"sharedlib":      "/packalares/data/sharedlib",
+		"sharedlib":      "/packalares/Apps/sharedlib",
 		"downloadCdnURL": "https://cdn.olares.com",
 		"gpu":            "",
 		"GPU":            map[string]interface{}{},
@@ -482,8 +482,8 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 					"bfl":       map[string]interface{}{"username": s.owner},
 					"user":      map[string]interface{}{"zone": zone},
 					"userspace": map[string]interface{}{
-						"appData":  "/packalares/data/appdata",
-						"appCache": "/packalares/data/appcache",
+						"appData":  "/packalares/Apps/appdata",
+						"appCache": "/packalares/Apps/appcache",
 						"userData": "/packalares/data",
 					},
 					"postgres": map[string]interface{}{
@@ -498,7 +498,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 						"OLARES_USER_HUGGINGFACE_SERVICE": os.Getenv("OLARES_USER_HUGGINGFACE_SERVICE"),
 						"OLARES_USER_HUGGINGFACE_TOKEN":   os.Getenv("OLARES_USER_HUGGINGFACE_TOKEN"),
 					},
-					"sharedlib":      "/packalares/data/sharedlib",
+					"sharedlib":      "/packalares/Apps/sharedlib",
 					"downloadCdnURL": "https://cdn.olares.com",
 					"gpu":            "",
 					"GPU":            map[string]interface{}{},
