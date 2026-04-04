@@ -12216,7 +12216,31 @@
           "title": "ACE-Step 1.5"
         }
       ],
-      "versionName": "1.0.9"
+      "versionName": "1.0.9",
+      "screenshots": [
+        "/api/market/screenshots/acestep15v2/1.webp",
+        "/api/market/screenshots/acestep15v2/2.webp",
+        "/api/market/screenshots/acestep15v2/3.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/acestep15v2/featured.webp",
+      "fullDescription": "We present ACE-Step v1.5, a highly efficient open-source music foundation model that brings commercial-grade generation to consumer hardware. On commonly used evaluation metrics, ACE-Step v1.5 achieves quality beyond most commercial music models while remaining extremely fast\u2014under 2 seconds per full song on an A100 and under 10 seconds on an RTX 3090. The model runs locally with less than 4GB of VRAM, and supports lightweight personalization: users can train a LoRA from just a few songs to capture their own style.\n\nFeatures:\n- Ultra-Fast Generation: Under 2s per full song on A100, under 10s on RTX 3090\n- Flexible Duration: 10 seconds to 10 minutes\n- Commercial-Grade Output: Quality beyond most commercial music models\n- Rich Style Support: 1000+ instruments and styles\n- Multi-Language Lyrics: 50+ languages\n- Reference Audio Input, Cover Generation, Repaint & Edit\n- Track Separation, Multi-Track Generation, Vocal2BGM\n- LoRA Training: One-click annotation & training, 8 songs, 1 hour on 3090 (12GB VRAM)\n- Quality Scoring: Automatic quality assessment",
+      "developer": "ace-step",
+      "website": "https://acemusic.ai/",
+      "sourceCode": "https://github.com/ace-step/ACE-Step-1.5",
+      "doc": "https://github.com/ace-step/ACE-Step-1.5",
+      "license": [
+        {
+          "text": "MIT",
+          "url": "https://github.com/ace-step/ACE-Step-1.5?tab=MIT-1-ov-file"
+        }
+      ],
+      "requiredMemory": "11Gi",
+      "limitedMemory": "30Gi",
+      "requiredGpu": "12Gi",
+      "limitedGpu": "20Gi",
+      "supportArch": [
+        "amd64"
+      ]
     }
   ],
   "categories": [

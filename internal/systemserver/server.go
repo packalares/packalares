@@ -571,6 +571,7 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}
 
-	r.Host = target.Host
+	r.Header.Set("X-Forwarded-Host", r.Host)
+	r.Host = publicHost
 	proxy.ServeHTTP(w, r)
 }
