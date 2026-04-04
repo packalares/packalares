@@ -101,8 +101,8 @@ func (s *Server) Run() error {
 	srv := &http.Server{
 		Addr:         s.cfg.ListenAddr,
 		Handler:      mux,
-		ReadTimeout:  30 * time.Second,
-		WriteTimeout: 30 * time.Second,
+		ReadTimeout:  0,
+		WriteTimeout: 0,
 	}
 
 	log.Printf("system-server listening on %s", s.cfg.ListenAddr)
