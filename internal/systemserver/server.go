@@ -571,7 +571,11 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 		return nil
 	}
 
-	r.Header.Set("X-Forwarded-Host", r.Host)
-	r.Host = publicHost
+	// Preserve the original browser host for apps that build URLs from it (e.g. Gradio)
+	if fwdHost := r.Header.Get("X-Forwarded-Host"); fwdHost != "" {
+		r.Host = fwdHost
+	} else {
+		r.Host = publicHost
+	}
 	proxy.ServeHTTP(w, r)
 }
