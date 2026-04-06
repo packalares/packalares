@@ -1451,6 +1451,7 @@
 }
 .dt-wide { flex: 3; }
 .dt-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 11px; letter-spacing: 0.3px; }
+.dt-copyable { cursor: pointer; &:hover { color: var(--accent); text-decoration: underline; } }
 
 /* Image preview */
 .preview-overlay {

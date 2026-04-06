@@ -228,6 +228,7 @@ type UninstallRequest struct {
 	Name       string `json:"name"`
 	All        bool   `json:"all"`
 	DeleteData bool   `json:"deleteData"`
+	Wipe       bool   `json:"wipe"` // if true, also delete images and app data
 }
 
 // SuspendRequest is the body for POST /app-service/v1/suspend.

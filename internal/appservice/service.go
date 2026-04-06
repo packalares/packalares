@@ -669,8 +669,19 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 			time.Sleep(time.Second)
 		}
 
-		// GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 4, 4, "Removing images...", 0, 0)
-		// purgeContainerImages(bgCtx, appImages)
+		if req.Wipe {
+			GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 4, 5, "Removing images...", 0, 0)
+			purgeContainerImages(bgCtx, appImages)
+
+			GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 5, 5, "Removing app data...", 0, 0)
+			// Remove app data directories
+			for _, dir := range []string{
+				"/packalares/Apps/appdata/" + req.Name,
+				"/packalares/Apps/appcache/" + req.Name,
+			} {
+				_ = os.RemoveAll(dir)
+			}
+		}
 
 		rec.State = StateUninstalled
 		_ = s.store.Put(bgCtx, rec)

@@ -144,9 +144,13 @@
                             <q-item-section>Stop</q-item-section>
                           </q-item>
                           <q-separator dark />
-                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, false)">
                             <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
                             <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, true)">
+                            <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                           </q-item>
                         </q-list>
                       </q-menu>
@@ -158,9 +162,13 @@
                     <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
                       <q-menu dark class="app-action-menu">
                         <q-list dense>
-                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, false)">
                             <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
                             <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, true)">
+                            <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                           </q-item>
                         </q-list>
                       </q-menu>
@@ -172,9 +180,13 @@
                     <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
                       <q-menu dark class="app-action-menu">
                         <q-list dense>
-                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, false)">
                             <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
                             <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, true)">
+                            <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                           </q-item>
                         </q-list>
                       </q-menu>
@@ -201,9 +213,13 @@
                             <q-item-section>Retry</q-item-section>
                           </q-item>
                           <q-separator dark />
-                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, false)">
                             <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
                             <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, true)">
+                            <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                           </q-item>
                         </q-list>
                       </q-menu>
@@ -285,9 +301,13 @@
                             <q-item-section>Stop</q-item-section>
                           </q-item>
                           <q-separator dark />
-                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, false)">
                             <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
                             <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, true)">
+                            <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                           </q-item>
                         </q-list>
                       </q-menu>
@@ -299,9 +319,13 @@
                     <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
                       <q-menu dark class="app-action-menu">
                         <q-list dense>
-                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, false)">
                             <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
                             <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, true)">
+                            <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                           </q-item>
                         </q-list>
                       </q-menu>
@@ -313,9 +337,13 @@
                     <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
                       <q-menu dark class="app-action-menu">
                         <q-list dense>
-                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, false)">
                             <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
                             <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, true)">
+                            <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                           </q-item>
                         </q-list>
                       </q-menu>
@@ -342,9 +370,13 @@
                             <q-item-section>Retry</q-item-section>
                           </q-item>
                           <q-separator dark />
-                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app)">
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, false)">
                             <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
                             <q-item-section class="text-negative">Remove</q-item-section>
+                          </q-item>
+                          <q-item clickable v-close-popup @click.stop="confirmUninstall(app, true)">
+                            <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                            <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                           </q-item>
                         </q-list>
                       </q-menu>
@@ -389,9 +421,13 @@
               <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
                 <q-menu dark class="app-action-menu">
                   <q-list dense>
-                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp)">
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp, false)">
                       <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
-                      <q-item-section class="text-negative">Uninstall</q-item-section>
+                      <q-item-section class="text-negative">Remove</q-item-section>
+                    </q-item>
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp, true)">
+                      <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                      <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                     </q-item>
                   </q-list>
                 </q-menu>
@@ -403,9 +439,13 @@
               <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
                 <q-menu dark class="app-action-menu">
                   <q-list dense>
-                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp)">
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp, false)">
                       <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
                       <q-item-section class="text-negative">Remove</q-item-section>
+                    </q-item>
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp, true)">
+                      <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                      <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                     </q-item>
                   </q-list>
                 </q-menu>
@@ -417,9 +457,13 @@
               <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
                 <q-menu dark class="app-action-menu">
                   <q-list dense>
-                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp)">
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp, false)">
                       <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
-                      <q-item-section class="text-negative">Uninstall</q-item-section>
+                      <q-item-section class="text-negative">Remove</q-item-section>
+                    </q-item>
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp, true)">
+                      <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                      <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                     </q-item>
                   </q-list>
                 </q-menu>
@@ -460,9 +504,13 @@
               <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
                 <q-menu dark class="app-action-menu">
                   <q-list dense>
-                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp)">
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp, false)">
                       <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
                       <q-item-section class="text-negative">Remove</q-item-section>
+                    </q-item>
+                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp, true)">
+                      <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                      <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
                     </q-item>
                   </q-list>
                 </q-menu>
@@ -588,44 +636,21 @@
               </div>
             </template>
 
-            <!-- Services & Endpoints -->
+            <!-- Endpoints -->
             <template v-if="(detailData?.services || detailApp?.services || []).length">
-              <div class="detail-section-title" style="margin-top:20px">Services & Endpoints</div>
+              <div class="detail-section-title" style="margin-top:20px">Endpoints</div>
               <div class="detail-content-card">
                 <div class="detail-table">
                   <div class="dt-row dt-header">
-                    <span class="dt-cell">Service</span>
-                    <span class="dt-cell">Port</span>
                     <span class="dt-cell">Name</span>
+                    <span class="dt-cell dt-wide">URL</span>
                   </div>
-                  <template v-for="(svc, si) in (detailData?.services || detailApp?.services || [])" :key="'svc-'+si">
-                    <div class="dt-row" v-for="(p, pi) in svc.ports" :key="'svc-'+si+'-'+pi">
-                      <span class="dt-cell dt-mono">{{ pi === 0 ? svc.name : '' }}</span>
-                      <span class="dt-cell dt-mono">{{ p.port }}</span>
+                  <template v-for="(svc, si) in (detailData?.services || detailApp?.services || [])" :key="'ep-'+si">
+                    <div class="dt-row" v-for="(p, pi) in svc.ports" :key="'ep-'+si+'-'+pi">
                       <span class="dt-cell">{{ p.name }}</span>
+                      <span class="dt-cell dt-wide dt-mono dt-copyable" @click="copyText(`http://${svc.name}.user-space-admin:${p.port}`)">http://{{ svc.name }}.user-space-admin:{{ p.port }}</span>
                     </div>
                   </template>
-                </div>
-              </div>
-            </template>
-
-            <!-- Entrances -->
-            <template v-if="(detailData?.entrances || detailApp?.entrances || []).length">
-              <div class="detail-section-title" style="margin-top:20px">Entrances</div>
-              <div class="detail-content-card">
-                <div class="detail-table">
-                  <div class="dt-row dt-header">
-                    <span class="dt-cell">Name</span>
-                    <span class="dt-cell">Host</span>
-                    <span class="dt-cell">Port</span>
-                    <span class="dt-cell">Auth</span>
-                  </div>
-                  <div class="dt-row" v-for="(ent, ei) in (detailData?.entrances || detailApp?.entrances || [])" :key="'ent-'+ei">
-                    <span class="dt-cell">{{ ent.title || ent.name }}</span>
-                    <span class="dt-cell dt-mono">{{ ent.host }}</span>
-                    <span class="dt-cell dt-mono">{{ ent.port }}</span>
-                    <span class="dt-cell">{{ ent.authLevel || 'internal' }}</span>
-                  </div>
                 </div>
               </div>
             </template>
@@ -915,6 +940,10 @@ function openApp(name: string) {
   window.open(appUrl(name), '_blank');
 }
 
+function copyText(text: string) {
+  navigator.clipboard.writeText(text);
+}
+
 const categoryIcons: Record<string, string> = {
   Productivity: 'sym_r_work',
   Utilities: 'sym_r_build',
@@ -1119,29 +1148,33 @@ async function installApp(app: MarketApp) {
   }
 }
 
-function confirmUninstall(app: MarketApp) {
+function confirmUninstall(app: MarketApp, wipe = false) {
+  const title = wipe ? 'Remove & Wipe ' + app.title : 'Remove ' + app.title;
+  const message = wipe
+    ? 'This will uninstall ' + app.title + ', delete all container images and app data. This cannot be undone.'
+    : 'This will uninstall ' + app.title + '. Container images and data will be kept for faster reinstall.';
   $q.dialog({
-    title: 'Uninstall ' + app.title,
-    message: 'Are you sure you want to uninstall ' + app.title + '? This will remove all app data.',
+    title,
+    message,
     cancel: true,
     persistent: true,
     dark: true,
     color: 'negative',
     ok: {
-      label: 'Uninstall',
+      label: wipe ? 'Wipe' : 'Remove',
       flat: true,
       color: 'negative',
     },
   }).onOk(() => {
-    handleUninstall(app);
+    handleUninstall(app, wipe);
   });
 }
 
-function handleUninstall(app: MarketApp) {
+function handleUninstall(app: MarketApp, wipe = false) {
   if (app.type === 'model') {
     uninstallModel(app);
   } else {
-    uninstallApp(app);
+    uninstallApp(app, wipe);
   }
 }
 
@@ -1168,10 +1201,10 @@ async function uninstallModel(app: MarketApp) {
   }
 }
 
-async function uninstallApp(app: MarketApp) {
+async function uninstallApp(app: MarketApp, wipe = false) {
   try {
     appStates[app.name] = 'uninstalling';
-    await api.post('/api/apps/uninstall', { name: app.name });
+    await api.post('/api/apps/uninstall', { name: app.name, wipe });
     // WebSocket will update state to uninstalled; close detail panel
     if (detailApp.value?.name === app.name) {
       detailApp.value = null;
