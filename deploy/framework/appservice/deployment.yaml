@@ -17,6 +17,7 @@ spec:
         app: app-service
         tier: framework
     spec:
+      hostPID: true
       serviceAccountName: app-service
       initContainers:
       - name: wait-for-tapr
@@ -34,6 +35,8 @@ spec:
         - name: app-service
           image: ghcr.io/packalares/appservice:latest
           imagePullPolicy: Always
+          securityContext:
+            privileged: true
           ports:
             - containerPort: 6755
               name: http
@@ -145,6 +148,9 @@ rules:
   - apiGroups: ["apps"]
     resources: ["deployments", "statefulsets", "replicasets"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+  - apiGroups: ["apps"]
+    resources: ["deployments/scale", "statefulsets/scale"]
+    verbs: ["get", "update", "patch"]
   - apiGroups: ["app.{{API_GROUP}}"]
     resources: ["applications", "applicationmanagers"]
     verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
