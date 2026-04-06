@@ -669,8 +669,8 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 			time.Sleep(time.Second)
 		}
 
-		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 4, 4, "Removing images...", 0, 0)
-		purgeContainerImages(bgCtx, appImages)
+		// GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 4, 4, "Removing images...", 0, 0)
+		// purgeContainerImages(bgCtx, appImages)
 
 		rec.State = StateUninstalled
 		_ = s.store.Put(bgCtx, rec)
