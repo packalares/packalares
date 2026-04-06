@@ -11,14 +11,20 @@ import (
 
 const iptablesChain = "PACKALARES-NET"
 
+// hostIptables runs an iptables command on the host via nsenter.
+func hostIptables(ctx context.Context, args ...string) ([]byte, error) {
+	cmdArgs := append([]string{"--target", "1", "--net", "--mount", "--", "/usr/sbin/iptables"}, args...)
+	return exec.CommandContext(ctx, "nsenter", cmdArgs...).CombinedOutput()
+}
+
 // EnsureIptablesChain creates the custom chain if it doesn't exist and hooks it into FORWARD.
 func EnsureIptablesChain(ctx context.Context) {
 	// Create chain (ignore error if exists)
-	exec.CommandContext(ctx, "iptables", "-N", iptablesChain).Run()
+	hostIptables(ctx, "-N", iptablesChain)
 	// Hook into FORWARD if not already
-	out, _ := exec.CommandContext(ctx, "iptables", "-C", "FORWARD", "-j", iptablesChain).CombinedOutput()
+	out, _ := hostIptables(ctx, "-C", "FORWARD", "-j", iptablesChain)
 	if strings.Contains(string(out), "No chain") || strings.Contains(string(out), "does a matching rule exist") {
-		exec.CommandContext(ctx, "iptables", "-I", "FORWARD", "1", "-j", iptablesChain).Run()
+		hostIptables(ctx, "-I", "FORWARD", "1", "-j", iptablesChain)
 	}
 }
 
@@ -32,12 +38,11 @@ func (k *K8sClient) BlockAppInternet(ctx context.Context, namespace, releaseName
 	}
 
 	for _, ip := range podIPs {
-		// Allow cluster-internal traffic
-		exec.CommandContext(ctx, "iptables", "-A", iptablesChain, "-s", ip, "-d", "10.0.0.0/8", "-j", "ACCEPT").Run()
-		exec.CommandContext(ctx, "iptables", "-A", iptablesChain, "-s", ip, "-d", "172.16.0.0/12", "-j", "ACCEPT").Run()
-		exec.CommandContext(ctx, "iptables", "-A", iptablesChain, "-s", ip, "-d", "192.168.0.0/16", "-j", "ACCEPT").Run()
+		// Allow cluster-internal traffic (pod CIDR, service CIDR, local network)
+		hostIptables(ctx, "-A", iptablesChain, "-s", ip, "-d", "10.233.0.0/16", "-j", "ACCEPT")
+		hostIptables(ctx, "-A", iptablesChain, "-s", ip, "-d", "192.168.0.0/16", "-j", "ACCEPT")
 		// Block everything else
-		exec.CommandContext(ctx, "iptables", "-A", iptablesChain, "-s", ip, "-j", "DROP").Run()
+		hostIptables(ctx, "-A", iptablesChain, "-s", ip, "-j", "DROP")
 		klog.Infof("blocked internet for pod IP %s (app %s)", ip, releaseName)
 	}
 
@@ -54,10 +59,9 @@ func (k *K8sClient) UnblockAppInternet(ctx context.Context, namespace, releaseNa
 	for _, ip := range podIPs {
 		// Remove all rules for this IP (run multiple times to catch all)
 		for i := 0; i < 5; i++ {
-			exec.CommandContext(ctx, "iptables", "-D", iptablesChain, "-s", ip, "-d", "10.0.0.0/8", "-j", "ACCEPT").Run()
-			exec.CommandContext(ctx, "iptables", "-D", iptablesChain, "-s", ip, "-d", "172.16.0.0/12", "-j", "ACCEPT").Run()
-			exec.CommandContext(ctx, "iptables", "-D", iptablesChain, "-s", ip, "-d", "192.168.0.0/16", "-j", "ACCEPT").Run()
-			exec.CommandContext(ctx, "iptables", "-D", iptablesChain, "-s", ip, "-j", "DROP").Run()
+			hostIptables(ctx, "-D", iptablesChain, "-s", ip, "-d", "10.233.0.0/16", "-j", "ACCEPT")
+			hostIptables(ctx, "-D", iptablesChain, "-s", ip, "-d", "192.168.0.0/16", "-j", "ACCEPT")
+			hostIptables(ctx, "-D", iptablesChain, "-s", ip, "-j", "DROP")
 		}
 		klog.Infof("unblocked internet for pod IP %s (app %s)", ip, releaseName)
 	}
@@ -68,8 +72,9 @@ func (k *K8sClient) UnblockAppInternet(ctx context.Context, namespace, releaseNa
 // SyncInternetBlocks re-applies iptables rules for all blocked apps.
 // Called on startup and when pods restart (new IPs).
 func (s *Service) SyncInternetBlocks(ctx context.Context) {
+	EnsureIptablesChain(ctx)
 	// Flush and rebuild
-	exec.CommandContext(ctx, "iptables", "-F", iptablesChain).Run()
+	hostIptables(ctx, "-F", iptablesChain)
 
 	for _, rec := range s.store.List(ctx) {
 		if !rec.InternetBlocked || rec.State == StateUninstalled || rec.State == StateStopped {
