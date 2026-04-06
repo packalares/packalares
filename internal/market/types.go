@@ -58,6 +58,20 @@ type MarketApp struct {
 	LastUpdated      string        `json:"lastUpdated,omitempty"`
 	HasChart         bool          `json:"hasChart,omitempty"`
 	FeaturedImage    string        `json:"featuredImage,omitempty"`
+	Images           []string      `json:"images,omitempty"`
+	Services         []AppService  `json:"services,omitempty"`
+}
+
+// AppService describes a Kubernetes service created by the chart.
+type AppService struct {
+	Name  string           `json:"name"`
+	Ports []AppServicePort `json:"ports"`
+}
+
+// AppServicePort describes a single port on a service.
+type AppServicePort struct {
+	Name string `json:"name"`
+	Port int32  `json:"port"`
 }
 
 // Entrance for marketplace app.
