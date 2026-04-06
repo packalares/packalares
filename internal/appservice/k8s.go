@@ -130,7 +130,7 @@ func (k *K8sClient) GetImagesForApp(ctx context.Context, releaseName, namespace 
 }
 
 // ScaleDeployment scales deployments in a namespace for an app.
-func (k *K8sClient) ScaleDeployment(ctx context.Context, namespace, labelSelector string, replicas int) error {
+func (k *K8sClient) ScaleDeployment(ctx context.Context, namespace, labelSelector string, replicas int) (int, error) {
 	cmd := exec.CommandContext(ctx, "kubectl", "get", "deployments",
 		"--namespace", namespace,
 		"-l", labelSelector,
@@ -139,9 +139,10 @@ func (k *K8sClient) ScaleDeployment(ctx context.Context, namespace, labelSelecto
 
 	out, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("get deployments: %w", err)
+		return 0, fmt.Errorf("get deployments: %w", err)
 	}
 
+	scaled := 0
 	names := strings.Split(strings.TrimSpace(string(out)), "\n")
 	for _, name := range names {
 		name = strings.TrimSpace(name)
@@ -154,14 +155,16 @@ func (k *K8sClient) ScaleDeployment(ctx context.Context, namespace, labelSelecto
 		)
 		if scaleOut, err := scaleCmd.CombinedOutput(); err != nil {
 			klog.Warningf("scale deployment %s: %s: %v", name, string(scaleOut), err)
+		} else {
+			scaled++
 		}
 	}
 
-	return nil
+	return scaled, nil
 }
 
 // ScaleStatefulSet scales statefulsets in a namespace for an app.
-func (k *K8sClient) ScaleStatefulSet(ctx context.Context, namespace, labelSelector string, replicas int) error {
+func (k *K8sClient) ScaleStatefulSet(ctx context.Context, namespace, labelSelector string, replicas int) (int, error) {
 	cmd := exec.CommandContext(ctx, "kubectl", "get", "statefulsets",
 		"--namespace", namespace,
 		"-l", labelSelector,
@@ -170,9 +173,10 @@ func (k *K8sClient) ScaleStatefulSet(ctx context.Context, namespace, labelSelect
 
 	out, err := cmd.Output()
 	if err != nil {
-		return fmt.Errorf("get statefulsets: %w", err)
+		return 0, fmt.Errorf("get statefulsets: %w", err)
 	}
 
+	scaled := 0
 	names := strings.Split(strings.TrimSpace(string(out)), "\n")
 	for _, name := range names {
 		name = strings.TrimSpace(name)
@@ -185,10 +189,12 @@ func (k *K8sClient) ScaleStatefulSet(ctx context.Context, namespace, labelSelect
 		)
 		if scaleOut, err := scaleCmd.CombinedOutput(); err != nil {
 			klog.Warningf("scale statefulset %s: %s: %v", name, string(scaleOut), err)
+		} else {
+			scaled++
 		}
 	}
 
-	return nil
+	return scaled, nil
 }
 
 // ApplyManifest applies a YAML manifest via kubectl.

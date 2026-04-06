@@ -52,7 +52,7 @@ func purgeContainerImages(ctx context.Context, images []string) {
 		klog.Infof("purged image %s", img)
 	}
 
-	// Final cleanup
-	exec.CommandContext(ctx, "crictl", "rmi", "--prune").Run()
-	exec.CommandContext(ctx, "ctr", "-a", ctrSock, "-n", "k8s.io", "content", "prune", "references").Run()
+	// Note: Do NOT run "crictl rmi --prune" or "ctr content prune" here.
+	// That would remove ALL unused images on the node, including images
+	// for apps that are installed but stopped (scaled to 0 replicas).
 }

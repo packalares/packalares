@@ -572,6 +572,63 @@
                 </div>
               </div>
             </template>
+
+            <!-- Container Images -->
+            <template v-if="(detailData?.images || detailApp?.images || []).length">
+              <div class="detail-section-title" style="margin-top:20px">Container Images</div>
+              <div class="detail-content-card">
+                <div class="detail-table">
+                  <div class="dt-row dt-header">
+                    <span class="dt-cell dt-wide">Image</span>
+                  </div>
+                  <div class="dt-row" v-for="(img, idx) in (detailData?.images || detailApp?.images || [])" :key="'img-'+idx">
+                    <span class="dt-cell dt-wide dt-mono">{{ img }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Services & Endpoints -->
+            <template v-if="(detailData?.services || detailApp?.services || []).length">
+              <div class="detail-section-title" style="margin-top:20px">Services & Endpoints</div>
+              <div class="detail-content-card">
+                <div class="detail-table">
+                  <div class="dt-row dt-header">
+                    <span class="dt-cell">Service</span>
+                    <span class="dt-cell">Port</span>
+                    <span class="dt-cell">Name</span>
+                  </div>
+                  <template v-for="(svc, si) in (detailData?.services || detailApp?.services || [])" :key="'svc-'+si">
+                    <div class="dt-row" v-for="(p, pi) in svc.ports" :key="'svc-'+si+'-'+pi">
+                      <span class="dt-cell dt-mono">{{ pi === 0 ? svc.name : '' }}</span>
+                      <span class="dt-cell dt-mono">{{ p.port }}</span>
+                      <span class="dt-cell">{{ p.name }}</span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+
+            <!-- Entrances -->
+            <template v-if="(detailData?.entrances || detailApp?.entrances || []).length">
+              <div class="detail-section-title" style="margin-top:20px">Entrances</div>
+              <div class="detail-content-card">
+                <div class="detail-table">
+                  <div class="dt-row dt-header">
+                    <span class="dt-cell">Name</span>
+                    <span class="dt-cell">Host</span>
+                    <span class="dt-cell">Port</span>
+                    <span class="dt-cell">Auth</span>
+                  </div>
+                  <div class="dt-row" v-for="(ent, ei) in (detailData?.entrances || detailApp?.entrances || [])" :key="'ent-'+ei">
+                    <span class="dt-cell">{{ ent.title || ent.name }}</span>
+                    <span class="dt-cell dt-mono">{{ ent.host }}</span>
+                    <span class="dt-cell dt-mono">{{ ent.port }}</span>
+                    <span class="dt-cell">{{ ent.authLevel || 'internal' }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
 
           <div class="detail-sidebar">
@@ -676,6 +733,9 @@ interface MarketApp {
   gpuMemoryUtilization?: string;
   maxModelLen?: string;
   tiktokenFiles?: string;
+  images?: string[];
+  services?: { name: string; ports: { name: string; port: number }[] }[];
+  entrances?: { name: string; host: string; port: number; title?: string; authLevel?: string; icon?: string; openMethod?: string; invisible?: boolean }[];
 }
 
 interface InstalledModelInfo {

@@ -1177,6 +1177,162 @@
       "supportArch": [
         "amd64"
       ]
+    },
+    {
+      "name": "comfyuisharev2",
+      "cfgType": "app",
+      "title": "ComfyUI",
+      "description": "The most powerful and modular stable diffusion GUI and backend with node-based workflow.",
+      "icon": "",
+      "categories": [
+        "AI",
+        "Creativity"
+      ],
+      "version": "1.0.23",
+      "developer": "ComfyAnonymous",
+      "license": [
+        {
+          "text": "GPL-3.0",
+          "url": "https://github.com/comfyanonymous/ComfyUI/blob/master/LICENSE"
+        }
+      ],
+      "hasChart": true
+    },
+    {
+      "name": "sdwebuiforgeneov2",
+      "cfgType": "app",
+      "title": "SD WebUI Forge Neo",
+      "description": "Stable Diffusion image generation with an easy-to-use web interface. Optimized fork with better performance.",
+      "icon": "",
+      "categories": [
+        "AI",
+        "Creativity"
+      ],
+      "version": "1.0.2",
+      "developer": "lllyasviel",
+      "license": [
+        {
+          "text": "AGPL-3.0",
+          "url": "https://github.com/lllyasviel/stable-diffusion-webui-forge"
+        }
+      ],
+      "hasChart": true
+    },
+    {
+      "name": "llamafactory",
+      "cfgType": "app",
+      "chartName": "llamafactory",
+      "icon": "/api/market/icons/llamafactory.png",
+      "description": "Easily fine-tune 100+ large language models with zero-code Web UI",
+      "fullDescription": "LLaMA Factory is a unified framework that integrates a suite of cutting-edge efficient training methods. It provides a solution for flexibly customizing the fine-tuning of 100+ LLMs without the need for coding through the built-in web UI LlamaBoard.\n\nFeatures:\n- Various models: LLaMA, LLaVA, Mistral, Mixtral-MoE, Qwen, Yi, Gemma, Baichuan, ChatGLM, Phi, etc.\n- Integrated methods: (Continuous) pre-training, (multimodal) supervised fine-tuning, reward modeling, PPO, DPO, KTO, ORPO, etc.\n- Scalable resources: 16-bit full-tuning, freeze-tuning, LoRA and QLoRA via AQLM/AWQ/GPTQ/LLM.int8/HQQ/EETQ.\n- Advanced algorithms: GaLore, BAdam, Adam-mini, DoRA, LongLoRA, LLaMA Pro, LoRA+, LoftQ, PiSSA and Agent tuning.\n- Practical tricks: FlashAttention-2, Unsloth, RoPE scaling, NEFTune and rsLoRA.\n- Experiment monitors: LlamaBoard, TensorBoard, Wandb, MLflow, etc.\n- Faster inference: OpenAI-style API, Gradio UI and CLI with vLLM worker.",
+      "upgradeDescription": "Upgrade to version 1.0.12\n- Switch to official hiyouga/llamafactory image\n- Fix volume mounts and nginx proxy\n- Add init container for data permissions\n- Increase /dev/shm to 4Gi",
+      "promoteImage": [
+        "/api/market/screenshots/llamafactory/1.jpg",
+        "/api/market/screenshots/llamafactory/2.jpg",
+        "/api/market/screenshots/llamafactory/3.jpg",
+        "/api/market/screenshots/llamafactory/4.jpg"
+      ],
+      "developer": "hiyouga",
+      "title": "LLaMA Factory",
+      "entrances": [
+        {
+          "name": "llamafactoryclient",
+          "host": "llamafactoryclient",
+          "port": 8080,
+          "icon": "https://app.cdn.olares.com/appstore/llamafactory/icon.png",
+          "title": "LLaMA Factory",
+          "authLevel": "private",
+          "openMethod": "window"
+        },
+        {
+          "name": "llamafactoryapi",
+          "host": "llamafactoryclient",
+          "port": 8081,
+          "icon": "https://app.cdn.olares.com/appstore/llamafactory/icon.png",
+          "title": "llamafactoryapi",
+          "authLevel": "private",
+          "invisible": true
+        }
+      ],
+      "version": "1.0.12",
+      "versionName": "latest",
+      "categories": [
+        "Developer Tools",
+        "AI"
+      ],
+      "rating": 0,
+      "requiredMemory": "2Gi",
+      "requiredDisk": "50Mi",
+      "requiredCpu": "1",
+      "requiredGpu": "2Gi",
+      "limitedMemory": "21Gi",
+      "limitedCPU": "6",
+      "limitedGpu": "16Gi",
+      "supportArch": [
+        "amd64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://llamafactory.readthedocs.io/",
+      "website": "https://github.com/hiyouga/LLaMA-Factory",
+      "sourceCode": "https://github.com/hiyouga/LLaMA-Factory",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://github.com/hiyouga/LLaMA-Factory?tab=Apache-2.0-1-ov-file#readme"
+        }
+      ],
+      "hasChart": true,
+      "images": [
+        "docker.io/hiyouga/llamafactory:latest",
+        "docker.io/beclab/aboveos-bitnami-openresty:1.25.3-2",
+        "docker.io/beclab/aboveos-busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "llamafactory",
+          "ports": [
+            {
+              "name": "webui",
+              "port": 7860
+            },
+            {
+              "name": "api",
+              "port": 8000
+            }
+          ]
+        },
+        {
+          "name": "llamafactoryclient",
+          "ports": [
+            {
+              "name": "webui",
+              "port": 8080
+            },
+            {
+              "name": "api",
+              "port": 8081
+            }
+          ]
+        }
+      ]
     }
   ],
   "categories": [

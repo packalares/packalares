@@ -727,8 +727,8 @@ func (s *Service) Suspend(ctx context.Context, req *SuspendRequest) (*Installati
 		bgCtx := context.Background()
 		label := "app.kubernetes.io/instance=" + rec.ReleaseName
 
-		err1 := s.k8s.ScaleDeployment(bgCtx, rec.Namespace, label, 0)
-		err2 := s.k8s.ScaleStatefulSet(bgCtx, rec.Namespace, label, 0)
+		n1, err1 := s.k8s.ScaleDeployment(bgCtx, rec.Namespace, label, 0)
+		n2, err2 := s.k8s.ScaleStatefulSet(bgCtx, rec.Namespace, label, 0)
 
 		if err1 != nil || err2 != nil {
 			klog.Errorf("suspend %s: deployments=%v statefulsets=%v", req.Name, err1, err2)
@@ -738,10 +738,18 @@ func (s *Service) Suspend(ctx context.Context, req *SuspendRequest) (*Installati
 			return
 		}
 
+		if n1+n2 == 0 {
+			klog.Errorf("suspend %s: no deployments or statefulsets found with label %s", req.Name, label)
+			rec.State = StateStopFailed
+			_ = s.store.Put(bgCtx, rec)
+			GetWSHub().BroadcastAppState(req.Name, StateStopFailed)
+			return
+		}
+
 		rec.State = StateStopped
 		_ = s.store.Put(bgCtx, rec)
 		GetWSHub().BroadcastAppState(req.Name, StateStopped)
-		klog.Infof("app %s suspended", req.Name)
+		klog.Infof("app %s suspended (%d deployments, %d statefulsets scaled to 0)", req.Name, n1, n2)
 	}()
 
 	return &InstallationResponse{
@@ -782,8 +790,8 @@ func (s *Service) Resume(ctx context.Context, req *ResumeRequest) (*Installation
 		bgCtx := context.Background()
 		label := "app.kubernetes.io/instance=" + rec.ReleaseName
 
-		err1 := s.k8s.ScaleDeployment(bgCtx, rec.Namespace, label, 1)
-		err2 := s.k8s.ScaleStatefulSet(bgCtx, rec.Namespace, label, 1)
+		n1, err1 := s.k8s.ScaleDeployment(bgCtx, rec.Namespace, label, 1)
+		n2, err2 := s.k8s.ScaleStatefulSet(bgCtx, rec.Namespace, label, 1)
 
 		if err1 != nil || err2 != nil {
 			klog.Errorf("resume %s: deployments=%v statefulsets=%v", req.Name, err1, err2)
@@ -793,6 +801,15 @@ func (s *Service) Resume(ctx context.Context, req *ResumeRequest) (*Installation
 			return
 		}
 
+		if n1+n2 == 0 {
+			klog.Errorf("resume %s: no deployments or statefulsets found with label %s", req.Name, label)
+			rec.State = StateResumeFailed
+			_ = s.store.Put(bgCtx, rec)
+			GetWSHub().BroadcastAppState(req.Name, StateResumeFailed)
+			return
+		}
+
+		klog.Infof("app %s resumed (%d deployments, %d statefulsets scaled to 1)", req.Name, n1, n2)
 		rec.State = StateRunning
 		_ = s.store.Put(bgCtx, rec)
 		GetWSHub().BroadcastAppState(req.Name, StateRunning)
