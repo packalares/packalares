@@ -267,9 +267,10 @@ type AppInfo struct {
 	State         ApplicationManagerState `json:"state"`
 	StatusMessage string                  `json:"statusMessage,omitempty"`
 	Source        string                  `json:"source"`
-	Entrances     []Entrance              `json:"entrances,omitempty"`
-	CreatedAt     time.Time               `json:"createdAt"`
-	UpdatedAt     time.Time               `json:"updatedAt"`
+	Entrances       []Entrance              `json:"entrances,omitempty"`
+	InternetBlocked bool                    `json:"internetBlocked,omitempty"`
+	CreatedAt       time.Time               `json:"createdAt"`
+	UpdatedAt       time.Time               `json:"updatedAt"`
 }
 
 // AppListResponse is returned for GET /apps.

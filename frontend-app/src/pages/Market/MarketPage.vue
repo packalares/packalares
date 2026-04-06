@@ -580,6 +580,15 @@
           </div>
         </div>
 
+        <!-- Internet toggle (only for installed apps) -->
+        <div class="detail-internet-toggle" v-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running' || getAppDisplayState(detailApp.name, detailApp.hasChart) === 'stopped'">
+          <div class="internet-toggle-row">
+            <q-icon :name="internetBlocked[detailApp.name] ? 'sym_r_wifi_off' : 'sym_r_wifi'" size="20px" :class="internetBlocked[detailApp.name] ? 'text-negative' : 'text-positive'" />
+            <span class="internet-toggle-label">{{ internetBlocked[detailApp.name] ? 'Internet Blocked' : 'Internet Allowed' }}</span>
+            <q-toggle v-model="internetBlocked[detailApp.name]" :false-value="false" :true-value="true" color="negative" @update:model-value="toggleInternet(detailApp)" />
+          </div>
+        </div>
+
         <!-- Screenshots -->
         <div class="detail-screenshots-wrap" v-if="detailData?.promoteImage?.length">
           <div class="detail-screenshots">
@@ -796,6 +805,7 @@ const detailLoading = ref(false);
 const previewImg = ref('');
 const installingSet = reactive(new Set<string>());
 const appStates = reactive<Record<string, string>>({});
+const internetBlocked = reactive<Record<string, boolean>>({});
 const installProgress = reactive<Record<string, { step: number; totalSteps: number; detail: string; bytesDownloaded: number; bytesTotal: number }>>({});
 const installedModels = reactive<Record<string, InstalledModelInfo>>({});
 
@@ -1061,6 +1071,11 @@ async function fetchInstalled() {
     const res: any = await api.get('/api/apps/apps');
     if (res.data) {
       installedApps.value = res.data;
+      for (const app of res.data) {
+        if (app.internetBlocked !== undefined) {
+          internetBlocked[app.name] = app.internetBlocked;
+        }
+      }
     }
   } catch {
     // Keep previous state on error — don't wipe installed apps
@@ -1233,6 +1248,16 @@ async function startApp(app: MarketApp) {
   } catch (e: any) {
     delete appStates[app.name];
     $q.notify({ type: 'negative', message: `Start failed: ${e.message || 'unknown error'}` });
+  }
+}
+
+async function toggleInternet(app: MarketApp) {
+  try {
+    await api.post('/api/apps/internet', { name: app.name, blocked: !!internetBlocked[app.name] });
+    $q.notify({ type: 'positive', message: internetBlocked[app.name] ? `Internet blocked for ${app.title}` : `Internet allowed for ${app.title}` });
+  } catch (e: any) {
+    internetBlocked[app.name] = !internetBlocked[app.name]; // revert on error
+    $q.notify({ type: 'negative', message: `Failed: ${e.message || 'unknown error'}` });
   }
 }
 

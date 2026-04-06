@@ -35,6 +35,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/app-service/v1/stop", h.handleStop)
 	mux.HandleFunc("/app-service/v1/start", h.handleStart)
 	mux.HandleFunc("/app-service/v1/app-credentials/", h.handleAppCredentials)
+	mux.HandleFunc("/app-service/v1/internet", h.handleInternet)
 
 	// Model endpoints
 	mux.HandleFunc("/app-service/v1/models/status", h.handleModelStatus)
@@ -553,6 +554,44 @@ func (h *Handler) handleAppCredentials(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(creds)
+}
+
+// handleInternet toggles internet access for an app.
+func (h *Handler) handleInternet(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var req struct {
+		Name    string `json:"name"`
+		Blocked bool   `json:"blocked"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	rec, exists := h.svc.store.Get(r.Context(), req.Name)
+	if !exists {
+		writeError(w, http.StatusNotFound, fmt.Sprintf("app %q not found", req.Name))
+		return
+	}
+
+	rec.InternetBlocked = req.Blocked
+	_ = h.svc.store.Put(r.Context(), rec)
+
+	if req.Blocked {
+		_ = h.svc.k8s.BlockAppInternet(r.Context(), rec.Namespace, rec.ReleaseName)
+	} else {
+		_ = h.svc.k8s.UnblockAppInternet(r.Context(), rec.Namespace, rec.ReleaseName)
+	}
+
+	GetWSHub().BroadcastAppState(req.Name, rec.State)
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"code":    200,
+		"message": fmt.Sprintf("internet %s for %s", map[bool]string{true: "blocked", false: "allowed"}[req.Blocked], req.Name),
+	})
 }
 
 // writeError writes a JSON error response.

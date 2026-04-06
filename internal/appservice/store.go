@@ -46,6 +46,7 @@ type AppRecord struct {
 	CreatedAt       time.Time               `json:"createdAt"`
 	UpdatedAt       time.Time               `json:"updatedAt"`
 	IsSysApp        bool                    `json:"isSysApp"`
+	InternetBlocked bool                    `json:"internetBlocked,omitempty"`
 	RawAppName      string                  `json:"rawAppName,omitempty"`
 }
 

@@ -121,6 +121,9 @@ func (s *Service) Start(ctx context.Context) error {
 	// Start status sync loop
 	go s.statusSyncLoop(ctx)
 
+	// Apply internet blocks for blocked apps
+	go s.SyncInternetBlocks(ctx)
+
 	return nil
 }
 
@@ -905,10 +908,11 @@ func recordToInfo(rec *AppRecord) AppInfo {
 		Description: rec.Description,
 		Version:     rec.Version,
 		State:       rec.State,
-		Source:      rec.Source,
-		Entrances:   rec.Entrances,
-		CreatedAt:   rec.CreatedAt,
-		UpdatedAt:   rec.UpdatedAt,
+		Source:          rec.Source,
+		Entrances:       rec.Entrances,
+		InternetBlocked: rec.InternetBlocked,
+		CreatedAt:       rec.CreatedAt,
+		UpdatedAt:       rec.UpdatedAt,
 	}
 }
 

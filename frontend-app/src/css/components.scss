@@ -1453,6 +1453,27 @@
 .dt-mono { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 11px; letter-spacing: 0.3px; }
 .dt-copyable { cursor: pointer; &:hover { color: var(--accent); text-decoration: underline; } }
 
+/* Internet toggle */
+.detail-internet-toggle {
+  padding: 0 20px;
+  margin-bottom: 12px;
+}
+.internet-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--separator);
+  border-radius: 10px;
+}
+.internet-toggle-label {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-1);
+}
+
 /* Image preview */
 .preview-overlay {
   position: fixed;
