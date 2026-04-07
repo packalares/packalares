@@ -554,6 +554,11 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 	publicHost := appName + "." + s.cfg.UserZone
 
 	proxy := httputil.NewSingleHostReverseProxy(target)
+	proxy.Transport = &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout: 3 * time.Second,
+		}).DialContext,
+	}
 	proxy.FlushInterval = -1 // flush immediately (required for SSE/streaming)
 	proxy.ErrorHandler = func(w http.ResponseWriter, r *http.Request, err error) {
 		log.Printf("proxy error for %s: %v", appName, err)
