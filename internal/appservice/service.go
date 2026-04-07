@@ -1161,7 +1161,9 @@ func (s *Service) provisionPostgres(ctx context.Context, appName, chartDir strin
 	}
 }
 
-// hasPostgresTemplate checks if the chart directory contains a postgres deployment template.
+// hasPostgresTemplate checks if the chart directory contains a self-managed postgres deployment.
+// Detects by looking for a postgres/pgvector container image in the templates — not just env vars
+// referencing POSTGRES_USER (which apps use to connect to external postgres).
 func hasPostgresTemplate(chartDir string) bool {
 	templates, _ := filepath.Glob(filepath.Join(chartDir, "templates", "*.yaml"))
 	for _, t := range templates {
@@ -1170,9 +1172,12 @@ func hasPostgresTemplate(chartDir string) bool {
 			continue
 		}
 		content := string(data)
-		// Look for a postgres deployment in the templates
-		if strings.Contains(content, "postgres") && strings.Contains(content, "kind: Deployment") &&
-			(strings.Contains(content, "POSTGRES_USER") || strings.Contains(content, "POSTGRES_PASSWORD")) {
+		// Look for a postgres server image (not just env vars that reference postgres)
+		if strings.Contains(content, "kind: Deployment") &&
+			(strings.Contains(content, "image:") &&
+				(strings.Contains(content, "postgres:") ||
+					strings.Contains(content, "pgvector/pgvector:") ||
+					strings.Contains(content, "bitnami/postgresql:"))) {
 			return true
 		}
 	}
