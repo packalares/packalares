@@ -109,9 +109,22 @@ type MiddlewareSpec struct {
 
 // MiddlewarePostgres declares PostgreSQL database requirements.
 type MiddlewarePostgres struct {
-	Username  string              `json:"username,omitempty" yaml:"username,omitempty"`
-	Password  string              `json:"password,omitempty" yaml:"password,omitempty"`
-	Databases []MiddlewareDBEntry `json:"databases,omitempty" yaml:"databases,omitempty"`
+	Username   string              `json:"username,omitempty" yaml:"username,omitempty"`
+	Password   string              `json:"password,omitempty" yaml:"password,omitempty"`
+	Standalone bool                `json:"standalone,omitempty" yaml:"standalone,omitempty"`
+	Image      string              `json:"image,omitempty" yaml:"image,omitempty"`
+	Databases  []MiddlewareDBEntry `json:"databases,omitempty" yaml:"databases,omitempty"`
+}
+
+// PostgresProvision holds the resolved postgres connection details after provisioning.
+type PostgresProvision struct {
+	Host     string
+	Port     string
+	Username string
+	Password string
+	DBName   string
+	DataPath string
+	Mode     string // "citus", "standalone", "template"
 }
 
 // MiddlewareRedis declares Redis requirements.

@@ -332,24 +332,16 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		klog.V(2).Infof("ensure namespace %s: %v (may already exist)", s.namespace, err)
 	}
 
-	// --- Step 3b: Provision middleware databases declared in manifest ---
-	if manifest != nil && manifest.Middleware != nil && manifest.Middleware.Postgres != nil {
-		for _, db := range manifest.Middleware.Postgres.Databases {
-			if db.Name != "" {
-				if err := s.ensurePostgresDB(bgCtx, db.Name); err != nil {
-					klog.Warningf("provision postgres db %q: %v (non-fatal)", db.Name, err)
-				}
-			}
-		}
-	}
+	// --- Step 3b: Provision postgres if needed ---
+	pgProvision := s.provisionPostgres(bgCtx, req.Name, chartDir, manifest)
 
 	// --- Step 4: Write standard values into the chart's values.yaml ---
 	zone := config.UserZone()
 
-	pgHost := config.CitusHost()
-	pgPort := config.CitusPort()
-	pgPass := config.CitusPassword()
-	pgUser := config.CitusUser()
+	pgHost := pgProvision.Host
+	pgPort := pgProvision.Port
+	pgPass := pgProvision.Password
+	pgUser := pgProvision.Username
 
 	redisHost := config.KVRocksHost()
 	redisPort := config.KVRocksPort()
@@ -361,6 +353,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 			"port":     pgPort,
 			"username": pgUser,
 			"password": pgPass,
+			"dataPath": pgProvision.DataPath,
 		},
 		"redis": map[string]interface{}{
 			"host":     redisHost,
@@ -387,8 +380,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		domainMap[req.Name] = fmt.Sprintf("%s.%s", req.Name, zone)
 	}
 
-	// Database name for the app (Olares pattern: app name as db name)
-	dbName := req.Name
+	dbName := pgProvision.DBName
 
 	err = injectValuesYaml(chartDir, map[string]interface{}{
 		"bfl": map[string]interface{}{
@@ -1066,42 +1058,152 @@ func generateAppPassword(appName string) string {
 	return string(b)
 }
 
-// ensurePostgresDB creates a PostgreSQL database if it doesn't already exist.
-// Connects to the Citus coordinator via psql in the citus pod.
-func (s *Service) ensurePostgresDB(ctx context.Context, dbName string) error {
-	// Sanitize db name — only allow alphanumeric + underscore
-	for _, c := range dbName {
-		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
-			return fmt.Errorf("invalid database name: %s", dbName)
+// provisionPostgres determines the postgres mode and provisions accordingly.
+// Three modes:
+//   1. Template mode: chart has its own postgres deployment — skip provisioning
+//   2. Citus mode: create per-app user + database on shared citus
+//   3. Standalone mode: deploy a dedicated postgres pod for the app
+func (s *Service) provisionPostgres(ctx context.Context, appName, chartDir string, manifest *AppConfiguration) PostgresProvision {
+	// Default: point to citus with admin credentials (fallback)
+	defaults := PostgresProvision{
+		Host:     config.CitusHost(),
+		Port:     config.CitusPort(),
+		Username: config.CitusUser(),
+		Password: config.CitusPassword(),
+		DBName:   appName,
+		DataPath: fmt.Sprintf("/packalares/Apps/appcache/postgres/%s", appName),
+		Mode:     "citus",
+	}
+
+	// Check if chart has its own postgres template (template mode)
+	if hasPostgresTemplate(chartDir) {
+		klog.Infof("postgres provision for %s: template mode (chart has own postgres)", appName)
+		defaults.Mode = "template"
+		return defaults
+	}
+
+	// No middleware declared — just return defaults
+	if manifest == nil || manifest.Middleware == nil || manifest.Middleware.Postgres == nil {
+		return defaults
+	}
+
+	pg := manifest.Middleware.Postgres
+	dbName := appName
+	if len(pg.Databases) > 0 && pg.Databases[0].Name != "" {
+		dbName = pg.Databases[0].Name
+	}
+	defaults.DBName = dbName
+
+	// Standalone mode: deploy a dedicated postgres pod
+	if pg.Standalone {
+		klog.Infof("postgres provision for %s: standalone mode", appName)
+		defaults.Mode = "standalone"
+		// TODO: deploy dedicated postgres pod for the app
+		// For now, fall through to citus mode
+		klog.Warningf("standalone postgres not yet implemented for %s, falling back to citus", appName)
+	}
+
+	// Citus mode: create per-app user + database on shared citus
+	pgUser := pg.Username
+	if pgUser == "" {
+		pgUser = appName
+	}
+	pgPass := generateAppPassword(appName + "-pg")
+
+	if err := s.ensureCitusUserAndDB(ctx, pgUser, pgPass, dbName); err != nil {
+		klog.Warningf("postgres provision for %s: %v (falling back to admin user)", appName, err)
+		return defaults
+	}
+
+	klog.Infof("postgres provision for %s: citus mode (user=%s, db=%s)", appName, pgUser, dbName)
+	return PostgresProvision{
+		Host:     config.CitusHost(),
+		Port:     config.CitusPort(),
+		Username: pgUser,
+		Password: pgPass,
+		DBName:   dbName,
+		DataPath: fmt.Sprintf("/packalares/Apps/appcache/postgres/%s", appName),
+		Mode:     "citus",
+	}
+}
+
+// hasPostgresTemplate checks if the chart directory contains a postgres deployment template.
+func hasPostgresTemplate(chartDir string) bool {
+	templates, _ := filepath.Glob(filepath.Join(chartDir, "templates", "*.yaml"))
+	for _, t := range templates {
+		data, err := os.ReadFile(t)
+		if err != nil {
+			continue
+		}
+		content := string(data)
+		// Look for a postgres deployment in the templates
+		if strings.Contains(content, "postgres") && strings.Contains(content, "kind: Deployment") &&
+			(strings.Contains(content, "POSTGRES_USER") || strings.Contains(content, "POSTGRES_PASSWORD")) {
+			return true
+		}
+	}
+	return false
+}
+
+// ensureCitusUserAndDB creates a per-app postgres user and database on the shared citus coordinator.
+func (s *Service) ensureCitusUserAndDB(ctx context.Context, username, password, dbName string) error {
+	// Sanitize names
+	for _, name := range []string{username, dbName} {
+		for _, c := range name {
+			if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_') {
+				return fmt.Errorf("invalid name: %s", name)
+			}
 		}
 	}
 
-	pgHost := config.CitusHost()
-	pgPort := config.CitusPort()
-	pgUser := config.CitusUser()
-	pgPass := config.CitusPassword()
+	// Create user if not exists, or update password
+	userSQL := fmt.Sprintf(
+		"DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname='%s') THEN CREATE ROLE \"%s\" LOGIN PASSWORD '%s'; ELSE ALTER ROLE \"%s\" PASSWORD '%s'; END IF; END $$;",
+		username, username, password, username, password,
+	)
+	if err := s.citusExec(ctx, userSQL); err != nil {
+		return fmt.Errorf("create user %s: %w", username, err)
+	}
 
-	// Use psql via the citus pod to create the database
-	sql := fmt.Sprintf("SELECT 1 FROM pg_database WHERE datname='%s'", dbName)
-	checkCmd := exec.CommandContext(ctx, "kubectl", "exec", "-n", "os-system", "citus-coordinator-0", "--",
-		"psql", "-h", pgHost, "-p", pgPort, "-U", pgUser, "-d", "postgres", "-tAc", sql)
-	checkCmd.Env = append(os.Environ(), "PGPASSWORD="+pgPass)
-	out, err := checkCmd.CombinedOutput()
-	if err == nil && strings.TrimSpace(string(out)) == "1" {
-		klog.V(2).Infof("postgres db %q already exists", dbName)
+	// Check if database exists
+	checkSQL := fmt.Sprintf("SELECT 1 FROM pg_database WHERE datname='%s'", dbName)
+	out, err := s.citusQuery(ctx, checkSQL)
+	if err == nil && strings.TrimSpace(out) == "1" {
+		// DB exists, ensure ownership
+		ownerSQL := fmt.Sprintf("ALTER DATABASE \"%s\" OWNER TO \"%s\"", dbName, username)
+		_ = s.citusExec(ctx, ownerSQL)
+		klog.V(2).Infof("postgres db %q already exists, updated owner to %s", dbName, username)
 		return nil
 	}
 
-	// Create the database
-	createSQL := fmt.Sprintf("CREATE DATABASE \"%s\" OWNER \"%s\"", dbName, pgUser)
-	createCmd := exec.CommandContext(ctx, "kubectl", "exec", "-n", "os-system", "citus-coordinator-0", "--",
-		"psql", "-h", pgHost, "-p", pgPort, "-U", pgUser, "-d", "postgres", "-c", createSQL)
-	createCmd.Env = append(os.Environ(), "PGPASSWORD="+pgPass)
-	createOut, err := createCmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("create database %s: %s (%w)", dbName, strings.TrimSpace(string(createOut)), err)
+	// Create database
+	createSQL := fmt.Sprintf("CREATE DATABASE \"%s\" OWNER \"%s\"", dbName, username)
+	if err := s.citusExec(ctx, createSQL); err != nil {
+		return fmt.Errorf("create database %s: %w", dbName, err)
 	}
 
-	klog.Infof("postgres database %q created", dbName)
+	klog.Infof("postgres user %q and database %q created", username, dbName)
 	return nil
+}
+
+// citusExec runs a SQL statement on the citus coordinator (no result expected).
+func (s *Service) citusExec(ctx context.Context, sql string) error {
+	cmd := exec.CommandContext(ctx, "kubectl", "exec", "-n", "os-system", "citus-coordinator-0", "--",
+		"psql", "-U", config.CitusUser(), "-d", "postgres", "-c", sql)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s (%w)", strings.TrimSpace(string(out)), err)
+	}
+	return nil
+}
+
+// citusQuery runs a SQL query on the citus coordinator and returns the result.
+func (s *Service) citusQuery(ctx context.Context, sql string) (string, error) {
+	cmd := exec.CommandContext(ctx, "kubectl", "exec", "-n", "os-system", "citus-coordinator-0", "--",
+		"psql", "-U", config.CitusUser(), "-d", "postgres", "-tAc", sql)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", fmt.Errorf("%s (%w)", strings.TrimSpace(string(out)), err)
+	}
+	return strings.TrimSpace(string(out)), nil
 }
