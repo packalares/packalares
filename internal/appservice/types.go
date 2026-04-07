@@ -98,6 +98,17 @@ type AppConfiguration struct {
 	Permission      Permission       `json:"permission" yaml:"permission"`
 	Options         Options          `json:"options" yaml:"options"`
 	Middleware      *MiddlewareSpec  `json:"middleware,omitempty" yaml:"middleware,omitempty"`
+	Envs            []ManifestEnv    `json:"envs,omitempty" yaml:"envs,omitempty"`
+}
+
+// ManifestEnv declares an environment variable in the OlaresManifest.
+type ManifestEnv struct {
+	EnvName     string `json:"envName" yaml:"envName"`
+	Type        string `json:"type,omitempty" yaml:"type,omitempty"`         // "string", "password", "email"
+	Required    bool   `json:"required,omitempty" yaml:"required,omitempty"`
+	Editable    bool   `json:"editable,omitempty" yaml:"editable,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+	Regex       string `json:"regex,omitempty" yaml:"regex,omitempty"`
 }
 
 // MiddlewareSpec declares middleware dependencies for an app.

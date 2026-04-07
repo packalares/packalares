@@ -420,13 +420,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 			"port":     redisPort,
 			"password": redisPass,
 		},
-		"olaresEnv": map[string]interface{}{
-			"OLARES_USER_HUGGINGFACE_SERVICE": os.Getenv("OLARES_USER_HUGGINGFACE_SERVICE"),
-			"OLARES_USER_HUGGINGFACE_TOKEN":   os.Getenv("OLARES_USER_HUGGINGFACE_TOKEN"),
-			"ADMIN_USERNAME":                  s.owner,
-			"ADMIN_PASSWORD":                  generateAppPassword(req.Name),
-			"UNIQUE_PASS":                     generateAppPassword(req.Name + "-unique"),
-		},
+		"olaresEnv": s.buildOlaresEnv(req.Name, zone, manifest),
 		"sharedlib":      "/packalares/Apps/sharedlib",
 		"downloadCdnURL": "https://cdn.olares.com",
 		"gpu":            "",
@@ -1056,6 +1050,46 @@ func generateAppPassword(appName string) string {
 		b[i] = chars[int(b[i])%len(chars)]
 	}
 	return string(b)
+}
+
+// buildOlaresEnv builds the olaresEnv map for helm values injection.
+// Populates values based on the envs declared in the manifest:
+//   - type "password" → auto-generated random password
+//   - type "string" with name containing "USER" or "NAME" → s.owner (username)
+//   - type "email" → owner@zone
+//   - type "string" (other) → empty (user fills in UI)
+// Also includes built-in env vars that are always available.
+func (s *Service) buildOlaresEnv(appName, zone string, manifest *AppConfiguration) map[string]interface{} {
+	env := map[string]interface{}{
+		"OLARES_USER_HUGGINGFACE_SERVICE": os.Getenv("OLARES_USER_HUGGINGFACE_SERVICE"),
+		"OLARES_USER_HUGGINGFACE_TOKEN":   os.Getenv("OLARES_USER_HUGGINGFACE_TOKEN"),
+		"ADMIN_USERNAME":                  s.owner,
+		"ADMIN_PASSWORD":                  generateAppPassword(appName),
+		"UNIQUE_PASS":                     generateAppPassword(appName + "-unique"),
+		"OLARES_USER_TIMEZONE":            os.Getenv("TZ"),
+	}
+
+	if manifest != nil {
+		for _, e := range manifest.Envs {
+			// Skip if already set by built-in defaults
+			if _, exists := env[e.EnvName]; exists {
+				continue
+			}
+			switch e.Type {
+			case "password":
+				env[e.EnvName] = generateAppPassword(appName + "-" + e.EnvName)
+			case "email":
+				env[e.EnvName] = s.owner + "@" + zone
+			case "string":
+				name := strings.ToUpper(e.EnvName)
+				if strings.Contains(name, "USER") || strings.Contains(name, "NAME") {
+					env[e.EnvName] = s.owner
+				}
+			}
+		}
+	}
+
+	return env
 }
 
 // provisionPostgres determines the postgres mode and provisions accordingly.
