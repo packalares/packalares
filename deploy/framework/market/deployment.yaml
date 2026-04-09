@@ -33,11 +33,6 @@ spec:
           volumeMounts:
             - name: market-data
               mountPath: /data/market
-      volumes:
-        - name: market-data
-          hostPath:
-            path: /packalares/market
-            type: DirectoryOrCreate
           livenessProbe:
             httpGet:
               path: /market/healthz
@@ -57,6 +52,11 @@ spec:
             limits:
               cpu: 200m
               memory: 128Mi
+      volumes:
+        - name: market-data
+          hostPath:
+            path: /packalares/market
+            type: DirectoryOrCreate
 ---
 apiVersion: v1
 kind: Service
