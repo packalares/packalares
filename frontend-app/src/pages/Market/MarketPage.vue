@@ -38,22 +38,25 @@
 
         <div class="sidebar-divider" style="margin: 8px 16px"></div>
 
-        <div class="nav-item" :class="{ active: showModels && activeCategory === 'all' }" @click="showModels = true; activeTab = 'discover'; activeCategory = 'all'; router.replace({ query: { view: 'models' } })">
+        <div class="nav-item" :class="{ active: showModels && activeCategory === 'all' }" @click="toggleModelsSection">
           <q-icon name="sym_r_model_training" size="17px" class="nav-icon" />
           <span class="nav-text">Ollama Models</span>
           <span class="nav-badge">{{ modelCount }}</span>
+          <q-icon :name="modelsExpanded ? 'sym_r_expand_less' : 'sym_r_expand_more'" size="16px" class="nav-icon" style="margin-left: auto" />
         </div>
-        <div
-          v-for="mc in modelCategories"
-          :key="mc.name"
-          class="nav-item nav-item-indent"
-          :class="{ active: showModels && activeCategory === mc.name }"
-          @click="showModels = true; activeTab = 'discover'; activeCategory = mc.name; router.replace({ query: { view: 'models', category: mc.name } })"
-        >
-          <q-icon :name="modelCategoryIcon(mc.name)" size="17px" class="nav-icon" />
-          <span class="nav-text">{{ mc.name }}</span>
-          <span class="nav-badge">{{ mc.count }}</span>
-        </div>
+        <template v-if="modelsExpanded">
+          <div
+            v-for="mc in modelCategories"
+            :key="mc.name"
+            class="nav-item nav-item-indent"
+            :class="{ active: showModels && activeCategory === mc.name }"
+            @click="showModels = true; activeTab = 'discover'; activeCategory = mc.name; router.replace({ query: { view: 'models', category: mc.name } })"
+          >
+            <q-icon :name="modelCategoryIcon(mc.name)" size="17px" class="nav-icon" />
+            <span class="nav-text">{{ mc.name }}</span>
+            <span class="nav-badge">{{ mc.count }}</span>
+          </div>
+        </template>
       </div>
     </div>
 
@@ -821,6 +824,7 @@ const loading = ref(true);
 const searchQuery = ref('');
 const userZone = ref('');
 const showModels = ref(false);
+const modelsExpanded = ref(false);
 const activeTab = ref<'discover' | 'installed'>('discover');
 const activeCategory = ref('all');
 const apps = ref<MarketApp[]>([]);
@@ -1028,6 +1032,20 @@ function selectCategory(name: string) {
   activeTab.value = 'discover';
   activeCategory.value = name;
   router.replace({ query: { category: name } });
+}
+
+function toggleModelsSection() {
+  if (showModels.value && activeCategory.value === 'all') {
+    // Already on "All Models" — toggle collapse
+    modelsExpanded.value = !modelsExpanded.value;
+  } else {
+    // Switch to models view
+    showModels.value = true;
+    modelsExpanded.value = true;
+    activeTab.value = 'discover';
+    activeCategory.value = 'all';
+    router.replace({ query: { view: 'models' } });
+  }
 }
 
 function appUrl(name: string): string {
@@ -1468,6 +1486,7 @@ onMounted(async () => {
     activeTab.value = 'installed';
   } else if (q.view === 'models') {
     showModels.value = true;
+    modelsExpanded.value = true;
     activeTab.value = 'discover';
     if (q.category && typeof q.category === 'string') activeCategory.value = q.category;
   } else if (q.category && typeof q.category === 'string') {
