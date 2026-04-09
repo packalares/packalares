@@ -315,8 +315,16 @@ func (h *Handler) removeMount(w http.ResponseWriter, r *http.Request, name strin
 	json.NewEncoder(w).Encode(map[string]string{"status": "ok"})
 }
 
+// ensureCIFSModules loads kernel modules required for CIFS mounts.
+func ensureCIFSModules() {
+	for _, mod := range []string{"cifs", "cmac", "aes"} {
+		exec.Command("modprobe", mod).Run()
+	}
+}
+
 // mountSMB mounts an SMB/CIFS share.
 func mountSMB(cfg MountConfig, mountPoint string) error {
+	ensureCIFSModules()
 	source := fmt.Sprintf("//%s/%s", cfg.Address, cfg.Share)
 
 	args := []string{"-t", "cifs", source, mountPoint}
@@ -339,7 +347,18 @@ func mountSMB(cfg MountConfig, mountPoint string) error {
 			opts = append(opts, sanitized)
 		}
 	}
-	if len(opts) == 0 {
+	// Default to SMB 3.0 if no version specified
+	hasVers := false
+	for _, o := range opts {
+		if strings.HasPrefix(o, "vers=") {
+			hasVers = true
+			break
+		}
+	}
+	if !hasVers {
+		opts = append(opts, "vers=3.0")
+	}
+	if len(opts) == 1 && opts[0] == "vers=3.0" && cfg.User == "" {
 		opts = append(opts, "guest")
 	}
 

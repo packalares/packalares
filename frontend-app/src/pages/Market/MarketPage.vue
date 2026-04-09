@@ -14,26 +14,45 @@
       <div class="sidebar-divider"></div>
 
       <div class="sidebar-nav">
-        <div class="nav-item" :class="{ active: activeTab === 'discover' }" @click="activeTab = 'discover'; activeCategory = 'all'">
+        <div class="nav-item" :class="{ active: activeTab === 'discover' && activeCategory === 'all' && !showModels }" @click="activeTab = 'discover'; activeCategory = 'all'; showModels = false; router.replace({ query: {} })">
           <q-icon name="sym_r_explore" size="17px" class="nav-icon" />
           <span class="nav-text">Discover</span>
         </div>
-        <div class="nav-item" :class="{ active: activeTab === 'installed' }" @click="activeTab = 'installed'">
+        <div class="nav-item" :class="{ active: activeTab === 'installed' }" @click="activeTab = 'installed'; showModels = false; router.replace({ query: { view: 'installed' } })">
           <q-icon name="sym_r_download_done" size="17px" class="nav-icon" />
           <span class="nav-text">Installed</span>
           <span v-if="installedApps.length > 0" class="nav-badge">{{ installedApps.length }}</span>
         </div>
         <div class="market-section-label">Categories</div>
         <div
-          v-for="cat in categories"
+          v-for="cat in appCategories"
           :key="cat.name"
           class="nav-item"
-          :class="{ active: activeTab === 'discover' && activeCategory === cat.name }"
-          @click="selectCategory(cat.name)"
+          :class="{ active: activeTab === 'discover' && !showModels && activeCategory === cat.name }"
+          @click="selectCategory(cat.name); showModels = false"
         >
           <q-icon :name="categoryIcon(cat.name)" size="17px" class="nav-icon" />
           <span class="nav-text">{{ cat.name }}</span>
           <span class="nav-badge">{{ cat.count }}</span>
+        </div>
+
+        <div class="sidebar-divider" style="margin: 8px 16px"></div>
+
+        <div class="nav-item" :class="{ active: showModels && activeCategory === 'all' }" @click="showModels = true; activeTab = 'discover'; activeCategory = 'all'; router.replace({ query: { view: 'models' } })">
+          <q-icon name="sym_r_model_training" size="17px" class="nav-icon" />
+          <span class="nav-text">Models</span>
+          <span class="nav-badge">{{ modelCount }}</span>
+        </div>
+        <div
+          v-for="mb in modelBackends"
+          :key="mb.name"
+          class="nav-item nav-item-indent"
+          :class="{ active: showModels && activeCategory === mb.name }"
+          @click="showModels = true; activeTab = 'discover'; activeCategory = mb.name; router.replace({ query: { view: 'models', category: mb.name } })"
+        >
+          <q-icon :name="mb.name === 'ollama' ? 'sym_r_smart_toy' : 'sym_r_memory'" size="17px" class="nav-icon" />
+          <span class="nav-text">{{ mb.label }}</span>
+          <span class="nav-badge">{{ mb.count }}</span>
         </div>
       </div>
     </div>
@@ -60,7 +79,13 @@
 
       <!-- Discover View -->
       <div v-if="activeTab === 'discover'" class="market-grid-area">
-        <div class="market-section-title" v-if="activeCategory === 'all'">
+        <div class="market-section-title" v-if="showModels && activeCategory === 'all'">
+          All Models
+        </div>
+        <div class="market-section-title" v-else-if="showModels">
+          {{ activeCategory === 'ollama' ? 'Ollama Models' : activeCategory === 'vllm' ? 'vLLM Models' : activeCategory }} Models
+        </div>
+        <div class="market-section-title" v-else-if="activeCategory === 'all'">
           All Apps
         </div>
         <div class="market-section-title" v-else>
@@ -678,7 +703,7 @@
               </div>
               <div class="di-row" v-if="detailData?.sourceCode">
                 <span class="di-label">Source code</span>
-                <a :href="detailData.sourceCode" target="_blank" class="di-link">GitHub</a>
+                <a :href="detailData.sourceCode" target="_blank" class="di-link">Public</a>
               </div>
               <div class="di-row" v-if="detailData?.version || detailApp.version">
                 <span class="di-label">App version</span>
@@ -739,9 +764,12 @@
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, onUnmounted, reactive, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { api } from 'boot/axios';
 import { useQuasar } from 'quasar';
 const $q = useQuasar();
+const route = useRoute();
+const router = useRouter();
 
 interface MarketApp {
   name: string;
@@ -792,6 +820,7 @@ interface InstalledApp {
 const loading = ref(true);
 const searchQuery = ref('');
 const userZone = ref('');
+const showModels = ref(false);
 const activeTab = ref<'discover' | 'installed'>('discover');
 const activeCategory = ref('all');
 const apps = ref<MarketApp[]>([]);
@@ -900,17 +929,61 @@ const installedAppsDetail = computed(() => {
   });
 });
 
+// App-only categories (exclude models from counts)
+const appCategories = computed(() => {
+  return categories.value.filter(c => {
+    // Recount excluding models
+    const count = apps.value.filter(a => a.type !== 'model' && a.categories?.some(
+      cat => cat.toLowerCase() === c.name.toLowerCase()
+    )).length;
+    return count > 0;
+  }).map(c => ({
+    ...c,
+    count: apps.value.filter(a => a.type !== 'model' && a.categories?.some(
+      cat => cat.toLowerCase() === c.name.toLowerCase()
+    )).length
+  }));
+});
+
+// Model backend groupings
+const modelBackends = computed(() => {
+  const models = apps.value.filter(a => a.type === 'model');
+  const backends: Record<string, number> = {};
+  models.forEach(m => {
+    const b = m.backend || 'other';
+    backends[b] = (backends[b] || 0) + 1;
+  });
+  return Object.entries(backends).map(([name, count]) => ({
+    name,
+    label: name === 'ollama' ? 'Ollama' : name === 'vllm' ? 'vLLM' : name,
+    count
+  }));
+});
+
+const modelCount = computed(() => apps.value.filter(a => a.type === 'model').length);
+
 const filteredApps = computed(() => {
   let list = apps.value;
-  if (activeCategory.value !== 'all') {
-    list = list.filter(
-      (a) =>
-        a.categories &&
-        a.categories.some(
-          (c) => c.toLowerCase() === activeCategory.value.toLowerCase()
-        )
-    );
+
+  // Separate apps and models
+  if (showModels.value) {
+    list = list.filter(a => a.type === 'model');
+    if (activeCategory.value !== 'all') {
+      list = list.filter(a => (a.backend || 'other') === activeCategory.value);
+    }
+  } else {
+    list = list.filter(a => a.type !== 'model');
+    if (activeCategory.value !== 'all') {
+      list = list.filter(
+        (a) =>
+          a.categories &&
+          a.categories.some(
+            (c) => c.toLowerCase() === activeCategory.value.toLowerCase()
+          )
+      );
+    }
   }
+
   if (searchQuery.value) {
     const q = searchQuery.value.toLowerCase();
     list = list.filter(
@@ -930,6 +1003,7 @@ function isInstalled(name: string): boolean {
 function selectCategory(name: string) {
   activeTab.value = 'discover';
   activeCategory.value = name;
+  router.replace({ query: { category: name } });
 }
 
 function appUrl(name: string): string {
@@ -1031,6 +1105,7 @@ async function openDetail(app: MarketApp) {
   appCreds.value = null;
   showCreds.value = false;
   detailLoading.value = true;
+  router.replace({ query: { app: app.name } });
   try {
     const res: any = await api.get('/api/market/app/' + app.name);
     detailData.value = res.data || null;
@@ -1347,6 +1422,10 @@ watch(detailApp, (val) => {
   if (!val) {
     detailData.value = null;
     detailLoading.value = false;
+    // Restore category in URL when closing detail
+    const cat = activeCategory.value !== 'all' ? activeCategory.value : undefined;
+    const view = activeTab.value === 'installed' ? 'installed' : undefined;
+    router.replace({ query: { ...(cat ? { category: cat } : {}), ...(view ? { view } : {}) } });
   }
 });
 
@@ -1358,6 +1437,23 @@ onMounted(async () => {
     userZone.value = r?.zone || r?.terminusName || '';
   } catch {}
   await Promise.all([fetchApps(), fetchCategories(), fetchInstalled(), fetchModelStatus()]);
+
+  // Restore state from URL query params
+  const q = route.query;
+  if (q.view === 'installed') {
+    activeTab.value = 'installed';
+  } else if (q.view === 'models') {
+    showModels.value = true;
+    activeTab.value = 'discover';
+    if (q.category && typeof q.category === 'string') activeCategory.value = q.category;
+  } else if (q.category && typeof q.category === 'string') {
+    activeTab.value = 'discover';
+    activeCategory.value = q.category;
+  }
+  if (q.app && typeof q.app === 'string') {
+    const found = apps.value.find(a => a.name === q.app);
+    if (found) openDetail(found);
+  }
 
   // Initialize appStates from installed apps' non-terminal states so
   // getAppDisplayState works correctly after page refresh

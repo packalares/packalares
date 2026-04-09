@@ -130,7 +130,30 @@ async function addMount() {
   if (!newMount.value.name || !newMount.value.remote) { mountMsg.value = 'Error: name and remote required'; return; }
   adding.value = true; mountMsg.value = '';
   try {
-    await api.post('/api/mounts', newMount.value);
+    // Parse remote into address + share for backend
+    const remote = newMount.value.remote;
+    let address = '', share = '';
+    if (newMount.value.type === 'smb') {
+      // Parse //host/share format
+      const match = remote.match(/^\/\/([^/]+)\/(.+?)$/);
+      if (match) { address = match[1]; share = match[2]; }
+      else { mountMsg.value = 'Error: SMB remote must be //host/share'; adding.value = false; return; }
+    } else if (newMount.value.type === 'nfs') {
+      // Parse host:/path format
+      const parts = remote.split(':');
+      if (parts.length >= 2) { address = parts[0]; share = parts.slice(1).join(':'); }
+      else { mountMsg.value = 'Error: NFS remote must be host:/path'; adding.value = false; return; }
+    }
+    const payload: any = {
+      name: newMount.value.name,
+      type: newMount.value.type,
+      address,
+      share,
+      user: newMount.value.username || '',
+      password: newMount.value.password || '',
+      remote: remote,
+    };
+    await api.post('/api/mounts', payload);
     mountMsg.value = 'Mount added';
     newMount.value = { type: 'smb', name: '', remote: '', username: '', password: '' };
     await loadMounts();

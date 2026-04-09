@@ -141,6 +141,11 @@
     .nav-icon { color: var(--accent) !important; }
     .nav-text { color: var(--accent) !important; font-weight: 600; }
   }
+
+  &.nav-item-indent {
+    padding-left: 28px;
+    .nav-text { font-size: 12px; }
+  }
 }
 
 // ─── Cards ──────────────────────────────────────────────────────────

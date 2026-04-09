@@ -191,6 +191,21 @@ build_cli_from_source() {
     log_ok "CLI built successfully"
 }
 
+# --- Install host dependencies ---
+install_host_deps() {
+    log_info "Installing host dependencies..."
+    if command -v apt-get &>/dev/null; then
+        apt-get update -qq
+        apt-get install -y -qq cifs-utils nfs-common 2>/dev/null || true
+    elif command -v yum &>/dev/null; then
+        yum install -y -q cifs-utils nfs-utils 2>/dev/null || true
+    fi
+    # Load kernel modules for CIFS
+    modprobe cifs 2>/dev/null || true
+    modprobe cmac 2>/dev/null || true
+    log_ok "Host dependencies installed"
+}
+
 # --- Run installation ---
 run_install() {
     log_info "Starting Packalares installation ..."
@@ -379,6 +394,7 @@ main() {
     check_os
     detect_arch
     check_commands
+    install_host_deps
     cleanup_previous
     download_cli
     run_install "$@"

@@ -641,6 +641,12 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 
 		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 2, 3, "Cleaning up...", 0, 0)
 
+		// Force-delete any orphaned resources left by a failed helm install.
+		// When helm install fails mid-way, it marks the release as "failed" but
+		// leaves created resources (deployments, services, etc.) behind. helm uninstall
+		// on a failed release removes the release record but NOT these orphan resources.
+		s.k8s.DeleteOrphanedResources(bgCtx, rec.ReleaseName, rec.Namespace)
+
 		// Remove Application CRD
 		if err := s.k8s.DeleteApplicationCRD(bgCtx, rec.ReleaseName, rec.Namespace); err != nil {
 			klog.Errorf("delete Application CRD for %s: %v", req.Name, err)

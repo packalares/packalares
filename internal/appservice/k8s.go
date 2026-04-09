@@ -283,6 +283,33 @@ func (k *K8sClient) DeleteApplicationCRD(ctx context.Context, name, namespace st
 	return nil
 }
 
+// DeleteOrphanedResources force-deletes any resources left behind by a failed
+// helm install. Helm marks the release as "failed" but leaves created resources
+// (deployments, services, etc.) behind. helm uninstall on a failed release
+// removes the release record but NOT these orphan resources.
+func (k *K8sClient) DeleteOrphanedResources(ctx context.Context, releaseName, namespace string) {
+	label := fmt.Sprintf("app.kubernetes.io/instance=%s", releaseName)
+	resources := []string{"deployments", "services", "configmaps", "jobs", "pods"}
+	for _, res := range resources {
+		cmd := exec.CommandContext(ctx, "kubectl", "delete", res,
+			"-n", namespace, "-l", label, "--ignore-not-found", "--force", "--grace-period=0")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			klog.V(2).Infof("delete orphaned %s for %s: %s", res, releaseName, string(out))
+		}
+	}
+	// Also try deleting by app label (some charts use app=<name> without instance label)
+	label2 := fmt.Sprintf("app=%s", releaseName)
+	for _, res := range resources {
+		cmd := exec.CommandContext(ctx, "kubectl", "delete", res,
+			"-n", namespace, "-l", label2, "--ignore-not-found", "--force", "--grace-period=0")
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			klog.V(2).Infof("delete orphaned %s for %s (app label): %s", res, releaseName, string(out))
+		}
+	}
+}
+
 // buildApplicationObject constructs an unstructured Application object from
 // an AppRecord. This is the single source of truth for the Application CRD
 // schema -- no more hand-rolled YAML templates.

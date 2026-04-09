@@ -113,10 +113,6 @@ jobs:
             tag: "4.5.2"
             desc: "NVIDIA GPU metrics exporter for Prometheus"
             repo: "https://github.com/NVIDIA/dcgm-exporter"
-          - source: projecthami/hami:v2.4.1
-            target: hami
-            tag: v2.4.1
-            desc: "Heterogeneous AI computing resource manager for Kubernetes"
             repo: "https://github.com/Project-HAMi/HAMi"
 
     steps:

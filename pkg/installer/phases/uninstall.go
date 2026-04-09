@@ -244,9 +244,6 @@ func removeGPUDrivers() error {
 	os.RemoveAll("/etc/containerd/conf.d")
 	os.Remove("/var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl")
 
-	// Remove HAMi if installed
-	exec.Command("helm", "uninstall", "hami", "-n", "hami-system").Run()
-
 	exec.Command("apt-get", "update", "-qq").Run()
 
 	return nil

@@ -66,17 +66,12 @@ func InstallGPU(opts *InstallOptions, w io.Writer) error {
 		return fmt.Errorf("configure containerd: %w", err)
 	}
 
-	// Step 4: Deploy HAMi via official Helm chart
-	if err := deployHAMi(w); err != nil {
-		return fmt.Errorf("deploy hami: %w", err)
-	}
-
-	// Step 5: Deploy DCGM exporter for GPU metrics
+	// Step 4: Deploy DCGM exporter for GPU metrics
 	if err := applyManifestFile("deploy/framework/dcgm-exporter.yaml", opts); err != nil {
 		fmt.Fprintf(w, "  Warning: DCGM exporter failed: %v (non-fatal)\n", err)
 	}
 
-	// Step 6: Patch monitoring-server with privileged + NVIDIA access for nvidia-smi
+	// Step 5: Patch monitoring-server with privileged + NVIDIA access for nvidia-smi
 	fmt.Fprintln(w, "  Patching monitoring-server for GPU access...")
 	patchCmd := exec.Command("kubectl", "patch", "deploy", "-n", config.FrameworkNamespace(),
 		"monitoring-server", "--type=json", "-p",
@@ -256,34 +251,3 @@ func configureContainerdNvidia(w io.Writer) error {
 	return nil
 }
 
-func deployHAMi(w io.Writer) error {
-	fmt.Fprintln(w, "  Deploying HAMi GPU scheduler (official Helm chart) ...")
-
-	// Add HAMi Helm repo
-	if out, err := exec.Command("helm", "repo", "add", "hami",
-		"https://project-hami.github.io/HAMi").CombinedOutput(); err != nil {
-		return fmt.Errorf("helm repo add: %s\n%w", string(out), err)
-	}
-
-	exec.Command("helm", "repo", "update").Run()
-
-	// Install HAMi
-	cmd := exec.Command("helm", "install", "hami", "hami/hami",
-		"-n", "hami-system",
-		"--create-namespace",
-		"--set", "devicePlugin.deviceSplitCount=10",
-		"--set", "devicePlugin.deviceMemoryScaling=1.0",
-		"--wait",
-		"--timeout", "120s",
-	)
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("helm install hami: %s\n%w", string(out), err)
-	}
-
-	// Label the node so HAMi device-plugin DaemonSet can schedule
-	nodeName, _ := os.Hostname()
-	exec.Command("kubectl", "label", "node", nodeName, "gpu=on", "--overwrite").Run()
-	fmt.Fprintf(w, "  Labeled node %s with gpu=on\n", nodeName)
-
-	return nil
-}
