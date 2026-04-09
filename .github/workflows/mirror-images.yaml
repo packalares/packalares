@@ -113,7 +113,6 @@ jobs:
             tag: "4.5.2"
             desc: "NVIDIA GPU metrics exporter for Prometheus"
             repo: "https://github.com/NVIDIA/dcgm-exporter"
-            repo: "https://github.com/Project-HAMi/HAMi"
 
     steps:
       - name: Log in to GHCR
