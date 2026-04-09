@@ -499,11 +499,23 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 	s.appsMu.RLock()
 	var app *Application
 	var exists bool
+	var sharedEntrance *SharedEntrance
 	for _, a := range s.apps {
 		if a.Spec.Name == appName {
 			app = a
 			exists = true
 			break
+		}
+	}
+	// If no direct match, check shared entrances (dynamic subdomains like ComfyUI instances)
+	if !exists {
+		for _, a := range s.apps {
+			if len(a.Spec.SharedEntrances) > 0 {
+				app = a
+				sharedEntrance = &a.Spec.SharedEntrances[0]
+				exists = true
+				break
+			}
 		}
 	}
 	s.appsMu.RUnlock()
@@ -519,12 +531,20 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Pick the best entrance: prefer non-internal, non-invisible ones (the user-facing web UI)
-	entrance := app.Spec.Entrances[0]
-	for _, e := range app.Spec.Entrances {
-		if e.AuthLevel != "internal" && !e.Invisible {
-			entrance = e
-			break
+	// Pick the best entrance: use shared entrance if matched, otherwise prefer non-internal
+	var entrance Entrance
+	if sharedEntrance != nil {
+		entrance = Entrance{
+			Name: sharedEntrance.Name, Host: sharedEntrance.Host,
+			Port: sharedEntrance.Port, AuthLevel: sharedEntrance.AuthLevel,
+		}
+	} else {
+		entrance = app.Spec.Entrances[0]
+		for _, e := range app.Spec.Entrances {
+			if e.AuthLevel != "internal" && !e.Invisible {
+				entrance = e
+				break
+			}
 		}
 	}
 	// Build upstream URL from the entrance host (which is the K8s service name)
