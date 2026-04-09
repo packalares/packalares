@@ -176,4 +176,3 @@ onMounted(() => { loadMounts(); });
 .mount-name { font-size: 13px; font-weight: 500; color: var(--ink-1); }
 .mount-path { font-size: 11px; color: var(--ink-3); font-family: 'Inter', sans-serif; margin-top: 1px; }
 </style>
-// build trigger Thu Apr  9 10:00:04 PM EEST 2026
