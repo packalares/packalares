@@ -1,0 +1,6 @@
+apiVersion: v2
+name: openwebui
+description: User-friendly WebUI for LLMs
+type: application
+version: '1.0.25'
+appVersion: '0.8.12'

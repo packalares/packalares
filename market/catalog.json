@@ -70,6 +70,1869 @@
       ],
       "hasChart": true,
       "featuredImage": "/api/market/screenshots/ollamav2/featured.webp"
+    },
+    {
+      "name": "bge-reranker-v2-m3",
+      "title": "BGE Reranker v2 M3 (Ollama)",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "dengcao/bge-reranker-v2-m3",
+      "cfgType": "model",
+      "icon": "/api/market/icons/bge-reranker-v2-m3.png",
+      "description": "Lightweight reranker (1.2 GB) — proven standard for RAG pipelines",
+      "fullDescription": "## IMPORTANT NOTE ##\nThis model runs on CPU only. If you want to run it on GPU, please install the generic version of Ollama program.\n\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## MODEL OVERVIEW ##\nBGE-Reranker-v2-M3 is a lightweight reranking model developed by BAAI (Beijing Academy of Artificial Intelligence). It is designed for multilingual retrieval tasks and provides efficient context reranking capability for RAG workflows.\n\nThe model filters irrelevant content and prioritizes relevant passages to improve accuracy and response speed in generative AI applications. It is especially strengthened for mixed Chinese-English scenarios.\n\n# Model Details\n- Model Name: BAAI/bge-reranker-v2-m3\n- Base: BGE-M3-0.5B\n- Size: 1.2GB\n- Context Length: 8192 tokens\n- Task: Text Reranking",
+      "developer": "BAAI",
+      "versionName": "dengcao/bge-reranker-v2-m3",
+      "categories": [
+        "Reranking"
+      ],
+      "requiredMemory": "2500Mi",
+      "requiredDisk": "50Mi",
+      "requiredGpu": "0",
+      "requiredCpu": "150m",
+      "limitedMemory": "33Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "doc": "https://ollama.com/dengcao/bge-reranker-v2-m3",
+      "website": "https://ollama.com/dengcao/bge-reranker-v2-m3",
+      "sourceCode": "https://huggingface.co/BAAI/bge-reranker-v2-m3",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://huggingface.co/BAAI/bge-reranker-v2-m3"
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": ""
+    },
+    {
+      "name": "qwen3-reranker-8b",
+      "title": "Qwen3 Reranker 8B (Ollama)",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "dengcao/Qwen3-Reranker-8B:Q4_K_M",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen3-reranker-8b.png",
+      "description": "8B reranker, Q4_K_M quantization (5.0 GB) — best accuracy for RAG reranking",
+      "fullDescription": "## IMPORTANT NOTE ##\nThis model runs on CPU only. If you want to run it on GPU, please install the generic version of Ollama program.\n\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## MODEL OVERVIEW ##\nQwen3-Reranker-8B is a text reranking model from Alibaba's Qwen team, built on the Qwen3-8B-Base architecture. It is designed for ranking and reordering search results, evaluating document relevance to queries across diverse applications.\n\nThe model supports 100+ languages with instruction-aware capabilities for task customization. It ranks among top performers in multilingual retrieval benchmarks (MTEB and CMTEB).\n\n## QUANTIZATION ##\nThis model uses **Q4_K_M** quantization (5.0 GB). Quantization compresses model weights from 16-bit to 4-bit precision, reducing memory usage ~4x with minimal quality loss (~95% of full precision). The K-quant method keeps critical layers at higher precision.\n\nAvailable variants: Q3_K_M (4.1GB), **Q4_K_M (5.0GB)**, Q5_K_M (5.8GB), Q8_0 (8.7GB), F16 (16GB).\n\n# Model Details\n- Model Name: Qwen/Qwen3-Reranker-8B\n- Parameters: 8B\n- Quantization: Q4_K_M (5.0GB)\n- Context Length: 32768 tokens\n- Task: Text Reranking\n- Languages: 100+",
+      "developer": "Alibaba",
+      "versionName": "dengcao/Qwen3-Reranker-8B",
+      "categories": [
+        "Reranking"
+      ],
+      "requiredMemory": "6500Mi",
+      "requiredDisk": "50Mi",
+      "requiredGpu": "0",
+      "requiredCpu": "150m",
+      "limitedMemory": "33Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "doc": "https://ollama.com/dengcao/Qwen3-Reranker-8B",
+      "website": "https://ollama.com/dengcao/Qwen3-Reranker-8B",
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3-Reranker-8B",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://huggingface.co/Qwen/Qwen3-Reranker-8B"
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": ""
+    },
+    {
+      "name": "qwen3-reranker-4b",
+      "title": "Qwen3 Reranker 4B (Ollama)",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "dengcao/Qwen3-Reranker-4B:Q4_K_M",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen3-reranker-4b.png",
+      "description": "4B reranker, Q4_K_M quantization (2.5 GB) — best quality/size tradeoff",
+      "fullDescription": "## IMPORTANT NOTE ##\nThis model runs on CPU only. If you want to run it on GPU, please install the generic version of Ollama program.\n\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## MODEL OVERVIEW ##\nQwen3-Reranker-4B is a compact text reranking model from Alibaba's Qwen team, built on the Qwen3-4B-Base architecture with 36 layers. It is designed for ranking and retrieval tasks across multilingual contexts.\n\nThe model supports 100+ languages with instruction-aware capabilities for task customization. It scores 69.76 on MTEB-R benchmarks, ranking among top-performing multilingual reranking models.\n\n## QUANTIZATION ##\nThis model uses **Q4_K_M** quantization (2.5 GB). Quantization compresses model weights from 16-bit to 4-bit precision, reducing memory usage ~4x with minimal quality loss (~95% of full precision). The K-quant method keeps critical layers at higher precision.\n\nAvailable variants: Q3_K_M (1.9GB), **Q4_K_M (2.5GB)**, Q5_K_M (2.8GB), Q8_0 (4.3GB), F16 (7.6GB).\n\n# Model Details\n- Model Name: Qwen/Qwen3-Reranker-4B\n- Parameters: 4B\n- Quantization: Q4_K_M (2.5GB)\n- Context Length: 32768 tokens\n- Task: Text Reranking\n- Languages: 100+",
+      "developer": "Alibaba",
+      "versionName": "dengcao/Qwen3-Reranker-4B",
+      "categories": [
+        "Reranking"
+      ],
+      "requiredMemory": "4000Mi",
+      "requiredDisk": "50Mi",
+      "requiredGpu": "0",
+      "requiredCpu": "150m",
+      "limitedMemory": "33Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "doc": "https://ollama.com/dengcao/Qwen3-Reranker-4B",
+      "website": "https://ollama.com/dengcao/Qwen3-Reranker-4B",
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3-Reranker-4B",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://huggingface.co/Qwen/Qwen3-Reranker-4B"
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": ""
+    },
+    {
+      "name": "ollamabgem3567mv2",
+      "title": "BGE-M3 (Ollama)",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "bge-m3:567m-fp16",
+      "cfgType": "model",
+      "icon": "/api/market/icons/ollamabgem3567mv2.png",
+      "description": "One-Stop Retrieval Toolkit For Search and RAG",
+      "fullDescription": "## IMPORTANT NOTE ##\nThis models runs on CPU only. If you want to run it on GPU, please install the generic version of Ollama program.\n\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## MODEL OVERVIEW ##\nBGE-M3 is based on the XLM-RoBERTa architecture and is distinguished for its versatility in Multi-Functionality, Multi-Linguality, and Multi-Granularity:\n- Multi-Functionality: It can simultaneously perform the three common retrieval functionalities of embedding model: dense retrieval, multi-vector retrieval, and sparse retrieval.\n- Multi-Linguality: It can support more than 100 working languages.\n- Multi-Granularity: It is able to process inputs of different granularities, spanning from short sentences to long documents of up to 8192 tokens.\n\n# Model Details\n- Model Name: BAAI/bge-m3\n- Parameters: 567m\n- Dimension: 1024\n- Sequence Length: 8192",
+      "developer": "BAAI",
+      "versionName": "bge-m3:567m-fp16",
+      "categories": [
+        "Embedding"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "50Mi",
+      "requiredGpu": "0",
+      "requiredCpu": "150m",
+      "limitedMemory": "33Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "doc": "https://bge-model.com/bge/bge_m3.html",
+      "website": "https://bge-model.com/bge/bge_m3.html",
+      "sourceCode": "https://huggingface.co/BAAI/bge-m3",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://ollama.com/library/bge-m3:567m/blobs/a406579cd136"
+        }
+      ],
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": ""
+    },
+    {
+      "name": "gemma4-31b",
+      "title": "Gemma 4 31B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "gemma4:31b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/gemma4-31b.png",
+      "description": "Google's dense 31B model with 256K context and strongest reasoning capabilities.",
+      "fullDescription": "## MODEL OVERVIEW ##\nGemma 4 is the latest generation of Google's open model family, built on Gemini technology. The 31B dense variant offers Google's strongest open-weight reasoning performance with a massive 256K token context window.\n\n## Key Features\n- **256K Context Window**: Process extremely long documents, codebases, and conversations\n- **Dense Architecture**: All 31B parameters active for maximum quality per token\n- **Multimodal**: Accepts text and image inputs\n- **140+ Languages**: Broad multilingual support\n- **Strong Reasoning**: Top-tier performance on math, logic, and coding benchmarks\n\n## Specifications\n- Parameters: 31B (dense)\n- Context Length: 256K tokens\n- Architecture: Dense transformer\n- Quantization: Q4_K_M\n- Disk Size: ~20GB\n\n## Use Cases\n- Complex reasoning and analysis\n- Long document processing and summarization\n- Multilingual chat and translation\n- Code generation and review\n- Research assistance",
+      "developer": "Google",
+      "versionName": "gemma4:31b",
+      "categories": [
+        "General",
+        "Vision"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "20Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/google/gemma-4-31b-it",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Gemma Terms of Use",
+          "url": "https://ai.google.dev/gemma/terms"
+        }
+      ]
+    },
+    {
+      "name": "gemma4-e4b",
+      "title": "Gemma 4 E4B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "gemma4:e4b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/gemma4-e4b.png",
+      "description": "Google's efficient multimodal model with 128K context. Great balance of speed and quality.",
+      "fullDescription": "## MODEL OVERVIEW ##\nGemma 4 E4B is Google's efficient multimodal model designed for fast inference while maintaining strong capabilities. The 'E' designation indicates an efficiency-optimized architecture.\n\n## Key Features\n- **128K Context Window**: Large context for document analysis\n- **Multimodal**: Process both text and images\n- **Efficiency-Optimized**: Faster inference than larger models\n- **Strong Quality**: Excellent performance-per-parameter ratio\n- **140+ Languages**: Broad multilingual support\n\n## Specifications\n- Parameters: ~4B (efficiency-optimized)\n- Context Length: 128K tokens\n- Disk Size: ~9.6GB\n- Architecture: Efficient transformer variant\n\n## Use Cases\n- Fast chat and Q&A\n- Image understanding and description\n- Document summarization\n- Multilingual tasks\n- Resource-constrained deployments",
+      "developer": "Google",
+      "versionName": "gemma4:e4b",
+      "categories": [
+        "General",
+        "Vision"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "10Gi",
+      "requiredGpu": "12Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "33Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/google/gemma-4-e4b-it",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Gemma Terms of Use",
+          "url": "https://ai.google.dev/gemma/terms"
+        }
+      ]
+    },
+    {
+      "name": "qwen35-27b",
+      "title": "Qwen 3.5 27B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen3.5:27b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen35-27b.png",
+      "description": "Alibaba's top-tier chat model from the latest Qwen 3.5 generation.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen 3.5 27B is a flagship model from Alibaba's latest Qwen generation, representing a significant leap in multimodal learning, architectural efficiency, and reinforcement learning.\n\n## Key Features\n- **Unified Vision-Language Foundation**: Early fusion training on multimodal tokens\n- **Efficient Hybrid Architecture**: Gated Delta Networks combined with sparse MoE\n- **Scalable RL Generalization**: Robust real-world adaptability\n- **201 Languages**: Expanded global linguistic coverage\n- **Strong Reasoning**: Excellent performance on math, logic, and coding\n\n## Specifications\n- Parameters: 27B\n- Context Length: 128K tokens\n- Architecture: Hybrid transformer with MoE\n- Disk Size: ~17GB\n\n## Use Cases\n- Advanced chat and conversation\n- Complex reasoning and analysis\n- Multilingual communication\n- Code generation and debugging\n- Document analysis and summarization",
+      "developer": "Alibaba",
+      "versionName": "qwen3.5:27b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "17Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3.5-27B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "qwen3-30b",
+      "title": "Qwen 3 30B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen3:30b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen3-30b.png",
+      "description": "Alibaba's MoE model with 30B total parameters and 17B active. Efficient and powerful.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen3 30B is a Mixture-of-Experts (MoE) model from Alibaba with 30B total parameters but only 17B active per forward pass, offering an excellent balance of capability and efficiency.\n\n## Key Features\n- **MoE Architecture**: 30B total / 17B active parameters for efficiency\n- **Hybrid Thinking**: Toggle between fast and deep reasoning modes\n- **128K Context**: Large context window for complex tasks\n- **Multilingual**: Supports 100+ languages\n- **Strong Benchmarks**: Competitive with much larger dense models\n\n## Specifications\n- Total Parameters: 30B\n- Active Parameters: 17B (MoE)\n- Context Length: 128K tokens\n- Disk Size: ~19GB\n\n## Use Cases\n- General-purpose chat and assistance\n- Reasoning and analysis\n- Code generation\n- Multilingual tasks\n- Production deployments requiring efficiency",
+      "developer": "Alibaba",
+      "versionName": "qwen3:30b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "19Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3-30B-A3B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "mistral-small32-24b",
+      "title": "Mistral Small 3.2 24B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "mistral-small3.2:24b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/mistral-small32-24b.png",
+      "description": "Mistral AI's 24B model with vision support and strong multilingual chat capabilities.",
+      "fullDescription": "## MODEL OVERVIEW ##\nMistral Small 3.2 is a 24B parameter model from Mistral AI with native vision capabilities. It builds on the successful Mistral Small line with added multimodal support.\n\n## Key Features\n- **Vision Support**: Process and understand images alongside text\n- **24B Parameters**: Strong capability in a single-GPU package\n- **Multilingual**: Excellent performance across many languages\n- **Fast Inference**: Optimized for responsive chat\n- **Function Calling**: Supports tool use and structured outputs\n\n## Specifications\n- Parameters: 24B\n- Context Length: 128K tokens\n- Modalities: Text + Vision\n- Disk Size: ~15GB\n\n## Use Cases\n- Multimodal chat with image understanding\n- Document and image analysis\n- Multilingual assistance\n- Tool-augmented workflows\n- General-purpose AI assistant",
+      "developer": "Mistral AI",
+      "versionName": "mistral-small3.2:24b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "15Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "gpt-oss-20b",
+      "title": "GPT-OSS 20B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "gpt-oss:20b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/gpt-oss-20b.png",
+      "description": "OpenAI's first open-weight model. Configurable reasoning with Apache 2.0 license.",
+      "fullDescription": "## MODEL OVERVIEW ##\nWelcome to the gpt-oss series, OpenAI's open-weight models designed for powerful reasoning, agentic tasks, and versatile developer use cases.\n\n## Models\ngpt-oss-20b is designed for lower latency and local or specialized use cases (21B parameters with 3.6B active parameters).\n\n## Key Features\n- **Permissive Apache 2.0 License**: Build freely without copyleft restrictions or patent risk\n- **Configurable Reasoning Effort**: Adjust reasoning effort (low, medium, high) based on your use case\n- **Full Chain-of-Thought**: Complete access to the model's reasoning process for debugging and trust\n- **MoE Architecture**: 21B total / 3.6B active parameters for fast inference\n\n## Specifications\n- Total Parameters: 21B\n- Active Parameters: 3.6B (MoE)\n- Context Length: 128K tokens\n- Disk Size: ~14GB\n- Format: Harmony response format\n\n## Use Cases\n- Local AI assistant\n- Agentic coding tasks\n- Reasoning and problem solving\n- Tool use and function calling\n- Custom fine-tuning base",
+      "developer": "OpenAI",
+      "versionName": "gpt-oss:20b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "14Gi",
+      "requiredGpu": "18Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/openai/gpt-oss-20b",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "deepseek-r1-32b",
+      "title": "DeepSeek R1 32B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "deepseek-r1:32b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/deepseek-r1-32b.png",
+      "description": "Best open reasoning model. Excels at math, logic, and complex problem solving.",
+      "fullDescription": "## MODEL OVERVIEW ##\nDeepSeek-R1 is a state-of-the-art reasoning model that has demonstrated outstanding performance across mathematics, programming, and general logic benchmarks. The 32B distilled version brings powerful reasoning to a single GPU.\n\n## Key Features\n- **Superior Reasoning**: Top-tier performance on math and logic tasks\n- **Chain-of-Thought**: Transparent step-by-step reasoning process\n- **128K Context**: Large context window for complex problems\n- **Distilled**: Knowledge distilled from the full 671B model\n- **Competitive**: Performance approaching O3 and Gemini 2.5 Pro\n\n## Specifications\n- Parameters: 32B (distilled from 671B)\n- Context Length: 128K tokens\n- Disk Size: ~20GB\n- Quantization: Q4_K_M\n\n## Use Cases\n- Mathematical reasoning and proofs\n- Complex logic puzzles\n- Code generation and debugging\n- Scientific analysis\n- Multi-step problem solving",
+      "developer": "DeepSeek",
+      "versionName": "deepseek-r1:32b",
+      "categories": [
+        "Reasoning"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "20Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://opensource.org/licenses/MIT"
+        }
+      ]
+    },
+    {
+      "name": "qwq-32b",
+      "title": "QwQ 32B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwq:32b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwq-32b.png",
+      "description": "Alibaba's dedicated reasoning model. Specialized for math, logic, and analytical tasks.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwQ (Qwen with Questions) is Alibaba's dedicated reasoning model, designed to think deeply about problems before answering. It excels at mathematical reasoning, logical analysis, and complex problem-solving tasks.\n\n## Key Features\n- **Deep Reasoning**: Extended thinking chains for complex problems\n- **Math Excellence**: Top performance on mathematical benchmarks\n- **Logic Mastery**: Strong analytical and logical reasoning\n- **32B Dense**: Full 32B parameters for maximum reasoning depth\n- **128K Context**: Handle long, complex problem descriptions\n\n## Specifications\n- Parameters: 32B (dense)\n- Context Length: 128K tokens\n- Disk Size: ~20GB\n- Quantization: Q4_K_M\n\n## Use Cases\n- Advanced mathematics and proofs\n- Logical reasoning and analysis\n- Scientific problem solving\n- Complex coding challenges\n- Research and academic tasks",
+      "developer": "Alibaba",
+      "versionName": "qwq:32b",
+      "categories": [
+        "Reasoning"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "20Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/QwQ-32B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "phi4-reasoning-14b",
+      "title": "Phi-4 Reasoning 14B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "phi4-reasoning:14b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/phi4-reasoning-14b.png",
+      "description": "Microsoft's reasoning-tuned Phi-4. Strong math and logic in a compact 14B package.",
+      "fullDescription": "## MODEL OVERVIEW ##\nPhi-4 Reasoning is Microsoft's reasoning-enhanced version of Phi-4, specifically tuned for complex reasoning tasks. Built upon Phi-4's strong foundation, it adds dedicated reasoning capabilities while remaining compact at 14B parameters.\n\n## Key Features\n- **Reasoning-Tuned**: Specifically optimized for chain-of-thought reasoning\n- **Compact Size**: 14B parameters fits easily in GPU memory\n- **Strong Math**: Excellent performance on mathematical reasoning\n- **Fast Inference**: Quick responses for interactive use\n- **Efficient**: Great performance-per-parameter ratio\n\n## Specifications\n- Parameters: 14B\n- Context Length: 16K tokens\n- Disk Size: ~11GB\n- Architecture: Dense transformer\n\n## Use Cases\n- Mathematical reasoning and problem solving\n- Logic puzzles and analysis\n- Code reasoning and debugging\n- Resource-efficient reasoning workloads\n- Educational applications",
+      "developer": "Microsoft",
+      "versionName": "phi4-reasoning:14b",
+      "categories": [
+        "Reasoning"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "11Gi",
+      "requiredGpu": "16Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "33Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/microsoft/phi-4-reasoning",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://opensource.org/licenses/MIT"
+        }
+      ]
+    },
+    {
+      "name": "cogito-32b",
+      "title": "Cogito 32B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "cogito:32b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/cogito-32b.png",
+      "description": "Hybrid reasoning model with toggleable thinking. 60% shorter reasoning chains than DeepSeek R1.",
+      "fullDescription": "## MODEL OVERVIEW ##\nBuilt on Iterated Distillation and Amplification (IDA), Cogito models don't just search longer -- they develop better intuition through self-improvement, paving the way to superintelligence.\n\nCogito v1 Preview is a family of hybrid reasoning models by Deep Cogito that outperform the best available open models of the same size across most standard benchmarks.\n\n## Key Features\n- **Iterative Self-Improvement**: First reasoning models to improve core intelligence, not just search time\n- **Hybrid Reasoning**: Toggle between fast and deep thinking modes\n- **60% Shorter Chains**: More efficient reasoning than DeepSeek R1 with superior performance\n- **Breakthrough Efficiency**: Complete model family trained for <$3.5M total cost\n- **Toggle Thinking**: Switch reasoning on/off based on task complexity\n\n## Specifications\n- Parameters: 32B\n- Context Length: 128K tokens\n- Disk Size: ~20GB\n- Architecture: Dense transformer with hybrid reasoning\n\n## Use Cases\n- Complex reasoning with efficiency\n- General-purpose AI assistant\n- Coding and analysis\n- Tasks requiring adaptive thinking depth\n- Production reasoning workloads",
+      "developer": "Deep Cogito",
+      "versionName": "cogito:32b",
+      "categories": [
+        "Reasoning"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "20Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/deepcogito/cogito-v1-preview-llama-32B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Llama 3.1 License",
+          "url": "https://llama.meta.com/llama3_1/license/"
+        }
+      ]
+    },
+    {
+      "name": "deepseek-r1-14b",
+      "title": "DeepSeek R1 14B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "deepseek-r1:14b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/deepseek-r1-14b.png",
+      "description": "Lighter reasoning model distilled from DeepSeek R1. Good reasoning in a smaller package.",
+      "fullDescription": "## MODEL OVERVIEW ##\nDeepSeek-R1 14B is a distilled version of the full DeepSeek-R1 671B reasoning model. It brings strong reasoning capabilities to a smaller, more accessible size while maintaining impressive performance on math, coding, and logic tasks.\n\n## Key Features\n- **Distilled Reasoning**: Knowledge from 671B model in 14B parameters\n- **Efficient Size**: Fits comfortably on consumer GPUs\n- **Strong Math**: Good performance on mathematical benchmarks\n- **Chain-of-Thought**: Transparent reasoning process\n- **Fast Inference**: Quick responses for interactive use\n\n## Specifications\n- Parameters: 14B (distilled from 671B)\n- Context Length: 128K tokens\n- Disk Size: ~9GB\n- Quantization: Q4_K_M\n\n## Use Cases\n- Mathematical reasoning\n- Logic and analytical tasks\n- Code generation\n- Problem solving on consumer hardware\n- Lightweight reasoning workloads",
+      "developer": "DeepSeek",
+      "versionName": "deepseek-r1:14b",
+      "categories": [
+        "Reasoning"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "9Gi",
+      "requiredGpu": "12Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "33Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://opensource.org/licenses/MIT"
+        }
+      ]
+    },
+    {
+      "name": "nemotron3-nano-4b",
+      "title": "Nemotron-3 Nano 4B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "nemotron-3-nano:4b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/nemotron3-nano-4b.png",
+      "description": "NVIDIA's efficient 4B model optimized for agentic tasks and tool use.",
+      "fullDescription": "## MODEL OVERVIEW ##\nNemotron-3 Nano is NVIDIA's compact yet capable language model optimized for agentic workflows and efficient inference. At just 4B parameters, it delivers impressive tool-use and reasoning capabilities.\n\n## Key Features\n- **Agentic Optimization**: Designed for tool use and multi-step workflows\n- **Ultra-Compact**: Only 4B parameters for minimal resource usage\n- **Fast Inference**: Extremely low latency for real-time applications\n- **Function Calling**: Native support for structured tool interactions\n- **NVIDIA Optimized**: Tuned for NVIDIA GPU inference\n\n## Specifications\n- Parameters: 4B\n- Disk Size: ~2.8GB\n- Architecture: Dense transformer\n- Optimized for: Agentic tasks, tool use\n\n## Use Cases\n- Agentic AI workflows\n- Tool use and function calling\n- Edge deployment\n- Low-latency applications\n- Resource-constrained environments",
+      "developer": "NVIDIA",
+      "versionName": "nemotron-3-nano:4b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "3Gi",
+      "requiredGpu": "5Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "20Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/nvidia/Nemotron-3-Nano-4B-Instruct",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "NVIDIA Open Model License",
+          "url": "https://developer.nvidia.com/open-model-license"
+        }
+      ]
+    },
+    {
+      "name": "devstral-24b",
+      "title": "Devstral 24B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "devstral:24b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/devstral-24b.png",
+      "description": "Mistral AI's best model for agentic coding. Top performance on SWE-bench and coding tasks.",
+      "fullDescription": "## MODEL OVERVIEW ##\nDevstral is Mistral AI's specialized coding model, designed specifically for agentic software engineering tasks. It excels at understanding codebases, making multi-file edits, and solving real-world programming challenges.\n\n## Key Features\n- **Agentic Coding**: Purpose-built for autonomous coding workflows\n- **SWE-bench Leader**: Top performance on software engineering benchmarks\n- **Multi-file Editing**: Understands and modifies entire codebases\n- **128K Context**: Process large codebases and documentation\n- **Tool Use**: Integrates with coding tools and environments\n\n## Specifications\n- Parameters: 24B\n- Context Length: 128K tokens\n- Disk Size: ~14GB\n- Optimized for: Software engineering tasks\n\n## Use Cases\n- Autonomous coding agents\n- Bug fixing and code review\n- Multi-file refactoring\n- Code generation from specifications\n- Software engineering automation",
+      "developer": "Mistral AI",
+      "versionName": "devstral:24b",
+      "categories": [
+        "Code"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "14Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/mistralai/Devstral-Small-2507",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "qwen3-coder-30b",
+      "title": "Qwen 3 Coder 30B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen3-coder:30b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen3-coder-30b.png",
+      "description": "Alibaba's top coding model. Leading benchmarks in code generation and understanding.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen3-Coder 30B is Alibaba's specialized code generation model, achieving top scores on coding benchmarks. Built on the Qwen3 architecture with specific optimizations for programming tasks.\n\n## Key Features\n- **Top Coding Benchmarks**: Leading performance on HumanEval, MBPP, and LiveCodeBench\n- **Multi-Language**: Supports Python, JavaScript, TypeScript, Java, C++, Go, Rust, and more\n- **128K Context**: Process entire codebases and long specifications\n- **Code Understanding**: Deep comprehension of code structure and logic\n- **Instruction Following**: Precise adherence to coding specifications\n\n## Specifications\n- Parameters: 30B\n- Context Length: 128K tokens\n- Disk Size: ~19GB\n- Architecture: Transformer optimized for code\n\n## Use Cases\n- Code generation from natural language\n- Code review and bug detection\n- Refactoring and optimization\n- Multi-language programming\n- Technical documentation generation",
+      "developer": "Alibaba",
+      "versionName": "qwen3-coder:30b",
+      "categories": [
+        "Code"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "19Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "deepseek-coder-v2-16b",
+      "title": "DeepSeek Coder V2 16B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "deepseek-coder-v2:16b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/deepseek-coder-v2-16b.png",
+      "description": "Fast MoE coding model with 128K context. Efficient code generation and completion.",
+      "fullDescription": "## MODEL OVERVIEW ##\nDeepSeek-Coder-V2 is a Mixture-of-Experts code language model that achieves performance comparable to GPT-4 Turbo in code-specific tasks. The 16B version offers fast inference with 128K context support.\n\n## Key Features\n- **MoE Architecture**: Efficient inference with expert routing\n- **128K Context**: Process entire repositories and large codebases\n- **Fast Inference**: Quick code completion and generation\n- **Multi-Language**: Supports 338 programming languages\n- **Strong Performance**: Competitive with much larger models\n\n## Specifications\n- Parameters: 16B (MoE)\n- Context Length: 128K tokens\n- Disk Size: ~8.9GB\n- Supported Languages: 338 programming languages\n\n## Use Cases\n- Fast code completion\n- Code generation across many languages\n- Repository-level understanding\n- Code explanation and documentation\n- Programming assistance",
+      "developer": "DeepSeek",
+      "versionName": "deepseek-coder-v2:16b",
+      "categories": [
+        "Code"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "9Gi",
+      "requiredGpu": "12Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "33Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "DeepSeek License",
+          "url": "https://github.com/deepseek-ai/DeepSeek-Coder-V2/blob/main/LICENSE-MODEL"
+        }
+      ]
+    },
+    {
+      "name": "qwen25-coder-7b",
+      "title": "Qwen 2.5 Coder 7B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen2.5-coder:7b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen25-coder-7b.png",
+      "description": "Fast code completion model. Lightweight 7B for real-time coding assistance.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen2.5-Coder 7B is Alibaba's lightweight code model designed for fast, real-time code completion and generation. It provides excellent coding assistance in a compact package.\n\n## Key Features\n- **Fast Completion**: Optimized for real-time code suggestions\n- **Compact Size**: 7B parameters for quick inference\n- **Multi-Language**: Supports major programming languages\n- **Code Understanding**: Good comprehension of code patterns\n- **Low Latency**: Ideal for IDE integration\n\n## Specifications\n- Parameters: 7B\n- Context Length: 32K tokens\n- Disk Size: ~4.7GB\n- Architecture: Dense transformer\n\n## Use Cases\n- Real-time code completion\n- Code generation\n- Quick code explanations\n- Programming on consumer hardware\n- IDE integration",
+      "developer": "Alibaba",
+      "versionName": "qwen2.5-coder:7b",
+      "categories": [
+        "Code"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "5Gi",
+      "requiredGpu": "8Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "25Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "qwen3-embedding-8b",
+      "title": "Qwen 3 Embedding 8B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen3-embedding:8b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen3-embedding-8b.png",
+      "description": "State-of-the-art embedding model for RAG. Latest Qwen architecture with top retrieval scores.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen3-Embedding 8B is Alibaba's latest text embedding model, achieving state-of-the-art results on retrieval and semantic similarity benchmarks. Built on the Qwen3 architecture for superior text representation.\n\n## Key Features\n- **State-of-the-Art**: Top scores on MTEB and retrieval benchmarks\n- **High Dimension**: Rich embeddings for precise similarity matching\n- **Multilingual**: Strong performance across many languages\n- **8192 Token Input**: Process long documents for embedding\n- **Versatile**: Dense and sparse retrieval support\n\n## Specifications\n- Parameters: 8B\n- Max Sequence Length: 8192 tokens\n- Disk Size: ~4.7GB\n- Architecture: Qwen3-based encoder\n\n## Use Cases\n- Retrieval-Augmented Generation (RAG)\n- Semantic search\n- Document similarity\n- Clustering and classification\n- Knowledge base construction",
+      "developer": "Alibaba",
+      "versionName": "qwen3-embedding:8b",
+      "categories": [
+        "Embedding"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "5Gi",
+      "requiredGpu": "0",
+      "requiredCpu": "150m",
+      "limitedMemory": "33Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3-Embedding-8B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "nomic-embed-text",
+      "title": "Nomic Embed Text v1.5",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "nomic-embed-text:v1.5",
+      "cfgType": "model",
+      "icon": "/api/market/icons/nomic-embed-text.png",
+      "description": "Lightweight embedding model for RAG. 8192 token context, outperforms OpenAI Ada-002.",
+      "fullDescription": "## MODEL OVERVIEW ##\nNomic Embed is a text embedding model from Nomic AI which supports 8192 length sequences. It outperforms OpenAI Ada-002 and text-embedding-3-small on both short and long context tasks.\n\n## Key Features\n- **8192 Token Context**: Process long documents for embedding\n- **Outperforms Ada-002**: Better than OpenAI's popular embedding models\n- **Lightweight**: Only 274MB for fast loading and inference\n- **Multimodal Aligned**: nomic-embed-vision-v1.5 shares the same embedding space\n- **CPU-Friendly**: Runs efficiently on CPU\n\n## Specifications\n- Parameters: 137M\n- Max Sequence Length: 8192 tokens\n- Embedding Dimension: 768\n- Disk Size: ~274MB\n\n## Use Cases\n- Retrieval-Augmented Generation (RAG)\n- Semantic search\n- Document similarity matching\n- Text classification\n- Lightweight embedding pipelines",
+      "developer": "Nomic AI",
+      "versionName": "nomic-embed-text:v1.5",
+      "categories": [
+        "Embedding"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "300Mi",
+      "requiredGpu": "0",
+      "requiredCpu": "150m",
+      "limitedMemory": "20Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "mxbai-embed-large",
+      "title": "MixedBread Embed Large",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "mxbai-embed-large:335m",
+      "cfgType": "model",
+      "icon": "/api/market/icons/mxbai-embed-large.png",
+      "description": "Top English embedding model. Excellent retrieval quality from MixedBread AI.",
+      "fullDescription": "## MODEL OVERVIEW ##\nmxbai-embed-large is a high-quality text embedding model from MixedBread AI, achieving top scores on English embedding benchmarks. It provides excellent retrieval quality in a compact 335M parameter package.\n\n## Key Features\n- **Top English Embeddings**: Leading scores on English retrieval benchmarks\n- **High Quality**: Excellent precision for semantic similarity\n- **Compact Size**: 335M parameters, only 670MB on disk\n- **512 Token Input**: Standard embedding context length\n- **CPU-Friendly**: Efficient inference on CPU\n\n## Specifications\n- Parameters: 335M\n- Max Sequence Length: 512 tokens\n- Embedding Dimension: 1024\n- Disk Size: ~670MB\n\n## Use Cases\n- RAG pipelines\n- Semantic search (English)\n- Document retrieval\n- Text similarity matching\n- Classification and clustering",
+      "developer": "MixedBread AI",
+      "versionName": "mxbai-embed-large:335m",
+      "categories": [
+        "Embedding"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "700Mi",
+      "requiredGpu": "0",
+      "requiredCpu": "150m",
+      "limitedMemory": "20Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "all-minilm",
+      "title": "All-MiniLM",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "all-minilm:latest",
+      "cfgType": "model",
+      "icon": "/api/market/icons/all-minilm.png",
+      "description": "Ultra-tiny embedding model. Only 46MB, perfect for lightweight RAG on any hardware.",
+      "fullDescription": "## MODEL OVERVIEW ##\nAll-MiniLM is a tiny, ultra-fast embedding model based on Microsoft's MiniLM architecture. At only 46MB, it can run on virtually any hardware while providing useful semantic embeddings.\n\n## Key Features\n- **Ultra-Tiny**: Only 46MB, smallest practical embedding model\n- **Blazing Fast**: Near-instant embedding generation\n- **Low Resources**: Runs on any CPU, even edge devices\n- **Good Quality**: Reasonable embedding quality for its size\n- **Battle-Tested**: One of the most widely used embedding models\n\n## Specifications\n- Parameters: ~33M\n- Max Sequence Length: 256 tokens\n- Embedding Dimension: 384\n- Disk Size: ~46MB\n\n## Use Cases\n- Lightweight RAG pipelines\n- Edge device deployment\n- Rapid prototyping\n- High-throughput embedding\n- Resource-constrained environments",
+      "developer": "Microsoft",
+      "versionName": "all-minilm:latest",
+      "categories": [
+        "Embedding"
+      ],
+      "requiredMemory": "2000Mi",
+      "requiredDisk": "50Mi",
+      "requiredGpu": "0",
+      "requiredCpu": "150m",
+      "limitedMemory": "10Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "qwen3-vl-30b",
+      "title": "Qwen 3 VL 30B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen3-vl:30b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen3-vl-30b.png",
+      "description": "Best open vision-language model. Understand images, charts, documents, and video.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen3-VL 30B is Alibaba's flagship vision-language model, achieving state-of-the-art performance on multimodal benchmarks. It excels at understanding images, charts, documents, and video content.\n\n## Key Features\n- **State-of-the-Art Vision**: Top scores on vision-language benchmarks\n- **Multi-Format Input**: Images, charts, documents, screenshots, video\n- **OCR Capability**: Extract text from images and documents\n- **Visual Reasoning**: Complex reasoning about visual content\n- **128K Context**: Long context for multi-image and video tasks\n\n## Specifications\n- Parameters: 30B\n- Context Length: 128K tokens\n- Modalities: Text + Images + Video\n- Disk Size: ~20GB\n\n## Use Cases\n- Image understanding and description\n- Document and chart analysis\n- Visual question answering\n- OCR and text extraction\n- Video understanding",
+      "developer": "Alibaba",
+      "versionName": "qwen3-vl:30b",
+      "categories": [
+        "Vision"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "20Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3-VL-30B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "qwen3-vl-8b",
+      "title": "Qwen 3 VL 8B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen3-vl:8b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen3-vl-8b.png",
+      "description": "Fast vision-language model. Quick image understanding in a compact 8B package.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen3-VL 8B is Alibaba's compact vision-language model, providing fast multimodal understanding with lower resource requirements. Great for interactive image analysis and visual Q&A.\n\n## Key Features\n- **Fast Vision**: Quick image processing and understanding\n- **Compact Size**: 8B parameters for accessible deployment\n- **Multi-Format**: Process images, charts, and documents\n- **OCR Support**: Extract text from visual content\n- **Low Latency**: Responsive for interactive use\n\n## Specifications\n- Parameters: 8B\n- Context Length: 32K tokens\n- Modalities: Text + Images\n- Disk Size: ~6.1GB\n\n## Use Cases\n- Quick image analysis\n- Visual question answering\n- Document scanning and OCR\n- Chart interpretation\n- Interactive multimodal chat",
+      "developer": "Alibaba",
+      "versionName": "qwen3-vl:8b",
+      "categories": [
+        "Vision"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "7Gi",
+      "requiredGpu": "10Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "25Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3-VL-8B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "minicpm-v-8b",
+      "title": "MiniCPM-V 8B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "minicpm-v:8b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/minicpm-v-8b.png",
+      "description": "Compact vision model with strong OCR. Handles documents, handwriting, and tables.",
+      "fullDescription": "## MODEL OVERVIEW ##\nMiniCPM-V is a series of efficient end-side multimodal LLMs from OpenBMB, which accept images, videos and text as inputs. MiniCPM-V 4.5 with 8B parameters outperforms GPT-4o-latest and Gemini-2.0 Pro in vision-language capabilities.\n\n## Key Features\n- **State-of-the-Art Vision**: Outperforms GPT-4o on vision benchmarks at 8B params\n- **Efficient Video Understanding**: High-FPS and long video processing with 96x compression\n- **Hybrid Thinking**: Fast thinking for common tasks, deep thinking for complex problems\n- **Strong OCR**: Excellent handwritten text and document parsing\n- **High Resolution**: Process images up to 1.8 million pixels\n\n## Specifications\n- Parameters: 8B\n- Max Resolution: 1344x1344 (1.8M pixels)\n- Modalities: Text + Images + Video\n- Disk Size: ~5.5GB\n\n## Use Cases\n- Document OCR and parsing\n- Handwriting recognition\n- Table extraction\n- Image understanding\n- Video analysis",
+      "developer": "OpenBMB",
+      "versionName": "minicpm-v:8b",
+      "categories": [
+        "Vision"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "6Gi",
+      "requiredGpu": "10Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "25Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/openbmb/MiniCPM-V-2_6",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "MiniCPM License",
+          "url": "https://github.com/OpenBMB/MiniCPM/blob/main/LICENSE"
+        }
+      ]
+    },
+    {
+      "name": "glm-ocr",
+      "title": "GLM OCR",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "glm-ocr:latest",
+      "cfgType": "model",
+      "icon": "/api/market/icons/glm-ocr.png",
+      "description": "Specialized document OCR model. Supports 8 languages with high accuracy text extraction.",
+      "fullDescription": "## MODEL OVERVIEW ##\nGLM-OCR is a specialized optical character recognition model from ZhipuAI, designed specifically for document text extraction. It supports 8 languages and excels at extracting text from complex document layouts.\n\n## Key Features\n- **8 Languages**: Chinese, English, Japanese, Korean, French, German, Spanish, Portuguese\n- **Document Layout**: Understands complex document structures\n- **High Accuracy**: Precise text extraction from various document types\n- **Table Recognition**: Extract structured data from tables\n- **Compact Size**: Only 2.2GB for fast deployment\n\n## Specifications\n- Parameters: ~2B\n- Supported Languages: 8\n- Disk Size: ~2.2GB\n- Specialization: Document OCR\n\n## Use Cases\n- Document digitization\n- Invoice and receipt processing\n- Multilingual document OCR\n- Table data extraction\n- Form processing",
+      "developer": "ZhipuAI",
+      "versionName": "glm-ocr:latest",
+      "categories": [
+        "Vision",
+        "OCR"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "3Gi",
+      "requiredGpu": "5Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "20Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/THUDM/GLM-OCR",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "qwen3-4b",
+      "title": "Qwen 3 4B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen3:4b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen3-4b.png",
+      "description": "Surprisingly capable 4B model with hybrid thinking. Great quality for its tiny size.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen3 4B is Alibaba's compact model that punches well above its weight class. Despite only 4B parameters, it supports hybrid thinking modes and delivers impressive results across diverse tasks.\n\n## Key Features\n- **Hybrid Thinking**: Toggle between fast and deep reasoning modes\n- **Compact Size**: Only 2.5GB, runs on almost any hardware\n- **Multilingual**: Supports 100+ languages\n- **Fast Inference**: Very low latency for instant responses\n- **Versatile**: Handles chat, coding, and reasoning tasks\n\n## Specifications\n- Parameters: 4B\n- Context Length: 32K tokens\n- Disk Size: ~2.5GB\n- Architecture: Dense transformer\n\n## Use Cases\n- Lightweight AI assistant\n- Quick Q&A and chat\n- Basic coding assistance\n- Edge and mobile deployment\n- Resource-constrained environments",
+      "developer": "Alibaba",
+      "versionName": "qwen3:4b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "3Gi",
+      "requiredGpu": "5Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "20Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3-4B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "qwen35-4b",
+      "title": "Qwen 3.5 4B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen3.5:4b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen35-4b.png",
+      "description": "Latest small Qwen model with improved architecture. Best quality under 4GB.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen3.5 4B is the latest generation of Alibaba's small model, featuring architectural improvements including Gated Delta Networks and expanded language support for 201 languages.\n\n## Key Features\n- **Latest Architecture**: Gated Delta Networks with sparse MoE\n- **201 Languages**: Broadest language support in small models\n- **Efficient Inference**: High throughput with minimal latency\n- **Multimodal Foundation**: Built on unified vision-language training\n- **Small Footprint**: Only 3.4GB on disk\n\n## Specifications\n- Parameters: 4B\n- Context Length: 32K tokens\n- Disk Size: ~3.4GB\n- Languages: 201\n\n## Use Cases\n- Lightweight multilingual assistant\n- Fast chat and Q&A\n- Edge deployment\n- Basic coding tasks\n- Quick document analysis",
+      "developer": "Alibaba",
+      "versionName": "qwen3.5:4b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "4Gi",
+      "requiredGpu": "6Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "20Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3.5-4B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "smollm2-17b",
+      "title": "SmolLM2 1.7B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "smollm2:1.7b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/smollm2-17b.png",
+      "description": "Instant responses from HuggingFace's tiny model. Only 1.8GB for basic tasks.",
+      "fullDescription": "## MODEL OVERVIEW ##\nSmolLM2 is HuggingFace's compact language model designed for instant responses and minimal resource usage. At only 1.7B parameters, it provides useful AI assistance with near-zero latency.\n\n## Key Features\n- **Instant Responses**: Near-zero latency for real-time interaction\n- **Ultra-Compact**: Only 1.8GB on disk\n- **Low Resources**: Runs on minimal hardware\n- **Good for Size**: Surprisingly capable for 1.7B parameters\n- **Open Source**: Fully open with permissive license\n\n## Specifications\n- Parameters: 1.7B\n- Context Length: 8K tokens\n- Disk Size: ~1.8GB\n- Architecture: Dense transformer\n\n## Use Cases\n- Quick Q&A\n- Simple text generation\n- Edge deployment\n- Prototyping and testing\n- Ultra-low-resource environments",
+      "developer": "HuggingFace",
+      "versionName": "smollm2:1.7b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "2000Mi",
+      "requiredDisk": "2Gi",
+      "requiredGpu": "4Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "15Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B-Instruct",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "qwen35-35b",
+      "title": "Qwen 3.5 35B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen3.5:35b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen35-35b.png",
+      "description": "Largest Qwen 3.5 that fits in VRAM. Best quality from the latest generation.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen3.5 35B is the largest model in the Qwen 3.5 generation that fits within standard GPU VRAM limits. It represents the peak of Alibaba's latest open model technology.\n\n## Key Features\n- **Largest Qwen 3.5**: Maximum quality from the latest generation\n- **Unified Vision-Language**: Early fusion multimodal training\n- **Efficient Architecture**: Gated Delta Networks with sparse MoE\n- **201 Languages**: Broadest multilingual coverage\n- **Scalable RL**: Reinforcement learning from million-agent environments\n\n## Specifications\n- Parameters: 35B\n- Context Length: 128K tokens\n- Disk Size: ~24GB\n- Architecture: Hybrid with MoE\n\n## Use Cases\n- Maximum quality chat and reasoning\n- Complex analysis and research\n- Professional translation\n- Advanced code generation\n- Enterprise AI applications",
+      "developer": "Alibaba",
+      "versionName": "qwen3.5:35b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "24Gi",
+      "requiredGpu": "23.5Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3.5-35B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "qwen3-32b",
+      "title": "Qwen 3 32B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen3:32b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen3-32b.png",
+      "description": "Dense 32B model with excellent all-around performance. Hybrid thinking support.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen3 32B is Alibaba's dense 32B parameter model, offering excellent all-around performance across chat, reasoning, and coding tasks. It supports hybrid thinking with toggleable reasoning modes.\n\n## Key Features\n- **Dense 32B**: All parameters active for maximum quality\n- **Hybrid Thinking**: Toggle between fast and deep reasoning\n- **128K Context**: Large context window for complex tasks\n- **All-Around Excellence**: Strong at chat, code, math, and reasoning\n- **Multilingual**: Supports 100+ languages\n\n## Specifications\n- Parameters: 32B (dense)\n- Context Length: 128K tokens\n- Disk Size: ~20GB\n- Quantization: Q4_K_M\n\n## Use Cases\n- General-purpose AI assistant\n- Complex reasoning tasks\n- Code generation and review\n- Research and analysis\n- Production deployments",
+      "developer": "Alibaba",
+      "versionName": "qwen3:32b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "20Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3-32B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "mistral-small-24b",
+      "title": "Mistral Small 24B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "mistral-small:24b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/mistral-small-24b.png",
+      "description": "Mistral's model with native tool use and function calling. Great for agentic workflows.",
+      "fullDescription": "## MODEL OVERVIEW ##\nMistral Small 24B is Mistral AI's efficient model with native function calling and tool use capabilities. Designed for agentic workflows where the model needs to interact with external tools and APIs.\n\n## Key Features\n- **Native Tool Use**: Built-in function calling without prompt engineering\n- **Structured Outputs**: Reliable JSON and structured response generation\n- **24B Parameters**: Strong capability in a manageable size\n- **Fast Inference**: Optimized for responsive interactions\n- **Multilingual**: Good performance across many languages\n\n## Specifications\n- Parameters: 24B\n- Context Length: 128K tokens\n- Disk Size: ~14GB\n- Specialization: Function calling and tool use\n\n## Use Cases\n- Agentic AI workflows\n- API integration and tool use\n- Structured data extraction\n- Automated task execution\n- Chatbots with external tool access",
+      "developer": "Mistral AI",
+      "versionName": "mistral-small:24b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "14Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/mistralai/Mistral-Small-24B-Instruct-2501",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "dolphin3-8b",
+      "title": "Dolphin 3 8B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "dolphin3:8b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/dolphin3-8b.png",
+      "description": "Uncensored model with function calling. No content restrictions, supports tool use.",
+      "fullDescription": "## MODEL OVERVIEW ##\nDolphin 3 is an uncensored model from Cognitive Computations with built-in function calling capabilities. It removes content restrictions while maintaining strong instruction-following and tool-use abilities.\n\n## Key Features\n- **Uncensored**: No artificial content restrictions or refusals\n- **Function Calling**: Native tool use and API interaction\n- **8B Parameters**: Compact and fast\n- **Instruction Following**: Strong adherence to user instructions\n- **Versatile**: General-purpose with agentic capabilities\n\n## Specifications\n- Parameters: 8B\n- Context Length: 32K tokens\n- Disk Size: ~4.9GB\n- Architecture: Dense transformer\n\n## Use Cases\n- Unrestricted AI assistance\n- Tool use and function calling\n- Creative writing without limitations\n- Research on uncensored models\n- Custom AI agent building",
+      "developer": "Cognitive Computations",
+      "versionName": "dolphin3:8b",
+      "categories": [
+        "General",
+        "Uncensored"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "5Gi",
+      "requiredGpu": "8Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "25Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/cognitivecomputations/Dolphin3.0-Llama3.1-8B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Llama 3.1 License",
+          "url": "https://llama.meta.com/llama3_1/license/"
+        }
+      ]
+    },
+    {
+      "name": "medgemma-27b",
+      "title": "MedGemma 27B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "alibayram/medgemma:27b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/medgemma-27b.png",
+      "description": "Google's medical text reasoning model. Specialized for clinical and biomedical tasks.",
+      "fullDescription": "## MODEL OVERVIEW ##\nMedGemma 27B is Google's medical-specialized language model built on the Gemma architecture. It is specifically trained and fine-tuned for clinical reasoning, medical text understanding, and biomedical tasks.\n\n## Key Features\n- **Medical Specialization**: Trained on medical and biomedical data\n- **Clinical Reasoning**: Strong performance on medical reasoning benchmarks\n- **27B Parameters**: Large enough for complex medical analysis\n- **Evidence-Based**: Generates responses grounded in medical knowledge\n- **Research Tool**: Designed to assist medical professionals and researchers\n\n## Specifications\n- Parameters: 27B\n- Disk Size: ~17GB\n- Specialization: Medical and biomedical\n- Architecture: Gemma-based\n\n## Important Notice\nThis model is intended for research and educational purposes. It should not be used as a sole basis for medical decisions. Always consult qualified healthcare professionals.\n\n## Use Cases\n- Medical text analysis\n- Clinical note summarization\n- Biomedical research assistance\n- Medical question answering\n- Health information extraction",
+      "developer": "Google",
+      "versionName": "alibayram/medgemma:27b",
+      "categories": [
+        "Medical"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "17Gi",
+      "requiredGpu": "23Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "40Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/google/medgemma-27b",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Gemma Terms of Use",
+          "url": "https://ai.google.dev/gemma/terms"
+        }
+      ]
+    },
+    {
+      "name": "medgemma-4b",
+      "title": "MedGemma 4B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "alibayram/medgemma:4b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/medgemma-4b.png",
+      "description": "Google's medical multimodal model. Analyze medical images and text in a compact 4B package.",
+      "fullDescription": "## MODEL OVERVIEW ##\nMedGemma 4B is Google's compact medical multimodal model, capable of understanding both medical text and medical images. It brings medical AI capabilities to resource-constrained environments.\n\n## Key Features\n- **Medical Multimodal**: Process both medical text and images\n- **Compact Size**: Only 4B parameters, 2.5GB on disk\n- **Medical Image Understanding**: Analyze X-rays, scans, and medical imagery\n- **Clinical Text**: Strong medical text comprehension\n- **Accessible**: Runs on consumer hardware\n\n## Specifications\n- Parameters: 4B\n- Modalities: Text + Medical Images\n- Disk Size: ~2.5GB\n- Architecture: Gemma-based multimodal\n\n## Important Notice\nThis model is intended for research and educational purposes. It should not be used as a sole basis for medical decisions.\n\n## Use Cases\n- Medical image analysis\n- Clinical text understanding\n- Medical Q&A\n- Health research assistance\n- Medical education tools",
+      "developer": "Google",
+      "versionName": "alibayram/medgemma:4b",
+      "categories": [
+        "Medical"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "3Gi",
+      "requiredGpu": "5Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "20Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/google/medgemma-4b",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Gemma Terms of Use",
+          "url": "https://ai.google.dev/gemma/terms"
+        }
+      ]
+    },
+    {
+      "name": "translategemma-12b",
+      "title": "TranslateGemma 12B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "translategemma:12b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/translategemma-12b.png",
+      "description": "Google's translation model supporting 55 languages. Specialized for high-quality translation.",
+      "fullDescription": "## MODEL OVERVIEW ##\nTranslateGemma is Google's specialized translation model built on the Gemma architecture. It supports 55 languages and is specifically optimized for high-quality, natural translation between language pairs.\n\n## Key Features\n- **55 Languages**: Broad language pair support\n- **Translation-Specialized**: Purpose-built for translation quality\n- **Natural Output**: Produces fluent, natural-sounding translations\n- **Context-Aware**: Understands context for accurate translation\n- **12B Parameters**: Good balance of quality and speed\n\n## Specifications\n- Parameters: 12B\n- Supported Languages: 55\n- Disk Size: ~8.1GB\n- Architecture: Gemma-based\n\n## Use Cases\n- Document translation\n- Real-time chat translation\n- Website localization\n- Multilingual content creation\n- Cross-language communication",
+      "developer": "Google",
+      "versionName": "translategemma:12b",
+      "categories": [
+        "Translation"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "9Gi",
+      "requiredGpu": "14Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "33Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/google/translategemma-12b",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Gemma Terms of Use",
+          "url": "https://ai.google.dev/gemma/terms"
+        }
+      ]
+    },
+    {
+      "name": "qwen35-9b",
+      "title": "Qwen 3.5 9B",
+      "type": "model",
+      "backend": "ollama",
+      "modelId": "qwen3.5:9b",
+      "cfgType": "model",
+      "icon": "/api/market/icons/qwen35-9b.png",
+      "description": "Balanced Qwen 3.5 model for code and general tasks. Great mid-range option.",
+      "fullDescription": "## MODEL OVERVIEW ##\nQwen3.5 9B is a balanced mid-range model from Alibaba's latest generation, offering a good mix of coding ability and general-purpose performance. It sits in the sweet spot between speed and capability.\n\n## Key Features\n- **Balanced Performance**: Good at both code and general tasks\n- **Latest Architecture**: Gated Delta Networks with efficiency optimizations\n- **201 Languages**: Broadest multilingual coverage\n- **Unified Multimodal**: Built on vision-language foundation\n- **Mid-Range Size**: Good speed-quality tradeoff\n\n## Specifications\n- Parameters: 9B\n- Context Length: 128K tokens\n- Disk Size: ~6.6GB\n- Architecture: Hybrid efficient transformer\n\n## Use Cases\n- General-purpose AI assistant\n- Code generation and review\n- Multilingual communication\n- Document analysis\n- Balanced workloads needing speed and quality",
+      "developer": "Alibaba",
+      "versionName": "qwen3.5:9b",
+      "categories": [
+        "General"
+      ],
+      "requiredMemory": "4200Mi",
+      "requiredDisk": "7Gi",
+      "requiredGpu": "10Gi",
+      "requiredCpu": "150m",
+      "limitedMemory": "25Gi",
+      "limitedCPU": "6200m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "locale": [
+        "en-US"
+      ],
+      "sourceCode": "https://huggingface.co/Qwen/Qwen3.5-9B",
+      "dependencies": [
+        {
+          "name": "ollamav2",
+          "type": "application",
+          "version": ">=1.0.3"
+        }
+      ],
+      "status": "active",
+      "hfRepo": "",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://www.apache.org/licenses/LICENSE-2.0"
+        }
+      ]
+    },
+    {
+      "name": "openwebui",
+      "cfgType": "app",
+      "chartName": "openwebui",
+      "icon": "/api/market/icons/openwebui.png",
+      "description": "User-friendly WebUI for LLMs",
+      "fullDescription": "Open WebUI(Formerly Ollama WebUI) is an extensible, feature-rich, and user-friendly self-hosted WebUI designed to operate entirely offline. It supports various LLM runners, including Ollama and OpenAI-compatible APIs. For more information, be sure to check out our Open WebUI Documentation.\n\nKey Features of Open WebUI\n- Ollama/OpenAI API Integration: Effortlessly integrate OpenAI-compatible APIs for versatile conversations alongside Ollama models. Customize the OpenAI API URL to link with LMStudio, GroqCloud, Mistral, OpenRouter, and more.\n\n- Pipelines, Open WebUI Plugin Support: Seamlessly integrate custom logic and Python libraries into Open WebUI using Pipelines Plugin Framework. Launch your Pipelines instance, set the OpenAI URL to the Pipelines URL, and explore endless possibilities. Examples include Function Calling, User Rate Limiting to control access, Usage Monitoring with tools like Langfuse, Live Translation with LibreTranslate for multilingual support, Toxic Message Filtering and much more.\n\n- Responsive Design: Enjoy a seamless experience across Desktop PC, Laptop, and Mobile devices.\n\n- Progressive Web App (PWA) for Mobile: Enjoy a native app-like experience on your mobile device with our PWA, providing offline access on localhost and a seamless user interface.\n\n- Full Markdown and LaTeX Support: Elevate your LLM experience with comprehensive Markdown and LaTeX capabilities for enriched interaction.\n\n- Hands-Free Voice/Video Call: Experience seamless communication with integrated hands-free voice and video call features, allowing for a more dynamic and interactive chat environment.\n\n- Model Builder: Easily create Ollama models via the Web UI. Create and add custom characters/agents, customize chat elements, and import models effortlessly through Open WebUI Community integration.\n\n- Native Python Function Calling Tool: Enhance your LLMs with built-in code editor support in the tools workspace. Bring Your Own Function (BYOF) by simply adding your pure Python functions, enabling seamless integration with LLMs.\n\n- Local RAG Integration: Dive into the future of chat interactions with groundbreaking Retrieval Augmented Generation (RAG) support. This feature seamlessly integrates document interactions into your chat experience. You can load documents directly into the chat or add files to your document library, effortlessly accessing them using the # command before a query.\n\n- Web Search for RAG: Perform web searches using providers like SearXNG, Google PSE, Brave Search, serpstack, serper, Serply, DuckDuckGo and TavilySearch and inject the results directly into your chat experience.\n\n- Web Browsing Capability: Seamlessly integrate websites into your chat experience using the # command followed by a URL. This feature allows you to incorporate web content directly into your conversations, enhancing the richness and depth of your interactions.\n\n- Image Generation Integration: Seamlessly incorporate image generation capabilities using options such as AUTOMATIC1111 API or ComfyUI (local), and OpenAI's DALL-E (external), enriching your chat experience with dynamic visual content.\n\n- Many Models Conversations: Effortlessly engage with various models simultaneously, harnessing their unique strengths for optimal responses. Enhance your experience by leveraging a diverse set of models in parallel.\n\n- Role-Based Access Control (RBAC): Ensure secure access with restricted permissions; only authorized individuals can access your Ollama, and exclusive model creation/pulling rights are reserved for administrators.\n\n- Multilingual Support: Experience Open WebUI in your preferred language with our internationalization (i18n) support. Join us in expanding our supported languages! We're actively seeking contributors!\n\n- Continuous Updates: We are committed to improving Open WebUI with regular updates, fixes, and new features.",
+      "upgradeDescription": "Upgrade app version to 0.8.12",
+      "promoteImage": [
+        "/api/market/screenshots/openwebui/1.webp",
+        "/api/market/screenshots/openwebui/2.webp",
+        "/api/market/screenshots/openwebui/3.webp",
+        "/api/market/screenshots/openwebui/4.webp"
+      ],
+      "developer": "OpenWebUI",
+      "title": "Open WebUI",
+      "entrances": [
+        {
+          "name": "openwebui",
+          "host": "openwebui-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/openwebui.png",
+          "title": "Open WebUI",
+          "authLevel": "private",
+          "openMethod": "default",
+          "invisible": false
+        }
+      ],
+      "version": "1.0.25",
+      "versionName": "0.8.12",
+      "categories": [
+        "AI",
+        "Productivity"
+      ],
+      "rating": 0,
+      "requiredMemory": "512Mi",
+      "requiredDisk": "100Mi",
+      "requiredCpu": "50m",
+      "limitedMemory": "8Gi",
+      "limitedCPU": "2000m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        },
+        {
+          "name": "ollamav2",
+          "version": ">=1.0.3",
+          "type": "application"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://docs.openwebui.com/",
+      "website": "https://openwebui.com/",
+      "sourceCode": "https://github.com/open-webui/open-webui",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/open-webui/open-webui?tab=MIT-1-ov-file#readme"
+        }
+      ],
+      "hasChart": true,
+      "featuredImage": "/api/market/screenshots/openwebui/featured.webp",
+      "images": [
+        "ghcr.io/open-webui/open-webui:0.8.12",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "openwebui-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
     }
   ],
   "categories": [],
