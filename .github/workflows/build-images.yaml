@@ -159,7 +159,7 @@ jobs:
           CLI_BUILD=false
           if [ "$BUILD_ALL" = "true" ] || [ "$SHARED_CHANGED" = "true" ]; then
             CLI_BUILD=true
-          elif echo "$CHANGED" | grep -q "^cmd/cli\|^pkg/\|^internal/\|^install.sh\|^VERSION"; then
+          elif echo "$CHANGED" | grep -q "^cmd/cli\|^pkg/\|^internal/\|^deploy/\|^install.sh\|^VERSION"; then
             CLI_BUILD=true
           fi
 
