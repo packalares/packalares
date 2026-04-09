@@ -33,6 +33,10 @@ spec:
         volumeMounts:
         - name: data
           mountPath: /packalares/data
+          mountPropagation: HostToContainer
+        - name: mounts
+          mountPath: /packalares/data/Mounts
+          mountPropagation: HostToContainer
         livenessProbe:
           httpGet:
             path: /api/nodes/
@@ -56,6 +60,10 @@ spec:
       - name: data
         hostPath:
           path: /packalares/data
+          type: DirectoryOrCreate
+      - name: mounts
+        hostPath:
+          path: /packalares/mounts
           type: DirectoryOrCreate
 
 ---
