@@ -36,3 +36,5 @@ frontend-src/
 frontend-app/node_modules/
 frontend-app/dist/
 frontend-app/.quasar/
+docs/
+scripts/
