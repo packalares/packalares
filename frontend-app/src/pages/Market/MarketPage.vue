@@ -40,19 +40,19 @@
 
         <div class="nav-item" :class="{ active: showModels && activeCategory === 'all' }" @click="showModels = true; activeTab = 'discover'; activeCategory = 'all'; router.replace({ query: { view: 'models' } })">
           <q-icon name="sym_r_model_training" size="17px" class="nav-icon" />
-          <span class="nav-text">Models</span>
+          <span class="nav-text">Ollama Models</span>
           <span class="nav-badge">{{ modelCount }}</span>
         </div>
         <div
-          v-for="mb in modelBackends"
-          :key="mb.name"
+          v-for="mc in modelCategories"
+          :key="mc.name"
           class="nav-item nav-item-indent"
-          :class="{ active: showModels && activeCategory === mb.name }"
-          @click="showModels = true; activeTab = 'discover'; activeCategory = mb.name; router.replace({ query: { view: 'models', category: mb.name } })"
+          :class="{ active: showModels && activeCategory === mc.name }"
+          @click="showModels = true; activeTab = 'discover'; activeCategory = mc.name; router.replace({ query: { view: 'models', category: mc.name } })"
         >
-          <q-icon :name="mb.name === 'ollama' ? 'sym_r_smart_toy' : 'sym_r_memory'" size="17px" class="nav-icon" />
-          <span class="nav-text">{{ mb.label }}</span>
-          <span class="nav-badge">{{ mb.count }}</span>
+          <q-icon :name="modelCategoryIcon(mc.name)" size="17px" class="nav-icon" />
+          <span class="nav-text">{{ mc.name }}</span>
+          <span class="nav-badge">{{ mc.count }}</span>
         </div>
       </div>
     </div>
@@ -83,7 +83,7 @@
           All Models
         </div>
         <div class="market-section-title" v-else-if="showModels">
-          {{ activeCategory === 'ollama' ? 'Ollama Models' : activeCategory === 'vllm' ? 'vLLM Models' : activeCategory }} Models
+          {{ activeCategory }}
         </div>
         <div class="market-section-title" v-else-if="activeCategory === 'all'">
           All Apps
@@ -945,20 +945,42 @@ const appCategories = computed(() => {
   }));
 });
 
-// Model backend groupings
-const modelBackends = computed(() => {
+// Model category groupings
+const modelCategories = computed(() => {
   const models = apps.value.filter(a => a.type === 'model');
-  const backends: Record<string, number> = {};
+  const cats: Record<string, number> = {};
   models.forEach(m => {
-    const b = m.backend || 'other';
-    backends[b] = (backends[b] || 0) + 1;
+    (m.categories || ['Other']).forEach(c => {
+      cats[c] = (cats[c] || 0) + 1;
+    });
   });
-  return Object.entries(backends).map(([name, count]) => ({
-    name,
-    label: name === 'ollama' ? 'Ollama' : name === 'vllm' ? 'vLLM' : name,
-    count
-  }));
+  // Sort: General first, then alphabetical
+  const order = ['General', 'Reasoning', 'Code', 'Vision', 'Embedding', 'Medical', 'Translation', 'OCR', 'Uncensored'];
+  return Object.entries(cats)
+    .sort(([a], [b]) => {
+      const ai = order.indexOf(a), bi = order.indexOf(b);
+      if (ai >= 0 && bi >= 0) return ai - bi;
+      if (ai >= 0) return -1;
+      if (bi >= 0) return 1;
+      return a.localeCompare(b);
+    })
+    .map(([name, count]) => ({ name, count }));
 });
+
+function modelCategoryIcon(name: string): string {
+  const icons: Record<string, string> = {
+    'General': 'sym_r_chat',
+    'Reasoning': 'sym_r_psychology',
+    'Code': 'sym_r_code',
+    'Vision': 'sym_r_visibility',
+    'Embedding': 'sym_r_data_array',
+    'Medical': 'sym_r_medical_services',
+    'Translation': 'sym_r_translate',
+    'OCR': 'sym_r_document_scanner',
+    'Uncensored': 'sym_r_lock_open',
+  };
+  return icons[name] || 'sym_r_smart_toy';
+}
 
 const modelCount = computed(() => apps.value.filter(a => a.type === 'model').length);
 
@@ -969,7 +991,9 @@ const filteredApps = computed(() => {
   if (showModels.value) {
     list = list.filter(a => a.type === 'model');
     if (activeCategory.value !== 'all') {
-      list = list.filter(a => (a.backend || 'other') === activeCategory.value);
+      list = list.filter(a =>
+        a.categories && a.categories.some(c => c === activeCategory.value)
+      );
     }
   } else {
     list = list.filter(a => a.type !== 'model');

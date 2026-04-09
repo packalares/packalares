@@ -382,7 +382,7 @@
       "developer": "BAAI",
       "versionName": "bge-m3:567m-fp16",
       "categories": [
-        "AI"
+        "Embedding"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "50Mi",
@@ -525,7 +525,8 @@
       "developer": "Google",
       "versionName": "gemma4:31b",
       "categories": [
-        "AI"
+        "General",
+        "Vision"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "20Gi",
@@ -570,7 +571,8 @@
       "developer": "Google",
       "versionName": "gemma4:e4b",
       "categories": [
-        "AI"
+        "General",
+        "Vision"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "10Gi",
@@ -615,7 +617,7 @@
       "developer": "Alibaba",
       "versionName": "qwen3.5:27b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "17Gi",
@@ -660,7 +662,7 @@
       "developer": "Alibaba",
       "versionName": "qwen3:30b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "19Gi",
@@ -705,7 +707,7 @@
       "developer": "Mistral AI",
       "versionName": "mistral-small3.2:24b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "15Gi",
@@ -750,7 +752,7 @@
       "developer": "OpenAI",
       "versionName": "gpt-oss:20b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "14Gi",
@@ -795,7 +797,7 @@
       "developer": "DeepSeek",
       "versionName": "deepseek-r1:32b",
       "categories": [
-        "AI"
+        "Reasoning"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "20Gi",
@@ -840,7 +842,7 @@
       "developer": "Alibaba",
       "versionName": "qwq:32b",
       "categories": [
-        "AI"
+        "Reasoning"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "20Gi",
@@ -885,7 +887,7 @@
       "developer": "Microsoft",
       "versionName": "phi4-reasoning:14b",
       "categories": [
-        "AI"
+        "Reasoning"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "11Gi",
@@ -930,7 +932,7 @@
       "developer": "Deep Cogito",
       "versionName": "cogito:32b",
       "categories": [
-        "AI"
+        "Reasoning"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "20Gi",
@@ -975,7 +977,7 @@
       "developer": "DeepSeek",
       "versionName": "deepseek-r1:14b",
       "categories": [
-        "AI"
+        "Reasoning"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "9Gi",
@@ -1020,7 +1022,7 @@
       "developer": "NVIDIA",
       "versionName": "nemotron-3-nano:4b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "3Gi",
@@ -1065,7 +1067,7 @@
       "developer": "Mistral AI",
       "versionName": "devstral:24b",
       "categories": [
-        "AI"
+        "Code"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "14Gi",
@@ -1110,7 +1112,7 @@
       "developer": "Alibaba",
       "versionName": "qwen3-coder:30b",
       "categories": [
-        "AI"
+        "Code"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "19Gi",
@@ -1155,7 +1157,7 @@
       "developer": "DeepSeek",
       "versionName": "deepseek-coder-v2:16b",
       "categories": [
-        "AI"
+        "Code"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "9Gi",
@@ -1200,7 +1202,7 @@
       "developer": "Alibaba",
       "versionName": "qwen2.5-coder:7b",
       "categories": [
-        "AI"
+        "Code"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "5Gi",
@@ -1245,7 +1247,7 @@
       "developer": "Alibaba",
       "versionName": "qwen3-embedding:8b",
       "categories": [
-        "AI"
+        "Embedding"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "5Gi",
@@ -1290,7 +1292,7 @@
       "developer": "Nomic AI",
       "versionName": "nomic-embed-text:v1.5",
       "categories": [
-        "AI"
+        "Embedding"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "300Mi",
@@ -1335,7 +1337,7 @@
       "developer": "MixedBread AI",
       "versionName": "mxbai-embed-large:335m",
       "categories": [
-        "AI"
+        "Embedding"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "700Mi",
@@ -1380,7 +1382,7 @@
       "developer": "Microsoft",
       "versionName": "all-minilm:latest",
       "categories": [
-        "AI"
+        "Embedding"
       ],
       "requiredMemory": "2000Mi",
       "requiredDisk": "50Mi",
@@ -1425,7 +1427,7 @@
       "developer": "Alibaba",
       "versionName": "qwen3-vl:30b",
       "categories": [
-        "AI"
+        "Vision"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "20Gi",
@@ -1470,7 +1472,7 @@
       "developer": "Alibaba",
       "versionName": "qwen3-vl:8b",
       "categories": [
-        "AI"
+        "Vision"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "7Gi",
@@ -1515,7 +1517,7 @@
       "developer": "OpenBMB",
       "versionName": "minicpm-v:8b",
       "categories": [
-        "AI"
+        "Vision"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "6Gi",
@@ -1560,7 +1562,8 @@
       "developer": "ZhipuAI",
       "versionName": "glm-ocr:latest",
       "categories": [
-        "AI"
+        "Vision",
+        "OCR"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "3Gi",
@@ -1605,7 +1608,7 @@
       "developer": "Alibaba",
       "versionName": "qwen3:4b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "3Gi",
@@ -1650,7 +1653,7 @@
       "developer": "Alibaba",
       "versionName": "qwen3.5:4b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "4Gi",
@@ -1695,7 +1698,7 @@
       "developer": "HuggingFace",
       "versionName": "smollm2:1.7b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "2000Mi",
       "requiredDisk": "2Gi",
@@ -1740,7 +1743,7 @@
       "developer": "Alibaba",
       "versionName": "qwen3.5:35b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "24Gi",
@@ -1785,7 +1788,7 @@
       "developer": "Alibaba",
       "versionName": "qwen3:32b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "20Gi",
@@ -1830,7 +1833,7 @@
       "developer": "Mistral AI",
       "versionName": "mistral-small:24b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "14Gi",
@@ -1875,7 +1878,8 @@
       "developer": "Cognitive Computations",
       "versionName": "dolphin3:8b",
       "categories": [
-        "AI"
+        "General",
+        "Uncensored"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "5Gi",
@@ -1920,7 +1924,7 @@
       "developer": "Google",
       "versionName": "alibayram/medgemma:27b",
       "categories": [
-        "AI"
+        "Medical"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "17Gi",
@@ -1965,7 +1969,7 @@
       "developer": "Google",
       "versionName": "alibayram/medgemma:4b",
       "categories": [
-        "AI"
+        "Medical"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "3Gi",
@@ -2010,7 +2014,7 @@
       "developer": "Google",
       "versionName": "translategemma:12b",
       "categories": [
-        "AI"
+        "Translation"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "9Gi",
@@ -2055,7 +2059,7 @@
       "developer": "Alibaba",
       "versionName": "qwen3.5:9b",
       "categories": [
-        "AI"
+        "General"
       ],
       "requiredMemory": "4200Mi",
       "requiredDisk": "7Gi",
