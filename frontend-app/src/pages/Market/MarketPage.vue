@@ -32,30 +32,34 @@
           @click="selectCategory(cat.name); showModels = false"
         >
           <q-icon :name="categoryIcon(cat.name)" size="17px" class="nav-icon" />
-          <span class="nav-text">{{ cat.name }}</span>
+          <span class="nav-text">{{ cat.title?.['en-US'] || cat.name }}</span>
           <span class="nav-badge">{{ cat.count }}</span>
         </div>
 
-        <div class="sidebar-divider" style="margin: 8px 16px"></div>
-
-        <div class="nav-item" :class="{ active: showModels && activeCategory === 'all' }" @click="toggleModelsSection">
-          <q-icon name="sym_r_model_training" size="17px" class="nav-icon" />
-          <span class="nav-text">Ollama Models</span>
-          <span class="nav-badge">{{ modelCount }}</span>
-          <q-icon :name="modelsExpanded ? 'sym_r_expand_less' : 'sym_r_expand_more'" size="16px" class="nav-icon" style="margin-left: auto" />
-        </div>
-        <template v-if="modelsExpanded">
-          <div
-            v-for="mc in modelCategories"
-            :key="mc.name"
-            class="nav-item nav-item-indent"
-            :class="{ active: showModels && activeCategory === mc.name }"
-            @click="showModels = true; activeTab = 'discover'; activeCategory = mc.name; router.replace({ query: { view: 'models', category: mc.name } })"
-          >
-            <q-icon :name="modelCategoryIcon(mc.name)" size="17px" class="nav-icon" />
-            <span class="nav-text">{{ mc.name }}</span>
-            <span class="nav-badge">{{ mc.count }}</span>
-          </div>
+        <template v-if="modelBackends.length > 0">
+          <div class="sidebar-divider" style="margin: 8px 16px"></div>
+          <div class="market-section-label">Models</div>
+          <template v-for="mb in modelBackends" :key="mb.backend">
+            <div class="nav-item" :class="{ active: showModels && activeBackend === mb.backend && activeCategory === 'all' }" @click="toggleBackendSection(mb.backend)">
+              <q-icon :name="backendIcon(mb.backend)" size="17px" class="nav-icon" />
+              <span class="nav-text">{{ mb.backend.charAt(0).toUpperCase() + mb.backend.slice(1) }} Models</span>
+              <span class="nav-badge">{{ mb.count }}</span>
+              <q-icon :name="expandedBackends[mb.backend] ? 'sym_r_expand_less' : 'sym_r_expand_more'" size="16px" class="nav-icon" style="margin-left: auto" />
+            </div>
+            <template v-if="expandedBackends[mb.backend]">
+              <div
+                v-for="mc in mb.categories"
+                :key="mb.backend + '-' + mc.name"
+                class="nav-item nav-item-indent"
+                :class="{ active: showModels && activeBackend === mb.backend && activeCategory === mc.name }"
+                @click="showModels = true; activeBackend = mb.backend; activeTab = 'discover'; activeCategory = mc.name; router.replace({ query: { view: 'models', backend: mb.backend, category: mc.name } })"
+              >
+                <q-icon :name="modelCategoryIcon(mc.name)" size="17px" class="nav-icon" />
+                <span class="nav-text">{{ mc.name }}</span>
+                <span class="nav-badge">{{ mc.count }}</span>
+              </div>
+            </template>
+          </template>
         </template>
       </div>
     </div>
@@ -83,10 +87,10 @@
       <!-- Discover View -->
       <div v-if="activeTab === 'discover'" class="market-grid-area">
         <div class="market-section-title" v-if="showModels && activeCategory === 'all'">
-          All Models
+          {{ activeBackend.charAt(0).toUpperCase() + activeBackend.slice(1) }} Models
         </div>
         <div class="market-section-title" v-else-if="showModels">
-          {{ activeCategory }}
+          {{ activeBackend.charAt(0).toUpperCase() + activeBackend.slice(1) }} &mdash; {{ activeCategory }}
         </div>
         <div class="market-section-title" v-else-if="activeCategory === 'all'">
           All Apps
@@ -811,6 +815,9 @@ interface InstalledModelInfo {
 
 interface Category {
   name: string;
+  title?: Record<string, string>;
+  icon?: string;
+  sort?: number;
   count: number;
 }
 
@@ -824,7 +831,8 @@ const loading = ref(true);
 const searchQuery = ref('');
 const userZone = ref('');
 const showModels = ref(false);
-const modelsExpanded = ref(false);
+const activeBackend = ref('');
+const expandedBackends = reactive<Record<string, boolean>>({});
 const activeTab = ref<'discover' | 'installed'>('discover');
 const activeCategory = ref('all');
 const apps = ref<MarketApp[]>([]);
@@ -949,26 +957,33 @@ const appCategories = computed(() => {
   }));
 });
 
-// Model category groupings
-const modelCategories = computed(() => {
+// Model backends with their categories
+const modelBackends = computed(() => {
   const models = apps.value.filter(a => a.type === 'model');
-  const cats: Record<string, number> = {};
+  const backends: Record<string, Record<string, number>> = {};
   models.forEach(m => {
+    const b = m.backend || 'other';
+    if (!backends[b]) backends[b] = {};
     (m.categories || ['Other']).forEach(c => {
-      cats[c] = (cats[c] || 0) + 1;
+      backends[b][c] = (backends[b][c] || 0) + 1;
     });
   });
-  // Sort: General first, then alphabetical
-  const order = ['General', 'Reasoning', 'Code', 'Vision', 'Embedding', 'Medical', 'Translation', 'OCR', 'Uncensored'];
-  return Object.entries(cats)
-    .sort(([a], [b]) => {
-      const ai = order.indexOf(a), bi = order.indexOf(b);
-      if (ai >= 0 && bi >= 0) return ai - bi;
-      if (ai >= 0) return -1;
-      if (bi >= 0) return 1;
-      return a.localeCompare(b);
-    })
-    .map(([name, count]) => ({ name, count }));
+  const catOrder = ['General', 'Reasoning', 'Code', 'Vision', 'Embedding', 'Medical', 'Translation', 'OCR', 'Uncensored'];
+  return Object.entries(backends)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([backend, cats]) => ({
+      backend,
+      count: models.filter(m => (m.backend || 'other') === backend).length,
+      categories: Object.entries(cats)
+        .sort(([a], [b]) => {
+          const ai = catOrder.indexOf(a), bi = catOrder.indexOf(b);
+          if (ai >= 0 && bi >= 0) return ai - bi;
+          if (ai >= 0) return -1;
+          if (bi >= 0) return 1;
+          return a.localeCompare(b);
+        })
+        .map(([name, count]) => ({ name, count }))
+    }));
 });
 
 function modelCategoryIcon(name: string): string {
@@ -986,14 +1001,21 @@ function modelCategoryIcon(name: string): string {
   return icons[name] || 'sym_r_smart_toy';
 }
 
-const modelCount = computed(() => apps.value.filter(a => a.type === 'model').length);
+function backendIcon(backend: string): string {
+  const icons: Record<string, string> = {
+    ollama: 'sym_r_model_training',
+    vllm: 'sym_r_speed',
+    localai: 'sym_r_memory',
+  };
+  return icons[backend] || 'sym_r_smart_toy';
+}
 
 const filteredApps = computed(() => {
   let list = apps.value;
 
   // Separate apps and models
   if (showModels.value) {
-    list = list.filter(a => a.type === 'model');
+    list = list.filter(a => a.type === 'model' && (a.backend || 'other') === activeBackend.value);
     if (activeCategory.value !== 'all') {
       list = list.filter(a =>
         a.categories && a.categories.some(c => c === activeCategory.value)
@@ -1034,17 +1056,16 @@ function selectCategory(name: string) {
   router.replace({ query: { category: name } });
 }
 
-function toggleModelsSection() {
-  if (showModels.value && activeCategory.value === 'all') {
-    // Already on "All Models" — toggle collapse
-    modelsExpanded.value = !modelsExpanded.value;
+function toggleBackendSection(backend: string) {
+  if (showModels.value && activeBackend.value === backend && activeCategory.value === 'all') {
+    expandedBackends[backend] = !expandedBackends[backend];
   } else {
-    // Switch to models view
     showModels.value = true;
-    modelsExpanded.value = true;
+    activeBackend.value = backend;
+    expandedBackends[backend] = true;
     activeTab.value = 'discover';
     activeCategory.value = 'all';
-    router.replace({ query: { view: 'models' } });
+    router.replace({ query: { view: 'models', backend } });
   }
 }
 
@@ -1486,8 +1507,14 @@ onMounted(async () => {
     activeTab.value = 'installed';
   } else if (q.view === 'models') {
     showModels.value = true;
-    modelsExpanded.value = true;
     activeTab.value = 'discover';
+    if (q.backend && typeof q.backend === 'string') {
+      activeBackend.value = q.backend;
+      expandedBackends[q.backend] = true;
+    } else if (modelBackends.value.length > 0) {
+      activeBackend.value = modelBackends.value[0].backend;
+      expandedBackends[modelBackends.value[0].backend] = true;
+    }
     if (q.category && typeof q.category === 'string') activeCategory.value = q.category;
   } else if (q.category && typeof q.category === 'string') {
     activeTab.value = 'discover';

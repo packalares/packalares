@@ -23,11 +23,10 @@ dist/
 .DS_Store
 /tmp/
 
-# Docs (audit reports, internal notes)
-docs/
-
 # Full market catalog (work copy with all apps)
 market_work/
+market_old/
+market_vv4/
 
 # Frontend source repos (cloned for reference)
 frontend-src/
@@ -36,5 +35,3 @@ frontend-src/
 frontend-app/node_modules/
 frontend-app/dist/
 frontend-app/.quasar/
-docs/
-scripts/

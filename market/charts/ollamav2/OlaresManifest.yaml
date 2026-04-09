@@ -1,0 +1,88 @@
+---
+olaresManifest.version: "0.10.0"
+olaresManifest.type: app
+metadata:
+  name: ollamav2
+  icon: https://app.cdn.olares.com/appstore/ollama/icon.png
+  description: Get up and running with large language models.
+  appid: ollamav2
+  title: Ollama
+  version: "1.0.17"
+  categories:
+    - Working
+
+entrances:
+  - name: terminal
+    port: 80
+    host: terminal
+    title: Ollama
+    icon: https://app.cdn.olares.com/appstore/ollama/icon.png
+    openMethod: window
+
+spec:
+  versionName: "0.20.3"
+  featuredImage: https://app.cdn.olares.com/appstore/ollama/1.webp
+  promoteImage:
+    - https://app.cdn.olares.com/appstore/ollama/1.webp
+    - https://app.cdn.olares.com/appstore/ollama/2.webp
+    - https://app.cdn.olares.com/appstore/ollama/3.webp
+
+  fullDescription: |
+    Ollama is a user-friendly interface for running large language models (LLMs) locally. It is a valuable tool for researchers, developers, and anyone who wants to experiment with language models. With Ollama, you can easily download and run LLMs, customize and create your own models, and chat with your LLMs using files on your device.
+
+    Ollama supports a wide range of models, including:
+    - Llama 3 8B
+    - Llama 3 70B
+    - Phi 3 Mini 3.8B
+    - Phi 3 Medium 14B
+    - Gemma 2 9B
+    - Gemma 2 27B
+    - Mistral 7B
+    - Moondream 2 1.4B
+    - Neural Chat 7B
+    - Starling 7B
+    - Code Llama 7B
+    - Llama 2 Uncensored 7B
+    - LLaVA 7B
+    - Solar 10.7B
+
+  upgradeDescription: |
+    Upgrade Ollama version from v0.17.7 to v0.20.3
+
+    For detailed release notes including new models and features in each version, please visit:
+    https://github.com/ollama/ollama/releases
+
+  developer: ollama
+  website: https://ollama.com/
+  sourceCode: https://github.com/ollama/ollama
+  submitter: Packalares
+  locale:
+    - en-US
+  doc: https://github.com/ollama/ollama/tree/main/docs
+  license:
+    - text: MIT
+      url: https://github.com/ollama/ollama#MIT-1-ov-file
+
+  limitedCpu: "7"
+  requiredCpu: 150m
+  requiredDisk: 50Mi
+  limitedDisk: 500Gi
+  limitedMemory: 40Gi
+  requiredMemory: 5Gi
+  requiredGpu: 1Gi
+  limitedGpu: 24Gi
+
+  supportArch:
+    - amd64
+    - arm64
+
+permission:
+  appData: true
+  appCache: true
+
+options:
+  apiTimeout: 0
+  dependencies:
+    - name: packalares
+      version: '>=1.0.0'
+      type: system
