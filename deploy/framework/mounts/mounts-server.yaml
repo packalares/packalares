@@ -25,7 +25,7 @@ spec:
           name: http
         env:
         - name: MOUNT_BASE_PATH
-          value: /packalares/mounts
+          value: /packalares/data/Mounts
         - name: PORT
           value: "8081"
         securityContext:
@@ -35,7 +35,7 @@ spec:
             - SYS_ADMIN
         volumeMounts:
         - name: mounts
-          mountPath: /packalares/mounts
+          mountPath: /packalares/data/Mounts
           mountPropagation: Bidirectional
         livenessProbe:
           httpGet:
@@ -59,7 +59,7 @@ spec:
       volumes:
       - name: mounts
         hostPath:
-          path: /packalares/mounts
+          path: /packalares/data/Mounts
           type: DirectoryOrCreate
 
 ---
