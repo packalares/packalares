@@ -35,3 +35,7 @@ frontend-src/
 frontend-app/node_modules/
 frontend-app/dist/
 frontend-app/.quasar/
+
+# Local dev tools (not deployed)
+docs/
+scripts/
