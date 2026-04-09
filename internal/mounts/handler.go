@@ -143,19 +143,49 @@ type MountInfo struct {
 
 // Handler manages storage mounts.
 type Handler struct {
-	basePath string
-	mu       sync.RWMutex
-	mounts   map[string]*MountInfo
+	basePath  string
+	stateFile string
+	mu        sync.RWMutex
+	mounts    map[string]*MountInfo
 }
 
-// NewHandler creates a mount handler. basePath is where mounts appear (e.g., /packalares/mounts).
+// NewHandler creates a mount handler. basePath is where mounts appear (e.g., /packalares/data/Mounts).
 func NewHandler(basePath string) *Handler {
 	h := &Handler{
-		basePath: basePath,
-		mounts:   make(map[string]*MountInfo),
+		basePath:  basePath,
+		stateFile: filepath.Join(basePath, ".mounts.json"),
+		mounts:    make(map[string]*MountInfo),
 	}
 	os.MkdirAll(basePath, 0755)
+	h.loadState()
 	return h
+}
+
+// loadState reads persisted mount info from disk.
+func (h *Handler) loadState() {
+	data, err := os.ReadFile(h.stateFile)
+	if err != nil {
+		return
+	}
+	var mounts map[string]*MountInfo
+	if err := json.Unmarshal(data, &mounts); err != nil {
+		log.Printf("warning: failed to load mount state: %v", err)
+		return
+	}
+	h.mounts = mounts
+	log.Printf("loaded %d mount(s) from state", len(mounts))
+}
+
+// saveState persists mount info to disk.
+func (h *Handler) saveState() {
+	data, err := json.MarshalIndent(h.mounts, "", "  ")
+	if err != nil {
+		log.Printf("warning: failed to marshal mount state: %v", err)
+		return
+	}
+	if err := os.WriteFile(h.stateFile, data, 0644); err != nil {
+		log.Printf("warning: failed to save mount state: %v", err)
+	}
 }
 
 // RegisterRoutes wires up mount API routes.
@@ -281,6 +311,7 @@ func (h *Handler) createMount(w http.ResponseWriter, r *http.Request) {
 		Status:    "mounted",
 	}
 	h.mounts[cfg.Name] = info
+	h.saveState()
 
 	log.Printf("mount created: %s (%s) at %s", cfg.Name, cfg.Type, mountPoint)
 
@@ -308,6 +339,7 @@ func (h *Handler) removeMount(w http.ResponseWriter, r *http.Request, name strin
 	os.Remove(m.MountPath)
 
 	delete(h.mounts, name)
+	h.saveState()
 
 	log.Printf("mount removed: %s", name)
 
@@ -431,11 +463,14 @@ func unmount(mountPoint string) error {
 	// Try fusermount first (for rclone mounts)
 	cmd := exec.Command("fusermount", "-u", mountPoint)
 	if err := cmd.Run(); err != nil {
-		// Fall back to regular umount
+		// Try regular umount
 		cmd = exec.Command("umount", mountPoint)
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("umount failed: %s: %w", string(output), err)
+		if output, err := cmd.CombinedOutput(); err != nil {
+			// Fall back to lazy unmount (handles busy mounts)
+			cmd = exec.Command("umount", "-l", mountPoint)
+			if output2, err2 := cmd.CombinedOutput(); err2 != nil {
+				return fmt.Errorf("umount failed: %s / lazy: %s: %w", string(output), string(output2), err2)
+			}
 		}
 	}
 	return nil
