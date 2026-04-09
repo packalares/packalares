@@ -60,10 +60,15 @@ func startMetricsPublisher(prometheusURL string) {
 	for i := 0; i < 30; i++ {
 		if err := rdb.Ping(ctx).Err(); err == nil {
 			break
+		} else if i == 29 {
+			log.Printf("warning: KVRocks not reachable after 60s: %v", err)
 		}
 		time.Sleep(2 * time.Second)
 	}
 
+	if redisPass == "" {
+		log.Printf("warning: REDIS_PASSWORD is empty — KVRocks may reject writes")
+	}
 	log.Printf("metrics publisher started (5s interval, redis: %s)", redisAddr)
 
 	ticker := time.NewTicker(5 * time.Second)
