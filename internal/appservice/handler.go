@@ -547,7 +547,8 @@ func (h *Handler) handleAppCredentials(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	creds, err := h.svc.GetAppCredentials(r.Context(), appName)
+	loginType := r.URL.Query().Get("loginType")
+	creds, err := h.svc.GetAppCredentials(r.Context(), appName, loginType)
 	if err != nil {
 		writeError(w, http.StatusNotFound, err.Error())
 		return

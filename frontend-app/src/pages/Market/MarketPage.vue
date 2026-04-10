@@ -829,12 +829,16 @@
               <!-- App Credentials -->
               <template v-if="appCreds">
                 <div class="di-divider" />
+                <div class="di-row" v-if="appCreds.email && appCreds.username && appCreds.email !== appCreds.username">
+                  <span class="di-label">User</span>
+                  <span class="di-value di-mono">{{ appCreds.username }}</span>
+                </div>
                 <div class="di-row">
                   <span class="di-label">Login</span>
                   <span class="di-value di-mono">{{ appCreds.email || appCreds.username }}</span>
                 </div>
                 <div class="di-row">
-                  <span class="di-label">Admin Pass</span>
+                  <span class="di-label">Password</span>
                   <span class="di-value di-mono di-password">
                     <span>{{ showCreds ? appCreds.password : '••••••••' }}</span>
                     <q-icon

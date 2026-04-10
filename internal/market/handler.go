@@ -195,7 +195,7 @@ func (h *Handler) handleGetAppDetail(w http.ResponseWriter, r *http.Request) {
 
 	// Fetch credentials only if app declares it has them
 	if app.HasCredentials {
-		enriched.Credentials = h.fetchAppCredentials(name)
+		enriched.Credentials = h.fetchAppCredentials(name, app.LoginType)
 	}
 	enriched.LiveServices = h.fetchLiveServices(name)
 
@@ -206,8 +206,12 @@ func (h *Handler) handleGetAppDetail(w http.ResponseWriter, r *http.Request) {
 }
 
 // fetchAppCredentials calls app-service for credentials. Returns nil on any error.
-func (h *Handler) fetchAppCredentials(appName string) *AppCredentials {
-	resp, err := h.httpClient.Get(h.appServiceURL + "/app-service/v1/app-credentials/" + appName)
+func (h *Handler) fetchAppCredentials(appName, loginType string) *AppCredentials {
+	url := h.appServiceURL + "/app-service/v1/app-credentials/" + appName
+	if loginType != "" {
+		url += "?loginType=" + loginType
+	}
+	resp, err := h.httpClient.Get(url)
 	if err != nil {
 		return nil
 	}

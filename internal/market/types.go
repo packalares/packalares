@@ -47,6 +47,7 @@ type MarketApp struct {
 	Locale               []string `json:"locale,omitempty"`
 	Permission       *AppPermission `json:"permission,omitempty"`
 	HasCredentials   bool          `json:"hasCredentials,omitempty"`
+	LoginType        string        `json:"loginType,omitempty"` // "user", "email", "user-email"; default "user"
 	Dependencies     []Dependency  `json:"dependencies,omitempty"`
 	Source           string        `json:"source,omitempty"`
 	MobileSupported  bool          `json:"mobileSupported,omitempty"`

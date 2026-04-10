@@ -1013,7 +1013,7 @@ type AppCredentials struct {
 }
 
 // GetAppCredentials reads admin credentials from an app's Helm release values.
-func (s *Service) GetAppCredentials(ctx context.Context, appName string) (*AppCredentials, error) {
+func (s *Service) GetAppCredentials(ctx context.Context, appName, loginType string) (*AppCredentials, error) {
 	cmd := exec.CommandContext(ctx, "helm", "get", "values", appName, "-n", s.namespace, "-a", "-o", "json")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -1037,17 +1037,20 @@ func (s *Service) GetAppCredentials(ctx context.Context, appName string) (*AppCr
 		return nil, fmt.Errorf("no credentials configured for %s", appName)
 	}
 
-	// Check if app uses email-based login (e.g. Open WebUI)
-	email := ""
-	if username != "" {
-		email = username + "@packalares.local"
+	creds := &AppCredentials{
+		Username: username,
+		Password: password,
 	}
 
-	return &AppCredentials{
-		Username: username,
-		Email:    email,
-		Password: password,
-	}, nil
+	// Build email if loginType requires it
+	if loginType == "email" || loginType == "user-email" {
+		zone := config.UserZone()
+		if zone != "" && username != "" {
+			creds.Email = username + "@" + zone
+		}
+	}
+
+	return creds, nil
 }
 
 // generateAppPassword generates a random password for an app's admin user.
