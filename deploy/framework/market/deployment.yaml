@@ -30,6 +30,8 @@ spec:
               value: ":6756"
             - name: MARKET_DATA_DIR
               value: "/data/market"
+            - name: APP_SERVICE_URL
+              value: "http://app-service:6755"
           volumeMounts:
             - name: market-data
               mountPath: /data/market

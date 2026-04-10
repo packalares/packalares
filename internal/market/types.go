@@ -175,6 +175,32 @@ type AppDetailResponse struct {
 	Data *MarketApp `json:"data"`
 }
 
+// AppDetailEnrichedResponse extends the detail with volume mounts and credentials.
+type AppDetailEnrichedResponse struct {
+	Response
+	Data *AppDetailEnriched `json:"data"`
+}
+
+// AppDetailEnriched wraps a MarketApp with extra detail-page data.
+type AppDetailEnriched struct {
+	MarketApp
+	VolumeMounts []VolumeMount  `json:"volumeMounts,omitempty"`
+	Credentials  *AppCredentials `json:"credentials,omitempty"`
+}
+
+// VolumeMount describes a container volume mount extracted from the chart.
+type VolumeMount struct {
+	MountPath string `json:"mountPath"`
+	HostPath  string `json:"hostPath,omitempty"`
+	Name      string `json:"name,omitempty"`
+}
+
+// AppCredentials holds admin credentials for an installed app.
+type AppCredentials struct {
+	Username string `json:"username,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
 // CategoriesResponse returns all categories.
 type CategoriesResponse struct {
 	Response

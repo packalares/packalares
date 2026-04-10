@@ -1,6 +1,7 @@
 package market
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -8,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 
 	"k8s.io/klog/v2"
 )
@@ -22,8 +24,10 @@ const (
 
 // Handler implements the HTTP API for the market backend.
 type Handler struct {
-	catalog *Catalog
-	dataDir string
+	catalog       *Catalog
+	dataDir       string
+	appServiceURL string
+	httpClient    *http.Client
 }
 
 // NewHandler creates a market HTTP handler.
@@ -31,7 +35,16 @@ func NewHandler(catalog *Catalog, dataDir string) *Handler {
 	if dataDir == "" {
 		dataDir = defaultDataDir
 	}
-	return &Handler{catalog: catalog, dataDir: dataDir}
+	appServiceURL := os.Getenv("APP_SERVICE_URL")
+	if appServiceURL == "" {
+		appServiceURL = "http://app-service:6755"
+	}
+	return &Handler{
+		catalog:       catalog,
+		dataDir:       dataDir,
+		appServiceURL: appServiceURL,
+		httpClient:    &http.Client{Timeout: 3 * time.Second},
+	}
 }
 
 // RegisterRoutes adds all market routes to the mux.
@@ -140,13 +153,13 @@ func (h *Handler) handleGetApp(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleGetAppDetail handles GET /market/v1/app/{name}
+// Returns enriched data including volume mounts from the chart and credentials from app-service.
 func (h *Handler) handleGetAppDetail(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 		return
 	}
 
-	// Extract name from path — handles both /market/v1/app/{name} and /api/v1/app/{name}
 	name := r.URL.Path
 	for _, prefix := range []string{"/market/v1/app/", "/api/v1/app/"} {
 		if strings.HasPrefix(name, prefix) {
@@ -167,10 +180,188 @@ func (h *Handler) handleGetAppDetail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, AppDetailResponse{
+	enriched := &AppDetailEnriched{MarketApp: *app}
+
+	// Parse volume mounts from chart templates
+	chartName := app.ChartName
+	if chartName == "" {
+		chartName = app.Name
+	}
+	enriched.VolumeMounts = h.parseChartVolumeMounts(chartName)
+
+	// Fetch credentials from app-service (best-effort, ignore errors)
+	enriched.Credentials = h.fetchAppCredentials(name)
+
+	writeJSON(w, http.StatusOK, AppDetailEnrichedResponse{
 		Response: Response{Code: 200},
-		Data:     app,
+		Data:     enriched,
 	})
+}
+
+// fetchAppCredentials calls app-service for credentials. Returns nil on any error.
+func (h *Handler) fetchAppCredentials(appName string) *AppCredentials {
+	resp, err := h.httpClient.Get(h.appServiceURL + "/app-service/v1/app-credentials/" + appName)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil
+	}
+	var creds AppCredentials
+	if err := json.NewDecoder(resp.Body).Decode(&creds); err != nil {
+		return nil
+	}
+	if creds.Username == "" && creds.Password == "" {
+		return nil
+	}
+	return &creds
+}
+
+// parseChartVolumeMounts reads deployment templates from a chart directory
+// and extracts volumeMounts + matching hostPath volumes.
+func (h *Handler) parseChartVolumeMounts(chartName string) []VolumeMount {
+	templatesDir := filepath.Join(h.dataDir, chartsSubdir, chartName, "templates")
+	entries, err := os.ReadDir(templatesDir)
+	if err != nil {
+		return nil
+	}
+
+	var mounts []VolumeMount
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
+			continue
+		}
+		filePath := filepath.Join(templatesDir, e.Name())
+		m := parseVolumeMountsFromYAML(filePath)
+		mounts = append(mounts, m...)
+	}
+	return mounts
+}
+
+// parseVolumeMountsFromYAML does a simple line-based parse of a Kubernetes YAML
+// to extract volumeMounts (mountPath + name) and match them to hostPath volumes.
+func parseVolumeMountsFromYAML(path string) []VolumeMount {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	type rawMount struct {
+		mountPath string
+		name      string
+	}
+
+	var rawMounts []rawMount
+	hostPaths := map[string]string{} // volume name -> hostPath
+
+	scanner := bufio.NewScanner(f)
+	var inVolumeMounts, inVolumes bool
+	var currentMount rawMount
+	var currentVolName, currentHostPath string
+	var indent int
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+
+		// Track sections
+		if strings.Contains(trimmed, "volumeMounts:") {
+			inVolumeMounts = true
+			inVolumes = false
+			indent = len(line) - len(strings.TrimLeft(line, " "))
+			continue
+		}
+		if strings.Contains(trimmed, "volumes:") && !strings.Contains(trimmed, "volumeMounts") {
+			inVolumes = true
+			inVolumeMounts = false
+			indent = len(line) - len(strings.TrimLeft(line, " "))
+			continue
+		}
+
+		lineIndent := len(line) - len(strings.TrimLeft(line, " "))
+
+		if inVolumeMounts {
+			if trimmed == "" || (lineIndent <= indent && !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "mountPath") && !strings.HasPrefix(trimmed, "name")) {
+				if currentMount.mountPath != "" {
+					rawMounts = append(rawMounts, currentMount)
+					currentMount = rawMount{}
+				}
+				inVolumeMounts = false
+				continue
+			}
+			if strings.HasPrefix(trimmed, "- mountPath:") || strings.HasPrefix(trimmed, "- name:") {
+				if currentMount.mountPath != "" {
+					rawMounts = append(rawMounts, currentMount)
+					currentMount = rawMount{}
+				}
+			}
+			if strings.Contains(trimmed, "mountPath:") {
+				currentMount.mountPath = extractYAMLValue(trimmed, "mountPath")
+			}
+			if strings.Contains(trimmed, "name:") && !strings.Contains(trimmed, "mountPath") {
+				currentMount.name = extractYAMLValue(trimmed, "name")
+			}
+		}
+
+		if inVolumes {
+			if trimmed == "" || (lineIndent <= indent && !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "name") && !strings.HasPrefix(trimmed, "hostPath") && !strings.HasPrefix(trimmed, "path") && !strings.HasPrefix(trimmed, "type")) {
+				if currentVolName != "" && currentHostPath != "" {
+					hostPaths[currentVolName] = currentHostPath
+				}
+				if trimmed != "" && lineIndent <= indent {
+					inVolumes = false
+				}
+				continue
+			}
+			if strings.HasPrefix(trimmed, "- name:") {
+				if currentVolName != "" && currentHostPath != "" {
+					hostPaths[currentVolName] = currentHostPath
+				}
+				currentVolName = extractYAMLValue(trimmed, "name")
+				currentHostPath = ""
+			}
+			if strings.Contains(trimmed, "path:") && !strings.HasPrefix(trimmed, "hostPath") {
+				currentHostPath = extractYAMLValue(trimmed, "path")
+			}
+		}
+	}
+
+	// Flush last items
+	if currentMount.mountPath != "" {
+		rawMounts = append(rawMounts, currentMount)
+	}
+	if currentVolName != "" && currentHostPath != "" {
+		hostPaths[currentVolName] = currentHostPath
+	}
+
+	// Match mounts to host paths
+	var result []VolumeMount
+	for _, rm := range rawMounts {
+		vm := VolumeMount{
+			MountPath: rm.mountPath,
+			Name:      rm.name,
+		}
+		if hp, ok := hostPaths[rm.name]; ok {
+			vm.HostPath = hp
+		}
+		result = append(result, vm)
+	}
+	return result
+}
+
+// extractYAMLValue extracts the value after "key:" from a YAML line, stripping quotes and template markers.
+func extractYAMLValue(line, key string) string {
+	idx := strings.Index(line, key+":")
+	if idx < 0 {
+		return ""
+	}
+	val := strings.TrimSpace(line[idx+len(key)+1:])
+	// Strip leading "- " if present
+	val = strings.TrimPrefix(val, "- ")
+	val = strings.Trim(val, `"'`)
+	return val
 }
 
 // handleCategories handles GET /market/v1/categories

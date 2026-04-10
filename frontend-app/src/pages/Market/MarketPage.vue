@@ -652,14 +652,21 @@
               <div class="detail-section-title" style="margin-top:20px">Required Permissions</div>
               <div class="detail-content-card">
                 <div class="detail-permissions">
-                  <div class="perm-item" v-if="detailData.permission.appData || detailData.permission.appCache">
+                  <div class="perm-item" v-if="detailData.permission.appData || detailData.permission.appCache || detailData.volumeMounts?.length">
                     <q-icon name="sym_r_folder" size="18px" class="perm-icon" />
                     <div class="perm-info">
                       <div class="perm-name">Access to Files</div>
-                      <div class="perm-desc">
-                        <span v-if="detailData.permission.appData">App Data (<code>/data</code>)</span>
+                      <div class="perm-desc" v-if="detailData.volumeMounts?.length">
+                        <div v-for="(vm, i) in detailData.volumeMounts" :key="'vm-'+i" class="perm-volume">
+                          <code>{{ vm.mountPath }}</code>
+                          <span v-if="vm.hostPath" class="perm-arrow"> → </span>
+                          <code v-if="vm.hostPath">{{ vm.hostPath }}</code>
+                        </div>
+                      </div>
+                      <div class="perm-desc" v-else>
+                        <span v-if="detailData.permission.appData">App Data</span>
                         <span v-if="detailData.permission.appData && detailData.permission.appCache">, </span>
-                        <span v-if="detailData.permission.appCache">App Cache (<code>/cache</code>)</span>
+                        <span v-if="detailData.permission.appCache">App Cache</span>
                       </div>
                     </div>
                   </div>
@@ -1189,18 +1196,15 @@ async function openDetail(app: MarketApp) {
   try {
     const res: any = await api.get('/api/market/app/' + app.name);
     detailData.value = res.data || null;
+    // Credentials are now included in the detail response
+    if (res.data?.credentials) {
+      appCreds.value = res.data.credentials;
+    }
   } catch {
     detailData.value = app;
   } finally {
     detailLoading.value = false;
   }
-  // Load credentials for installed apps
-  try {
-    const cres: any = await api.get('/api/apps/app-credentials/' + app.name);
-    if (cres?.username || cres?.password) {
-      appCreds.value = cres;
-    }
-  } catch {}
 }
 
 async function fetchApps() {
