@@ -35,14 +35,10 @@ func NewHandler(catalog *Catalog, dataDir string) *Handler {
 	if dataDir == "" {
 		dataDir = defaultDataDir
 	}
-	appServiceURL := os.Getenv("APP_SERVICE_URL")
-	if appServiceURL == "" {
-		appServiceURL = "http://app-service:6755"
-	}
 	return &Handler{
 		catalog:       catalog,
 		dataDir:       dataDir,
-		appServiceURL: appServiceURL,
+		appServiceURL: "http://app-service:6755",
 		httpClient:    &http.Client{Timeout: 3 * time.Second},
 	}
 }
