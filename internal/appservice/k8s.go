@@ -506,3 +506,78 @@ func (k *K8sClient) applyApplicationKubectl(ctx context.Context, obj *unstructur
 	}
 	return nil
 }
+
+// ServiceInfo holds runtime service info.
+type ServiceInfo struct {
+	Name      string       `json:"name"`
+	ClusterIP string       `json:"clusterIP,omitempty"`
+	Type      string       `json:"type,omitempty"`
+	Ports     []PortInfo   `json:"ports,omitempty"`
+}
+
+// PortInfo describes a service port.
+type PortInfo struct {
+	Name       string `json:"name,omitempty"`
+	Port       int32  `json:"port"`
+	TargetPort int32  `json:"targetPort,omitempty"`
+	Protocol   string `json:"protocol,omitempty"`
+}
+
+// GetServicesForApp returns Kubernetes services for an installed app.
+func (k *K8sClient) GetServicesForApp(ctx context.Context, appName, namespace string) []ServiceInfo {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	out, err := exec.CommandContext(ctx, "kubectl", "get", "svc", "-n", namespace,
+		"-l", "io.kompose.service",
+		"-o", "json").CombinedOutput()
+	if err != nil {
+		// Try broader label match
+		out, err = exec.CommandContext(ctx, "kubectl", "get", "svc", "-n", namespace, "-o", "json").CombinedOutput()
+		if err != nil {
+			return nil
+		}
+	}
+
+	var result struct {
+		Items []struct {
+			Metadata struct {
+				Name   string `json:"name"`
+				Labels map[string]string `json:"labels"`
+			} `json:"metadata"`
+			Spec struct {
+				ClusterIP string `json:"clusterIP"`
+				Type      string `json:"type"`
+				Ports     []struct {
+					Name       string      `json:"name"`
+					Port       int32       `json:"port"`
+					TargetPort json.Number `json:"targetPort"`
+					Protocol   string      `json:"protocol"`
+				} `json:"ports"`
+			} `json:"spec"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(out, &result); err != nil {
+		return nil
+	}
+
+	var services []ServiceInfo
+	for _, item := range result.Items {
+		svc := ServiceInfo{
+			Name:      item.Metadata.Name,
+			ClusterIP: item.Spec.ClusterIP,
+			Type:      item.Spec.Type,
+		}
+		for _, p := range item.Spec.Ports {
+			tp, _ := p.TargetPort.Int64()
+			svc.Ports = append(svc.Ports, PortInfo{
+				Name:       p.Name,
+				Port:       p.Port,
+				TargetPort: int32(tp),
+				Protocol:   p.Protocol,
+			})
+		}
+		services = append(services, svc)
+	}
+	return services
+}

@@ -186,11 +186,15 @@ func (h *Handler) handleGetAppDetail(w http.ResponseWriter, r *http.Request) {
 	if chartName == "" {
 		chartName = app.Name
 	}
-	enriched.VolumeMounts = h.parseChartVolumeMounts(chartName)
-	enriched.Resources = h.parseChartResources(chartName)
+	files := h.getChartTemplateFiles(chartName)
+	enriched.VolumeMounts = parseAllVolumeMounts(files)
+	enriched.Resources = parseAllResources(files)
+	enriched.EnvVars = parseAllEnvVars(files)
+	enriched.ChartLabels = parseAllLabels(files)
 
-	// Fetch credentials from app-service (best-effort, ignore errors)
+	// Fetch credentials + live services from app-service (best-effort)
 	enriched.Credentials = h.fetchAppCredentials(name)
+	enriched.LiveServices = h.fetchLiveServices(name)
 
 	writeJSON(w, http.StatusOK, AppDetailEnrichedResponse{
 		Response: Response{Code: 200},
@@ -218,10 +222,7 @@ func (h *Handler) fetchAppCredentials(appName string) *AppCredentials {
 	return &creds
 }
 
-// parseChartVolumeMounts reads deployment templates from a chart directory
-// and extracts volumeMounts + matching hostPath volumes.
-func (h *Handler) parseChartVolumeMounts(chartName string) []VolumeMount {
-	files := h.getChartTemplateFiles(chartName)
+func parseAllVolumeMounts(files []string) []VolumeMount {
 	var mounts []VolumeMount
 	for _, filePath := range files {
 		m := parseVolumeMountsFromYAML(filePath)
@@ -342,9 +343,7 @@ func parseVolumeMountsFromYAML(path string) []VolumeMount {
 	return result
 }
 
-// parseChartResources reads deployment templates from a chart and extracts resource requests/limits.
-func (h *Handler) parseChartResources(chartName string) []ContainerResources {
-	files := h.getChartTemplateFiles(chartName)
+func parseAllResources(files []string) []ContainerResources {
 	var all []ContainerResources
 	for _, filePath := range files {
 		res := parseResourcesFromYAML(filePath)
@@ -551,6 +550,167 @@ func parseResourcesFromYAML(path string) []ContainerResources {
 	}
 
 	return results
+}
+
+// parseAllEnvVars extracts environment variables from chart template files.
+func parseAllEnvVars(files []string) []ContainerEnvVar {
+	var all []ContainerEnvVar
+	seen := map[string]bool{}
+	for _, filePath := range files {
+		vars := parseEnvVarsFromYAML(filePath)
+		for _, v := range vars {
+			if !seen[v.Name] {
+				seen[v.Name] = true
+				all = append(all, v)
+			}
+		}
+	}
+	return all
+}
+
+func parseEnvVarsFromYAML(path string) []ContainerEnvVar {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	var result []ContainerEnvVar
+	var inEnv, inValueFrom bool
+	var currentName, currentValue string
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+
+		// Detect env: or envFrom: sections
+		if trimmed == "env:" {
+			inEnv = true
+			continue
+		}
+		if trimmed == "envFrom:" {
+			// envFrom uses configMapRef
+			inEnv = false
+			continue
+		}
+		if strings.HasPrefix(trimmed, "- configMapRef:") || strings.HasPrefix(trimmed, "configMapRef:") {
+			continue
+		}
+		if strings.HasPrefix(trimmed, "name:") && inEnv && strings.HasPrefix(strings.TrimSpace(line), "name:") {
+			// Could be configMapRef name - skip if indent is deep
+		}
+
+		if inEnv {
+			lineIndent := len(line) - len(strings.TrimLeft(line, " "))
+			// Exit env block if we're back to a lower indent
+			if trimmed != "" && lineIndent <= 8 && !strings.HasPrefix(trimmed, "-") && !strings.HasPrefix(trimmed, "name:") && !strings.HasPrefix(trimmed, "value") {
+				inEnv = false
+				if currentName != "" {
+					result = append(result, ContainerEnvVar{Name: currentName, Value: currentValue})
+					currentName = ""
+					currentValue = ""
+				}
+				continue
+			}
+
+			if strings.HasPrefix(trimmed, "- name:") {
+				if currentName != "" {
+					result = append(result, ContainerEnvVar{Name: currentName, Value: currentValue})
+				}
+				currentName = extractYAMLValue(trimmed, "name")
+				currentValue = ""
+				inValueFrom = false
+			} else if strings.HasPrefix(trimmed, "value:") && !inValueFrom {
+				currentValue = extractYAMLValue(trimmed, "value")
+			} else if trimmed == "valueFrom:" {
+				inValueFrom = true
+			} else if inValueFrom && strings.Contains(trimmed, "fieldPath:") {
+				currentValue = ""
+				ev := ContainerEnvVar{Name: currentName, From: "fieldRef:" + extractYAMLValue(trimmed, "fieldPath")}
+				result = append(result, ev)
+				currentName = ""
+				inValueFrom = false
+			}
+		}
+	}
+	if currentName != "" {
+		result = append(result, ContainerEnvVar{Name: currentName, Value: currentValue})
+	}
+	return result
+}
+
+// parseAllLabels extracts pod labels from chart template files.
+func parseAllLabels(files []string) map[string]string {
+	labels := map[string]string{}
+	for _, filePath := range files {
+		for k, v := range parseLabelsFromYAML(filePath) {
+			labels[k] = v
+		}
+	}
+	return labels
+}
+
+func parseLabelsFromYAML(path string) map[string]string {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	labels := map[string]string{}
+	var inPodLabels bool
+	var labelIndent int
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+		lineIndent := len(line) - len(strings.TrimLeft(line, " "))
+
+		// Look for labels under template.metadata (pod labels, not deployment labels)
+		if trimmed == "labels:" && lineIndent >= 6 {
+			inPodLabels = true
+			labelIndent = lineIndent
+			continue
+		}
+
+		if inPodLabels {
+			if trimmed == "" || lineIndent <= labelIndent {
+				inPodLabels = false
+				continue
+			}
+			if strings.Contains(trimmed, ":") && !strings.HasPrefix(trimmed, "#") {
+				parts := strings.SplitN(trimmed, ":", 2)
+				if len(parts) == 2 {
+					k := strings.TrimSpace(parts[0])
+					v := strings.TrimSpace(parts[1])
+					v = strings.Trim(v, `"'`)
+					if k != "" && !strings.Contains(k, "{{") {
+						labels[k] = v
+					}
+				}
+			}
+		}
+	}
+	return labels
+}
+
+// fetchLiveServices gets runtime service info from app-service.
+func (h *Handler) fetchLiveServices(appName string) []LiveService {
+	resp, err := h.httpClient.Get(h.appServiceURL + "/app-service/v1/app-services/" + appName)
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != 200 {
+		return nil
+	}
+	var services []LiveService
+	if err := json.NewDecoder(resp.Body).Decode(&services); err != nil {
+		return nil
+	}
+	return services
 }
 
 // extractYAMLValue extracts the value after "key:" from a YAML line, stripping quotes and template markers.

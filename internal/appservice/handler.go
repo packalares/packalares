@@ -35,6 +35,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/app-service/v1/stop", h.handleStop)
 	mux.HandleFunc("/app-service/v1/start", h.handleStart)
 	mux.HandleFunc("/app-service/v1/app-credentials/", h.handleAppCredentials)
+	mux.HandleFunc("/app-service/v1/app-services/", h.handleAppServices)
 	mux.HandleFunc("/app-service/v1/internet", h.handleInternet)
 
 	// Model endpoints
@@ -554,6 +555,25 @@ func (h *Handler) handleAppCredentials(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(creds)
+}
+
+// handleAppServices returns live Kubernetes services for an installed app.
+// GET /app-service/v1/app-services/<appName>
+func (h *Handler) handleAppServices(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	appName := strings.TrimPrefix(r.URL.Path, "/app-service/v1/app-services/")
+	appName = strings.TrimSuffix(appName, "/")
+	if appName == "" {
+		writeError(w, http.StatusBadRequest, "app name required")
+		return
+	}
+
+	services := h.svc.k8s.GetServicesForApp(r.Context(), appName, h.svc.namespace)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(services)
 }
 
 // handleInternet toggles internet access for an app.

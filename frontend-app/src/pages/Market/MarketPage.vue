@@ -721,6 +721,61 @@
                 </div>
               </div>
             </template>
+
+            <!-- Live Services (only when installed) -->
+            <template v-if="detailData?.liveServices?.length">
+              <div class="detail-section-title" style="margin-top:20px">Cluster Services</div>
+              <div class="detail-content-card">
+                <div class="detail-table">
+                  <div class="dt-row dt-header">
+                    <span class="dt-cell">Name</span>
+                    <span class="dt-cell">ClusterIP</span>
+                    <span class="dt-cell">Ports</span>
+                    <span class="dt-cell">Type</span>
+                  </div>
+                  <div class="dt-row" v-for="(svc, i) in detailData.liveServices" :key="'lsvc-'+i">
+                    <span class="dt-cell dt-mono">{{ svc.name }}</span>
+                    <span class="dt-cell dt-mono dt-copyable" @click="copyText(svc.clusterIP)">{{ svc.clusterIP }}</span>
+                    <span class="dt-cell dt-mono">{{ svc.ports?.map((p: any) => `${p.port}→${p.targetPort}`).join(', ') }}</span>
+                    <span class="dt-cell">{{ svc.type }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Environment Variables -->
+            <template v-if="detailData?.envVars?.length">
+              <div class="detail-section-title" style="margin-top:20px">Environment Variables</div>
+              <div class="detail-content-card">
+                <div class="detail-table">
+                  <div class="dt-row dt-header">
+                    <span class="dt-cell">Name</span>
+                    <span class="dt-cell dt-wide">Value</span>
+                  </div>
+                  <div class="dt-row" v-for="(ev, i) in detailData.envVars" :key="'ev-'+i">
+                    <span class="dt-cell dt-mono">{{ ev.name }}</span>
+                    <span class="dt-cell dt-wide dt-mono">{{ ev.value || ev.from || '—' }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Labels -->
+            <template v-if="detailData?.chartLabels && Object.keys(detailData.chartLabels).length">
+              <div class="detail-section-title" style="margin-top:20px">Pod Labels</div>
+              <div class="detail-content-card">
+                <div class="detail-table">
+                  <div class="dt-row dt-header">
+                    <span class="dt-cell">Key</span>
+                    <span class="dt-cell dt-wide">Value</span>
+                  </div>
+                  <div class="dt-row" v-for="(val, key) in detailData.chartLabels" :key="'lbl-'+key">
+                    <span class="dt-cell dt-mono">{{ key }}</span>
+                    <span class="dt-cell dt-wide dt-mono">{{ val || '—' }}</span>
+                  </div>
+                </div>
+              </div>
+            </template>
           </div>
 
           <div class="detail-sidebar">

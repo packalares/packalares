@@ -184,9 +184,35 @@ type AppDetailEnrichedResponse struct {
 // AppDetailEnriched wraps a MarketApp with extra detail-page data.
 type AppDetailEnriched struct {
 	MarketApp
-	VolumeMounts []VolumeMount      `json:"volumeMounts,omitempty"`
-	Credentials  *AppCredentials    `json:"credentials,omitempty"`
+	VolumeMounts []VolumeMount        `json:"volumeMounts,omitempty"`
+	Credentials  *AppCredentials      `json:"credentials,omitempty"`
 	Resources    []ContainerResources `json:"resources,omitempty"`
+	EnvVars      []ContainerEnvVar    `json:"envVars,omitempty"`
+	ChartLabels  map[string]string    `json:"chartLabels,omitempty"`
+	LiveServices []LiveService        `json:"liveServices,omitempty"`
+}
+
+// ContainerEnvVar holds an environment variable from the chart.
+type ContainerEnvVar struct {
+	Name  string `json:"name"`
+	Value string `json:"value,omitempty"`
+	From  string `json:"from,omitempty"` // e.g. "configMapRef:ollama-env", "fieldRef:spec.nodeName"
+}
+
+// LiveService holds runtime service info for an installed app.
+type LiveService struct {
+	Name      string `json:"name"`
+	ClusterIP string `json:"clusterIP,omitempty"`
+	Ports     []LivePort `json:"ports,omitempty"`
+	Type      string `json:"type,omitempty"`
+}
+
+// LivePort describes a service port.
+type LivePort struct {
+	Name       string `json:"name,omitempty"`
+	Port       int32  `json:"port"`
+	TargetPort int32  `json:"targetPort,omitempty"`
+	Protocol   string `json:"protocol,omitempty"`
 }
 
 // ContainerResources holds resource requests/limits for a container.
