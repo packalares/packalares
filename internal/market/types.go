@@ -46,6 +46,7 @@ type MarketApp struct {
 	TiktokenFiles        string   `json:"tiktokenFiles,omitempty"`
 	Locale               []string `json:"locale,omitempty"`
 	Permission       *AppPermission `json:"permission,omitempty"`
+	HasCredentials   bool          `json:"hasCredentials,omitempty"`
 	Dependencies     []Dependency  `json:"dependencies,omitempty"`
 	Source           string        `json:"source,omitempty"`
 	MobileSupported  bool          `json:"mobileSupported,omitempty"`

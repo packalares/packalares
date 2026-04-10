@@ -193,8 +193,10 @@ func (h *Handler) handleGetAppDetail(w http.ResponseWriter, r *http.Request) {
 	enriched.ChartLabels = parseAllLabels(files)
 	enriched.ChartImages = parseAllImages(files)
 
-	// Fetch credentials + live services from app-service (best-effort)
-	enriched.Credentials = h.fetchAppCredentials(name)
+	// Fetch credentials only if app declares it has them
+	if app.HasCredentials {
+		enriched.Credentials = h.fetchAppCredentials(name)
+	}
 	enriched.LiveServices = h.fetchLiveServices(name)
 
 	writeJSON(w, http.StatusOK, AppDetailEnrichedResponse{
