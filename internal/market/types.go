@@ -242,6 +242,7 @@ type VolumeMount struct {
 // AppCredentials holds admin credentials for an installed app.
 type AppCredentials struct {
 	Username string `json:"username,omitempty"`
+	Email    string `json:"email,omitempty"`
 	Password string `json:"password,omitempty"`
 }
 
