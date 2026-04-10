@@ -14,11 +14,11 @@
       <div class="sidebar-divider"></div>
 
       <div class="sidebar-nav">
-        <div class="nav-item" :class="{ active: activeTab === 'discover' && activeCategory === 'all' && !showModels }" @click="activeTab = 'discover'; activeCategory = 'all'; showModels = false; router.replace({ query: {} })">
+        <div class="nav-item" :class="{ active: activeTab === 'discover' && activeCategory === 'all' && !showModels }" @click="detailApp = null; activeTab = 'discover'; activeCategory = 'all'; showModels = false; router.replace({ query: {} })">
           <q-icon name="sym_r_explore" size="17px" class="nav-icon" />
           <span class="nav-text">Discover</span>
         </div>
-        <div class="nav-item" :class="{ active: activeTab === 'installed' }" @click="activeTab = 'installed'; showModels = false; router.replace({ query: { view: 'installed' } })">
+        <div class="nav-item" :class="{ active: activeTab === 'installed' }" @click="detailApp = null; activeTab = 'installed'; showModels = false; router.replace({ query: { view: 'installed' } })">
           <q-icon name="sym_r_download_done" size="17px" class="nav-icon" />
           <span class="nav-text">Installed</span>
           <span v-if="installedApps.length > 0" class="nav-badge">{{ installedApps.length }}</span>
@@ -52,7 +52,7 @@
                 :key="mb.backend + '-' + mc.name"
                 class="nav-item nav-item-indent"
                 :class="{ active: showModels && activeBackend === mb.backend && activeCategory === mc.name }"
-                @click="showModels = true; activeBackend = mb.backend; activeTab = 'discover'; activeCategory = mc.name; router.replace({ query: { view: 'models', backend: mb.backend, category: mc.name } })"
+                @click="detailApp = null; showModels = true; activeBackend = mb.backend; activeTab = 'discover'; activeCategory = mc.name; router.replace({ query: { view: 'models', backend: mb.backend, category: mc.name } })"
               >
                 <q-icon :name="modelCategoryIcon(mc.name)" size="17px" class="nav-icon" />
                 <span class="nav-text">{{ mc.name }}</span>
@@ -1074,12 +1074,14 @@ function isInstalled(name: string): boolean {
 }
 
 function selectCategory(name: string) {
+  detailApp.value = null;
   activeTab.value = 'discover';
   activeCategory.value = name;
   router.replace({ query: { category: name } });
 }
 
 function toggleBackendSection(backend: string) {
+  detailApp.value = null;
   if (showModels.value && activeBackend.value === backend && activeCategory.value === 'all') {
     expandedBackends[backend] = !expandedBackends[backend];
   } else {
