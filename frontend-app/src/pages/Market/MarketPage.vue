@@ -689,14 +689,14 @@
             </template>
 
             <!-- Container Images -->
-            <template v-if="(detailData?.images || detailApp?.images || []).length">
+            <template v-if="(detailData?.chartImages || detailData?.images || []).length">
               <div class="detail-section-title" style="margin-top:20px">Container Images</div>
               <div class="detail-content-card">
                 <div class="detail-table">
                   <div class="dt-row dt-header">
                     <span class="dt-cell dt-wide">Image</span>
                   </div>
-                  <div class="dt-row" v-for="(img, idx) in (detailData?.images || detailApp?.images || [])" :key="'img-'+idx">
+                  <div class="dt-row" v-for="(img, idx) in (detailData?.chartImages || detailData?.images || [])" :key="'img-'+idx">
                     <span class="dt-cell dt-wide dt-mono">{{ img }}</span>
                   </div>
                 </div>

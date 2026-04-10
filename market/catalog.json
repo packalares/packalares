@@ -1917,10 +1917,6 @@
       ],
       "hasChart": true,
       "featuredImage": "/api/market/screenshots/openwebui/featured.webp",
-      "images": [
-        "ghcr.io/open-webui/open-webui:0.8.12",
-        "docker.io/busybox:1.37.0"
-      ],
       "services": [
         {
           "name": "openwebui-svc",

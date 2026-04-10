@@ -184,12 +184,13 @@ type AppDetailEnrichedResponse struct {
 // AppDetailEnriched wraps a MarketApp with extra detail-page data.
 type AppDetailEnriched struct {
 	MarketApp
-	VolumeMounts []VolumeMount        `json:"volumeMounts,omitempty"`
-	Credentials  *AppCredentials      `json:"credentials,omitempty"`
-	Resources    []ContainerResources `json:"resources,omitempty"`
-	EnvVars      []ContainerEnvVar    `json:"envVars,omitempty"`
-	ChartLabels  map[string]string    `json:"chartLabels,omitempty"`
-	LiveServices []LiveService        `json:"liveServices,omitempty"`
+	VolumeMounts  []VolumeMount        `json:"volumeMounts,omitempty"`
+	Credentials   *AppCredentials      `json:"credentials,omitempty"`
+	Resources     []ContainerResources `json:"resources,omitempty"`
+	EnvVars       []ContainerEnvVar    `json:"envVars,omitempty"`
+	ChartLabels   map[string]string    `json:"chartLabels,omitempty"`
+	LiveServices  []LiveService        `json:"liveServices,omitempty"`
+	ChartImages   []string             `json:"chartImages,omitempty"`
 }
 
 // ContainerEnvVar holds an environment variable from the chart.

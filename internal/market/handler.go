@@ -191,6 +191,7 @@ func (h *Handler) handleGetAppDetail(w http.ResponseWriter, r *http.Request) {
 	enriched.Resources = parseAllResources(files)
 	enriched.EnvVars = parseAllEnvVars(files)
 	enriched.ChartLabels = parseAllLabels(files)
+	enriched.ChartImages = parseAllImages(files)
 
 	// Fetch credentials + live services from app-service (best-effort)
 	enriched.Credentials = h.fetchAppCredentials(name)
@@ -711,6 +712,32 @@ func (h *Handler) fetchLiveServices(appName string) []LiveService {
 		return nil
 	}
 	return services
+}
+
+// parseAllImages extracts container image references from chart template files.
+func parseAllImages(files []string) []string {
+	seen := map[string]bool{}
+	var images []string
+	for _, filePath := range files {
+		f, err := os.Open(filePath)
+		if err != nil {
+			continue
+		}
+		scanner := bufio.NewScanner(f)
+		for scanner.Scan() {
+			trimmed := strings.TrimSpace(scanner.Text())
+			if strings.HasPrefix(trimmed, "image:") {
+				val := strings.TrimSpace(strings.TrimPrefix(trimmed, "image:"))
+				val = strings.Trim(val, `"'`)
+				if val != "" && !strings.Contains(val, "{{") && !seen[val] {
+					seen[val] = true
+					images = append(images, val)
+				}
+			}
+		}
+		f.Close()
+	}
+	return images
 }
 
 // extractYAMLValue extracts the value after "key:" from a YAML line, stripping quotes and template markers.
