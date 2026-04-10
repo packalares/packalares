@@ -575,9 +575,9 @@
             <span class="stat-val">{{ detailData.installCount.toLocaleString() }}</span>
             <span class="stat-lbl">Downloads</span>
           </div>
-          <div class="stat-item" v-if="detailData?.language?.length">
+          <div class="stat-item" v-if="(detailData?.locale || detailData?.language || []).length">
             <q-icon name="sym_r_translate" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ detailData.language.join(', ').substring(0, 12) }}</span>
+            <span class="stat-val">{{ (detailData?.locale || detailData?.language || []).join(', ').substring(0, 12) }}</span>
             <span class="stat-lbl">Language</span>
           </div>
           <div class="stat-item" v-if="detailData?.requiredMemory">
@@ -639,16 +639,28 @@
               <div class="detail-description" v-else v-html="renderMarkdown(detailData?.fullDescription || detailData?.description || detailApp.description || 'No description available.')" />
             </div>
 
+            <!-- What's new -->
+            <template v-if="detailData?.upgradeDescription">
+              <div class="detail-section-title" style="margin-top:20px">What's new</div>
+              <div class="detail-content-card">
+                <div class="detail-description" v-html="renderMarkdown(detailData.upgradeDescription)" />
+              </div>
+            </template>
+
             <!-- Permissions -->
             <template v-if="detailData?.permission">
               <div class="detail-section-title" style="margin-top:20px">Required Permissions</div>
               <div class="detail-content-card">
                 <div class="detail-permissions">
-                  <div class="perm-item" v-if="detailData.permission.appData">
+                  <div class="perm-item" v-if="detailData.permission.appData || detailData.permission.appCache">
                     <q-icon name="sym_r_folder" size="18px" class="perm-icon" />
                     <div class="perm-info">
                       <div class="perm-name">Access to Files</div>
-                      <div class="perm-desc">This app can access your file storage</div>
+                      <div class="perm-desc">
+                        <span v-if="detailData.permission.appData">App Data (<code>/data</code>)</span>
+                        <span v-if="detailData.permission.appData && detailData.permission.appCache">, </span>
+                        <span v-if="detailData.permission.appCache">App Cache (<code>/cache</code>)</span>
+                      </div>
                     </div>
                   </div>
                   <div class="perm-item" v-if="detailData.permission.sysData?.length">
@@ -712,8 +724,12 @@
                 <span class="di-label">Source code</span>
                 <a :href="detailData.sourceCode" target="_blank" class="di-link">Public</a>
               </div>
-              <div class="di-row" v-if="detailData?.version || detailApp.version">
+              <div class="di-row" v-if="detailData?.versionName || detailApp.versionName">
                 <span class="di-label">App version</span>
+                <span class="di-value">{{ detailData?.versionName || detailApp.versionName }}</span>
+              </div>
+              <div class="di-row" v-if="detailData?.version || detailApp.version">
+                <span class="di-label">Chart version</span>
                 <span class="di-value">{{ detailData?.version || detailApp.version }}</span>
               </div>
               <div class="di-row" v-if="detailData?.developer || detailApp.developer">
@@ -724,9 +740,9 @@
                 <span class="di-label">Category</span>
                 <span class="di-value">{{ (detailData?.categories || detailApp.categories || []).join(', ') }}</span>
               </div>
-              <div class="di-row" v-if="detailData?.language?.length">
+              <div class="di-row" v-if="(detailData?.locale || detailData?.language || []).length">
                 <span class="di-label">Language</span>
-                <span class="di-value">{{ detailData.language.join(', ') }}</span>
+                <span class="di-value">{{ (detailData?.locale || detailData?.language || []).join(', ') }}</span>
               </div>
               <div class="di-row" v-if="detailData?.supportArch?.length">
                 <span class="di-label">Architecture</span>
@@ -734,7 +750,7 @@
               </div>
               <div class="di-row" v-if="detailData?.license?.length">
                 <span class="di-label">License</span>
-                <span class="di-value">{{ detailData.license.map((l: any) => l.text).join(', ') }}</span>
+                <span class="di-value">{{ detailData.license.map((l: any) => l.name || l.text).join(', ') }}</span>
               </div>
               <!-- App Credentials -->
               <template v-if="appCreds">

@@ -1376,15 +1376,16 @@
 
 .detail-description {
   font-size: 13px;
-  line-height: 1.7;
+  line-height: 1.75;
   color: var(--ink-2);
-  h2 { font-size: 16px; font-weight: 700; margin: 16px 0 6px; color: var(--ink-1); }
-  h3 { font-size: 14px; font-weight: 600; margin: 12px 0 4px; color: var(--ink-1); }
+  h2 { font-size: 15px; font-weight: 700; margin: 18px 0 8px; color: var(--ink-1); &:first-child { margin-top: 0; } }
+  h3 { font-size: 14px; font-weight: 600; margin: 14px 0 6px; color: var(--ink-1); &:first-child { margin-top: 0; } }
+  h4 { font-size: 13px; font-weight: 600; margin: 10px 0 4px; color: var(--ink-1); }
   strong { font-weight: 600; color: var(--ink-1); }
-  code { font-family: 'Inter', sans-serif; font-size: 11px; background: var(--bg-3); padding: 1px 4px; border-radius: 3px; }
-  ul { padding-left: 18px; margin: 6px 0; }
-  li { margin-bottom: 3px; }
-  p { margin: 6px 0; }
+  code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 11px; background: var(--bg-3); padding: 2px 5px; border-radius: 3px; color: var(--ink-1); }
+  ul { padding-left: 20px; margin: 8px 0; }
+  li { margin-bottom: 4px; line-height: 1.6; }
+  p { margin: 8px 0; &:first-child { margin-top: 0; } &:last-child { margin-bottom: 0; } }
 }
 
 /* Permissions */
@@ -1399,12 +1400,15 @@
 }
 .perm-icon { color: var(--ink-3); margin-top: 1px; flex-shrink: 0; }
 .perm-name { font-size: 12px; font-weight: 600; color: var(--ink-1); }
-.perm-desc { font-size: 11px; color: var(--ink-3); margin-top: 1px; }
+.perm-desc { font-size: 11px; color: var(--ink-3); margin-top: 1px;
+  code { font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 10px; background: var(--bg-3); padding: 1px 4px; border-radius: 3px; color: var(--ink-2); }
+}
 
 /* Info sidebar */
 .detail-sidebar {
-  width: 220px;
+  width: calc(30% - 10px);
   flex-shrink: 0;
+  min-width: 200px;
 }
 
 .detail-info-card {
