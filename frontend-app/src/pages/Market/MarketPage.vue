@@ -451,9 +451,10 @@
             </template>
             <!-- Running: app -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running' && detailApp.type !== 'model'">
-              <q-btn unelevated no-caps label="Open" class="btn-primary" icon="sym_r_open_in_new" @click="openApp(detailApp.name)" style="padding:6px 24px" />
-              <q-btn flat no-caps label="Stop" icon="sym_r_stop_circle" class="btn-secondary" @click="stopApp(detailApp)" />
-              <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
+              <div class="hero-actions-row">
+                <q-btn unelevated no-caps label="Open" class="btn-primary" icon="sym_r_open_in_new" @click="openApp(detailApp.name)" style="padding:6px 24px" />
+                <q-btn flat no-caps label="Stop" icon="sym_r_stop_circle" class="btn-secondary" @click="stopApp(detailApp)" />
+                <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
                 <q-menu dark class="app-action-menu">
                   <q-list dense>
                     <q-item clickable v-close-popup @click="confirmUninstall(detailApp, false)">
@@ -466,7 +467,13 @@
                     </q-item>
                   </q-list>
                 </q-menu>
-              </q-btn>
+                </q-btn>
+              </div>
+              <q-btn flat dense no-caps size="sm" class="toolbar-btn"
+                :icon="internetBlocked[detailApp.name] ? 'sym_r_wifi_off' : 'sym_r_wifi'"
+                :label="internetBlocked[detailApp.name] ? 'Internet Blocked' : 'Internet Allowed'"
+                :class="internetBlocked[detailApp.name] ? 'text-negative' : 'text-positive'"
+                @click="internetBlocked[detailApp.name] = !internetBlocked[detailApp.name]; toggleInternet(detailApp)" />
             </template>
             <!-- Running: model -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running' && detailApp.type === 'model'">
@@ -488,21 +495,28 @@
             </template>
             <!-- Stopped -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'stopped'">
-              <q-btn unelevated no-caps label="Start" icon="sym_r_play_circle" class="btn-primary" @click="startApp(detailApp)" style="padding:6px 24px" />
-              <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
-                <q-menu dark class="app-action-menu">
-                  <q-list dense>
-                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp, false)">
-                      <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
-                      <q-item-section class="text-negative">Remove</q-item-section>
-                    </q-item>
-                    <q-item clickable v-close-popup @click="confirmUninstall(detailApp, true)">
-                      <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
-                      <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
-                    </q-item>
-                  </q-list>
-                </q-menu>
-              </q-btn>
+              <div class="hero-actions-row">
+                <q-btn unelevated no-caps label="Start" icon="sym_r_play_circle" class="btn-primary" @click="startApp(detailApp)" style="padding:6px 24px" />
+                <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
+                  <q-menu dark class="app-action-menu">
+                    <q-list dense>
+                      <q-item clickable v-close-popup @click="confirmUninstall(detailApp, false)">
+                        <q-item-section avatar><q-icon name="sym_r_delete" size="18px" color="negative" /></q-item-section>
+                        <q-item-section class="text-negative">Remove</q-item-section>
+                      </q-item>
+                      <q-item clickable v-close-popup @click="confirmUninstall(detailApp, true)">
+                        <q-item-section avatar><q-icon name="sym_r_delete_forever" size="18px" color="negative" /></q-item-section>
+                        <q-item-section class="text-negative">Remove &amp; Wipe</q-item-section>
+                      </q-item>
+                    </q-list>
+                  </q-menu>
+                </q-btn>
+              </div>
+              <q-btn flat dense no-caps size="sm" class="toolbar-btn"
+                :icon="internetBlocked[detailApp.name] ? 'sym_r_wifi_off' : 'sym_r_wifi'"
+                :label="internetBlocked[detailApp.name] ? 'Internet Blocked' : 'Internet Allowed'"
+                :class="internetBlocked[detailApp.name] ? 'text-negative' : 'text-positive'"
+                @click="internetBlocked[detailApp.name] = !internetBlocked[detailApp.name]; toggleInternet(detailApp)" />
             </template>
             <!-- Stopping -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'stopping'">
@@ -568,15 +582,6 @@
                 icon="sym_r_download" @click="handleInstall(detailApp)" style="padding:6px 24px" />
             </template>
           </div>
-        </div>
-
-        <!-- Toolbar: internet toggle (only for installed apps) -->
-        <div class="detail-toolbar" v-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running' || getAppDisplayState(detailApp.name, detailApp.hasChart) === 'stopped'">
-          <q-btn flat dense no-caps size="sm" class="toolbar-btn"
-            :icon="internetBlocked[detailApp.name] ? 'sym_r_wifi_off' : 'sym_r_wifi'"
-            :label="internetBlocked[detailApp.name] ? 'Internet Blocked' : 'Internet Allowed'"
-            :class="internetBlocked[detailApp.name] ? 'text-negative' : 'text-positive'"
-            @click="internetBlocked[detailApp.name] = !internetBlocked[detailApp.name]; toggleInternet(detailApp)" />
         </div>
 
         <!-- Stats strip with icons -->
