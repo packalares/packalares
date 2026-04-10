@@ -1008,6 +1008,7 @@ func (s *Service) ListInstalledModels(ctx context.Context) (map[string][]Install
 // AppCredentials holds admin credentials for an installed app.
 type AppCredentials struct {
 	Username string `json:"username"`
+	Email    string `json:"email,omitempty"`
 	Password string `json:"password"`
 }
 
@@ -1036,8 +1037,15 @@ func (s *Service) GetAppCredentials(ctx context.Context, appName string) (*AppCr
 		return nil, fmt.Errorf("no credentials configured for %s", appName)
 	}
 
+	// Check if app uses email-based login (e.g. Open WebUI)
+	email := ""
+	if username != "" {
+		email = username + "@packalares.local"
+	}
+
 	return &AppCredentials{
 		Username: username,
+		Email:    email,
 		Password: password,
 	}, nil
 }
