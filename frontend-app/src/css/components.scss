@@ -1217,6 +1217,22 @@
   }
 }
 
+.app-btn-disabled {
+  opacity: 0.45 !important;
+  cursor: default !important;
+  &:hover { background: var(--accent-bold) !important; }
+}
+
+.btn-disabled-backend {
+  opacity: 0.45 !important;
+  cursor: default !important;
+}
+
+.backend-modal {
+  min-width: 340px;
+  border-radius: 12px;
+}
+
 .status-badge {
   font-size: 11px;
   padding: 2px 8px;

@@ -99,6 +99,6 @@ options:
   - name: packalares
     type: system
     version: '>=1.0.0'
-  - name: ollamav2
+  - name: ollama
     type: application
     version: '>=1.0.3'

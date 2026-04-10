@@ -2,10 +2,10 @@
 olaresManifest.version: "0.10.0"
 olaresManifest.type: app
 metadata:
-  name: ollamav2
+  name: ollama
   icon: https://app.cdn.olares.com/appstore/ollama/icon.png
   description: Get up and running with large language models.
-  appid: ollamav2
+  appid: ollama
   title: Ollama
   version: "1.0.17"
   categories:

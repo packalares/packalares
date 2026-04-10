@@ -259,7 +259,10 @@
                   </template>
                   <!-- Not installed -->
                   <template v-else-if="getAppDisplayState(app.name, app.hasChart) === 'not_installed'">
-                    <q-btn unelevated dense no-caps size="sm" :label="app.requiredDisk ? 'Install \u00b7 ' + app.requiredDisk : 'Install'" class="app-btn-install" @click.stop="handleInstall(app)" />
+                    <q-btn unelevated dense no-caps size="sm"
+                      :label="app.requiredDisk ? 'Install \u00b7 ' + app.requiredDisk : 'Install'"
+                      :class="app.type === 'model' && !isBackendInstalled(app.backend || 'ollama') ? 'app-btn-install app-btn-disabled' : 'app-btn-install'"
+                      @click.stop="handleInstall(app)" />
                   </template>
                   <!-- No chart -->
                   <template v-else-if="getAppDisplayState(app.name, app.hasChart) === 'no_chart'">
@@ -550,7 +553,9 @@
             </template>
             <!-- Not installed -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'not_installed' && detailApp.hasChart">
-              <q-btn unelevated no-caps label="Install" class="btn-primary" icon="sym_r_download" @click="handleInstall(detailApp)" style="padding:6px 24px" />
+              <q-btn unelevated no-caps label="Install"
+                :class="detailApp.type === 'model' && !isBackendInstalled(detailApp.backend || 'ollama') ? 'btn-primary btn-disabled-backend' : 'btn-primary'"
+                icon="sym_r_download" @click="handleInstall(detailApp)" style="padding:6px 24px" />
             </template>
             <!-- No chart -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'no_chart'">
@@ -558,7 +563,9 @@
             </template>
             <!-- Default: not installed -->
             <template v-else>
-              <q-btn unelevated no-caps label="Install" class="btn-primary" icon="sym_r_download" @click="handleInstall(detailApp)" style="padding:6px 24px" />
+              <q-btn unelevated no-caps label="Install"
+                :class="detailApp.type === 'model' && !isBackendInstalled(detailApp.backend || 'ollama') ? 'btn-primary btn-disabled-backend' : 'btn-primary'"
+                icon="sym_r_download" @click="handleInstall(detailApp)" style="padding:6px 24px" />
             </template>
           </div>
         </div>
@@ -788,6 +795,24 @@
       <div v-if="previewImg" class="preview-overlay" @click="previewImg = ''">
         <img :src="previewImg" class="preview-img" />
       </div>
+
+      <!-- Backend missing modal -->
+      <q-dialog v-model="showBackendModal" persistent>
+        <q-card class="backend-modal">
+          <q-card-section class="row items-center">
+            <q-icon name="sym_r_warning" size="24px" color="warning" class="q-mr-sm" />
+            <span class="text-h6">Backend Required</span>
+          </q-card-section>
+          <q-card-section>
+            This model requires <strong>{{ backendMissing }}</strong> to be installed first.
+          </q-card-section>
+          <q-card-actions align="right">
+            <q-btn flat no-caps label="Cancel" color="grey" @click="backendMissing = null" />
+            <q-btn unelevated no-caps label="Install" color="primary" icon="sym_r_download"
+              @click="goToBackend(backendMissing!)" />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </div>
   </div>
 </template>
@@ -868,6 +893,7 @@ const showCreds = ref(false);
 const detailLoading = ref(false);
 const previewImg = ref('');
 const installingSet = reactive(new Set<string>());
+const backendMissing = ref<string | null>(null);
 const appStates = reactive<Record<string, string>>({});
 const internetBlocked = reactive<Record<string, boolean>>({});
 const installProgress = reactive<Record<string, { step: number; totalSteps: number; detail: string; bytesDownloaded: number; bytesTotal: number }>>({});
@@ -1274,8 +1300,30 @@ async function fetchModelStatus() {
   }
 }
 
+function isBackendInstalled(backend: string): boolean {
+  return installedApps.value.some((a) => a.name === backend);
+}
+
+const showBackendModal = computed({
+  get: () => backendMissing.value !== null,
+  set: (v: boolean) => { if (!v) backendMissing.value = null; },
+});
+
+function goToBackend(backend: string) {
+  backendMissing.value = null;
+  const app = apps.value.find((a) => a.name === backend);
+  if (app) {
+    openDetail(app);
+  }
+}
+
 function handleInstall(app: MarketApp) {
   if (app.type === 'model') {
+    const backend = app.backend || 'ollama';
+    if (!isBackendInstalled(backend)) {
+      backendMissing.value = backend;
+      return;
+    }
     installModel(app);
   } else {
     installApp(app);

@@ -1,17 +1,17 @@
 {
   "apps": [
     {
-      "name": "ollamav2",
+      "name": "ollama",
       "cfgType": "app",
-      "chartName": "ollamav2",
-      "icon": "/api/market/icons/ollamav2.png",
+      "chartName": "ollama",
+      "icon": "/api/market/icons/ollama.png",
       "description": "Get up and running with large language models.",
       "fullDescription": "## IMPORTANT NOTE ##\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## OVERVIEW ##\nOllama is a user-friendly interface for running large language models (LLMs) locally. It is a valuable tool for researchers, developers, and anyone who wants to experiment with language models. With Ollama, you can easily download and run LLMs, customize and create your own models, and chat with your LLMs using files on your device.\n\nOllama supports a wide range of models, including:\n- Llama 3 8B\n- Llama 3 70B\n- Phi 3 Mini 3.8B\n- Phi 3 Medium 14B\n- Gemma 2 9B\n- Gemma 2 27B\n- Mistral 7B\n- Moondream 2 1.4B\n- Neural Chat 7B\n- Starling 7B\n- Code Llama 7B\n- Llama 2 Uncensored 7B\n- LLaVA 7B\n- Solar 10.7B\n",
       "upgradeDescription": "Upgrade Ollama version from v0.17.7 to v0.20.3\n\nFor detailed release notes including new models and features in each version, please visit:\nhttps://github.com/ollama/ollama/releases\n",
       "promoteImage": [
-        "/api/market/screenshots/ollamav2/1.webp",
-        "/api/market/screenshots/ollamav2/2.webp",
-        "/api/market/screenshots/ollamav2/3.webp"
+        "/api/market/screenshots/ollama/1.webp",
+        "/api/market/screenshots/ollama/2.webp",
+        "/api/market/screenshots/ollama/3.webp"
       ],
       "developer": "ollama",
       "title": "Ollama",
@@ -69,7 +69,7 @@
         }
       ],
       "hasChart": true,
-      "featuredImage": "/api/market/screenshots/ollamav2/featured.webp"
+      "featuredImage": "/api/market/screenshots/ollama/featured.webp"
     },
     {
       "name": "bge-reranker-v2-m3",
@@ -110,7 +110,7 @@
       ],
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -157,7 +157,7 @@
       ],
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -204,7 +204,7 @@
       ],
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -251,7 +251,7 @@
       ],
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -291,7 +291,7 @@
       "sourceCode": "https://huggingface.co/google/gemma-4-31b-it",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -337,7 +337,7 @@
       "sourceCode": "https://huggingface.co/google/gemma-4-e4b-it",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -382,7 +382,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen3.5-27B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -427,7 +427,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen3-30B-A3B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -472,7 +472,7 @@
       "sourceCode": "https://huggingface.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -517,7 +517,7 @@
       "sourceCode": "https://huggingface.co/openai/gpt-oss-20b",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -562,7 +562,7 @@
       "sourceCode": "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -607,7 +607,7 @@
       "sourceCode": "https://huggingface.co/Qwen/QwQ-32B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -652,7 +652,7 @@
       "sourceCode": "https://huggingface.co/microsoft/phi-4-reasoning",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -697,7 +697,7 @@
       "sourceCode": "https://huggingface.co/deepcogito/cogito-v1-preview-llama-32B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -742,7 +742,7 @@
       "sourceCode": "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -787,7 +787,7 @@
       "sourceCode": "https://huggingface.co/nvidia/Nemotron-3-Nano-4B-Instruct",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -832,7 +832,7 @@
       "sourceCode": "https://huggingface.co/mistralai/Devstral-Small-2507",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -877,7 +877,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -922,7 +922,7 @@
       "sourceCode": "https://huggingface.co/deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -967,7 +967,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1012,7 +1012,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen3-Embedding-8B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1057,7 +1057,7 @@
       "sourceCode": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1102,7 +1102,7 @@
       "sourceCode": "https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1147,7 +1147,7 @@
       "sourceCode": "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1192,7 +1192,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen3-VL-30B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1237,7 +1237,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen3-VL-8B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1282,7 +1282,7 @@
       "sourceCode": "https://huggingface.co/openbmb/MiniCPM-V-2_6",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1328,7 +1328,7 @@
       "sourceCode": "https://huggingface.co/THUDM/GLM-OCR",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1373,7 +1373,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen3-4B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1418,7 +1418,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen3.5-4B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1463,7 +1463,7 @@
       "sourceCode": "https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B-Instruct",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1508,7 +1508,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen3.5-35B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1553,7 +1553,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen3-32B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1598,7 +1598,7 @@
       "sourceCode": "https://huggingface.co/mistralai/Mistral-Small-24B-Instruct-2501",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1644,7 +1644,7 @@
       "sourceCode": "https://huggingface.co/cognitivecomputations/Dolphin3.0-Llama3.1-8B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1689,7 +1689,7 @@
       "sourceCode": "https://huggingface.co/google/medgemma-27b",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1734,7 +1734,7 @@
       "sourceCode": "https://huggingface.co/google/medgemma-4b",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1779,7 +1779,7 @@
       "sourceCode": "https://huggingface.co/google/translategemma-12b",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1824,7 +1824,7 @@
       "sourceCode": "https://huggingface.co/Qwen/Qwen3.5-9B",
       "dependencies": [
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "type": "application",
           "version": ">=1.0.3"
         }
@@ -1900,7 +1900,7 @@
           "type": "system"
         },
         {
-          "name": "ollamav2",
+          "name": "ollama",
           "version": ">=1.0.3",
           "type": "application"
         }
