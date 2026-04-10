@@ -1,9 +1,12 @@
 package market
 
 import (
+	"archive/tar"
 	"bufio"
+	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -184,6 +187,7 @@ func (h *Handler) handleGetAppDetail(w http.ResponseWriter, r *http.Request) {
 		chartName = app.Name
 	}
 	enriched.VolumeMounts = h.parseChartVolumeMounts(chartName)
+	enriched.Resources = h.parseChartResources(chartName)
 
 	// Fetch credentials from app-service (best-effort, ignore errors)
 	enriched.Credentials = h.fetchAppCredentials(name)
@@ -217,18 +221,9 @@ func (h *Handler) fetchAppCredentials(appName string) *AppCredentials {
 // parseChartVolumeMounts reads deployment templates from a chart directory
 // and extracts volumeMounts + matching hostPath volumes.
 func (h *Handler) parseChartVolumeMounts(chartName string) []VolumeMount {
-	templatesDir := filepath.Join(h.dataDir, chartsSubdir, chartName, "templates")
-	entries, err := os.ReadDir(templatesDir)
-	if err != nil {
-		return nil
-	}
-
+	files := h.getChartTemplateFiles(chartName)
 	var mounts []VolumeMount
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".yaml") {
-			continue
-		}
-		filePath := filepath.Join(templatesDir, e.Name())
+	for _, filePath := range files {
 		m := parseVolumeMountsFromYAML(filePath)
 		mounts = append(mounts, m...)
 	}
@@ -345,6 +340,217 @@ func parseVolumeMountsFromYAML(path string) []VolumeMount {
 		result = append(result, vm)
 	}
 	return result
+}
+
+// parseChartResources reads deployment templates from a chart and extracts resource requests/limits.
+func (h *Handler) parseChartResources(chartName string) []ContainerResources {
+	files := h.getChartTemplateFiles(chartName)
+	var all []ContainerResources
+	for _, filePath := range files {
+		res := parseResourcesFromYAML(filePath)
+		all = append(all, res...)
+	}
+	return all
+}
+
+// getChartTemplateFiles returns paths to template YAML files for a chart.
+// Tries raw directory first, then unpacks from .tgz.
+func (h *Handler) getChartTemplateFiles(chartName string) []string {
+	// Try raw directory
+	templatesDir := filepath.Join(h.dataDir, chartsSubdir, chartName, "templates")
+	if entries, err := os.ReadDir(templatesDir); err == nil {
+		var files []string
+		for _, e := range entries {
+			if !e.IsDir() && strings.HasSuffix(e.Name(), ".yaml") {
+				files = append(files, filepath.Join(templatesDir, e.Name()))
+			}
+		}
+		if len(files) > 0 {
+			return files
+		}
+	}
+
+	// Try .tgz
+	chartsDir := filepath.Join(h.dataDir, chartsSubdir)
+	entries, err := os.ReadDir(chartsDir)
+	if err != nil {
+		return nil
+	}
+	var tgzPath string
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), chartName+"-") && strings.HasSuffix(e.Name(), ".tgz") {
+			tgzPath = filepath.Join(chartsDir, e.Name())
+			break
+		}
+	}
+	if tgzPath == "" {
+		return nil
+	}
+
+	tmpDir, err := os.MkdirTemp("", "chart-parse-")
+	if err != nil {
+		return nil
+	}
+	// Note: caller should ideally clean up, but these are small and short-lived
+	if err := unpackTGZToDir(tgzPath, tmpDir); err != nil {
+		os.RemoveAll(tmpDir)
+		return nil
+	}
+
+	// Find templates dir inside unpacked chart
+	dirEntries, _ := os.ReadDir(tmpDir)
+	for _, d := range dirEntries {
+		if d.IsDir() {
+			tDir := filepath.Join(tmpDir, d.Name(), "templates")
+			if files, err := os.ReadDir(tDir); err == nil {
+				var result []string
+				for _, f := range files {
+					if !f.IsDir() && strings.HasSuffix(f.Name(), ".yaml") {
+						result = append(result, filepath.Join(tDir, f.Name()))
+					}
+				}
+				return result
+			}
+		}
+	}
+	return nil
+}
+
+func unpackTGZToDir(tgzPath, destDir string) error {
+	f, err := os.Open(tgzPath)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return err
+	}
+	defer gz.Close()
+
+	tr := tar.NewReader(gz)
+	for {
+		header, err := tr.Next()
+		if err != nil {
+			break
+		}
+		target := filepath.Join(destDir, header.Name)
+		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(destDir)) {
+			continue
+		}
+		switch header.Typeflag {
+		case tar.TypeDir:
+			os.MkdirAll(target, 0755)
+		case tar.TypeReg:
+			os.MkdirAll(filepath.Dir(target), 0755)
+			out, err := os.Create(target)
+			if err != nil {
+				continue
+			}
+			io.Copy(out, tr)
+			out.Close()
+		}
+	}
+	return nil
+}
+
+// parseResourcesFromYAML extracts container names and their resource requests/limits.
+func parseResourcesFromYAML(path string) []ContainerResources {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil
+	}
+	defer f.Close()
+
+	var results []ContainerResources
+	var currentContainer string
+	var inResources, inRequests, inLimits bool
+
+	currentRes := ContainerResources{}
+
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		trimmed := strings.TrimSpace(line)
+
+		// Detect container name
+		if strings.HasPrefix(trimmed, "- name:") && !strings.Contains(trimmed, "mountPath") {
+			lineIndent := len(line) - len(strings.TrimLeft(line, " "))
+			// Container names are typically at indent 10-12 (under containers:)
+			if lineIndent >= 8 && lineIndent <= 16 {
+				// Save previous container if it had resources
+				if currentContainer != "" && (currentRes.Requests != (ResMap{}) || currentRes.Limits != (ResMap{})) {
+					currentRes.Container = currentContainer
+					results = append(results, currentRes)
+					currentRes = ContainerResources{}
+				}
+				currentContainer = extractYAMLValue(trimmed, "name")
+			}
+		}
+
+		if strings.Contains(trimmed, "resources:") && !strings.HasPrefix(trimmed, "#") {
+			inResources = true
+			inRequests = false
+			inLimits = false
+			continue
+		}
+
+		if inResources {
+			if trimmed == "requests:" {
+				inRequests = true
+				inLimits = false
+				continue
+			}
+			if trimmed == "limits:" {
+				inLimits = true
+				inRequests = false
+				continue
+			}
+
+			// Exit resources block
+			lineIndent := len(line) - len(strings.TrimLeft(line, " "))
+			if trimmed != "" && !strings.HasPrefix(trimmed, "cpu") && !strings.HasPrefix(trimmed, "memory") &&
+				!strings.HasPrefix(trimmed, "nvidia") && !strings.HasPrefix(trimmed, "requests") &&
+				!strings.HasPrefix(trimmed, "limits") && lineIndent <= 10 {
+				inResources = false
+				inRequests = false
+				inLimits = false
+				continue
+			}
+
+			if inRequests {
+				if strings.HasPrefix(trimmed, "cpu:") {
+					currentRes.Requests.CPU = extractYAMLValue(trimmed, "cpu")
+				}
+				if strings.HasPrefix(trimmed, "memory:") {
+					currentRes.Requests.Memory = extractYAMLValue(trimmed, "memory")
+				}
+				if strings.Contains(trimmed, "nvidia.com/gpu") {
+					currentRes.Requests.GPU = extractYAMLValue(trimmed, "nvidia.com/gpu")
+				}
+			}
+			if inLimits {
+				if strings.HasPrefix(trimmed, "cpu:") {
+					currentRes.Limits.CPU = extractYAMLValue(trimmed, "cpu")
+				}
+				if strings.HasPrefix(trimmed, "memory:") {
+					currentRes.Limits.Memory = extractYAMLValue(trimmed, "memory")
+				}
+				if strings.Contains(trimmed, "nvidia.com/gpu") {
+					currentRes.Limits.GPU = extractYAMLValue(trimmed, "nvidia.com/gpu")
+				}
+			}
+		}
+	}
+
+	// Flush last container
+	if currentContainer != "" && (currentRes.Requests != (ResMap{}) || currentRes.Limits != (ResMap{})) {
+		currentRes.Container = currentContainer
+		results = append(results, currentRes)
+	}
+
+	return results
 }
 
 // extractYAMLValue extracts the value after "key:" from a YAML line, stripping quotes and template markers.

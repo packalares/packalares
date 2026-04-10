@@ -570,41 +570,50 @@
           </div>
         </div>
 
+        <!-- Toolbar: internet toggle (only for installed apps) -->
+        <div class="detail-toolbar" v-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running' || getAppDisplayState(detailApp.name, detailApp.hasChart) === 'stopped'">
+          <q-btn flat dense no-caps size="sm" class="toolbar-btn"
+            :icon="internetBlocked[detailApp.name] ? 'sym_r_wifi_off' : 'sym_r_wifi'"
+            :label="internetBlocked[detailApp.name] ? 'Internet Blocked' : 'Internet Allowed'"
+            :class="internetBlocked[detailApp.name] ? 'text-negative' : 'text-positive'"
+            @click="internetBlocked[detailApp.name] = !internetBlocked[detailApp.name]; toggleInternet(detailApp)" />
+        </div>
+
         <!-- Stats strip with icons -->
         <div class="detail-stats-strip">
-          <div class="stat-item" v-if="detailData?.version || detailApp.version">
+          <div class="stat-item" v-if="detailData?.versionName || detailApp.versionName || detailData?.version || detailApp.version">
             <q-icon name="sym_r_new_releases" size="18px" class="stat-icon" />
-            <span class="stat-val">v{{ detailData?.version || detailApp.version }}</span>
+            <span class="stat-val">v{{ detailData?.versionName || detailApp.versionName || detailData?.version || detailApp.version }}</span>
             <span class="stat-lbl">Version</span>
-          </div>
-          <div class="stat-item" v-if="detailData?.installCount">
-            <q-icon name="sym_r_download" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ detailData.installCount.toLocaleString() }}</span>
-            <span class="stat-lbl">Downloads</span>
           </div>
           <div class="stat-item" v-if="(detailData?.locale || detailData?.language || []).length">
             <q-icon name="sym_r_translate" size="18px" class="stat-icon" />
             <span class="stat-val">{{ (detailData?.locale || detailData?.language || []).join(', ').substring(0, 12) }}</span>
             <span class="stat-lbl">Language</span>
           </div>
-          <div class="stat-item" v-if="detailData?.requiredMemory">
+          <div class="stat-item">
             <q-icon name="sym_r_memory" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ detailData.requiredMemory }}</span>
-            <span class="stat-lbl">Memory</span>
+            <span class="stat-val">{{ chartResourceVal('memory', 'requests') || detailData?.requiredMemory || 'N/A' }}</span>
+            <span class="stat-lbl">Memory (min)</span>
           </div>
-          <div class="stat-item" v-if="detailData?.requiredDisk">
-            <q-icon name="sym_r_storage" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ detailData.requiredDisk }}</span>
-            <span class="stat-lbl">Disk</span>
+          <div class="stat-item">
+            <q-icon name="sym_r_memory" size="18px" class="stat-icon" />
+            <span class="stat-val">{{ chartResourceVal('memory', 'limits') || detailData?.limitedMemory || 'N/A' }}</span>
+            <span class="stat-lbl">Memory (max)</span>
           </div>
-          <div class="stat-item" v-if="detailData?.requiredCpu">
+          <div class="stat-item">
             <q-icon name="sym_r_developer_board" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ detailData.requiredCpu }}</span>
-            <span class="stat-lbl">CPU</span>
+            <span class="stat-val">{{ chartResourceVal('cpu', 'requests') || detailData?.requiredCpu || 'N/A' }}</span>
+            <span class="stat-lbl">CPU (min)</span>
           </div>
-          <div class="stat-item" v-if="detailData?.requiredGpu">
+          <div class="stat-item">
+            <q-icon name="sym_r_developer_board" size="18px" class="stat-icon" />
+            <span class="stat-val">{{ chartResourceVal('cpu', 'limits') || (detailData as any)?.limitedCPU || 'N/A' }}</span>
+            <span class="stat-lbl">CPU (max)</span>
+          </div>
+          <div class="stat-item" v-if="chartResourceVal('gpu', 'requests') || chartResourceVal('gpu', 'limits') || detailData?.requiredGpu">
             <q-icon name="sym_r_memory_alt" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ detailData.requiredGpu }}</span>
+            <span class="stat-val">{{ chartResourceVal('gpu', 'limits') || chartResourceVal('gpu', 'requests') || detailData?.requiredGpu }}</span>
             <span class="stat-lbl">GPU</span>
           </div>
           <div class="stat-item" v-if="detailApp?.type === 'model' && detailApp?.backend">
@@ -616,15 +625,6 @@
             <q-icon name="sym_r_tag" size="18px" class="stat-icon" />
             <span class="stat-val">{{ detailApp.modelId }}</span>
             <span class="stat-lbl">Model ID</span>
-          </div>
-        </div>
-
-        <!-- Internet toggle (only for installed apps) -->
-        <div class="detail-internet-toggle" v-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running' || getAppDisplayState(detailApp.name, detailApp.hasChart) === 'stopped'">
-          <div class="internet-toggle-row">
-            <q-icon :name="internetBlocked[detailApp.name] ? 'sym_r_wifi_off' : 'sym_r_wifi'" size="20px" :class="internetBlocked[detailApp.name] ? 'text-negative' : 'text-positive'" />
-            <span class="internet-toggle-label">{{ internetBlocked[detailApp.name] ? 'Internet Blocked' : 'Internet Allowed' }}</span>
-            <q-toggle v-model="internetBlocked[detailApp.name]" :false-value="false" :true-value="true" color="negative" @update:model-value="toggleInternet(detailApp)" />
           </div>
         </div>
 
@@ -1298,6 +1298,15 @@ async function fetchModelStatus() {
   } catch {
     // Keep previous state — ollama might not be installed
   }
+}
+
+// Get resource value from chart-extracted resources (first non-terminal container)
+function chartResourceVal(field: 'cpu' | 'memory' | 'gpu', type: 'requests' | 'limits'): string {
+  const resources = (detailData.value as any)?.resources;
+  if (!resources?.length) return '';
+  // Find the main container (skip terminal/sidecar)
+  const main = resources.find((r: any) => r.container !== 'terminal') || resources[0];
+  return main?.[type]?.[field] || '';
 }
 
 function isBackendInstalled(backend: string): boolean {

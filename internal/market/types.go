@@ -184,8 +184,23 @@ type AppDetailEnrichedResponse struct {
 // AppDetailEnriched wraps a MarketApp with extra detail-page data.
 type AppDetailEnriched struct {
 	MarketApp
-	VolumeMounts []VolumeMount  `json:"volumeMounts,omitempty"`
-	Credentials  *AppCredentials `json:"credentials,omitempty"`
+	VolumeMounts []VolumeMount      `json:"volumeMounts,omitempty"`
+	Credentials  *AppCredentials    `json:"credentials,omitempty"`
+	Resources    []ContainerResources `json:"resources,omitempty"`
+}
+
+// ContainerResources holds resource requests/limits for a container.
+type ContainerResources struct {
+	Container string `json:"container"`
+	Requests  ResMap `json:"requests,omitempty"`
+	Limits    ResMap `json:"limits,omitempty"`
+}
+
+// ResMap holds CPU, memory, GPU values.
+type ResMap struct {
+	CPU    string `json:"cpu,omitempty"`
+	Memory string `json:"memory,omitempty"`
+	GPU    string `json:"gpu,omitempty"`
 }
 
 // VolumeMount describes a container volume mount extracted from the chart.
