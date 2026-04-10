@@ -1038,16 +1038,22 @@ func (s *Service) GetAppCredentials(ctx context.Context, appName, loginType stri
 	}
 
 	creds := &AppCredentials{
-		Username: username,
 		Password: password,
 	}
 
-	// Build email if loginType requires it
-	if loginType == "email" || loginType == "user-email" {
-		zone := config.UserZone()
+	zone := config.UserZone()
+	switch loginType {
+	case "email":
 		if zone != "" && username != "" {
 			creds.Email = username + "@" + zone
 		}
+	case "user-email":
+		creds.Username = username
+		if zone != "" && username != "" {
+			creds.Email = username + "@" + zone
+		}
+	default:
+		creds.Username = username
 	}
 
 	return creds, nil
