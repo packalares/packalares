@@ -687,57 +687,49 @@
         <!-- Two-column: description + info sidebar -->
         <div class="detail-body">
           <div class="detail-main">
+            <!-- Model images banner (models only) -->
+            <div v-if="detailApp?.type === 'model' && (detailData as any)?.modelImages?.length" class="model-banner-wrap">
+              <img v-for="(img, idx) in (detailData as any).modelImages" :key="'mimg-'+idx" :src="img" class="model-banner-img" @click="previewImg = img" @error="(e: Event) => ((e.target as HTMLImageElement).style.display = 'none')" />
+            </div>
+
             <!-- Variants table (models only) -->
             <template v-if="detailApp?.type === 'model' && (detailData as any)?.variants?.length">
-              <div class="detail-section-title">Available Variants</div>
-              <div class="detail-content-card">
-                <div class="detail-table">
-                  <div class="dt-row dt-header">
-                    <span class="dt-cell dt-wide">Tag</span>
-                    <span class="dt-cell">Quantization</span>
-                    <span class="dt-cell">Size</span>
-                    <span class="dt-cell dt-actions">Action</span>
-                  </div>
-                  <div class="dt-row" v-for="v in (detailData as any).variants" :key="v.tag" :class="{ 'dt-row-default': v.default }">
-                    <span class="dt-cell dt-wide dt-mono">
-                      {{ v.tag }}
-                      <q-badge v-if="v.default" label="default" class="q-ml-xs" color="indigo-9" text-color="indigo-2" style="font-size:9px;padding:1px 5px" />
-                    </span>
-                    <span class="dt-cell dt-mono">{{ v.quantization || '—' }}</span>
-                    <span class="dt-cell">{{ v.size }}</span>
-                    <span class="dt-cell dt-actions">
-                      <q-btn v-if="isVariantInstalled(v.tag)"
-                        flat dense no-caps size="xs" label="Remove" icon="sym_r_delete" color="negative"
-                        @click.stop="uninstallVariant(v.tag)" />
-                      <q-btn v-else
-                        unelevated dense no-caps size="xs" label="Install" icon="sym_r_download"
-                        class="app-btn-install"
-                        :class="!isBackendInstalled(detailApp?.backend || 'ollama') ? 'app-btn-disabled' : ''"
-                        @click.stop="installVariant(v.tag)" />
-                    </span>
-                  </div>
-                </div>
+              <div class="detail-section-title">Variants</div>
+              <div class="detail-content-card variant-card">
+                <table class="variant-table">
+                  <thead>
+                    <tr>
+                      <th>Tag</th>
+                      <th>Quant</th>
+                      <th>Size</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="v in (detailData as any).variants" :key="v.tag" :class="{ 'vt-default': v.default }">
+                      <td class="vt-mono">
+                        {{ v.tag }}<span v-if="v.default" class="vt-default-badge">default</span>
+                      </td>
+                      <td class="vt-mono vt-dim">{{ v.quantization || '—' }}</td>
+                      <td>{{ v.size }}</td>
+                      <td class="vt-action">
+                        <button v-if="isVariantInstalled(v.tag)" class="vt-btn vt-btn-remove" @click.stop="uninstallVariant(v.tag)">Remove</button>
+                        <button v-else class="vt-btn vt-btn-install" :disabled="!isBackendInstalled(detailApp?.backend || 'ollama')" @click.stop="installVariant(v.tag)">Install</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </template>
 
+            <!-- About (use modelReadme for models if available, fall back to fullDescription) -->
             <div class="detail-section-title">{{ detailApp?.type === 'model' ? 'About this Model' : 'About this App' }}</div>
             <div class="detail-content-card">
               <div class="detail-description" v-if="detailLoading">
                 <q-skeleton v-for="n in 6" :key="n" type="text" :width="(100 - n * 5) + '%'" class="q-mb-xs" />
               </div>
-              <div class="detail-description" v-else v-html="renderMarkdown(detailData?.fullDescription || detailData?.description || detailApp.description || 'No description available.')" />
+              <div class="detail-description" v-else v-html="renderMarkdown(modelDescription)" />
             </div>
-
-            <!-- Model Card / README (models only) -->
-            <template v-if="detailApp?.type === 'model' && (detailData as any)?.modelReadme">
-              <div class="detail-section-title" style="margin-top:20px">Model Card</div>
-              <div class="detail-content-card">
-                <div class="detail-description" v-html="renderMarkdown((detailData as any).modelReadme)" />
-                <div v-if="(detailData as any)?.modelImages?.length" class="model-card-images">
-                  <img v-for="(img, idx) in (detailData as any).modelImages" :key="'mimg-'+idx" :src="img" class="model-card-img" @click="previewImg = img" @error="(e: Event) => ((e.target as HTMLImageElement).style.display = 'none')" />
-                </div>
-              </div>
-            </template>
 
             <!-- What's new -->
             <template v-if="detailData?.upgradeDescription">
@@ -1465,6 +1457,16 @@ function chartResourceVal(field: 'cpu' | 'memory' | 'gpu', type: 'requests' | 'l
   const main = resources.find((r: any) => r.container !== 'terminal') || resources[0];
   return main?.[type]?.[field] || '';
 }
+
+// For models: use modelReadme if available, otherwise fullDescription. Don't show both.
+const modelDescription = computed(() => {
+  if (!detailApp.value) return '';
+  const d = detailData.value as any;
+  if (detailApp.value.type === 'model' && d?.modelReadme) {
+    return d.modelReadme;
+  }
+  return d?.fullDescription || d?.description || detailApp.value?.description || 'No description available.';
+});
 
 function capIcon(cap: string): string {
   const icons: Record<string, string> = {
