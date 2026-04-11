@@ -2243,18 +2243,89 @@
       ],
       "version": "1.0.5",
       "versionName": "1.4.0",
-      "categories": ["Developer Tools", "Productivity"],
+      "categories": [
+        "Developer Tools",
+        "Productivity"
+      ],
       "requiredMemory": "832Mi",
       "limitedMemory": "3Gi",
       "requiredCpu": "0.2",
       "limitedCPU": "3.1",
       "requiredDisk": "3Gi",
       "requiredGpu": "",
-      "supportArch": ["amd64", "arm64"],
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
       "status": "active",
       "type": "app",
-      "locale": ["en-US"],
-      "permission": { "appData": true, "appCache": true, "userData": ["Home"] },
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "source": "olares",
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": ""
+    },
+    {
+      "name": "n8n",
+      "cfgType": "app",
+      "chartName": "n8n",
+      "icon": "/api/market/icons/n8n.png",
+      "description": "n8n is an extendable workflow automation tool.",
+      "fullDescription": "n8n is an extendable workflow automation tool. With a fair-code distribution model, n8n will always have visible source code, be available to self-host, and allow you to add your own custom functions, logic and apps. n8n's node-based approach makes it highly versatile, enabling you to connect anything to everything.\n\n# Available integrations\nn8n has 200+ different nodes to automate workflows. The list can be found on: https://n8n.io/integrations\n\n# Build powerful workflows, really fast\n- Handle really complex processes\n- Simple debugging\n- Use templates to get started fast\n- Code when you need it, UI when you don't\n- Reuse your work\n\n# Get peace of mind\n- Connect to any system\n- Customize error handling\n- Horizontal scaling\n- Host on your own infrastructure\n\n# Features\n- Visual workflow editor\n- Run JavaScript\n- npm package import\n- Workflows can wait\n- Conditional logic and branching\n- Webhook triggers\n- Retry failed executions\n- Multi-trigger workflows\n- Source code available\n- User management\n- Create custom nodes\n- Encrypted credential store\n- Copy + paste workflows\n- Export workflows to JSON\n- Custom error workflows",
+      "promoteImage": [
+        "/api/market/screenshots/n8n/1.webp",
+        "/api/market/screenshots/n8n/2.webp",
+        "/api/market/screenshots/n8n/3.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/n8n/featured.webp",
+      "developer": "n8n",
+      "title": "n8n",
+      "entrances": [
+        {
+          "name": "n8n",
+          "port": 5678,
+          "host": "n8n-svc",
+          "title": "n8n",
+          "icon": "/api/market/icons/n8n.png",
+          "openMethod": "window",
+          "authLevel": "internal"
+        }
+      ],
+      "version": "1.0.15",
+      "versionName": "2.15.1",
+      "categories": [
+        "Productivity"
+      ],
+      "requiredMemory": "1Gi",
+      "limitedMemory": "3Gi",
+      "requiredCpu": "0.3",
+      "limitedCPU": "1",
+      "requiredDisk": "128Mi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "status": "active",
+      "type": "app",
+      "locale": [
+        "en-US",
+        "zh-CN"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": null
+      },
       "source": "olares",
       "hasChart": true,
       "hasCredentials": false,

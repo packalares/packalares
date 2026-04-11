@@ -150,8 +150,8 @@ App-service injects these at install time:
 {{ .Values.userspace.appData }}/{appname}             # App-specific persistent data
 {{ .Values.userspace.appCache }}/{appname}            # App-specific cache
 {{ .Values.userspace.appCache }}/redis/{appname}      # Redis data (per-app)
-{{ .Values.userspace.appCache }}/{appname}/postgres   # Postgres sidecar data
-{{ .Values.userspace.appCache }}/{appname}/mysql      # MySQL sidecar data
+{{ .Values.userspace.appCache }}/postgres/{appname}   # Postgres sidecar data
+{{ .Values.userspace.appCache }}/mysql/{appname}      # MySQL sidecar data
 ```
 
 ## Database Patterns
@@ -182,7 +182,7 @@ For apps needing specific extensions (pgvector, etc.):
 # Volume:
 - name: pg-data
   hostPath:
-    path: "{{ .Values.userspace.appCache }}/{appname}/postgres"
+    path: "{{ .Values.userspace.appCache }}/postgres/{appname}"
     type: DirectoryOrCreate
 ```
 
@@ -201,7 +201,7 @@ For apps needing specific extensions (pgvector, etc.):
 # Volume:
 - name: mysql-data
   hostPath:
-    path: "{{ .Values.userspace.appCache }}/{appname}/mysql"
+    path: "{{ .Values.userspace.appCache }}/mysql/{appname}"
     type: DirectoryOrCreate
 ```
 
