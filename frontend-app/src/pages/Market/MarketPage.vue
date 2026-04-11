@@ -156,17 +156,12 @@
                   <span class="status-label">{{ getAppDisplayState(app.name, app.hasChart) }}</span>
                 </div>
                 <div class="app-card-tags" v-else>
-                  <template v-if="app.type === 'model' && app.capabilities?.length">
-                    <q-badge v-for="cap in app.capabilities.filter(c => c !== 'completion').slice(0, 3)" :key="cap" :label="cap" class="app-tag app-tag-cap" />
-                  </template>
-                  <template v-else>
-                    <q-badge
-                      v-for="cat in (app.categories || []).slice(0, 2)"
-                      :key="cat"
-                      :label="cat"
-                      class="app-tag"
-                    />
-                  </template>
+                  <q-badge
+                    v-for="cat in (app.categories || []).slice(0, 2)"
+                    :key="cat"
+                    :label="cat"
+                    class="app-tag"
+                  />
                   <q-badge v-if="app.type === 'model' && app.parameters" :label="app.parameters" class="app-tag app-tag-size" />
                 </div>
                 <div class="app-card-actions">
