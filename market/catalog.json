@@ -2140,6 +2140,125 @@
       "featuredImage": "",
       "hasCredentials": false,
       "loginType": ""
+    },
+    {
+      "name": "onlyoffice",
+      "cfgType": "app",
+      "chartName": "onlyoffice",
+      "icon": "/api/market/icons/onlyoffice.png",
+      "description": "Run your private office with ONLYOFFICE Docs",
+      "fullDescription": "ONLYOFFICE Docs is a free collaborative online office suite comprising viewers and editors for texts, spreadsheets and presentations, forms and PDF, fully compatible with Office Open XML formats: .docx, .xlsx, .pptx and enabling collaborative editing in real time.\n\n# IMPORTANT NOTE\nWhen starting ONLYOFFICE for the first time, navigate to ControlHub. In the onlyoffice pod, open the terminal of the 'onlyoffice' container. Enter the command `supervisorctl start ds:example`. Then, return to the welcome page and click on 'go to test example' to try it out.\n\nONLYOFFICE Docs includes the following editors:\n# ONLYOFFICE Document Editor\n# ONLYOFFICE Spreadsheet Editor\n# ONLYOFFICE Presentation Editor\n# ONLYOFFICE Form Creator\n# ONLYOFFICE PDF editor, reader & converter\n\nThe editors allow you to create, edit, save and export text, spreadsheet and presentation documents and additionally have the features:\n# Collaborative editing\n# Hieroglyph support\n# Reviewing\n# Spell-checking",
+      "upgradeDescription": "Upgrade to 9.3.1\nView full changelog at: https://github.com/ONLYOFFICE/DocumentServer/blob/master/CHANGELOG.md",
+      "promoteImage": [
+        "/api/market/screenshots/onlyoffice/1.webp",
+        "/api/market/screenshots/onlyoffice/2.webp",
+        "/api/market/screenshots/onlyoffice/3.webp"
+      ],
+      "developer": "ONLYOFFICE",
+      "title": "OnlyOffice",
+      "entrances": [
+        {
+          "name": "onlyoffice",
+          "port": 80,
+          "host": "onlyoffice-svc",
+          "title": "OnlyOffice",
+          "icon": "https://app.cdn.olares.com/appstore/onlyoffice/icon.png",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.9",
+      "versionName": "9.3.1",
+      "categories": [
+        "Productivity"
+      ],
+      "rating": 0,
+      "requiredMemory": "800Mi",
+      "requiredDisk": "50Mi",
+      "requiredGpu": "",
+      "requiredCpu": "500m",
+      "limitedMemory": "9.5Gi",
+      "limitedCPU": "4000m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "status": "active",
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "type": "system",
+          "version": ">=1.0.0"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://helpcenter.onlyoffice.com/index.aspx",
+      "website": "https://www.onlyoffice.com/",
+      "sourceCode": "https://github.com/ONLYOFFICE/DocumentServer",
+      "license": [
+        {
+          "text": "AGPL-3.0",
+          "url": "https://github.com/ONLYOFFICE/DocumentServer?tab=AGPL-3.0-1-ov-file#readme"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "featuredImage": "/api/market/screenshots/onlyoffice/featured.webp"
+    },
+    {
+      "name": "opencode",
+      "cfgType": "app",
+      "chartName": "opencode",
+      "icon": "/api/market/icons/opencode.png",
+      "description": "The open source AI coding agent.",
+      "fullDescription": "OpenCode is an open-source agent that helps you write code in the terminal, IDE, or desktop.\n\n- Support LSPs to automatically load appropriate LSPs for LLMs\n- Multi-session Launch multiple agents in parallel in the same project\n- Share Link Share any session link for reference or debugging\n- GitHub Copilot Sign in with GitHub to use your Copilot account\n- ChatGPT Plus/Pro Login with OpenAI to use your ChatGPT Plus or Pro account\n- Arbitrary Models supports 75+ LLM providers with Models.dev, including native models\n- Any editor provides terminal interfaces, desktop applications, and IDE extensions\n\nUsage\n- Open the app and use the Web UI directly in your browser.\n- Configure your LLM provider and API keys in the Web UI.\n- Your code workspace is mounted at /home/opencode/workspace (linked to your Home/Code directory).",
+      "promoteImage": [
+        "/api/market/screenshots/opencode/1.webp",
+        "/api/market/screenshots/opencode/2.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/opencode/featured.webp",
+      "developer": "Anomaly",
+      "title": "OpenCode",
+      "entrances": [
+        {
+          "name": "opencode",
+          "port": 8080,
+          "host": "opencode-ingress",
+          "title": "OpenCode",
+          "icon": "/api/market/icons/opencode.png",
+          "openMethod": "window",
+          "authLevel": "internal"
+        }
+      ],
+      "version": "1.0.5",
+      "versionName": "1.4.0",
+      "categories": ["Developer Tools", "Productivity"],
+      "requiredMemory": "832Mi",
+      "limitedMemory": "3Gi",
+      "requiredCpu": "0.2",
+      "limitedCPU": "3.1",
+      "requiredDisk": "3Gi",
+      "requiredGpu": "",
+      "supportArch": ["amd64", "arm64"],
+      "status": "active",
+      "type": "app",
+      "locale": ["en-US"],
+      "permission": { "appData": true, "appCache": true, "userData": ["Home"] },
+      "source": "olares",
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": ""
     }
   ],
   "categories": [],
