@@ -61,6 +61,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/icons/", h.handleServeIcon)
 	mux.HandleFunc("/market/v1/icons/", h.handleServeIcon)
 	mux.HandleFunc("/market/v1/screenshots/", h.handleServeScreenshot)
+	mux.HandleFunc("/market/v1/modelcards/", h.handleServeModelcard)
 
 	// Health check
 	mux.HandleFunc("/market/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -909,7 +910,13 @@ func (h *Handler) handleServeModelcard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	pathSuffix := strings.TrimPrefix(r.URL.Path, "/api/market/modelcards/")
+	pathSuffix := r.URL.Path
+	for _, prefix := range []string{"/api/market/modelcards/", "/market/v1/modelcards/"} {
+		if strings.HasPrefix(pathSuffix, prefix) {
+			pathSuffix = strings.TrimPrefix(pathSuffix, prefix)
+			break
+		}
+	}
 	parts := strings.SplitN(pathSuffix, "/", 2)
 	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
 		writeError(w, http.StatusBadRequest, "path format: /modelcards/{modelname}/{filename}")
