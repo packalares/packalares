@@ -2329,9 +2329,7 @@
         "userData": null
       },
       "source": "olares",
-      "hasChart": true,
-      "hasCredentials": false,
-      "loginType": ""
+      "hasChart": true
     }
   ],
   "categories": [],
