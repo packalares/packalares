@@ -1942,8 +1942,10 @@
       "upgradeDescription": "Upgrade to upstream v4.115.0\n\nOrigin: https://github.com/coder/code-server/releases/tag/v4.115.0",
       "promoteImage": [
         "/api/market/screenshots/codeserver/1.webp",
-        "/api/market/screenshots/codeserver/2.webp"
+        "/api/market/screenshots/codeserver/2.webp",
+        "/api/market/screenshots/codeserver/3.webp"
       ],
+      "featuredImage": "/api/market/screenshots/codeserver/featured.webp",
       "developer": "Coder Technologies, Inc.",
       "title": "Code Server",
       "entrances": [
