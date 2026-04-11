@@ -156,13 +156,18 @@
                   <span class="status-label">{{ getAppDisplayState(app.name, app.hasChart) }}</span>
                 </div>
                 <div class="app-card-tags" v-else>
-                  <q-badge
-                    v-for="cat in (app.categories || []).slice(0, 2)"
-                    :key="cat"
-                    :label="cat"
-                    class="app-tag"
-                  />
-                  <q-badge v-if="app.type === 'model' && app.backend" :label="app.backend" class="app-tag" />
+                  <template v-if="app.type === 'model' && app.capabilities?.length">
+                    <q-badge v-for="cap in app.capabilities.filter(c => c !== 'completion').slice(0, 3)" :key="cap" :label="cap" class="app-tag app-tag-cap" />
+                  </template>
+                  <template v-else>
+                    <q-badge
+                      v-for="cat in (app.categories || []).slice(0, 2)"
+                      :key="cat"
+                      :label="cat"
+                      class="app-tag"
+                    />
+                  </template>
+                  <q-badge v-if="app.type === 'model' && app.parameters" :label="app.parameters" class="app-tag app-tag-size" />
                 </div>
                 <div class="app-card-actions">
                   <!-- Running: app -->
@@ -586,51 +591,90 @@
 
         <!-- Stats strip with icons -->
         <div class="detail-stats-strip">
-          <div class="stat-item" v-if="detailData?.versionName || detailApp.versionName || detailData?.version || detailApp.version">
-            <q-icon name="sym_r_new_releases" size="18px" class="stat-icon" />
-            <span class="stat-val">v{{ detailData?.versionName || detailApp.versionName || detailData?.version || detailApp.version }}</span>
-            <span class="stat-lbl">Version</span>
-          </div>
-          <div class="stat-item" v-if="(detailData?.locale || detailData?.language || []).length">
-            <q-icon name="sym_r_translate" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ (detailData?.locale || detailData?.language || []).join(', ').substring(0, 12) }}</span>
-            <span class="stat-lbl">Language</span>
-          </div>
-          <div class="stat-item">
-            <q-icon name="sym_r_memory" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ chartResourceVal('memory', 'requests') || detailData?.requiredMemory || 'N/A' }}</span>
-            <span class="stat-lbl">Memory (min)</span>
-          </div>
-          <div class="stat-item">
-            <q-icon name="sym_r_memory" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ chartResourceVal('memory', 'limits') || detailData?.limitedMemory || 'N/A' }}</span>
-            <span class="stat-lbl">Memory (max)</span>
-          </div>
-          <div class="stat-item">
-            <q-icon name="sym_r_developer_board" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ chartResourceVal('cpu', 'requests') || detailData?.requiredCpu || 'N/A' }}</span>
-            <span class="stat-lbl">CPU (min)</span>
-          </div>
-          <div class="stat-item">
-            <q-icon name="sym_r_developer_board" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ chartResourceVal('cpu', 'limits') || (detailData as any)?.limitedCPU || 'N/A' }}</span>
-            <span class="stat-lbl">CPU (max)</span>
-          </div>
-          <div class="stat-item" v-if="chartResourceVal('gpu', 'requests') || chartResourceVal('gpu', 'limits') || detailData?.requiredGpu">
-            <q-icon name="sym_r_memory_alt" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ chartResourceVal('gpu', 'limits') || chartResourceVal('gpu', 'requests') || detailData?.requiredGpu }}</span>
-            <span class="stat-lbl">GPU</span>
-          </div>
-          <div class="stat-item" v-if="detailApp?.type === 'model' && detailApp?.backend">
-            <q-icon name="sym_r_smart_toy" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ detailApp.backend }}</span>
-            <span class="stat-lbl">Backend</span>
-          </div>
-          <div class="stat-item" v-if="detailApp?.type === 'model' && detailApp?.modelId">
-            <q-icon name="sym_r_tag" size="18px" class="stat-icon" />
-            <span class="stat-val">{{ detailApp.modelId }}</span>
-            <span class="stat-lbl">Model ID</span>
-          </div>
+          <!-- Model-specific stats -->
+          <template v-if="detailApp?.type === 'model'">
+            <div class="stat-item" v-if="(detailData as any)?.parameters || detailApp.parameters">
+              <q-icon name="sym_r_neurology" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ (detailData as any)?.parameters || detailApp.parameters }}</span>
+              <span class="stat-lbl">Parameters</span>
+            </div>
+            <div class="stat-item" v-if="(detailData as any)?.contextLength">
+              <q-icon name="sym_r_straighten" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ (detailData as any).contextLength }}</span>
+              <span class="stat-lbl">Context</span>
+            </div>
+            <div class="stat-item" v-if="(detailData as any)?.quantization">
+              <q-icon name="sym_r_compress" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ (detailData as any).quantization }}</span>
+              <span class="stat-lbl">Quantization</span>
+            </div>
+            <div class="stat-item" v-if="(detailData as any)?.pullCount">
+              <q-icon name="sym_r_download" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ (detailData as any).pullCount }}</span>
+              <span class="stat-lbl">Downloads</span>
+            </div>
+            <div class="stat-item" v-if="(detailData as any)?.lastUpdated">
+              <q-icon name="sym_r_update" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ (detailData as any).lastUpdated }}</span>
+              <span class="stat-lbl">Updated</span>
+            </div>
+            <div class="stat-item" v-if="detailData?.requiredGpu">
+              <q-icon name="sym_r_memory_alt" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ detailData.requiredGpu }}</span>
+              <span class="stat-lbl">GPU VRAM</span>
+            </div>
+            <div class="stat-item" v-if="detailApp.backend">
+              <q-icon name="sym_r_smart_toy" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ detailApp.backend }}</span>
+              <span class="stat-lbl">Backend</span>
+            </div>
+          </template>
+          <!-- App stats -->
+          <template v-else>
+            <div class="stat-item" v-if="detailData?.versionName || detailApp.versionName || detailData?.version || detailApp.version">
+              <q-icon name="sym_r_new_releases" size="18px" class="stat-icon" />
+              <span class="stat-val">v{{ detailData?.versionName || detailApp.versionName || detailData?.version || detailApp.version }}</span>
+              <span class="stat-lbl">Version</span>
+            </div>
+            <div class="stat-item" v-if="(detailData?.locale || detailData?.language || []).length">
+              <q-icon name="sym_r_translate" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ (detailData?.locale || detailData?.language || []).join(', ').substring(0, 12) }}</span>
+              <span class="stat-lbl">Language</span>
+            </div>
+            <div class="stat-item">
+              <q-icon name="sym_r_memory" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ chartResourceVal('memory', 'requests') || detailData?.requiredMemory || 'N/A' }}</span>
+              <span class="stat-lbl">Memory (min)</span>
+            </div>
+            <div class="stat-item">
+              <q-icon name="sym_r_memory" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ chartResourceVal('memory', 'limits') || detailData?.limitedMemory || 'N/A' }}</span>
+              <span class="stat-lbl">Memory (max)</span>
+            </div>
+            <div class="stat-item">
+              <q-icon name="sym_r_developer_board" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ chartResourceVal('cpu', 'requests') || detailData?.requiredCpu || 'N/A' }}</span>
+              <span class="stat-lbl">CPU (min)</span>
+            </div>
+            <div class="stat-item">
+              <q-icon name="sym_r_developer_board" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ chartResourceVal('cpu', 'limits') || (detailData as any)?.limitedCPU || 'N/A' }}</span>
+              <span class="stat-lbl">CPU (max)</span>
+            </div>
+            <div class="stat-item" v-if="chartResourceVal('gpu', 'requests') || chartResourceVal('gpu', 'limits') || detailData?.requiredGpu">
+              <q-icon name="sym_r_memory_alt" size="18px" class="stat-icon" />
+              <span class="stat-val">{{ chartResourceVal('gpu', 'limits') || chartResourceVal('gpu', 'requests') || detailData?.requiredGpu }}</span>
+              <span class="stat-lbl">GPU</span>
+            </div>
+          </template>
+        </div>
+
+        <!-- Capabilities badges (models only) -->
+        <div class="detail-capabilities" v-if="detailApp?.type === 'model' && (detailData as any)?.capabilities?.length">
+          <span v-for="cap in (detailData as any).capabilities" :key="cap" class="cap-badge" :class="'cap-' + cap">
+            <q-icon :name="capIcon(cap)" size="14px" />
+            {{ cap }}
+          </span>
         </div>
 
         <!-- Screenshots -->
@@ -643,13 +687,57 @@
         <!-- Two-column: description + info sidebar -->
         <div class="detail-body">
           <div class="detail-main">
-            <div class="detail-section-title">About this App</div>
+            <!-- Variants table (models only) -->
+            <template v-if="detailApp?.type === 'model' && (detailData as any)?.variants?.length">
+              <div class="detail-section-title">Available Variants</div>
+              <div class="detail-content-card">
+                <div class="detail-table">
+                  <div class="dt-row dt-header">
+                    <span class="dt-cell dt-wide">Tag</span>
+                    <span class="dt-cell">Quantization</span>
+                    <span class="dt-cell">Size</span>
+                    <span class="dt-cell dt-actions">Action</span>
+                  </div>
+                  <div class="dt-row" v-for="v in (detailData as any).variants" :key="v.tag" :class="{ 'dt-row-default': v.default }">
+                    <span class="dt-cell dt-wide dt-mono">
+                      {{ v.tag }}
+                      <q-badge v-if="v.default" label="default" class="q-ml-xs" color="indigo-9" text-color="indigo-2" style="font-size:9px;padding:1px 5px" />
+                    </span>
+                    <span class="dt-cell dt-mono">{{ v.quantization || '—' }}</span>
+                    <span class="dt-cell">{{ v.size }}</span>
+                    <span class="dt-cell dt-actions">
+                      <q-btn v-if="isVariantInstalled(v.tag)"
+                        flat dense no-caps size="xs" label="Remove" icon="sym_r_delete" color="negative"
+                        @click.stop="uninstallVariant(v.tag)" />
+                      <q-btn v-else
+                        unelevated dense no-caps size="xs" label="Install" icon="sym_r_download"
+                        class="app-btn-install"
+                        :class="!isBackendInstalled(detailApp?.backend || 'ollama') ? 'app-btn-disabled' : ''"
+                        @click.stop="installVariant(v.tag)" />
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <div class="detail-section-title">{{ detailApp?.type === 'model' ? 'About this Model' : 'About this App' }}</div>
             <div class="detail-content-card">
               <div class="detail-description" v-if="detailLoading">
                 <q-skeleton v-for="n in 6" :key="n" type="text" :width="(100 - n * 5) + '%'" class="q-mb-xs" />
               </div>
               <div class="detail-description" v-else v-html="renderMarkdown(detailData?.fullDescription || detailData?.description || detailApp.description || 'No description available.')" />
             </div>
+
+            <!-- Model Card / README (models only) -->
+            <template v-if="detailApp?.type === 'model' && (detailData as any)?.modelReadme">
+              <div class="detail-section-title" style="margin-top:20px">Model Card</div>
+              <div class="detail-content-card">
+                <div class="detail-description" v-html="renderMarkdown((detailData as any).modelReadme)" />
+                <div v-if="(detailData as any)?.modelImages?.length" class="model-card-images">
+                  <img v-for="(img, idx) in (detailData as any).modelImages" :key="'mimg-'+idx" :src="img" class="model-card-img" @click="previewImg = img" @error="(e: Event) => ((e.target as HTMLImageElement).style.display = 'none')" />
+                </div>
+              </div>
+            </template>
 
             <!-- What's new -->
             <template v-if="detailData?.upgradeDescription">
@@ -917,6 +1005,16 @@ interface MarketApp {
   images?: string[];
   services?: { name: string; ports: { name: string; port: number }[] }[];
   entrances?: { name: string; host: string; port: number; title?: string; authLevel?: string; icon?: string; openMethod?: string; invisible?: boolean }[];
+  // Model-specific fields
+  capabilities?: string[];
+  pullCount?: string;
+  lastUpdated?: string;
+  contextLength?: string;
+  parameters?: string;
+  quantization?: string;
+  variants?: { tag: string; size: string; quantization?: string; default?: boolean }[];
+  modelReadme?: string;
+  modelImages?: string[];
 }
 
 interface InstalledModelInfo {
@@ -1366,6 +1464,46 @@ function chartResourceVal(field: 'cpu' | 'memory' | 'gpu', type: 'requests' | 'l
   // Find the main container (skip terminal/sidecar)
   const main = resources.find((r: any) => r.container !== 'terminal') || resources[0];
   return main?.[type]?.[field] || '';
+}
+
+function capIcon(cap: string): string {
+  const icons: Record<string, string> = {
+    vision: 'sym_r_visibility',
+    tools: 'sym_r_build',
+    thinking: 'sym_r_psychology',
+    audio: 'sym_r_headphones',
+    completion: 'sym_r_chat',
+  };
+  return icons[cap] || 'sym_r_label';
+}
+
+function isVariantInstalled(tag: string): boolean {
+  if (!detailApp.value) return false;
+  // The modelId base is like "qwen3" from "qwen3:8b", variant tag gives "8b-q8_0"
+  // Build full model name: base:tag
+  const base = detailApp.value.modelId?.split(':')[0] || detailApp.value.name;
+  const fullId = base + ':' + tag;
+  return !!installedModels[fullId];
+}
+
+function installVariant(tag: string) {
+  if (!detailApp.value) return;
+  const base = detailApp.value.modelId?.split(':')[0] || detailApp.value.name;
+  const variantApp: MarketApp = {
+    ...detailApp.value,
+    modelId: base + ':' + tag,
+  };
+  installModel(variantApp);
+}
+
+function uninstallVariant(tag: string) {
+  if (!detailApp.value) return;
+  const base = detailApp.value.modelId?.split(':')[0] || detailApp.value.name;
+  const variantApp: MarketApp = {
+    ...detailApp.value,
+    modelId: base + ':' + tag,
+  };
+  confirmUninstall(variantApp, false);
 }
 
 function isBackendInstalled(backend: string): boolean {

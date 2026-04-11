@@ -45,6 +45,15 @@ type MarketApp struct {
 	MaxModelLen          string   `json:"maxModelLen,omitempty"`
 	TiktokenFiles        string   `json:"tiktokenFiles,omitempty"`
 	Locale               []string `json:"locale,omitempty"`
+	// Model-specific enriched fields
+	Capabilities    []string        `json:"capabilities,omitempty"`
+	PullCount       string          `json:"pullCount,omitempty"`
+	ContextLength   string          `json:"contextLength,omitempty"`
+	Parameters      string          `json:"parameters,omitempty"`
+	Quantization    string          `json:"quantization,omitempty"`
+	Variants        []ModelVariant  `json:"variants,omitempty"`
+	ModelReadme     string          `json:"modelReadme,omitempty"`
+	ModelImages     []string        `json:"modelImages,omitempty"`
 	Permission       *AppPermission `json:"permission,omitempty"`
 	HasCredentials   bool          `json:"hasCredentials,omitempty"`
 	LoginType        string        `json:"loginType,omitempty"` // "user", "email", "user-email"; default "user"
@@ -62,6 +71,14 @@ type MarketApp struct {
 	FeaturedImage    string        `json:"featuredImage,omitempty"`
 	Images           []string      `json:"images,omitempty"`
 	Services         []AppService  `json:"services,omitempty"`
+}
+
+// ModelVariant represents a quantization/size variant of an Ollama model.
+type ModelVariant struct {
+	Tag          string `json:"tag"`
+	Size         string `json:"size"`
+	Quantization string `json:"quantization,omitempty"`
+	Default      bool   `json:"default,omitempty"`
 }
 
 // AppService describes a Kubernetes service created by the chart.

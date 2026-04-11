@@ -23,6 +23,7 @@ const (
 	chartsSubdir      = "charts"
 	iconsSubdir       = "icons"
 	screenshotsSubdir = "screenshots"
+	modelcardsSubdir  = "modelcards"
 )
 
 // Handler implements the HTTP API for the market backend.
@@ -78,6 +79,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	// Screenshot serving under /api/ prefix too
 	mux.HandleFunc("/api/market/screenshots/", h.handleServeScreenshot)
 	mux.HandleFunc("/api/market/icons/", h.handleServeIcon)
+	mux.HandleFunc("/api/market/modelcards/", h.handleServeModelcard)
 }
 
 // handleListApps handles GET /market/v1/apps
@@ -896,6 +898,28 @@ func (h *Handler) handleServeScreenshot(w http.ResponseWriter, r *http.Request) 
 	filename := filepath.Base(parts[1]) // prevent traversal
 
 	filePath := filepath.Join(h.dataDir, screenshotsSubdir, appName, filename)
+	http.ServeFile(w, r, filePath)
+}
+
+// handleServeModelcard serves model card asset files.
+// Path format: /api/market/modelcards/{modelname}/{filename}
+func (h *Handler) handleServeModelcard(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	pathSuffix := strings.TrimPrefix(r.URL.Path, "/api/market/modelcards/")
+	parts := strings.SplitN(pathSuffix, "/", 2)
+	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+		writeError(w, http.StatusBadRequest, "path format: /modelcards/{modelname}/{filename}")
+		return
+	}
+
+	modelName := filepath.Base(parts[0])
+	filename := filepath.Base(parts[1])
+
+	filePath := filepath.Join(h.dataDir, modelcardsSubdir, modelName, filename)
 	http.ServeFile(w, r, filePath)
 }
 

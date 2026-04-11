@@ -1304,20 +1304,52 @@
       "modelId": "glm-ocr:latest",
       "cfgType": "model",
       "icon": "/api/market/icons/glm-ocr.png",
-      "description": "Specialized document OCR model. Supports 8 languages with high accuracy text extraction.",
-      "fullDescription": "## MODEL OVERVIEW ##\nGLM-OCR is a specialized optical character recognition model from ZhipuAI, designed specifically for document text extraction. It supports 8 languages and excels at extracting text from complex document layouts.\n\n## Key Features\n- **8 Languages**: Chinese, English, Japanese, Korean, French, German, Spanish, Portuguese\n- **Document Layout**: Understands complex document structures\n- **High Accuracy**: Precise text extraction from various document types\n- **Table Recognition**: Extract structured data from tables\n- **Compact Size**: Only 2.2GB for fast deployment\n\n## Specifications\n- Parameters: ~2B\n- Supported Languages: 8\n- Disk Size: ~2.2GB\n- Specialization: Document OCR\n\n## Use Cases\n- Document digitization\n- Invoice and receipt processing\n- Multilingual document OCR\n- Table data extraction\n- Form processing",
-      "developer": "ZhipuAI",
+      "description": "Multimodal 0.9B OCR model for complex document understanding — text, table, and figure recognition with 128K context.",
+      "fullDescription": "## MODEL OVERVIEW\nGLM-OCR is a multimodal optical character recognition model for complex document understanding, built on the GLM-V encoder-decoder architecture. It integrates the CogViT visual encoder pre-trained on large-scale image-text data, a lightweight cross-modal connector with efficient token downsampling, and a GLM-0.5B language decoder.\n\n## Key Features\n- **State-of-the-Art Performance**: Achieves 94.62 on OmniDocBench V1.5, ranking #1 overall\n- **Real-World Optimized**: Robust on complex tables, code-heavy documents, seals, and unconventional layouts\n- **Efficient Inference**: Only 0.9B parameters — supports vLLM, SGLang, and Ollama deployment\n- **Easy to Use**: Fully open-sourced with comprehensive SDK and inference toolchain\n\n## Capabilities\n- **Text Recognition**: `ollama run glm-ocr \"Text Recognition: ./image.png\"`\n- **Table Recognition**: `ollama run glm-ocr \"Table Recognition: ./image.png\"`\n- **Figure Recognition**: `ollama run glm-ocr \"Figure Recognition: ./image.png\"`\n\n## Specifications\n- Parameters: 0.9B\n- Context Length: 128K\n- Input: Text + Image\n- Default Size: 2.2GB (BF16)",
+      "capabilities": [
+        "vision",
+        "tools"
+      ],
+      "pullCount": "243K",
+      "lastUpdated": "2026-02-11",
+      "contextLength": "128K",
+      "parameters": "0.9B",
+      "quantization": "BF16",
+      "variants": [
+        {
+          "tag": "latest",
+          "size": "2.2GB",
+          "quantization": "BF16",
+          "default": true
+        },
+        {
+          "tag": "q8_0",
+          "size": "1.6GB",
+          "quantization": "Q8_0"
+        },
+        {
+          "tag": "bf16",
+          "size": "2.2GB",
+          "quantization": "BF16"
+        }
+      ],
+      "modelReadme": "GLM-OCR is a multimodal optical character recognition model designed for sophisticated document analysis. Built on the GLM-V encoder-decoder framework, it integrates the CogViT visual encoder trained on extensive image-text datasets, a streamlined cross-modal connector featuring efficient token downsampling, and a GLM-0.5B language decoder.\n\n## Key Capabilities\n- **Text recognition**: `ollama run glm-ocr \"Text Recognition: ./image.png\"`\n- **Table recognition**: `ollama run glm-ocr \"Table Recognition: ./image.png\"`\n- **Figure recognition**: `ollama run glm-ocr \"Figure Recognition: ./image.png\"`\n\n## Distinguishing Features\n\n**State-of-the-Art Performance**: Achieves 94.62 score on OmniDocBench V1.5, ranking first overall.\n\n**Real-World Optimization**: Purpose-built for practical enterprise applications, maintaining consistent performance on intricate tables, code-dense documents, seals, and unconventional layouts.\n\n**Computational Efficiency**: Operating with merely 0.9B parameters, supports vLLM, SGLang, and Ollama deployment options.\n\n**Accessibility**: Fully open-source with comprehensive SDK and inference infrastructure.",
+      "modelImages": [
+        "/api/market/modelcards/glm-ocr/benchmark.png"
+      ],
+      "developer": "ZhipuAI (zai-org)",
       "versionName": "glm-ocr:latest",
       "categories": [
         "Vision",
-        "OCR"
+        "OCR",
+        "Tools"
       ],
       "requiredMemory": "4200Mi",
-      "requiredDisk": "3Gi",
-      "requiredGpu": "5Gi",
-      "requiredCpu": "150m",
       "limitedMemory": "20Gi",
+      "requiredCpu": "150m",
       "limitedCPU": "6200m",
+      "requiredDisk": "50Mi",
+      "requiredGpu": "3Gi",
       "supportArch": [
         "amd64",
         "arm64"
@@ -1325,7 +1357,15 @@
       "locale": [
         "en-US"
       ],
-      "sourceCode": "https://huggingface.co/THUDM/GLM-OCR",
+      "doc": "https://ollama.com/library/glm-ocr",
+      "website": "https://ollama.com/library/glm-ocr",
+      "sourceCode": "https://github.com/zai-org/GLM-OCR",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://huggingface.co/zai-org/GLM-OCR"
+        }
+      ],
       "dependencies": [
         {
           "name": "ollama",
@@ -1335,12 +1375,7 @@
       ],
       "status": "active",
       "hfRepo": "",
-      "license": [
-        {
-          "name": "Apache-2.0",
-          "url": "https://www.apache.org/licenses/LICENSE-2.0"
-        }
-      ]
+      "source": "olares"
     },
     {
       "name": "qwen3-4b",
