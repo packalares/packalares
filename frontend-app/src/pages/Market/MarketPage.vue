@@ -733,7 +733,7 @@
 
             <!-- What's new -->
             <template v-if="detailData?.upgradeDescription">
-              <div class="detail-section-title" style="margin-top:20px">What's new</div>
+              <div class="detail-section-title">What's new</div>
               <div class="detail-content-card">
                 <div class="detail-description" v-html="renderMarkdown(detailData.upgradeDescription)" />
               </div>
@@ -741,7 +741,7 @@
 
             <!-- Permissions -->
             <template v-if="detailData?.permission">
-              <div class="detail-section-title" style="margin-top:20px">Required Permissions</div>
+              <div class="detail-section-title">Required Permissions</div>
               <div class="detail-content-card">
                 <div class="detail-permissions">
                   <div class="perm-item" v-if="detailData.permission.appData || detailData.permission.appCache || detailData.volumeMounts?.length">
@@ -775,7 +775,7 @@
 
             <!-- Container Images -->
             <template v-if="(detailData?.chartImages || detailData?.images || []).length">
-              <div class="detail-section-title" style="margin-top:20px">Container Images</div>
+              <div class="detail-section-title">Container Images</div>
               <div class="detail-content-card">
                 <div class="detail-table">
                   <div class="dt-row dt-header">
@@ -790,7 +790,7 @@
 
             <!-- Endpoints -->
             <template v-if="(detailData?.services || detailApp?.services || []).length">
-              <div class="detail-section-title" style="margin-top:20px">Endpoints</div>
+              <div class="detail-section-title">Endpoints</div>
               <div class="detail-content-card">
                 <div class="detail-table">
                   <div class="dt-row dt-header">
@@ -809,7 +809,7 @@
 
             <!-- Live Services (only when installed) -->
             <template v-if="detailData?.liveServices?.length">
-              <div class="detail-section-title" style="margin-top:20px">Cluster Services</div>
+              <div class="detail-section-title">Cluster Services</div>
               <div class="detail-content-card">
                 <div class="detail-table">
                   <div class="dt-row dt-header">
@@ -830,7 +830,7 @@
 
             <!-- Environment Variables -->
             <template v-if="detailData?.envVars?.length">
-              <div class="detail-section-title" style="margin-top:20px">Environment Variables</div>
+              <div class="detail-section-title">Environment Variables</div>
               <div class="detail-content-card">
                 <div class="detail-table">
                   <div class="dt-row dt-header">
@@ -847,7 +847,7 @@
 
             <!-- Labels -->
             <template v-if="detailData?.chartLabels && Object.keys(detailData.chartLabels).length">
-              <div class="detail-section-title" style="margin-top:20px">Pod Labels</div>
+              <div class="detail-section-title">Pod Labels</div>
               <div class="detail-content-card">
                 <div class="detail-table">
                   <div class="dt-row dt-header">

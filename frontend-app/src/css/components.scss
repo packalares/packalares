@@ -1382,19 +1382,34 @@
 .detail-main { flex: 1; min-width: 0; }
 
 .detail-section-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-1);
-  margin-bottom: 10px;
-  padding-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin: 0;
+  padding: 10px 16px 8px;
+  background: rgba(255,255,255,0.02);
   border-bottom: 1px solid var(--separator);
+  border-radius: 10px 10px 0 0;
+  border: 1px solid var(--border);
+  border-bottom: 1px solid var(--separator);
+}
+.detail-section-title + .detail-content-card {
+  border-top: none;
+  border-radius: 0 0 10px 10px;
+}
+.detail-section-title + .variant-card {
+  border-top: none;
+  border-radius: 0 0 10px 10px;
 }
 
 .detail-content-card {
   background: var(--bg-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px 20px;
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
 }
 
 .detail-description {
@@ -1439,8 +1454,12 @@
 .detail-info-card {
   background: var(--bg-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 10px;
   overflow: hidden;
+}
+.detail-section-title + .detail-info-card {
+  border-top: none;
+  border-radius: 0 0 10px 10px;
 }
 
 .di-row {
