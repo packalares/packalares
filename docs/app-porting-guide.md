@@ -134,8 +134,8 @@ App-service injects these at install time:
 | Value | Path | Notes |
 |-------|------|-------|
 | `{{ .Values.sharedlib }}` | `/packalares/Apps/sharedlib` | Shared AI models (ollama, comfyui, etc.) |
-| `{{ .Values.appData }}` | `/packalares/Apps/appdata` | Persistent app config/databases (if permission.appData=true) |
-| `{{ .Values.appCache }}` | `/packalares/Apps/appcache` | App cache/scratch (if permission.appCache=true) |
+| `{{ .Values.userspace.appData }}` | `/packalares/Apps/appdata` | Persistent app config/databases (if permission.appData=true) |
+| `{{ .Values.userspace.appCache }}` | `/packalares/Apps/appcache` | App cache/scratch (if permission.appCache=true) |
 | `{{ .Values.olaresEnv.ADMIN_USERNAME }}` | | Generated admin username |
 | `{{ .Values.olaresEnv.ADMIN_PASSWORD }}` | | Generated admin password |
 | `{{ .Values.olaresEnv.UNIQUE_PASS }}` | | Per-app random password (for DB sidecars) |
@@ -147,11 +147,11 @@ App-service injects these at install time:
 ```
 {{ .Values.sharedlib }}/ai/ollama           # Ollama models (shared)
 {{ .Values.sharedlib }}/ai/comfyui          # ComfyUI models (shared)
-{{ .Values.appData }}/{appname}             # App-specific persistent data
-{{ .Values.appCache }}/{appname}            # App-specific cache
-{{ .Values.appCache }}/redis/{appname}      # Redis data (per-app)
-{{ .Values.appCache }}/{appname}/postgres   # Postgres sidecar data
-{{ .Values.appCache }}/{appname}/mysql      # MySQL sidecar data
+{{ .Values.userspace.appData }}/{appname}             # App-specific persistent data
+{{ .Values.userspace.appCache }}/{appname}            # App-specific cache
+{{ .Values.userspace.appCache }}/redis/{appname}      # Redis data (per-app)
+{{ .Values.userspace.appCache }}/{appname}/postgres   # Postgres sidecar data
+{{ .Values.userspace.appCache }}/{appname}/mysql      # MySQL sidecar data
 ```
 
 ## Database Patterns
@@ -182,7 +182,7 @@ For apps needing specific extensions (pgvector, etc.):
 # Volume:
 - name: pg-data
   hostPath:
-    path: "{{ .Values.appCache }}/{appname}/postgres"
+    path: "{{ .Values.userspace.appCache }}/{appname}/postgres"
     type: DirectoryOrCreate
 ```
 
@@ -201,7 +201,7 @@ For apps needing specific extensions (pgvector, etc.):
 # Volume:
 - name: mysql-data
   hostPath:
-    path: "{{ .Values.appCache }}/{appname}/mysql"
+    path: "{{ .Values.userspace.appCache }}/{appname}/mysql"
     type: DirectoryOrCreate
 ```
 
@@ -217,7 +217,7 @@ For apps needing specific extensions (pgvector, etc.):
 # Volume:
 - name: redis-data
   hostPath:
-    path: "{{ .Values.appCache }}/redis/{appname}"
+    path: "{{ .Values.userspace.appCache }}/redis/{appname}"
     type: DirectoryOrCreate
 ```
 
