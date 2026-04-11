@@ -21,7 +21,7 @@
         <div class="nav-item" :class="{ active: activeTab === 'installed' }" @click="detailApp = null; activeTab = 'installed'; showModels = false; router.replace({ query: { view: 'installed' } })">
           <q-icon name="sym_r_download_done" size="17px" class="nav-icon" />
           <span class="nav-text">Installed</span>
-          <span v-if="installedApps.length > 0" class="nav-badge">{{ installedApps.length }}</span>
+          <span v-if="installedAppsDetail.length > 0" class="nav-badge">{{ installedAppsDetail.length }}</span>
         </div>
         <div class="market-section-label">Categories</div>
         <div
@@ -1046,12 +1046,7 @@ function isProgressIndeterminate(name: string): boolean {
 
 const installedAppsDetail = computed(() => {
   const names = new Set(installedApps.value.map((a) => a.name));
-  return apps.value.filter((a) => {
-    if (names.has(a.name)) return true;
-    // Include models that are installed on their backend
-    if (a.type === 'model' && installedModels[a.modelId || a.name]) return true;
-    return false;
-  });
+  return apps.value.filter((a) => a.type !== 'model' && names.has(a.name));
 });
 
 // App-only categories (exclude models from counts)
