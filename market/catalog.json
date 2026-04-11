@@ -2001,6 +2001,74 @@
         }
       ],
       "hasChart": true
+    },
+    {
+      "name": "context7",
+      "cfgType": "app",
+      "chartName": "context7",
+      "icon": "/api/market/icons/context7.png",
+      "description": "Up-to-date library documentation for AI coding assistants",
+      "fullDescription": "Context7 is an MCP server by Upstash that provides up-to-date, version-specific documentation and code examples directly from source to your AI coding assistant.\n\nInstead of relying on outdated training data, Context7 fetches current library documentation on demand. This resolves common issues where AI models hallucinate APIs, use deprecated patterns, or generate generic code based on stale knowledge.\n\nFeatures:\n* Provides up-to-date documentation for thousands of libraries\n* Works with any MCP-compatible AI coding tool (Cursor, Claude Code, VS Code Copilot, etc.)\n* Fetches version-specific docs and code examples from source\n* Runs as an HTTP MCP server accessible on port 8080\n* No database or GPU required — lightweight and simple",
+      "promoteImage": [
+        "/api/market/screenshots/context7/1.webp",
+        "/api/market/screenshots/context7/2.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/context7/featured.webp",
+      "developer": "Upstash",
+      "title": "Context7",
+      "entrances": [
+        {
+          "name": "context7",
+          "host": "context7-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/context7.png",
+          "title": "Context7",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.0",
+      "versionName": "0.3.11",
+      "categories": [
+        "Developer Tools"
+      ],
+      "requiredMemory": "128Mi",
+      "requiredDisk": "50Mi",
+      "requiredCpu": "100m",
+      "limitedMemory": "512Mi",
+      "limitedCPU": "1000m",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "status": "active",
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": false,
+        "appCache": false,
+        "userData": null
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://github.com/upstash/context7#readme",
+      "website": "https://context7.com/",
+      "sourceCode": "https://github.com/upstash/context7",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/upstash/context7/blob/master/LICENSE"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false
     }
   ],
   "categories": [],
