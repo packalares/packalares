@@ -565,8 +565,12 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 	// --- Step 6: helm install ---
 	GetWSHub().BroadcastInstallProgress(rec.Name, StateInstalling, 5, 6, "Running helm install...", 0, 0)
 
+	// Clean up any stale failed release before installing
+	_ = s.helm.Uninstall(bgCtx, rec.ReleaseName)
+
 	if err := s.helm.InstallFromDir(bgCtx, rec.ReleaseName, chartDir, s.namespace); err != nil {
 		klog.Errorf("helm install %s: %v", req.Name, err)
+		_ = s.helm.Uninstall(bgCtx, rec.ReleaseName) // cleanup failed release
 		rec.State = StateInstallFailed
 		_ = s.store.Put(bgCtx, rec)
 		GetWSHub().BroadcastAppState(rec.Name, StateInstallFailed)
