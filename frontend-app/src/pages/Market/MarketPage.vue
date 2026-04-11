@@ -260,7 +260,7 @@
                   <!-- Not installed -->
                   <template v-else-if="getAppDisplayState(app.name, app.hasChart) === 'not_installed'">
                     <q-btn unelevated dense no-caps size="sm"
-                      :label="app.requiredDisk ? 'Install \u00b7 ' + app.requiredDisk : 'Install'"
+                      :label="installLabel(app)"
                       :class="app.type === 'model' && !isBackendInstalled(app.backend || 'ollama') ? 'app-btn-install app-btn-disabled' : 'app-btn-install'"
                       @click.stop="handleInstall(app)" />
                   </template>
@@ -1501,6 +1501,15 @@ function uninstallVariant(tag: string) {
     modelId: base + ':' + tag,
   };
   confirmUninstall(variantApp, false);
+}
+
+function installLabel(app: MarketApp): string {
+  if (app.type === 'model' && app.variants?.length) {
+    const def = app.variants.find(v => v.default) || app.variants[0];
+    if (def?.size) return 'Install \u00b7 ' + def.size;
+  }
+  if (app.requiredDisk) return 'Install \u00b7 ' + app.requiredDisk;
+  return 'Install';
 }
 
 function isBackendInstalled(backend: string): boolean {
