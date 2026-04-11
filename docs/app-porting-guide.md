@@ -270,7 +270,24 @@ This creates `{appname}-{version}.tgz` which the market backend serves.
 
 ## Icon and Screenshot Assets
 
-- Download the app icon as PNG and save to `market/icons/{appname}.png`
-- Download screenshots from the app's website/GitHub and save to `market/screenshots/{appname}/`
+All Olares apps have icons and screenshots on the Olares CDN. Download them:
+
+**Icon:**
+```bash
+curl -sLo market/icons/{appname}.png "https://app.cdn.olares.com/appstore/{appname}/icon.png"
+```
+
+**Screenshots:**
+```bash
+mkdir -p market/screenshots/{appname}
+curl -sLo market/screenshots/{appname}/1.webp "https://app.cdn.olares.com/appstore/{appname}/promote_image_1v2.webp"
+curl -sLo market/screenshots/{appname}/2.webp "https://app.cdn.olares.com/appstore/{appname}/promote_image_2v2.webp"
+curl -sLo market/screenshots/{appname}/3.webp "https://app.cdn.olares.com/appstore/{appname}/promote_image_3v2.webp"
+curl -sLo market/screenshots/{appname}/featured.webp "https://app.cdn.olares.com/appstore/{appname}/promote_image_4v2.webp"
+```
+
+Some apps use `promote_image_1.webp` (without `v2`). If `v2` returns 404, try without the suffix.
+If the CDN doesn't have assets, search the app's official website or GitHub for screenshots.
+
 - Use `/api/market/` prefix for all asset paths in catalog.json (NOT external CDN URLs)
-- If no screenshots are available, the detail page will just skip the screenshot section
+- Verify downloaded files are not empty (some apps may have fewer screenshots)
