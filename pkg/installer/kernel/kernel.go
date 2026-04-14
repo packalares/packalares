@@ -11,6 +11,7 @@ import (
 var requiredModules = []string{
 	"br_netfilter",
 	"overlay",
+	"vxlan",
 	"ip_vs",
 	"ip_vs_rr",
 	"ip_vs_wrr",

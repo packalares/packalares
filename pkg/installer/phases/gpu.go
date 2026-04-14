@@ -71,11 +71,11 @@ func InstallGPU(opts *InstallOptions, w io.Writer) error {
 		fmt.Fprintf(w, "  Warning: DCGM exporter failed: %v (non-fatal)\n", err)
 	}
 
-	// Step 5: Patch monitoring-server with privileged + NVIDIA access for nvidia-smi
+	// Step 5: Patch monitoring-server with privileged + NVIDIA access + nvidia runtime for nvidia-smi
 	fmt.Fprintln(w, "  Patching monitoring-server for GPU access...")
 	patchCmd := exec.Command("kubectl", "patch", "deploy", "-n", config.FrameworkNamespace(),
 		"monitoring-server", "--type=json", "-p",
-		`[{"op":"add","path":"/spec/template/spec/containers/0/securityContext","value":{"privileged":true}},{"op":"add","path":"/spec/template/spec/containers/0/env/-","value":{"name":"NVIDIA_VISIBLE_DEVICES","value":"all"}}]`)
+		`[{"op":"add","path":"/spec/template/spec/runtimeClassName","value":"nvidia"},{"op":"add","path":"/spec/template/spec/containers/0/securityContext","value":{"privileged":true}},{"op":"add","path":"/spec/template/spec/containers/0/env/-","value":{"name":"NVIDIA_VISIBLE_DEVICES","value":"all"}}]`)
 	if out, err := patchCmd.CombinedOutput(); err != nil {
 		fmt.Fprintf(w, "  Warning: monitoring-server GPU patch failed: %s (non-fatal)\n", string(out))
 	}
@@ -216,21 +216,59 @@ func configureContainerdNvidia(w io.Writer) error {
 
 	os.MkdirAll("/etc/containerd/conf.d", 0755)
 
-	// Run nvidia-ctk to write the NVIDIA runtime config to conf.d
-	cmd := exec.Command("nvidia-ctk", "runtime", "configure",
-		"--runtime=containerd",
-		"--set-as-default")
-	if out, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("nvidia-ctk configure: %s\n%w", string(out), err)
+	// Write containerd config: runc as default, nvidia available for GPU pods.
+	// nvidia-ctk --set-as-default makes ALL containers use nvidia runtime,
+	// which breaks sandbox creation and causes SandboxChanged loops.
+	nvidiaConfig := `version = 2
+
+[plugins."io.containerd.grpc.v1.cri".containerd]
+  default_runtime_name = "runc"
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc]
+  runtime_type = "io.containerd.runc.v2"
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+  SystemdCgroup = true
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia]
+  privileged_without_host_devices = false
+  runtime_type = "io.containerd.runc.v2"
+
+[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.nvidia.options]
+  BinaryName = "/usr/bin/nvidia-container-runtime"
+  SystemdCgroup = true
+`
+	if err := os.WriteFile("/etc/containerd/conf.d/99-nvidia.toml", []byte(nvidiaConfig), 0644); err != nil {
+		return fmt.Errorf("write nvidia runtime config: %w", err)
 	}
 
 	// Create K3s containerd template that imports the nvidia config.
-	// Written AFTER nvidia-ctk so it doesn't get overwritten.
 	os.MkdirAll("/var/lib/rancher/k3s/agent/etc/containerd", 0755)
 	tmpl := `imports = ["/etc/containerd/conf.d/*.toml"]
 `
 	if err := os.WriteFile("/var/lib/rancher/k3s/agent/etc/containerd/config.toml.tmpl", []byte(tmpl), 0644); err != nil {
 		return fmt.Errorf("write containerd template: %w", err)
+	}
+
+	// Create RuntimeClass so GPU pods can request nvidia runtime
+	fmt.Fprintln(w, "  Creating nvidia RuntimeClass ...")
+	runtimeClass := `apiVersion: node.k8s.io/v1
+kind: RuntimeClass
+metadata:
+  name: nvidia
+handler: nvidia
+`
+	rcCmd := exec.Command("kubectl", "apply", "-f", "-")
+	rcStdin, err := rcCmd.StdinPipe()
+	if err != nil {
+		return fmt.Errorf("stdin pipe: %w", err)
+	}
+	go func() {
+		defer rcStdin.Close()
+		rcStdin.Write([]byte(runtimeClass))
+	}()
+	if out, err := rcCmd.CombinedOutput(); err != nil {
+		fmt.Fprintf(w, "  Warning: RuntimeClass creation failed: %s (non-fatal)\n", string(out))
 	}
 
 	// Restart K3s to pick up the new containerd config
