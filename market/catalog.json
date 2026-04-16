@@ -145,7 +145,7 @@
       "modelId": "dengcao/Qwen3-Reranker-8B:Q4_K_M",
       "cfgType": "model",
       "icon": "/api/market/icons/qwen3-reranker-8b.png",
-      "description": "8B reranker with Q4_K_M quantization (5.0 GB) — top accuracy for multilingual RAG reranking across 100+ languages.",
+      "description": "8B reranker with Q4_K_M quantization (5.0 GB) \u2014 top accuracy for multilingual RAG reranking across 100+ languages.",
       "fullDescription": "## IMPORTANT NOTE ##\nThis model runs on CPU only. If you want to run it on GPU, please install the generic version of Ollama program.\n\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## MODEL OVERVIEW ##\nQwen3-Reranker-8B is a text reranking model from Alibaba's Qwen team, built on the Qwen3-8B-Base architecture. It is designed for ranking and reordering search results, evaluating document relevance to queries across diverse applications.\n\nThe model supports 100+ languages with instruction-aware capabilities for task customization. It ranks among top performers in multilingual retrieval benchmarks (MTEB, CMTEB, MMTEB).\n\n**Note:** As of June 2025, Ollama doesn't fully support reranking models in Ragflow/Dify. Alternatives include FastGPT or vLLM deployment.\n\n## QUANTIZATION ##\nThis model uses **Q4_K_M** quantization (5.0 GB). Quantization compresses model weights from 16-bit to 4-bit precision, reducing memory usage ~4x with minimal quality loss. The K-quant method keeps critical layers at higher precision.\n\n## Model Details\n- Model Name: Qwen/Qwen3-Reranker-8B\n- Parameters: 8B\n- Quantization: Q4_K_M (5.0GB)\n- Context Length: 32768 tokens\n- Task: Text Reranking\n- Languages: 100+",
       "capabilities": [
         "embedding"
@@ -235,7 +235,7 @@
       "modelId": "dengcao/Qwen3-Reranker-4B:Q4_K_M",
       "cfgType": "model",
       "icon": "/api/market/icons/qwen3-reranker-4b.png",
-      "description": "Compact 4B reranker with Q4_K_M quantization (2.5 GB) — best quality/size tradeoff for multilingual RAG reranking.",
+      "description": "Compact 4B reranker with Q4_K_M quantization (2.5 GB) \u2014 best quality/size tradeoff for multilingual RAG reranking.",
       "fullDescription": "## IMPORTANT NOTE ##\nThis model runs on CPU only. If you want to run it on GPU, please install the generic version of Ollama program.\n\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## MODEL OVERVIEW ##\nQwen3-Reranker-4B is a compact text reranking model from Alibaba's Qwen team, built on the Qwen3-4B-Base architecture with 36 layers. It is designed for ranking and retrieval tasks across multilingual contexts.\n\nThe model supports 100+ languages with instruction-aware capabilities for task customization. It scores 69.76 on MTEB-R benchmarks, ranking among top-performing multilingual reranking models.\n\n**Note:** As of June 2025, Ollama doesn't fully support reranking models in Ragflow/Dify. Alternatives include FastGPT or vLLM deployment.\n\n## QUANTIZATION ##\nThis model uses **Q4_K_M** quantization (2.5 GB). Quantization compresses model weights from 16-bit to 4-bit precision, reducing memory usage ~4x with minimal quality loss. The K-quant method keeps critical layers at higher precision.\n\n## Model Details\n- Model Name: Qwen/Qwen3-Reranker-4B\n- Parameters: 4B\n- Quantization: Q4_K_M (2.5GB)\n- Context Length: 32768 tokens\n- Task: Text Reranking\n- Languages: 100+",
       "capabilities": [
         "embedding"
@@ -564,16 +564,36 @@
       "icon": "/api/market/icons/qwen35-27b.png",
       "description": "Alibaba's flagship 27B multimodal model with vision, thinking, tools, and 256K context across 201 languages.",
       "fullDescription": "## MODEL OVERVIEW ##\nQwen 3.5 27B is a flagship model from Alibaba's latest Qwen generation, integrating breakthroughs in multimodal learning, architectural efficiency, and reinforcement learning.\n\n## Key Features\n- **Unified Vision-Language Foundation**: Early fusion training on multimodal tokens\n- **Efficient Hybrid Architecture**: Gated Delta Networks combined with sparse MoE\n- **Scalable RL Generalization**: Robust real-world adaptability via million-agent environments\n- **201 Languages**: Expanded global linguistic coverage\n- **256K Context**: Native 262K tokens, extensible to 1M+\n- **Vision**: Multimodal vision-language understanding\n- **Tool Calling**: Agent capabilities with function calling\n- **Thinking Mode**: Chain-of-thought reasoning\n\n## Specifications\n- Parameters: 27B\n- Context Length: 256K tokens (native), extensible to 1M+\n- Architecture: Hybrid transformer with Gated Delta Networks + sparse MoE\n- Disk Size: ~17GB (Q4_K_M)\n\n## Use Cases\n- Advanced chat and conversation\n- Complex reasoning and analysis\n- Multilingual communication (201 languages)\n- Code generation and debugging\n- Document analysis and summarization\n- Agentic workflows with tool calling",
-      "capabilities": ["completion", "vision", "tools", "thinking"],
+      "capabilities": [
+        "completion",
+        "vision",
+        "tools",
+        "thinking"
+      ],
       "pullCount": "5.8M",
       "lastUpdated": "2026-03-12",
       "contextLength": "256K",
       "parameters": "27B",
       "quantization": "Q4_K_M",
       "variants": [
-        { "tag": "27b", "size": "17GB", "quantization": "Q4_K_M", "default": true },
-        { "tag": "27b-q8_0", "size": "30GB", "quantization": "Q8_0", "default": false },
-        { "tag": "27b-bf16", "size": "56GB", "quantization": "BF16", "default": false }
+        {
+          "tag": "27b",
+          "size": "17GB",
+          "quantization": "Q4_K_M",
+          "default": true
+        },
+        {
+          "tag": "27b-q8_0",
+          "size": "30GB",
+          "quantization": "Q8_0",
+          "default": false
+        },
+        {
+          "tag": "27b-bf16",
+          "size": "56GB",
+          "quantization": "BF16",
+          "default": false
+        }
       ],
       "modelReadme": "Qwen3.5 is a family of open-source multimodal models delivering exceptional utility and performance across text and vision tasks with support for 201 languages and dialects.\n\nKey breakthroughs include unified vision-language foundation via early fusion training, efficient hybrid architecture using Gated Delta Networks with sparse Mixture-of-Experts, scalable RL across million-agent environments, and near-100% multimodal training efficiency.\n\nThe 27B variant supports native 262K token context (extensible to 1M+), vision understanding, tool calling, and thinking mode for chain-of-thought reasoning.",
       "modelImages": [
@@ -2036,7 +2056,7 @@
           "quantization": "BF16"
         }
       ],
-      "modelReadme": "Qwen3-VL is the most powerful vision-language model in the Qwen model family to date. In this generation, there are improvements to the model in many areas: its understanding and generating text, perceiving and reasoning about visual content, supporting longer context lengths, understanding spatial relationships and dynamic videos, or interacting with AI agents.\n\n## Key Features\n- **Visual Agent Capabilities**: Operate computer/mobile interfaces, recognize GUI elements, and call tools. Achieves top global performance on benchmarks like OS World.\n- **Superior Text-Centric Performance**: Joint pretraining of text and visual modalities matches Qwen3-235B-A22B-2507 flagship language model performance.\n- **Greatly Improved Visual Coding**: Generate code from images or videos — turning design mockups into Draw.io, HTML, CSS, or JavaScript code.\n- **Much Better Spatial Understanding**: 2D grounding with relative coordinates and 3D grounding capabilities for complex spatial reasoning and embodied AI.\n- **Long Context & Long Video Understanding**: Natively supports 256K tokens of context, expandable up to 1 million tokens.\n- **Stronger Multimodal Reasoning**: Thinking variant specially optimized for STEM and math reasoning.\n- **Better OCR Across More Languages**: OCR now supports 32 languages (increased from 10).",
+      "modelReadme": "Qwen3-VL is the most powerful vision-language model in the Qwen model family to date. In this generation, there are improvements to the model in many areas: its understanding and generating text, perceiving and reasoning about visual content, supporting longer context lengths, understanding spatial relationships and dynamic videos, or interacting with AI agents.\n\n## Key Features\n- **Visual Agent Capabilities**: Operate computer/mobile interfaces, recognize GUI elements, and call tools. Achieves top global performance on benchmarks like OS World.\n- **Superior Text-Centric Performance**: Joint pretraining of text and visual modalities matches Qwen3-235B-A22B-2507 flagship language model performance.\n- **Greatly Improved Visual Coding**: Generate code from images or videos \u2014 turning design mockups into Draw.io, HTML, CSS, or JavaScript code.\n- **Much Better Spatial Understanding**: 2D grounding with relative coordinates and 3D grounding capabilities for complex spatial reasoning and embodied AI.\n- **Long Context & Long Video Understanding**: Natively supports 256K tokens of context, expandable up to 1 million tokens.\n- **Stronger Multimodal Reasoning**: Thinking variant specially optimized for STEM and math reasoning.\n- **Better OCR Across More Languages**: OCR now supports 32 languages (increased from 10).",
       "modelImages": [
         "/api/market/modelcards/qwen3-vl-30b/logo.png"
       ],
@@ -2218,8 +2238,8 @@
       "modelId": "glm-ocr:latest",
       "cfgType": "model",
       "icon": "/api/market/icons/glm-ocr.png",
-      "description": "Multimodal 0.9B OCR model for complex document understanding — text, table, and figure recognition with 128K context.",
-      "fullDescription": "## MODEL OVERVIEW\nGLM-OCR is a multimodal optical character recognition model for complex document understanding, built on the GLM-V encoder-decoder architecture. It integrates the CogViT visual encoder pre-trained on large-scale image-text data, a lightweight cross-modal connector with efficient token downsampling, and a GLM-0.5B language decoder.\n\n## Key Features\n- **State-of-the-Art Performance**: Achieves 94.62 on OmniDocBench V1.5, ranking #1 overall\n- **Real-World Optimized**: Robust on complex tables, code-heavy documents, seals, and unconventional layouts\n- **Efficient Inference**: Only 0.9B parameters — supports vLLM, SGLang, and Ollama deployment\n- **Easy to Use**: Fully open-sourced with comprehensive SDK and inference toolchain\n\n## Capabilities\n- **Text Recognition**: `ollama run glm-ocr \"Text Recognition: ./image.png\"`\n- **Table Recognition**: `ollama run glm-ocr \"Table Recognition: ./image.png\"`\n- **Figure Recognition**: `ollama run glm-ocr \"Figure Recognition: ./image.png\"`\n\n## Specifications\n- Parameters: 0.9B\n- Context Length: 128K\n- Input: Text + Image\n- Default Size: 2.2GB (BF16)",
+      "description": "Multimodal 0.9B OCR model for complex document understanding \u2014 text, table, and figure recognition with 128K context.",
+      "fullDescription": "## MODEL OVERVIEW\nGLM-OCR is a multimodal optical character recognition model for complex document understanding, built on the GLM-V encoder-decoder architecture. It integrates the CogViT visual encoder pre-trained on large-scale image-text data, a lightweight cross-modal connector with efficient token downsampling, and a GLM-0.5B language decoder.\n\n## Key Features\n- **State-of-the-Art Performance**: Achieves 94.62 on OmniDocBench V1.5, ranking #1 overall\n- **Real-World Optimized**: Robust on complex tables, code-heavy documents, seals, and unconventional layouts\n- **Efficient Inference**: Only 0.9B parameters \u2014 supports vLLM, SGLang, and Ollama deployment\n- **Easy to Use**: Fully open-sourced with comprehensive SDK and inference toolchain\n\n## Capabilities\n- **Text Recognition**: `ollama run glm-ocr \"Text Recognition: ./image.png\"`\n- **Table Recognition**: `ollama run glm-ocr \"Table Recognition: ./image.png\"`\n- **Figure Recognition**: `ollama run glm-ocr \"Figure Recognition: ./image.png\"`\n\n## Specifications\n- Parameters: 0.9B\n- Context Length: 128K\n- Input: Text + Image\n- Default Size: 2.2GB (BF16)",
       "capabilities": [
         "vision",
         "tools"
@@ -3096,16 +3116,36 @@
       "icon": "/api/market/icons/qwen35-9b.png",
       "description": "Balanced 9B multimodal model with vision, thinking, tools, and 256K context across 201 languages.",
       "fullDescription": "## MODEL OVERVIEW ##\nQwen3.5 9B is a balanced mid-range model from Alibaba's latest generation, offering a great mix of coding ability, vision understanding, and general-purpose performance with the latest hybrid architecture.\n\n## Key Features\n- **256K Context**: Native 256K token window\n- **Vision**: Multimodal vision-language understanding\n- **Tool Calling**: Agent capabilities with function calling\n- **Thinking Mode**: Chain-of-thought reasoning\n- **Efficient Hybrid Architecture**: Gated Delta Networks with Gated Attention (32 layers)\n- **201 Languages**: Broadest multilingual coverage\n- **Mid-Range Size**: Great speed-quality tradeoff\n\n## Specifications\n- Parameters: 9B\n- Context Length: 256K tokens\n- Hidden Dimension: 4096\n- Layers: 32 (hybrid with Gated DeltaNet + Gated Attention)\n- Disk Size: ~6.6GB (Q4_K_M)\n\n## Use Cases\n- General-purpose AI assistant\n- Code generation and review\n- Image understanding\n- Multilingual communication (201 languages)\n- Document analysis\n- Agentic workflows with tool calling",
-      "capabilities": ["completion", "vision", "tools", "thinking"],
+      "capabilities": [
+        "completion",
+        "vision",
+        "tools",
+        "thinking"
+      ],
       "pullCount": "5.8M",
       "lastUpdated": "2026-03-12",
       "contextLength": "256K",
       "parameters": "9B",
       "quantization": "Q4_K_M",
       "variants": [
-        { "tag": "9b", "size": "6.6GB", "quantization": "Q4_K_M", "default": true },
-        { "tag": "9b-q8_0", "size": "11GB", "quantization": "Q8_0", "default": false },
-        { "tag": "9b-bf16", "size": "19GB", "quantization": "BF16", "default": false }
+        {
+          "tag": "9b",
+          "size": "6.6GB",
+          "quantization": "Q4_K_M",
+          "default": true
+        },
+        {
+          "tag": "9b-q8_0",
+          "size": "11GB",
+          "quantization": "Q8_0",
+          "default": false
+        },
+        {
+          "tag": "9b-bf16",
+          "size": "19GB",
+          "quantization": "BF16",
+          "default": false
+        }
       ],
       "modelReadme": "Qwen3.5 is a family of open-source multimodal models delivering exceptional utility and performance across text and vision tasks with support for 201 languages and dialects.\n\nThe 9B variant features a hybrid architecture with Gated DeltaNet and Gated Attention across 32 layers, 4096 hidden dimension, and native 256K token context. It supports vision understanding, tool calling, and thinking mode for chain-of-thought reasoning.\n\nKey breakthroughs include unified vision-language foundation via early fusion training, efficient hybrid architecture, and scalable RL generalization.",
       "modelImages": [
@@ -3326,7 +3366,7 @@
       "chartName": "context7",
       "icon": "/api/market/icons/context7.png",
       "description": "Up-to-date library documentation for AI coding assistants",
-      "fullDescription": "Context7 is an MCP server by Upstash that provides up-to-date, version-specific documentation and code examples directly from source to your AI coding assistant.\n\nInstead of relying on outdated training data, Context7 fetches current library documentation on demand. This resolves common issues where AI models hallucinate APIs, use deprecated patterns, or generate generic code based on stale knowledge.\n\nFeatures:\n* Provides up-to-date documentation for thousands of libraries\n* Works with any MCP-compatible AI coding tool (Cursor, Claude Code, VS Code Copilot, etc.)\n* Fetches version-specific docs and code examples from source\n* Runs as an HTTP MCP server accessible on port 8080\n* No database or GPU required — lightweight and simple",
+      "fullDescription": "Context7 is an MCP server by Upstash that provides up-to-date, version-specific documentation and code examples directly from source to your AI coding assistant.\n\nInstead of relying on outdated training data, Context7 fetches current library documentation on demand. This resolves common issues where AI models hallucinate APIs, use deprecated patterns, or generate generic code based on stale knowledge.\n\nFeatures:\n* Provides up-to-date documentation for thousands of libraries\n* Works with any MCP-compatible AI coding tool (Cursor, Claude Code, VS Code Copilot, etc.)\n* Fetches version-specific docs and code examples from source\n* Runs as an HTTP MCP server accessible on port 8080\n* No database or GPU required \u2014 lightweight and simple",
       "promoteImage": [
         "/api/market/screenshots/context7/1.webp",
         "/api/market/screenshots/context7/2.webp"
@@ -3644,6 +3684,135 @@
       },
       "source": "olares",
       "hasChart": true
+    },
+    {
+      "name": "sunoace",
+      "title": "SunoAce",
+      "cfgType": "app",
+      "chartName": "sunoace",
+      "icon": "/api/market/icons/musicgen.png",
+      "description": "AI music studio \u2014 create songs, remix, stem separation, LoRA training",
+      "fullDescription": "## MusicGen Studio\n\nA professional Suno-style music creation studio powered by ACE-Step 1.5.\n\n### Features\n- **Text to Music**: Describe your song and generate full tracks with vocals\n- **Cover/Remix**: Transform existing songs in different styles\n- **Repaint**: Fix specific sections of a song\n- **Stem Separation**: Extract vocals, drums, bass, guitar\n- **LoRA Training**: Train custom styles from as few as 8 songs\n- **50+ Languages**: Generate music in any major language\n- **BPM/Key/Time Sig**: Full musical parameter control\n- **Batch Generation**: Generate multiple variations at once\n- **Audio Editor**: Built-in AudioMass editor\n- **Library**: Save, search, organize with playlists\n- **Spotify-style Player**: Waveform visualization, queue",
+      "developer": "Packalares",
+      "version": "1.0.0",
+      "versionName": "1.5.0",
+      "categories": [
+        "Creativity",
+        "AI"
+      ],
+      "requiredMemory": "4Gi",
+      "limitedMemory": "29Gi",
+      "requiredCpu": "500m",
+      "limitedCPU": "8000m",
+      "requiredDisk": "50Mi",
+      "requiredGpu": "12Gi",
+      "supportArch": [
+        "amd64"
+      ],
+      "status": "active",
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": null
+      },
+      "source": "packalares",
+      "hasChart": true,
+      "doc": "https://github.com/packalares/ace-step-ui",
+      "website": "https://github.com/packalares/ace-step-ui",
+      "sourceCode": "https://github.com/packalares/ace-step-ui",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/fspecii/ace-step-ui/blob/main/LICENSE"
+        }
+      ]
+    },
+    {
+      "name": "chromium",
+      "cfgType": "app",
+      "chartName": "chromium",
+      "icon": "/api/market/icons/chromium.png",
+      "description": "Chromium is an open-source browser project that aims to build a safer, faster, and more stable way for all users to experience the web.",
+      "fullDescription": "Chromium is an open-source browser project that aims to build a safer, faster, and more stable way for all users to experience the web.\n",
+      "promoteImage": [],
+      "developer": "Google",
+      "title": "Chromium",
+      "entrances": [
+        {
+          "name": "chromium",
+          "host": "chromium-svc",
+          "port": 3000,
+          "icon": "/api/market/icons/chromium.png",
+          "title": "Chromium",
+          "authLevel": "internal",
+          "openMethod": "window",
+          "invisible": false
+        }
+      ],
+      "version": "1.0.6",
+      "versionName": "120.0.6070.1",
+      "categories": [
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "256Mi",
+      "requiredDisk": "128Mi",
+      "requiredCpu": "0.5",
+      "limitedMemory": "512Mi",
+      "limitedCPU": "1",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "doc": "https://chromium.googlesource.com/chromium/src/+/main/docs/README.md",
+      "website": "https://www.chromium.org/chromium-projects/",
+      "sourceCode": "https://github.com/nicholasgasior/docker-chromium",
+      "license": [
+        {
+          "name": "BSD",
+          "url": "https://chromium.googlesource.com/chromium/src/+/HEAD/LICENSE"
+        }
+      ],
+      "hasChart": true,
+      "images": [
+        "docker.io/linuxserver/chromium:version-76e3a185",
+        "docker.io/beclab/aboveos-busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "chromium-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 3000
+            },
+            {
+              "name": "https",
+              "port": 3001
+            }
+          ]
+        }
+      ],
+      "status": "active"
     }
   ],
   "categories": [],

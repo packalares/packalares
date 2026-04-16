@@ -330,8 +330,13 @@ func BuildEntrancesFromManifest(manifest *AppConfiguration, appName, owner, name
 		if strings.HasPrefix(icon, "http") {
 			icon = "/api/market/icons/" + appName + ".png"
 		}
+		// Auto-fill entrance name and host from appName if not specified
+		eName := e.Name
+		if eName == "" {
+			eName = appName
+		}
 		entrance := Entrance{
-			Name:       e.Name,
+			Name:       eName,
 			Port:       e.Port,
 			Icon:       icon,
 			Title:      e.Title,

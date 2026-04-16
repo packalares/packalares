@@ -420,6 +420,7 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 			"port":     redisPort,
 			"password": redisPass,
 		},
+		"appName":   req.Name,
 		"olaresEnv": s.buildOlaresEnv(req.Name, zone, manifest),
 		"sharedlib":      "/packalares/Apps/sharedlib",
 		"downloadCdnURL": "https://cdn.olares.com",
