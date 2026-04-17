@@ -500,10 +500,22 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 	var app *Application
 	var exists bool
 	var sharedEntrance *SharedEntrance
+	var matchedEntrance *Entrance
 	for _, a := range s.apps {
 		if a.Spec.Name == appName {
 			app = a
 			exists = true
+			break
+		}
+		for i, e := range a.Spec.Entrances {
+			if e.Name == appName {
+				app = a
+				matchedEntrance = &a.Spec.Entrances[i]
+				exists = true
+				break
+			}
+		}
+		if exists {
 			break
 		}
 	}
@@ -538,6 +550,8 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 			Name: sharedEntrance.Name, Host: sharedEntrance.Host,
 			Port: sharedEntrance.Port, AuthLevel: sharedEntrance.AuthLevel,
 		}
+	} else if matchedEntrance != nil {
+		entrance = *matchedEntrance
 	} else {
 		entrance = app.Spec.Entrances[0]
 		for _, e := range app.Spec.Entrances {
