@@ -364,79 +364,33 @@ func parseWGEndpoint(config string) (ip string, port string) {
 
 // buildWGConfig injects PostUp/PostDown into the user's WG config.
 // wg-quick handles routing normally (creates its own table + fwmark + nft rules).
-// PostUp adds throw routes for cluster CIDRs + DNS config + optional kill-switch.
+// PostUp adds throw routes for cluster CIDRs + optional DNS + optional kill-switch.
 func buildWGConfig(userConfig string, killSwitch bool) string {
-	config := userConfig
-
-	if !killSwitch {
-		// Without kill-switch, still need cluster route exclusions + DNS
-		clusterCIDRs := detectClusterCIDRs()
-		clusterDNS := detectClusterDNS()
-		dns := parseWGDNS(userConfig)
-
-		// PostUp: add throw routes for cluster CIDRs to wg-quick's table + set DNS
-		// wg-quick's table = fwmark value (read from wg show)
-		upScript := fmt.Sprintf(`#!/bin/bash
-# Get wg-quick's routing table from the fwmark it set
-WG_TABLE=$(wg show wg0 fwmark 2>/dev/null)
-[ -z "$WG_TABLE" ] && WG_TABLE=51820
-# Add throw routes so cluster traffic bypasses WG tunnel
-%s
-# DNS: use tunnel DNS + cluster DNS
-cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
-echo "nameserver %s" > /etc/resolv.conf
-[ -n "%s" ] && echo "nameserver %s" >> /etc/resolv.conf
-`,
-			func() string {
-				var s string
-				for _, cidr := range clusterCIDRs {
-					s += fmt.Sprintf("ip route add throw %s table $WG_TABLE 2>/dev/null\n", cidr)
-				}
-				return s
-			}(),
-			dns, clusterDNS, clusterDNS)
-
-		downScript := `#!/bin/bash
-[ -f /etc/resolv.conf.pre-wg ] && mv /etc/resolv.conf.pre-wg /etc/resolv.conf
-`
-		_ = nsenterWrite("/usr/local/bin/wg0-up.sh", upScript)
-		_ = nsenterWrite("/usr/local/bin/wg0-down.sh", downScript)
-		_ = nsenterRun("chmod", "+x", "/usr/local/bin/wg0-up.sh", "/usr/local/bin/wg0-down.sh")
-
-		// Inject PostUp/PostDown before [Peer]
-		lines := strings.Split(config, "\n")
-		var result []string
-		injected := false
-		for _, line := range lines {
-			if strings.TrimSpace(line) == "[Peer]" && !injected {
-				result = append(result, "PostUp = /usr/local/bin/wg0-up.sh")
-				result = append(result, "PostDown = /usr/local/bin/wg0-down.sh")
-				result = append(result, "")
-				injected = true
-			}
-			result = append(result, line)
-		}
-		return strings.Join(result, "\n")
-	}
-
-	endpointIP, endpointPort := parseWGEndpoint(userConfig)
-	dns := parseWGDNS(userConfig)
 	clusterCIDRs := detectClusterCIDRs()
 	clusterDNS := detectClusterDNS()
+	dns := parseWGDNS(userConfig)
 
-	// Build PostUp: throw routes for cluster CIDRs + DNS + kill-switch
-	// wg-quick handles all routing/fwmark/nft — we just add cluster exceptions
-	upScript := fmt.Sprintf(`#!/bin/bash
-# Get wg-quick's routing table from the fwmark it set
-WG_TABLE=$(wg show wg0 fwmark 2>/dev/null)
-[ -z "$WG_TABLE" ] && WG_TABLE=51820
-# Add throw routes so cluster traffic bypasses WG tunnel
-%s
-# DNS: use tunnel DNS + cluster DNS
+	// Throw routes so cluster traffic bypasses the WG tunnel.
+	var throwRoutes string
+	for _, cidr := range clusterCIDRs {
+		throwRoutes += fmt.Sprintf("ip route add throw %s table $WG_TABLE 2>/dev/null\n", cidr)
+	}
+
+	// DNS block only when the user's config has DNS =; otherwise leave resolv.conf alone.
+	dnsBlock := ""
+	if dns != "" {
+		dnsBlock = fmt.Sprintf(`# DNS: use tunnel DNS + cluster DNS
 cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
 echo "nameserver %s" > /etc/resolv.conf
 [ -n "%s" ] && echo "nameserver %s" >> /etc/resolv.conf
-# Kill-switch (iptables)
+`, dns, clusterDNS, clusterDNS)
+	}
+
+	// Kill-switch iptables rules — only when enabled.
+	killSwitchBlock := ""
+	if killSwitch {
+		endpointIP, endpointPort := parseWGEndpoint(userConfig)
+		killSwitchBlock = fmt.Sprintf(`# Kill-switch (iptables)
 iptables -N WG_OUT 2>/dev/null; iptables -F WG_OUT
 iptables -A WG_OUT -o lo -j ACCEPT
 iptables -A WG_OUT -d 10.0.0.0/8 -j ACCEPT
@@ -446,18 +400,19 @@ iptables -A WG_OUT -o wg0 -j ACCEPT
 [ -n "%s" ] && iptables -A WG_OUT -d %s -p udp --dport %s -j ACCEPT
 iptables -A WG_OUT -j REJECT
 iptables -C OUTPUT -j WG_OUT 2>/dev/null || iptables -I OUTPUT -j WG_OUT
-`,
-		func() string {
-			var s string
-			for _, cidr := range clusterCIDRs {
-				s += fmt.Sprintf("ip route add throw %s table $WG_TABLE 2>/dev/null\n", cidr)
-			}
-			return s
-		}(),
-		dns, clusterDNS, clusterDNS,
-		endpointIP, endpointIP, endpointPort)
+`, endpointIP, endpointIP, endpointPort)
+	}
 
-	// PostDown: restore DNS, keep kill-switch (safe on crash)
+	upScript := fmt.Sprintf(`#!/bin/bash
+# Get wg-quick's routing table from the fwmark it set
+WG_TABLE=$(wg show wg0 fwmark 2>/dev/null)
+[ -z "$WG_TABLE" ] && WG_TABLE=51820
+# Add throw routes so cluster traffic bypasses WG tunnel
+%s
+%s%s`, throwRoutes, dnsBlock, killSwitchBlock)
+
+	// PostDown restores DNS only; iptables rules (if any) stay for safety on crash.
+	// Full cleanup happens in handleWGDisable → removeWGKillSwitch.
 	downScript := `#!/bin/bash
 [ -f /etc/resolv.conf.pre-wg ] && mv /etc/resolv.conf.pre-wg /etc/resolv.conf
 `
@@ -466,14 +421,12 @@ iptables -C OUTPUT -j WG_OUT 2>/dev/null || iptables -I OUTPUT -j WG_OUT
 	_ = nsenterWrite("/usr/local/bin/wg0-down.sh", downScript)
 	_ = nsenterRun("chmod", "+x", "/usr/local/bin/wg0-up.sh", "/usr/local/bin/wg0-down.sh")
 
-	// Inject PostUp/PostDown before the first [Peer] section
-	// Use `config` (with Table=off) not `userConfig`
-	lines := strings.Split(config, "\n")
+	// Inject PostUp/PostDown before the first [Peer] section.
+	lines := strings.Split(userConfig, "\n")
 	var result []string
 	injected := false
 	for _, line := range lines {
-		trimmed := strings.TrimSpace(line)
-		if trimmed == "[Peer]" && !injected {
+		if strings.TrimSpace(line) == "[Peer]" && !injected {
 			result = append(result, "PostUp = /usr/local/bin/wg0-up.sh")
 			result = append(result, "PostDown = /usr/local/bin/wg0-down.sh")
 			result = append(result, "")
@@ -481,7 +434,6 @@ iptables -C OUTPUT -j WG_OUT 2>/dev/null || iptables -I OUTPUT -j WG_OUT
 		}
 		result = append(result, line)
 	}
-
 	return strings.Join(result, "\n")
 }
 
