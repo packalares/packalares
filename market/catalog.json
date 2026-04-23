@@ -145,7 +145,7 @@
       "modelId": "dengcao/Qwen3-Reranker-8B:Q4_K_M",
       "cfgType": "model",
       "icon": "/api/market/icons/qwen3-reranker-8b.png",
-      "description": "8B reranker with Q4_K_M quantization (5.0 GB) \u2014 top accuracy for multilingual RAG reranking across 100+ languages.",
+      "description": "8B reranker with Q4_K_M quantization (5.0 GB) — top accuracy for multilingual RAG reranking across 100+ languages.",
       "fullDescription": "## IMPORTANT NOTE ##\nThis model runs on CPU only. If you want to run it on GPU, please install the generic version of Ollama program.\n\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## MODEL OVERVIEW ##\nQwen3-Reranker-8B is a text reranking model from Alibaba's Qwen team, built on the Qwen3-8B-Base architecture. It is designed for ranking and reordering search results, evaluating document relevance to queries across diverse applications.\n\nThe model supports 100+ languages with instruction-aware capabilities for task customization. It ranks among top performers in multilingual retrieval benchmarks (MTEB, CMTEB, MMTEB).\n\n**Note:** As of June 2025, Ollama doesn't fully support reranking models in Ragflow/Dify. Alternatives include FastGPT or vLLM deployment.\n\n## QUANTIZATION ##\nThis model uses **Q4_K_M** quantization (5.0 GB). Quantization compresses model weights from 16-bit to 4-bit precision, reducing memory usage ~4x with minimal quality loss. The K-quant method keeps critical layers at higher precision.\n\n## Model Details\n- Model Name: Qwen/Qwen3-Reranker-8B\n- Parameters: 8B\n- Quantization: Q4_K_M (5.0GB)\n- Context Length: 32768 tokens\n- Task: Text Reranking\n- Languages: 100+",
       "capabilities": [
         "embedding"
@@ -235,7 +235,7 @@
       "modelId": "dengcao/Qwen3-Reranker-4B:Q4_K_M",
       "cfgType": "model",
       "icon": "/api/market/icons/qwen3-reranker-4b.png",
-      "description": "Compact 4B reranker with Q4_K_M quantization (2.5 GB) \u2014 best quality/size tradeoff for multilingual RAG reranking.",
+      "description": "Compact 4B reranker with Q4_K_M quantization (2.5 GB) — best quality/size tradeoff for multilingual RAG reranking.",
       "fullDescription": "## IMPORTANT NOTE ##\nThis model runs on CPU only. If you want to run it on GPU, please install the generic version of Ollama program.\n\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## MODEL OVERVIEW ##\nQwen3-Reranker-4B is a compact text reranking model from Alibaba's Qwen team, built on the Qwen3-4B-Base architecture with 36 layers. It is designed for ranking and retrieval tasks across multilingual contexts.\n\nThe model supports 100+ languages with instruction-aware capabilities for task customization. It scores 69.76 on MTEB-R benchmarks, ranking among top-performing multilingual reranking models.\n\n**Note:** As of June 2025, Ollama doesn't fully support reranking models in Ragflow/Dify. Alternatives include FastGPT or vLLM deployment.\n\n## QUANTIZATION ##\nThis model uses **Q4_K_M** quantization (2.5 GB). Quantization compresses model weights from 16-bit to 4-bit precision, reducing memory usage ~4x with minimal quality loss. The K-quant method keeps critical layers at higher precision.\n\n## Model Details\n- Model Name: Qwen/Qwen3-Reranker-4B\n- Parameters: 4B\n- Quantization: Q4_K_M (2.5GB)\n- Context Length: 32768 tokens\n- Task: Text Reranking\n- Languages: 100+",
       "capabilities": [
         "embedding"
@@ -2056,7 +2056,7 @@
           "quantization": "BF16"
         }
       ],
-      "modelReadme": "Qwen3-VL is the most powerful vision-language model in the Qwen model family to date. In this generation, there are improvements to the model in many areas: its understanding and generating text, perceiving and reasoning about visual content, supporting longer context lengths, understanding spatial relationships and dynamic videos, or interacting with AI agents.\n\n## Key Features\n- **Visual Agent Capabilities**: Operate computer/mobile interfaces, recognize GUI elements, and call tools. Achieves top global performance on benchmarks like OS World.\n- **Superior Text-Centric Performance**: Joint pretraining of text and visual modalities matches Qwen3-235B-A22B-2507 flagship language model performance.\n- **Greatly Improved Visual Coding**: Generate code from images or videos \u2014 turning design mockups into Draw.io, HTML, CSS, or JavaScript code.\n- **Much Better Spatial Understanding**: 2D grounding with relative coordinates and 3D grounding capabilities for complex spatial reasoning and embodied AI.\n- **Long Context & Long Video Understanding**: Natively supports 256K tokens of context, expandable up to 1 million tokens.\n- **Stronger Multimodal Reasoning**: Thinking variant specially optimized for STEM and math reasoning.\n- **Better OCR Across More Languages**: OCR now supports 32 languages (increased from 10).",
+      "modelReadme": "Qwen3-VL is the most powerful vision-language model in the Qwen model family to date. In this generation, there are improvements to the model in many areas: its understanding and generating text, perceiving and reasoning about visual content, supporting longer context lengths, understanding spatial relationships and dynamic videos, or interacting with AI agents.\n\n## Key Features\n- **Visual Agent Capabilities**: Operate computer/mobile interfaces, recognize GUI elements, and call tools. Achieves top global performance on benchmarks like OS World.\n- **Superior Text-Centric Performance**: Joint pretraining of text and visual modalities matches Qwen3-235B-A22B-2507 flagship language model performance.\n- **Greatly Improved Visual Coding**: Generate code from images or videos — turning design mockups into Draw.io, HTML, CSS, or JavaScript code.\n- **Much Better Spatial Understanding**: 2D grounding with relative coordinates and 3D grounding capabilities for complex spatial reasoning and embodied AI.\n- **Long Context & Long Video Understanding**: Natively supports 256K tokens of context, expandable up to 1 million tokens.\n- **Stronger Multimodal Reasoning**: Thinking variant specially optimized for STEM and math reasoning.\n- **Better OCR Across More Languages**: OCR now supports 32 languages (increased from 10).",
       "modelImages": [
         "/api/market/modelcards/qwen3-vl-30b/logo.png"
       ],
@@ -2238,8 +2238,8 @@
       "modelId": "glm-ocr:latest",
       "cfgType": "model",
       "icon": "/api/market/icons/glm-ocr.png",
-      "description": "Multimodal 0.9B OCR model for complex document understanding \u2014 text, table, and figure recognition with 128K context.",
-      "fullDescription": "## MODEL OVERVIEW\nGLM-OCR is a multimodal optical character recognition model for complex document understanding, built on the GLM-V encoder-decoder architecture. It integrates the CogViT visual encoder pre-trained on large-scale image-text data, a lightweight cross-modal connector with efficient token downsampling, and a GLM-0.5B language decoder.\n\n## Key Features\n- **State-of-the-Art Performance**: Achieves 94.62 on OmniDocBench V1.5, ranking #1 overall\n- **Real-World Optimized**: Robust on complex tables, code-heavy documents, seals, and unconventional layouts\n- **Efficient Inference**: Only 0.9B parameters \u2014 supports vLLM, SGLang, and Ollama deployment\n- **Easy to Use**: Fully open-sourced with comprehensive SDK and inference toolchain\n\n## Capabilities\n- **Text Recognition**: `ollama run glm-ocr \"Text Recognition: ./image.png\"`\n- **Table Recognition**: `ollama run glm-ocr \"Table Recognition: ./image.png\"`\n- **Figure Recognition**: `ollama run glm-ocr \"Figure Recognition: ./image.png\"`\n\n## Specifications\n- Parameters: 0.9B\n- Context Length: 128K\n- Input: Text + Image\n- Default Size: 2.2GB (BF16)",
+      "description": "Multimodal 0.9B OCR model for complex document understanding — text, table, and figure recognition with 128K context.",
+      "fullDescription": "## MODEL OVERVIEW\nGLM-OCR is a multimodal optical character recognition model for complex document understanding, built on the GLM-V encoder-decoder architecture. It integrates the CogViT visual encoder pre-trained on large-scale image-text data, a lightweight cross-modal connector with efficient token downsampling, and a GLM-0.5B language decoder.\n\n## Key Features\n- **State-of-the-Art Performance**: Achieves 94.62 on OmniDocBench V1.5, ranking #1 overall\n- **Real-World Optimized**: Robust on complex tables, code-heavy documents, seals, and unconventional layouts\n- **Efficient Inference**: Only 0.9B parameters — supports vLLM, SGLang, and Ollama deployment\n- **Easy to Use**: Fully open-sourced with comprehensive SDK and inference toolchain\n\n## Capabilities\n- **Text Recognition**: `ollama run glm-ocr \"Text Recognition: ./image.png\"`\n- **Table Recognition**: `ollama run glm-ocr \"Table Recognition: ./image.png\"`\n- **Figure Recognition**: `ollama run glm-ocr \"Figure Recognition: ./image.png\"`\n\n## Specifications\n- Parameters: 0.9B\n- Context Length: 128K\n- Input: Text + Image\n- Default Size: 2.2GB (BF16)",
       "capabilities": [
         "vision",
         "tools"
@@ -3366,7 +3366,7 @@
       "chartName": "context7",
       "icon": "/api/market/icons/context7.png",
       "description": "Up-to-date library documentation for AI coding assistants",
-      "fullDescription": "Context7 is an MCP server by Upstash that provides up-to-date, version-specific documentation and code examples directly from source to your AI coding assistant.\n\nInstead of relying on outdated training data, Context7 fetches current library documentation on demand. This resolves common issues where AI models hallucinate APIs, use deprecated patterns, or generate generic code based on stale knowledge.\n\nFeatures:\n* Provides up-to-date documentation for thousands of libraries\n* Works with any MCP-compatible AI coding tool (Cursor, Claude Code, VS Code Copilot, etc.)\n* Fetches version-specific docs and code examples from source\n* Runs as an HTTP MCP server accessible on port 8080\n* No database or GPU required \u2014 lightweight and simple",
+      "fullDescription": "Context7 is an MCP server by Upstash that provides up-to-date, version-specific documentation and code examples directly from source to your AI coding assistant.\n\nInstead of relying on outdated training data, Context7 fetches current library documentation on demand. This resolves common issues where AI models hallucinate APIs, use deprecated patterns, or generate generic code based on stale knowledge.\n\nFeatures:\n* Provides up-to-date documentation for thousands of libraries\n* Works with any MCP-compatible AI coding tool (Cursor, Claude Code, VS Code Copilot, etc.)\n* Fetches version-specific docs and code examples from source\n* Runs as an HTTP MCP server accessible on port 8080\n* No database or GPU required — lightweight and simple",
       "promoteImage": [
         "/api/market/screenshots/context7/1.webp",
         "/api/market/screenshots/context7/2.webp"
@@ -3691,8 +3691,8 @@
       "cfgType": "app",
       "chartName": "sunoace",
       "icon": "/api/market/icons/musicgen.png",
-      "description": "AI music studio \u2014 create songs, remix, stem separation, LoRA training",
-      "fullDescription": "## MusicGen Studio\n\nA professional Suno-style music creation studio powered by ACE-Step 1.5.\n\n### Features\n- **Text to Music**: Describe your song and generate full tracks with vocals\n- **Cover/Remix**: Transform existing songs in different styles\n- **Repaint**: Fix specific sections of a song\n- **Stem Separation**: Extract vocals, drums, bass, guitar\n- **LoRA Training**: Train custom styles from as few as 8 songs\n- **50+ Languages**: Generate music in any major language\n- **BPM/Key/Time Sig**: Full musical parameter control\n- **Batch Generation**: Generate multiple variations at once\n- **Audio Editor**: Built-in AudioMass editor\n- **Library**: Save, search, organize with playlists\n- **Spotify-style Player**: Waveform visualization, queue",
+      "description": "AI music studio — create songs, remix, stem separation, LoRA training",
+      "fullDescription": "SunoAce is a self-hosted AI music studio powered by ACE-Step 1.5. Generate full songs from text descriptions, train custom styles with LoRA, and remix existing tracks.\n\n## Features\n### Music Generation\n- **Simple Mode**: Describe your song, pick genres, and generate — AI handles lyrics, style, and production\n- **Custom Mode**: Full control over lyrics, style, BPM, key, time signature, vocal language and gender\n- **Multiple DiT Models**: Switch between turbo (fast), base (quality), SFT (prompt-following) models\n\n### Lyrics & Style\n- **AI Lyrics Writer**: Llama Song Stream 3B generates structured lyrics\n- **Style Generator**: Creates detailed Suno-like production descriptions\n- **40+ Languages**: Generate vocals in any supported language\n\n### Audio Tools\n- **Cover / Remix**: Upload source audio and recreate in a new style\n- **Reference Audio**: Style-match generation inspired by reference tracks\n- **Audio Analysis**: Auto-detect BPM, key, genre, lyrics from any audio\n\n### LoRA Training\n- **5-Step Wizard**: Upload → Label → Preprocess → Train → Export\n- **Auto-Labeling**: AI analyzes your audio samples\n- **Custom Styles**: Train on 10-50 songs to capture any style\n\n### GPU Management\n- **Lazy Loading**: Models load on demand, freeing VRAM when idle\n- **Auto-Unload**: Configurable idle timeout to free GPU memory\n",
       "developer": "Packalares",
       "version": "1.0.0",
       "versionName": "1.5.0",
@@ -3808,6 +3808,2146 @@
             {
               "name": "https",
               "port": 3001
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "comfyuistudio",
+      "cfgType": "app",
+      "chartName": "comfyuistudio",
+      "icon": "/api/market/icons/comfyui.png",
+      "description": "AI creative studio with ComfyUI - generate images, video, audio, 3D",
+      "fullDescription": "ComfyUI is the most powerful and modular diffusion model GUI with a launcher for model and workflow management.\n\nFeatures:\n- Node-based workflow editor\n- Launcher with model manager\n- Supports SD, SDXL, SD3, Flux, video models\n- ControlNet, LoRA support\n- GPU accelerated",
+      "promoteImage": [
+        "/api/market/screenshots/comfyui/1.webp",
+        "/api/market/screenshots/comfyui/2.webp",
+        "/api/market/screenshots/comfyui/3.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/comfyui/featured.webp",
+      "developer": "ComfyAnonymous",
+      "title": "ComfyUI Studio",
+      "entrances": [
+        {
+          "name": "comfyui",
+          "host": "comfyui-entrance",
+          "port": 8080,
+          "title": "ComfyUI",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.1",
+      "versionName": "0.18.2",
+      "categories": [
+        "Creativity",
+        "AI"
+      ],
+      "requiredMemory": "4Gi",
+      "limitedMemory": "32Gi",
+      "requiredCpu": "500m",
+      "limitedCPU": "4",
+      "requiredGpu": "2Gi",
+      "requiredDisk": "500Mi",
+      "supportArch": [
+        "amd64"
+      ],
+      "status": "active",
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true
+      },
+      "source": "packalares",
+      "hasChart": true
+    },
+    {
+      "name": "searxng",
+      "cfgType": "app",
+      "chartName": "searxng",
+      "icon": "/api/market/icons/searxng.png",
+      "description": "Search without being tracked.",
+      "fullDescription": "## IMPORTANT NOTE ##\nThis is a shared app. Only one service will be installed across the entire Olares system. However, every user still needs to install an desktop entry to access and use the service installed by the Olares Admin.\n\n## OVERVIEW ##\nSearXNG is a free internet metasearch engine which aggregates results from more than 70 search services. Users are neither tracked nor profiled. Additionally, SearXNG can be used over Tor for online anonymity.\n\nWhy use it?\n- SearXNG may not offer you as personalized results as Google, but it doesn't generate a profile about you.\n- SearXNG doesn't care about what you search for, never shares anything with a third-party, and it can't be used to compromise you.\n- SearXNG is free software, the code is 100% open, and everyone is welcome to make it bette\n\nFeatures\n- self hosted\n- no user tracking / no profiling\n- script & cookies are optional\n- secure, encrypted connections\n- about 200 search engines\n- about 60 translations\n- about 100 well maintained instances on searx.space\n- easy integration of search engines\n- professional development: CI, quality assurance & automated tested UI",
+      "upgradeDescription": "Initial release for Packalares marketplace.",
+      "promoteImage": [
+        "/api/market/screenshots/searxng/1.webp",
+        "/api/market/screenshots/searxng/2.webp",
+        "/api/market/screenshots/searxng/3.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/searxng/featured.webp",
+      "developer": "SearXNG team",
+      "title": "SearXNG",
+      "entrances": [
+        {
+          "name": "searxng",
+          "host": "searxng-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/searxng.png",
+          "title": "SearXNG",
+          "authLevel": "private",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.0",
+      "versionName": "2026.4.22",
+      "categories": [
+        "Productivity",
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "512Mi",
+      "limitedMemory": "10Gi",
+      "requiredCpu": "50m",
+      "limitedCPU": "4.5",
+      "requiredDisk": "50Mi",
+      "limitedDisk": "256Mi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US",
+        "zh-CN"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": null
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://docs.searxng.org/",
+      "website": "https://docs.searxng.org/",
+      "sourceCode": "https://github.com/searxng/searxng",
+      "license": [
+        {
+          "name": "AGPL-3.0",
+          "url": "https://github.com/searxng/searxng#AGPL-3.0-1-ov-file"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/searxng/searxng:2026.4.22-74f1ca203"
+      ],
+      "services": [
+        {
+          "name": "searxng-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "vane",
+      "cfgType": "app",
+      "chartName": "vane",
+      "icon": "/api/market/icons/vane.png",
+      "description": "Vane (previously Perplexica) is an AI-powered answering engine.",
+      "fullDescription": "Vane (Previously Perplexica) is a privacy-focused AI answering engine that runs entirely on your own hardware. It combines knowledge from the vast internet with support for local LLMs (Ollama) and cloud providers (OpenAI, Claude, Groq), delivering accurate answers with cited sources while keeping your searches completely private.\n\nFeatures\n- Support for all major AI providers - Use local LLMs through Ollama or connect to OpenAI, Anthropic Claude, Google Gemini, Groq, and more. Mix and match models based on your needs.\n- Smart search modes - Choose Speed Mode when you need quick answers, Balanced Mode for everyday searches, or Quality Mode for deep research.\n- Pick your sources - Search the web, discussions, or academic papers. More sources and integrations are in progress.\n- Widgets - Helpful UI cards that show up when relevant, like weather, calculations, stock prices, and other quick lookups.\n- Web search powered by SearxNG - Access multiple search engines while keeping your identity private. Support for Tavily and Exa coming soon for even better results.\n- Image and video search - Find visual content alongside text results. Search isn't limited to just articles anymore.\n- File uploads - Upload documents and ask questions about them. PDFs, text files, images - Vane understands them all.\n- Search specific domains - Limit your search to specific websites when you know where to look. Perfect for technical documentation or research papers.\n- Smart suggestions - Get intelligent search suggestions as you type, helping you formulate better queries.\n- Discover - Browse interesting articles and trending content throughout the day. Stay informed without even searching.\n- Search history - Every search is saved locally so you can revisit your discoveries anytime. Your research is never lost.\n- More coming soon - We're actively developing new features based on community feedback. Join our Discord to help shape Vane's future!",
+      "upgradeDescription": "Initial release for Packalares marketplace.",
+      "promoteImage": [
+        "/api/market/screenshots/vane/1.webp",
+        "/api/market/screenshots/vane/2.webp",
+        "/api/market/screenshots/vane/3.webp",
+        "/api/market/screenshots/vane/4.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/vane/featured.webp",
+      "developer": "ItzCrazyKns",
+      "title": "Vane",
+      "entrances": [
+        {
+          "name": "vane",
+          "host": "vane-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/vane.png",
+          "title": "Vane",
+          "authLevel": "private",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.0",
+      "versionName": "1.12.2",
+      "categories": [
+        "Productivity",
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "1000Mi",
+      "limitedMemory": "4608Mi",
+      "requiredCpu": "50m",
+      "limitedCPU": "4.5",
+      "requiredDisk": "50Mi",
+      "limitedDisk": "50Gi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US",
+        "zh-CN"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": null
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        },
+        {
+          "name": "ollama",
+          "version": ">=1.0.0",
+          "type": "application"
+        },
+        {
+          "name": "searxng",
+          "version": ">=1.0.0",
+          "type": "application"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://github.com/ItzCrazyKns/Vane",
+      "website": "https://github.com/ItzCrazyKns/Vane",
+      "sourceCode": "https://github.com/ItzCrazyKns/Vane",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/ItzCrazyKns/Vane?tab=readme-ov-file#MIT-1-ov-file"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/itzcrazykns1337/vane:v1.12.2",
+        "docker.io/postgres:17-alpine",
+        "docker.io/beclab/aboveos-bitnami-openresty:1.25.3-2",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "vane-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "ytnavigator",
+      "cfgType": "app",
+      "chartName": "ytnavigator",
+      "icon": "/api/market/icons/ytnavigator.png",
+      "description": "AI-powered YouTube content explorer",
+      "fullDescription": "YT Navigator is an AI-powered application that helps you navigate and search through YouTube channel content efficiently. Instead of manually watching hours of videos to find specific information, YT Navigator allows you to:\n- Search through a channel's videos using natural language queries\n- Chat with a channel's content to get answers based on video transcripts\n- Discover relevant video segments with precise timestamps\n\nPerfect for researchers, students, content creators, or anyone who needs to extract information from YouTube channels quickly.\n\nMain Features\n- Authentication: Secure login and independent sessions\n- Channel Management: Scan up to 100 videos per channel and get a summary of the channel\n- Search: Find relevant video segments using Semantic Search\n- Chat: Have conversations with an AI that has knowledge of the channel's content\n",
+      "upgradeDescription": "Initial release for Packalares marketplace.",
+      "promoteImage": [
+        "/api/market/screenshots/ytnavigator/1.webp",
+        "/api/market/screenshots/ytnavigator/2.webp",
+        "/api/market/screenshots/ytnavigator/3.webp",
+        "/api/market/screenshots/ytnavigator/4.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/ytnavigator/featured.webp",
+      "developer": "wassim249",
+      "title": "YT Navigator",
+      "entrances": [
+        {
+          "name": "ytnavigator",
+          "host": "ytnavigator-svc",
+          "port": 8000,
+          "icon": "/api/market/icons/ytnavigator.png",
+          "title": "YT Navigator",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "0.1.8",
+      "versionName": "0.0.8",
+      "categories": [
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "2Gi",
+      "limitedMemory": "2Gi",
+      "requiredCpu": "1000m",
+      "limitedCPU": "2000m",
+      "requiredDisk": "1Gi",
+      "limitedDisk": "2Gi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": null
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://github.com/wassim249/YT-Navigator",
+      "website": "https://github.com/wassim249/YT-Navigator",
+      "sourceCode": "https://github.com/wassim249/YT-Navigator",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/wassim249/YT-Navigator/blob/master/LICENSE"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": true,
+      "loginType": "",
+      "images": [
+        "docker.io/beclab/bleachzou-yt-navigator:0.0.8",
+        "docker.io/pgvector/pgvector:0.8.2-pg17",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "ytnavigator-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8000
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "cyberchef",
+      "cfgType": "app",
+      "chartName": "cyberchef",
+      "icon": "/api/market/icons/cyberchef.png",
+      "description": "The Cyber Swiss Army Knife - a web app for encryption, encoding, compression and data analysis",
+      "fullDescription": "CyberChef is a simple, intuitive web app for carrying out all manner of \"cyber\" operations within a web browser. These operations include simple encoding like XOR and Base64, more complex encryption like AES, DES and Blowfish, creating binary and hexdumps, compression and decompression of data, calculating hashes and checksums, IPv6 and X.509 parsing, changing character encodings, and much more.\n\nThe tool is designed to enable both technical and non-technical analysts to manipulate data in complex ways without having to deal with more specialised tools or algorithms. It was conceived, designed, built and incrementally improved by an analyst in their 10% innovation time over several years.\n\nFeatures:\n- Drag and drop operations to build recipes\n- Auto Bake for real-time processing as you type\n- Automated encoding detection with Magic operation\n- Breakpoints and step-through debugging for recipes\n- Save and load recipes as URLs for easy sharing\n- Search for operations by name or keyword\n- Highlighting to trace data between input and output\n- Load files up to 2GB directly in the browser\n- All processing happens client-side - no data sent to any server\n\nSupported operations include:\n- Encoding/decoding (Base64, URL, HTML, Hex, Unicode, etc.)\n- Encryption/decryption (AES, DES, 3DES, Blowfish, RC4, Rabbit, etc.)\n- Hashing (MD5, SHA1, SHA256, SHA512, HMAC, etc.)\n- Compression (Gzip, Bzip2, Zlib, Raw Deflate, etc.)\n- Data format conversion (JSON, XML, CSV, YAML, etc.)\n- Networking (Parse IP, Parse URI, HTTP request, DNS lookup, etc.)\n- Binary operations (XOR, AND, OR, NOT, bit shifts, etc.)\n- Text manipulation (Find/Replace, Regular expressions, etc.)\n- And many more - over 300 operations in total\n",
+      "upgradeDescription": "Initial release for Packalares marketplace. Bumped to upstream v10.23.0.",
+      "promoteImage": [],
+      "featuredImage": "",
+      "developer": "GCHQ",
+      "title": "CyberChef",
+      "entrances": [
+        {
+          "name": "cyberchef",
+          "host": "cyberchef-svc",
+          "port": 8000,
+          "icon": "/api/market/icons/cyberchef.png",
+          "title": "CyberChef",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.1",
+      "versionName": "10.23.0",
+      "categories": [
+        "Utilities",
+        "Developer Tools"
+      ],
+      "rating": 0,
+      "requiredMemory": "128Mi",
+      "limitedMemory": "512Mi",
+      "requiredCpu": "50m",
+      "limitedCPU": "500m",
+      "requiredDisk": "50Mi",
+      "limitedDisk": "128Mi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": false,
+        "appCache": false,
+        "userData": null
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://github.com/gchq/CyberChef/wiki",
+      "website": "https://gchq.github.io/CyberChef/",
+      "sourceCode": "https://github.com/gchq/CyberChef",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://github.com/gchq/CyberChef/blob/master/LICENSE"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/mpepping/cyberchef:v10.23.0"
+      ],
+      "services": [
+        {
+          "name": "cyberchef-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8000
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "deepseekocrwebuiv2",
+      "cfgType": "app",
+      "chartName": "deepseekocrwebuiv2",
+      "icon": "/api/market/icons/deepseekocrwebuiv2.png",
+      "description": "Ready-to-use DeepSeek-OCR-2 Web UI",
+      "fullDescription": "## IMPORTANT NOTE ##\nThis is a shared app. Only one service will be installed across the entire Olares system. Every user can install a desktop entry to access or use the shared entrance to call the service API.\n\n## OVERVIEW ##\nDeepSeek-OCR-WebUI is an intelligent image recognition web application based on the DeepSeek-OCR-2 model (Visual Causal Flow), providing an intuitive user interface and powerful recognition capabilities.\n\nCore Highlights\n- DeepSeek-OCR-2 Model - Next-gen OCR powered by Visual Causal Flow architecture\n- 7 Recognition Modes - Document, OCR, Chart, Find, Freeform, etc.\n- Bounding Box Visualization - Find mode automatically annotates positions\n- Batch Processing - Support for multiple image sequential recognition\n- PDF Support - Upload PDF files, automatically convert to images\n- Modern UI - Cool gradient backgrounds and animation effects\n- Multilingual Support - Simplified Chinese, Traditional Chinese, English, Japanese\n- GPU Acceleration - High-performance inference based on NVIDIA GPU\n- Auto Model Download - Built-in HuggingFace model downloader with progress tracking\n- ModelScope Fallback - Auto-switch to ModelScope when HuggingFace is unavailable\n",
+      "upgradeDescription": "Separated the model downloader and OCR service into independent Deployments for better resource isolation and lifecycle management.\n",
+      "promoteImage": [
+        "/api/market/screenshots/deepseekocrwebuiv2/1.webp",
+        "/api/market/screenshots/deepseekocrwebuiv2/2.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/deepseekocrwebuiv2/featured.webp",
+      "developer": "neosun100",
+      "title": "DeepSeek-OCR-2 WebUI",
+      "entrances": [
+        {
+          "name": "deepseekocrwebuiv2",
+          "host": "deepseekocrwebui-web-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/deepseekocrwebuiv2.png",
+          "title": "DeepSeek-OCR-2 WebUI",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.7",
+      "versionName": "2.0.3",
+      "categories": [
+        "AI",
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "6Gi",
+      "limitedMemory": "25Gi",
+      "requiredCpu": "1000m",
+      "limitedCPU": "5000m",
+      "requiredDisk": "8Gi",
+      "limitedDisk": "20Gi",
+      "requiredGpu": "10Gi",
+      "supportArch": [
+        "amd64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://github.com/neosun100/DeepSeek-OCR-WebUI",
+      "website": "https://github.com/neosun100/DeepSeek-OCR-WebUI",
+      "sourceCode": "https://github.com/neosun100/DeepSeek-OCR-WebUI",
+      "license": [
+        {
+          "name": "MIT License",
+          "url": "https://github.com/neosun100/DeepSeek-OCR-WebUI?tab=License-1-ov-file"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/beclab/harveyff-deepseekocr-webui:v2.0.3",
+        "docker.io/beclab/harveyff-hf-downloader-only:v0.0.6",
+        "docker.io/nginx:alpine"
+      ],
+      "services": [
+        {
+          "name": "deepseekocrwebui-web-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "flaresolverr",
+      "cfgType": "app",
+      "chartName": "flaresolverr",
+      "icon": "/api/market/icons/flaresolverr.png",
+      "description": "Proxy server to bypass Cloudflare and DDoS-GUARD protection.",
+      "fullDescription": "FlareSolverr is a powerful proxy server designed to help applications bypass Cloudflare and other anti-bot protections automatically. It works by simulating a real browser environment, allowing scripts and automation tools to access protected websites without being blocked.\n\nBy solving JavaScript challenges and security checks in the background, FlareSolverr enables reliable access to websites that normally restrict automated requests. This makes it especially useful for web scraping tools, APIs, and applications that need consistent data access.\n\nBuilt with flexibility and performance in mind, FlareSolverr integrates easily with various software and supports multiple platforms. Its automated challenge-solving system ensures smooth, secure, and uninterrupted communication with protected websites.\n\nWith FlareSolverr, you can:\n- Customize Proxy Settings: Fine-tune proxy parameters including rotation frequency, geographical location, and proxy types to optimize your scraping performance and anonymity.\n- Real-Time Adjustments: Make instant changes to your proxy configurations to adapt to evolving scraping needs or website defenses.\n- Enhanced Security: Utilize advanced features to minimize the risk of detection and ensure your scraping activities remain under the radar.\n- Seamless Integration: Easily integrate proxy management with your existing workflows and scraping tools for a smooth, uninterrupted data extraction experience.\n- Comprehensive Control: Monitor and adjust proxy usage in real-time, giving you full control over how your data is accessed and collected.\n",
+      "upgradeDescription": "Upgrade to v3.4.6\n\nChanges:\n* Add disable image, CSS, fonts option with CDP (#1626)\n\nFull release notes at: https://github.com/FlareSolverr/FlareSolverr/releases/tag/v3.4.6\n",
+      "promoteImage": [],
+      "featuredImage": "",
+      "developer": "FlareSolverr",
+      "title": "FlareSolverr",
+      "entrances": [
+        {
+          "name": "flaresolverr",
+          "host": "flaresolverr-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/flaresolverr.png",
+          "title": "FlareSolverr",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.4",
+      "versionName": "3.4.6",
+      "categories": [
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "200Mi",
+      "limitedMemory": "1.5Gi",
+      "requiredCpu": "100m",
+      "limitedCPU": "2000m",
+      "requiredDisk": "128Mi",
+      "limitedDisk": "512Mi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": null
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://github.com/FlareSolverr/FlareSolverr#readme",
+      "website": "https://github.com/FlareSolverr/FlareSolverr",
+      "sourceCode": "https://github.com/FlareSolverr/FlareSolverr",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/FlareSolverr/FlareSolverr/blob/master/LICENSE"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/flaresolverr/flaresolverr:v3.4.6",
+        "docker.io/nginx:alpine"
+      ],
+      "services": [
+        {
+          "name": "flaresolverr-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "freshrss",
+      "cfgType": "app",
+      "chartName": "freshrss",
+      "icon": "/api/market/icons/freshrss.png",
+      "description": "A free, self-hostable feed aggregator.",
+      "fullDescription": "FreshRSS is a self-hosted RSS and Atom feed aggregator.It is lightweight, easy to work with, powerful, and customizable.\n\nFeatures\n- Independent Data Control : Supports self-hosted deployment, allowing users to have full control over their data without third-party reliance, ensuring privacy and security.\n- Open-Source & Stable Updates : Open-source under the AGPL 3 license, with an active community. It has maintained continuous iterations and updates from 2023 to 2024, ensuring strong stability.\n- Multi-Source Content Aggregation : Aggregates website RSS/Atom feeds, podcasts, and video channels. It can also scrape websites without official feeds to generate custom subscription sources.\n- Efficient Content Management : Enables searching and saving queries, generating new feeds based on rules, and supports marking, favoriting, and categorizing articles for management.\n- Real-Time Sync & Migration : Achieves real-time content synchronization based on WebSub, and supports importing and exporting subscription lists in OPML format.\n- Flexible Customization & Permissions : Offers theme and extension customization features, as well as multi-user permission management to meet different needs.\n- Full-Device & High-Efficiency Adaptation : Features a responsive design compatible with computers and mobile phones, capable of efficiently managing over 1 million articles and 50,000+ feeds.\n- Multi-Language Support & Integration : Supports more than 15 languages and provides API interfaces for connecting to third-party clients or proprietary systems.\n- Low-Threshold Deployment : Has a low deployment threshold, is compatible with mainstream web servers, and comes with detailed installation documentation, making it easy for beginners to get started.\n",
+      "upgradeDescription": "Upgrade app version to 1.28.1\n\nThis is a release focusing on bug fixing, in particular regressions from the release 1.28.0.\n\nSelected new features:\n- New customisable message for closed registrations\n- Add username in Apache access logs (also in Docker logs): for GReader API, and for HTTP Basic Auth from reverse proxy\n\nImproved performance:\n- Disable counting articles in user labels for Ajax requests (unused)\n\nBug fixes:\n- Fix unwanted expansion of user queries (saved searches) applied to filters\n- Fix encoding of filter actions for labels\n- Fix searching of tags\n- Fix refreshing feeds with token while anonymous refresh is disabled\n- Fix RSS and OPML access by token\n- Fix MySQL/MariaDB transliterator_transliterate fallback\n- Fix regression with MySQL/MariaDB index hint\n- Fix shortcut for next unread article\n- Fix custom session.cookie-lifetime\n- Fix feed validator button when changing the feed URL\n\nFull release notes: https://github.com/FreshRSS/FreshRSS/releases/tag/1.28.1\n",
+      "promoteImage": [
+        "/api/market/screenshots/freshrss/1.webp",
+        "/api/market/screenshots/freshrss/2.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/freshrss/featured.webp",
+      "developer": "FreshRSS",
+      "title": "FreshRSS",
+      "entrances": [
+        {
+          "name": "freshrss",
+          "host": "freshrss-nginx-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/freshrss.png",
+          "title": "FreshRSS",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.4",
+      "versionName": "1.28.1",
+      "categories": [
+        "Productivity",
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "256Mi",
+      "limitedMemory": "2.5Gi",
+      "requiredCpu": "200m",
+      "limitedCPU": "1000m",
+      "requiredDisk": "256Mi",
+      "limitedDisk": "1Gi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://freshrss.github.io/FreshRSS/en/",
+      "website": "https://freshrss.org",
+      "sourceCode": "https://github.com/FreshRSS/FreshRSS",
+      "license": [
+        {
+          "name": "AGPL-3.0",
+          "url": "https://github.com/FreshRSS/FreshRSS/blob/edge/LICENSE.txt"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": true,
+      "loginType": "user-email",
+      "images": [
+        "docker.io/freshrss/freshrss:1.28.1",
+        "docker.io/postgres:17-alpine",
+        "docker.io/nginx:alpine",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "freshrss-nginx-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "frigate",
+      "cfgType": "app",
+      "chartName": "frigate",
+      "icon": "/api/market/icons/frigate.png",
+      "description": "NVR with real-time AI object detection for security cameras",
+      "fullDescription": "Frigate is a complete and local NVR (Network Video Recorder) designed with AI-powered object detection. It uses OpenCV and TensorFlow to perform real-time object detection locally for IP cameras.\n\nFrigate is optimized to minimize resource use and maximize performance by only looking for objects when and where it is necessary. It leverages multiprocessing heavily with an emphasis on real-time processing over processing every frame.\n\nKey Features:\n- Real-time AI object detection using TensorFlow with support for GPU acceleration\n- Very low overhead motion detection to determine where to run object detection\n- Records video with retention settings based on detected objects\n- 24/7 continuous recording support\n- Re-streaming via RTSP to reduce the number of connections to your camera\n- WebRTC and MSE support for low-latency live view\n- Communicates over MQTT for easy integration into other systems\n- Built-in mask and zone editor for customization\n- Live dashboard for monitoring all cameras\n- Streamlined review workflow for analyzing events\n- Multi-camera scrubbing capabilities\n- Supports NVIDIA GPU hardware acceleration for AI detection\n- Configuration file based setup (config.yml)\n\nFrigate is designed to run locally, keeping your camera feeds and recordings private. It processes everything on your own hardware with no cloud dependencies.\n",
+      "upgradeDescription": "Initial release of Frigate 0.17.1 for Packalares.\n",
+      "promoteImage": [
+        "/api/market/screenshots/frigate/1.webp",
+        "/api/market/screenshots/frigate/2.webp",
+        "/api/market/screenshots/frigate/3.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/frigate/featured.webp",
+      "developer": "Blake Blackshear",
+      "title": "Frigate",
+      "entrances": [
+        {
+          "name": "frigate",
+          "host": "frigate-svc",
+          "port": 5000,
+          "icon": "/api/market/icons/frigate.png",
+          "title": "Frigate",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.0",
+      "versionName": "0.17.1",
+      "categories": [
+        "Lifestyle"
+      ],
+      "rating": 0,
+      "requiredMemory": "1Gi",
+      "limitedMemory": "8Gi",
+      "requiredCpu": "500m",
+      "limitedCPU": "4000m",
+      "requiredDisk": "5Gi",
+      "limitedDisk": "500Gi",
+      "requiredGpu": "1",
+      "supportArch": [
+        "amd64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://docs.frigate.video/",
+      "website": "https://frigate.video/",
+      "sourceCode": "https://github.com/blakeblackshear/frigate",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/blakeblackshear/frigate/blob/dev/LICENSE"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "ghcr.io/blakeblackshear/frigate:0.17.1",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "frigate-svc",
+          "ports": [
+            {
+              "name": "web",
+              "port": 5000
+            },
+            {
+              "name": "rtsp",
+              "port": 8554
+            },
+            {
+              "name": "rtmp",
+              "port": 1935
+            },
+            {
+              "name": "webrtc-tcp",
+              "port": 8555
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "gitea",
+      "cfgType": "app",
+      "chartName": "gitea",
+      "icon": "/api/market/icons/gitea.png",
+      "description": "Git with a cup of tea!",
+      "fullDescription": "Gitea is a painless, self-hosted, all-in-one software development service. It includes Git hosting, code review, team collaboration, package registry, and CI/CD. It is similar to GitHub, Bitbucket and GitLab.\n\n# Features\nCode Hosting\n- Gitea supports creating and managing repositories, browsing commit history and code files, reviewing and merging code submissions, managing collaborators, handling branches, and more. It also supports many common Git features such as tags, Cherry-pick, hooks, integrated collaboration tools, and more.\n\nLightweight and Fast\n- One of Gitea's design goals is to be lightweight and fast in response. Unlike some large code hosting platforms, it remains lean, performs well in terms of speed, and is suitable for resource-limited server environments. Due to its lightweight design, Gitea has relatively low resource consumption and performs well in resource-constrained environments.\n\nEasy Deployment and Maintenance\n- It can be easily deployed on various servers without complex configurations or dependencies. This makes it convenient for individual developers or small teams to set up and manage their own Git services.\n\nSecurity\n- Gitea places a strong emphasis on security, offering features such as user permission management, access control lists, and more to ensure the security of code and data.\n\nCode Review\n- Code review supports both the Pull Request workflow and AGit workflow. Reviewers can browse code online and provide review comments or feedback. Submitters can receive review comments and respond or modify code online. Code reviews can help individuals and organizations enhance code quality.\n\nCI/CD\n- Gitea Actions supports CI/CD functionality, compatible with GitHub Actions. Users can write workflows in familiar YAML format and reuse a variety of existing Actions plugins. Actions plugins support downloading from any Git website.\n\nProject Management\n- Gitea tracks project requirements, features, and bugs through columns and issues. Issues support features like branches, tags, milestones, assignments, time tracking, due dates, dependencies, and more.\n\nArtifact Repository\n- Gitea supports over 20 different types of public or private software package management, including Cargo, Chef, Composer, Conan, Conda, Container, Helm, Maven, npm, NuGet, Pub, PyPI, RubyGems, Vagrant, and more.\n\nOpen Source Community Support\n- Gitea is an open-source project based on the MIT license. It has an active open-source community that continuously develops and improves the platform. The project also actively welcomes community contributions, ensuring updates and innovation.\n\nMultilingual Support\n- Gitea provides interfaces in multiple languages, catering to users globally and promoting internationalization and localization.\n",
+      "upgradeDescription": "Swapped OpenResty proxy for lightweight nginx:alpine; self-contained postgres sidecar.",
+      "promoteImage": [
+        "/api/market/screenshots/gitea/1.webp",
+        "/api/market/screenshots/gitea/2.webp",
+        "/api/market/screenshots/gitea/3.webp",
+        "/api/market/screenshots/gitea/4.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/gitea/featured.webp",
+      "developer": "CommitGo, Inc",
+      "title": "Gitea",
+      "entrances": [
+        {
+          "name": "gitea",
+          "host": "gitea-web-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/gitea.png",
+          "title": "Gitea",
+          "authLevel": "public",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.9",
+      "versionName": "1.25.5",
+      "categories": [
+        "Developer Tools",
+        "Productivity"
+      ],
+      "rating": 0,
+      "requiredMemory": "512Mi",
+      "limitedMemory": "4Gi",
+      "requiredCpu": "250m",
+      "limitedCPU": "2000m",
+      "requiredDisk": "512Mi",
+      "limitedDisk": "10Gi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://docs.gitea.com/",
+      "website": "https://gitea.com",
+      "sourceCode": "https://github.com/go-gitea/gitea",
+      "license": [
+        {
+          "name": "MIT License",
+          "url": "https://github.com/go-gitea/gitea?tab=MIT-1-ov-file"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/gitea/gitea:1.25.5",
+        "docker.io/postgres:17-alpine",
+        "docker.io/nginx:alpine",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "gitea-web-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        },
+        {
+          "name": "gitea-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 3000
+            },
+            {
+              "name": "ssh",
+              "port": 22
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "hoppscotch",
+      "cfgType": "app",
+      "chartName": "hoppscotch",
+      "icon": "/api/market/icons/hoppscotch.png",
+      "description": "Open source API development ecosystem.",
+      "fullDescription": "Hoppscotch is a open-source alternative to Postman, Insomnia\n\n# Features\n\nLightweight:\n- Crafted with minimalistic UI design.\n\nFast:\n- Send requests and get responses in real time.\n\nHTTP Methods:\n- Request methods define the type of action you are requesting to be performed.\n\nTheming:\n- Customizable combinations for background, foreground, and accent colors — customize now.\n\nPWA:\n- Install as a Progressive Web App on your device.\n\nRequest:\n- Retrieve response from endpoint instantly.\n\nWebSocket:\n- Establish full-duplex communication channels over a single TCP connection.\n\nServer-Sent Events:\n- Receive a stream of updates from a server over an HTTP connection without resorting to polling.\n\nSocket.IO:\n- Send and Receive data with the SocketIO server.\n\nMQTT:\n- Subscribe and Publish to topics of an MQTT Broker.\n\nGraphQL:\n- GraphQL is a query language for APIs and a runtime for fulfilling those queries with your existing data.\n\nAuthorization:\n- Allows to identify the end-user.\n\nHeaders:\n- Describes the format the body of your request is being sent in.\n\nParameters:\n- Use request parameters to set varying parts in simulated requests.\n\nRequest Body:\n- Used to send and receive data via the REST API.\n\nResponse:\n- Contains the status line, headers, and the message/response body.\n\nHistory:\n- Request entries are synced with your cloud/local session storage.\n\nCollections:\n- Keep your API requests organized with collections and folders. Reuse them with a single click.\n\nPre-Request Scripts:\n- Snippets of code associated with a request that is executed before the request is sent.\n\nTeams:\n- Helps you collaborate across your teams to design, develop, and test APIs faster.\n\nWorkspaces:\n- Organize your personal and team collections environments into workspaces. Easily switch between workspaces to manage multiple projects.\n\nKeyboard Shortcuts:\n- Optimized for efficiency.\n\nProxy:\n- Enable Proxy Mode from Settings to access blocked APIs.\n\ni18n:\n- Experience the app in your language.\n\nAuth + Sync:\n- Sign in and sync your data in real-time across all your devices.\n\nSynchronize your data:\n- Handoff to continue tasks on your other devices.\n\nPost-Request Tests:\n- Write tests associated with a request that is executed after the request's response.\n\nEnvironments:\n- Environment variables allow you to store and reuse values in your requests and scripts.\n\nBulk Edit:\n- Edit key-value pairs in bulk.\n\nAdmin dashboard:\n- Manage your team and invite members.\n\nAdd-ons:\n- Official add-ons for hoppscotch.\n",
+      "upgradeDescription": "Upgraded to upstream v2026.3.1 and swapped to self-contained postgres sidecar.",
+      "promoteImage": [
+        "/api/market/screenshots/hoppscotch/1.webp",
+        "/api/market/screenshots/hoppscotch/2.webp",
+        "/api/market/screenshots/hoppscotch/3.webp",
+        "/api/market/screenshots/hoppscotch/4.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/hoppscotch/featured.webp",
+      "developer": "Hoppscotch, Inc",
+      "title": "Hoppscotch",
+      "entrances": [
+        {
+          "name": "hoppscotch",
+          "host": "hoppscotch-svc",
+          "port": 80,
+          "icon": "/api/market/icons/hoppscotch.png",
+          "title": "Hoppscotch",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.11",
+      "versionName": "2026.3.1",
+      "categories": [
+        "Developer Tools",
+        "Productivity",
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "500Mi",
+      "limitedMemory": "2Gi",
+      "requiredCpu": "250m",
+      "limitedCPU": "1000m",
+      "requiredDisk": "128Mi",
+      "limitedDisk": "256Mi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://docs.hoppscotch.io/",
+      "website": "https://hoppscotch.io",
+      "sourceCode": "https://github.com/hoppscotch/hoppscotch",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/hoppscotch/hoppscotch/tree/main?tab=MIT-1-ov-file#readme"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/hoppscotch/hoppscotch:2026.3.1",
+        "docker.io/postgres:17-alpine"
+      ],
+      "services": [
+        {
+          "name": "hoppscotch-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 80
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "immich",
+      "cfgType": "app",
+      "chartName": "immich",
+      "icon": "/api/market/icons/immich.png",
+      "description": "High performance self-hosted photo and video management solution.",
+      "fullDescription": "## OVERVIEW ##\nImmich is a self-hosted photo and video management solution that allows you to back up your precious memories directly from your mobile phone.\n\nHere are some key features:\n- Web Portal and Mobile App:\nImmich provides a user-friendly web interface and a mobile app for both iOS and Android. You can easily browse, organize, and manage your media files.\n\n- Automatic Backup\nImmich ensures that your photos and videos are automatically backed up, just like Google Photos. Say goodbye to manual uploads!\n\n- Bulk Upload\nNeed to transfer a large batch of files? Immich supports bulk uploads, making it efficient to migrate your existing media.\n\n- Partner Sharing\nShare specific albums or memories with friends and family. Immich lets you collaborate and reminisce together.\n\n- Facial Recognition\nImmich can recognize faces in your photos, making it easier to find specific people or moments.\n\n- Reverse Geocoding\nWondering where a particular photo was taken? Immich adds location information to your media.\n",
+      "upgradeDescription": "Bumped to upstream v2.7.5; renamed all internal resources for multi-tenant compatibility.",
+      "promoteImage": [
+        "/api/market/screenshots/immich/1.png",
+        "/api/market/screenshots/immich/2.png",
+        "/api/market/screenshots/immich/3.png",
+        "/api/market/screenshots/immich/4.png"
+      ],
+      "featuredImage": "/api/market/screenshots/immich/featured.png",
+      "developer": "immich-app",
+      "title": "Immich",
+      "entrances": [
+        {
+          "name": "immich",
+          "host": "immich-svc",
+          "port": 80,
+          "icon": "/api/market/icons/immich.png",
+          "title": "Immich",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.23",
+      "versionName": "2.7.5",
+      "categories": [
+        "Lifestyle",
+        "Entertainment"
+      ],
+      "rating": 0,
+      "requiredMemory": "2000Mi",
+      "limitedMemory": "6500Mi",
+      "requiredCpu": "600m",
+      "limitedCPU": "5500m",
+      "requiredDisk": "5Gi",
+      "limitedDisk": "500Gi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://immich.app/docs/overview/introduction",
+      "website": "https://immich.app",
+      "sourceCode": "https://github.com/immich-app/immich",
+      "license": [
+        {
+          "name": "AGPL-3.0",
+          "url": "https://github.com/immich-app/immich?tab=AGPL-3.0-1-ov-file#readme"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "ghcr.io/immich-app/immich-server:v2.7.5",
+        "ghcr.io/immich-app/immich-machine-learning:v2.7.5",
+        "docker.io/pgvector/pgvector:0.8.2-pg17",
+        "ghcr.io/packalares/redis:7-alpine",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "immich-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 80
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "jaaz",
+      "cfgType": "app",
+      "chartName": "jaaz",
+      "icon": "/api/market/icons/jaaz.png",
+      "description": "AI design agent, local alternative for Lovart",
+      "fullDescription": "The world's first open-source multimodal creative agent, a creative tool that prioritizes privacy, local usage, and ease of use, as an alternative to Lovart, Manus and Figma.\n\nKey Features\nSmart Prompt Agent Powered by LLMs, Jaaz can interpret your ideas and generate optimized prompts for high-quality image or storyboard creation.\n\nHybrid Model Deployment Works with local models via Ollama, ComfyUI, and remote APIs like Replicate, OpenAI, or Claude. Run 100% locally or connect to the cloud.\n\nSimply access all the strongest apis After logging in, you can use all the latest models (gpt-image-1,flux kntext,google……)\n\nInteractive Image Editing Supports advanced operations such as object insertion, style transfer, and multi-character coherence via Flux Kontext — all controllable via chat.\n\nInfinite Canvas & Storyboarding Design layouts, plan scenes, and create visual storytelling flows with drag-and-drop simplicity.\n\n(Coming Soon) Video Agent：Video generation and editing via models like Wan2.1, Kling, and more, seamlessly integrated with your creative workflow. Intelligently invoke custom comfyui workflows\n",
+      "upgradeDescription": "Swapped OpenResty sidecar for lightweight nginx:alpine; templated resource names.",
+      "promoteImage": [
+        "/api/market/screenshots/jaaz/1.webp",
+        "/api/market/screenshots/jaaz/2.webp",
+        "/api/market/screenshots/jaaz/3.webp",
+        "/api/market/screenshots/jaaz/4.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/jaaz/featured.webp",
+      "developer": "11cafe",
+      "title": "Jaaz",
+      "entrances": [
+        {
+          "name": "jaaz",
+          "host": "jaaz-web-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/jaaz.png",
+          "title": "Jaaz",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.13",
+      "versionName": "1.0.7",
+      "categories": [
+        "Creativity",
+        "Productivity"
+      ],
+      "rating": 0,
+      "requiredMemory": "1Gi",
+      "limitedMemory": "3Gi",
+      "requiredCpu": "1000m",
+      "limitedCPU": "3000m",
+      "requiredDisk": "50Mi",
+      "limitedDisk": "20Gi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://github.com/11cafe/jaaz",
+      "website": "https://jaaz.app/",
+      "sourceCode": "https://github.com/11cafe/jaaz",
+      "license": [
+        {
+          "name": "Open Source License",
+          "url": "https://github.com/11cafe/jaaz?tab=License-1-ov-file"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/beclab/harveyff-jaaz:v1.0.7",
+        "docker.io/nginx:alpine",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "jaaz-web-svc",
+          "ports": [
+            {
+              "name": "jaaz",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "jellyfin",
+      "cfgType": "app",
+      "chartName": "jellyfin",
+      "icon": "/api/market/icons/jellyfin.png",
+      "description": "The Free Software Media System",
+      "fullDescription": "Jellyfin is a Free Software Media System that puts you in control of managing and streaming your media. It is an alternative to the proprietary Emby and Plex, to provide media from a dedicated server to end-user devices via multiple apps.\n\nJellyfin enables you to collect, manage, and stream your media. Run the Jellyfin server on your system and gain access to the leading free-software entertainment system, bells and whistles included.\n\nWith Jellyfin, you can\n* Enjoy your entire movie collection, easy to browse and with beautiful artwork.\n* Watch your favorite shows, automatically sorted by season and ready to binge.\n* Listen to music, your artists and your playlists, at home or on the go.\n* Watch TV and set automatic recordings to expand your library.\n* Read your books, comics, and magazines.\n* Organize your photos and share memories with your friends and family.\n* Sharing a movie night remotely. It has never been so easy.\n\nWhy Jellyfin\n# Privacy Focused\nJellyfin has no tracking, phone-home, or central servers collecting your data. We believe in keeping our software open and transparent. We're also not in the media business, so the only media you see is your own.\n\n# Free Software\nJellyfin is Free Software, licensed under the GNU GPL. You can use it, study it, modify it, build it, and distribute it for free, as long as your changes are licensed the same way.\n\n# No Fees\nThe Jellyfin server and official clients are free to download, now and always. There are no costs, hidden or otherwise, to use Jellyfin, either for yourself, for your friends, or for your company. All our incidental costs are paid through donations from users like you.\n\n# Community Built\nThe project relies entirely on contributions from volunteers. Want to help out? There's lots of ways to do so, and you don't even have to code!\n",
+      "upgradeDescription": "Upgrade Jellyfin Server to 10.11.8\n\nWe are pleased to announce the latest stable release of Jellyfin, version 10.11.8!\n\nThis minor release brings several bugfixes to improve your Jellyfin experience. As always, please ensure you take a full backup before upgrading!\n\nView full release note at https://github.com/jellyfin/jellyfin/releases/tag/v10.11.8\n",
+      "promoteImage": [
+        "/api/market/screenshots/jellyfin/1.webp",
+        "/api/market/screenshots/jellyfin/2.webp",
+        "/api/market/screenshots/jellyfin/3.webp",
+        "/api/market/screenshots/jellyfin/4.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/jellyfin/featured.webp",
+      "developer": "Jellyfin",
+      "title": "Jellyfin",
+      "entrances": [
+        {
+          "name": "jellyfin",
+          "host": "jellyfin-svc",
+          "port": 8096,
+          "icon": "/api/market/icons/jellyfin.png",
+          "title": "Jellyfin",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.10",
+      "versionName": "10.11.8",
+      "categories": [
+        "Fun",
+        "Entertainment"
+      ],
+      "rating": 0,
+      "requiredMemory": "256Mi",
+      "limitedMemory": "4Gi",
+      "requiredCpu": "100m",
+      "limitedCPU": "4000m",
+      "requiredDisk": "128Mi",
+      "limitedDisk": "10Gi",
+      "requiredGpu": "1",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://jellyfin.org/docs/",
+      "website": "https://jellyfin.org/",
+      "sourceCode": "https://github.com/jellyfin/jellyfin",
+      "license": [
+        {
+          "name": "GPL-2.0",
+          "url": "https://github.com/jellyfin/jellyfin/blob/master/LICENSE"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/jellyfin/jellyfin:10.11.8",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "jellyfin-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8096
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "kiwix",
+      "cfgType": "app",
+      "chartName": "kiwix",
+      "icon": "/api/market/icons/kiwix.png",
+      "description": "Offline content server for Wikipedia, books, TED talks, and more",
+      "fullDescription": "Kiwix is an offline content server that lets you access Wikipedia, Project Gutenberg books, TED talks, Stack Exchange, and much more without an internet connection. It serves ZIM files over HTTP, making entire knowledge libraries available on your local network.\n\n## What is Kiwix?\n\nKiwix lets you store and serve compressed copies of entire websites as ZIM files. These files are optimized for offline access and include full-text search capabilities. A single ZIM file can contain an entire copy of Wikipedia, complete with images, or thousands of books from Project Gutenberg.\n\n## Available Content\n\nThe Kiwix ecosystem provides ZIM files for hundreds of content sources including:\n* **Wikipedia** - Full copies in 300+ languages, with or without images\n* **Project Gutenberg** - Over 60,000 free ebooks\n* **TED Talks** - Thousands of talks with subtitles\n* **Stack Exchange** - Q&A archives from Stack Overflow and other communities\n* **WikiBooks, WikiVoyage, Wikiquote** - Educational and reference content\n* **OpenStreetMap** - Offline maps\n* **Medical resources** - WikiMed, medical encyclopedias\n\n## How It Works\n\n1. Download ZIM files from the Kiwix library (https://library.kiwix.org)\n2. Place them in the data directory\n3. Kiwix Serve automatically detects and serves all ZIM files\n4. Access the content through your web browser\n\n## Key Features\n\n* **Full-text search** across all loaded ZIM content\n* **Web-based interface** accessible from any browser on your network\n* **Multiple ZIM support** - serve many content libraries simultaneously\n* **Low resource usage** - efficient serving even on modest hardware\n* **Multi-language support** - content available in hundreds of languages\n* **OPDS feed** - compatible with ebook readers\n\n## Use Cases\n\n* **Education** - Provide Wikipedia and educational content in schools without internet\n* **Research** - Keep offline copies of reference material\n* **Emergency preparedness** - Access critical information when connectivity is lost\n* **Remote locations** - Serve content in areas with limited or no internet\n* **Personal knowledge base** - Curate your own offline library\n",
+      "upgradeDescription": "Initial release for Packalares marketplace.",
+      "promoteImage": [],
+      "featuredImage": "",
+      "developer": "Kiwix",
+      "title": "Kiwix",
+      "entrances": [
+        {
+          "name": "kiwix",
+          "host": "kiwix-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/kiwix.png",
+          "title": "Kiwix",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.0",
+      "versionName": "3.8.2",
+      "categories": [
+        "Productivity",
+        "Education"
+      ],
+      "rating": 0,
+      "requiredMemory": "256Mi",
+      "limitedMemory": "2Gi",
+      "requiredCpu": "100m",
+      "limitedCPU": "2000m",
+      "requiredDisk": "512Mi",
+      "limitedDisk": "500Gi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://kiwix.org/en/documentation/",
+      "website": "https://kiwix.org/",
+      "sourceCode": "https://github.com/kiwix/kiwix-tools",
+      "license": [
+        {
+          "name": "GPL-3.0",
+          "url": "https://github.com/kiwix/kiwix-tools/blob/main/COPYING"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "ghcr.io/kiwix/kiwix-serve:3.8.2",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "kiwix-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "kolibri",
+      "cfgType": "app",
+      "chartName": "kolibri",
+      "icon": "/api/market/icons/kolibri.png",
+      "description": "Offline educational platform for teaching and learning without internet.",
+      "fullDescription": "Kolibri is an offline-first educational platform created by Learning Equality that enables teaching and learning with technology in environments without reliable internet connectivity.\n\nOverview\nKolibri provides a complete learning management system that works entirely offline. It is designed for schools, community centers, libraries, and any learning environment where internet access is limited or unavailable. Once installed, educators and learners can access a vast library of open educational content without needing an internet connection.\n\nKey Features\n- Offline-First Design: Kolibri is built from the ground up to work without internet. Content is downloaded once and served locally to all connected devices on a local network.\n- Rich Content Library: Access thousands of educational resources from trusted providers including Khan Academy, CK-12, MIT OpenCourseWare, PhET Interactive Simulations, and many more through Kolibri content channels.\n- Learning Management: Teachers can create classes, assign lessons and quizzes, and track student progress through a comprehensive coach dashboard.\n- Multi-User Support: Supports multiple user roles including learners, coaches, and administrators. Learners can track their own progress and pick up where they left off.\n- Content Channels: Browse and import content from the Kolibri Content Library, which includes curated educational materials in dozens of languages covering math, science, reading, and more.\n- Low Resource Requirements: Designed to run on low-cost hardware including Raspberry Pi, making it accessible for resource-constrained environments.\n- Multi-Language Support: Available in over 30 languages with localized content channels.\n- Standards-Aligned: Content is organized and tagged according to educational standards, making it easy for teachers to find relevant materials.\n\nContent Available\n- Khan Academy: Complete math, science, computing, and humanities courses\n- CK-12: Textbooks and practice exercises for K-12 education\n- PhET Simulations: Interactive science and math simulations from University of Colorado\n- MIT OpenCourseWare: University-level course materials\n- African Storybook: Multilingual stories for early readers\n- And many more community-contributed channels\n\nUse Cases\n- Schools without internet access\n- Community learning centers\n- Libraries and after-school programs\n- Refugee camps and disaster relief\n- Home education and self-directed learning\n",
+      "upgradeDescription": "Initial release for Packalares marketplace.",
+      "promoteImage": [],
+      "featuredImage": "",
+      "developer": "Learning Equality",
+      "title": "Kolibri",
+      "entrances": [
+        {
+          "name": "kolibri",
+          "host": "kolibri-nginx-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/kolibri.png",
+          "title": "Kolibri",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.1",
+      "versionName": "0.19.3",
+      "categories": [
+        "Productivity",
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "512Mi",
+      "limitedMemory": "2Gi",
+      "requiredCpu": "200m",
+      "limitedCPU": "2000m",
+      "requiredDisk": "5Gi",
+      "limitedDisk": "50Gi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://kolibri.readthedocs.io/en/latest/",
+      "website": "https://learningequality.org/kolibri/",
+      "sourceCode": "https://github.com/learningequality/kolibri",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/learningequality/kolibri/blob/develop/LICENSE"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/learningequality/kolibri:0.19.3",
+        "docker.io/nginx:alpine",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "kolibri-nginx-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "llamafactory",
+      "cfgType": "app",
+      "chartName": "llamafactory",
+      "icon": "/api/market/icons/llamafactory.png",
+      "description": "Easily fine-tune 100+ large language models with zero-code CLI and Web UI",
+      "fullDescription": "LlamaFactory, a unified framework that integrates a suite of cutting-edge efficient training methods. It provides a solution for flexibly customizing the fine-tuning of 100+ LLMs without the need for coding through the built-in web UI LlamaBoard.\n\nFeatures\n- Various models: LLaMA, LLaVA, Mistral, Mixtral-MoE, Qwen, Yi, Gemma, Baichuan, ChatGLM, Phi, etc.\n- Integrated methods: (Continuous) pre-training, (multimodal) supervised fine-tuning, reward modeling, PPO, DPO, KTO, ORPO, etc.\n- Scalable resources: 16-bit full-tuning, freeze-tuning, LoRA and 2/3/4/5/6/8-bit QLoRA via AQLM/AWQ/GPTQ/LLM.int8/HQQ/EETQ.\n- Advanced algorithms: GaLore, BAdam, Adam-mini, DoRA, LongLoRA, LLaMA Pro, Mixture-of-Depths, LoRA+, LoftQ, PiSSA and Agent tuning.\n- Practical tricks: FlashAttention-2, Unsloth, RoPE scaling, NEFTune and rsLoRA.\n- Experiment monitors: LlamaBoard, TensorBoard, Wandb, MLflow, etc.\n- Faster inference: OpenAI-style API, Gradio UI and CLI with vLLM worker.\n",
+      "upgradeDescription": "Upgrade to upstream v0.9.4\n",
+      "promoteImage": [
+        "/api/market/screenshots/llamafactory/1.jpg",
+        "/api/market/screenshots/llamafactory/2.jpg",
+        "/api/market/screenshots/llamafactory/3.jpg",
+        "/api/market/screenshots/llamafactory/4.jpg"
+      ],
+      "featuredImage": "/api/market/screenshots/llamafactory/featured.jpg",
+      "developer": "hiyouga",
+      "title": "LLaMA Factory",
+      "entrances": [
+        {
+          "name": "llamafactoryclient",
+          "host": "llamafactoryclient",
+          "port": 8080,
+          "icon": "/api/market/icons/llamafactory.png",
+          "title": "LLaMA Factory",
+          "authLevel": "private",
+          "openMethod": "window"
+        },
+        {
+          "name": "llamafactoryapi",
+          "host": "llamafactoryclient",
+          "port": 8081,
+          "icon": "/api/market/icons/llamafactory.png",
+          "title": "llamafactoryapi",
+          "authLevel": "private",
+          "openMethod": "default",
+          "invisible": true
+        }
+      ],
+      "version": "1.0.11",
+      "versionName": "0.9.4",
+      "categories": [
+        "Developer Tools",
+        "Productivity"
+      ],
+      "rating": 0,
+      "requiredMemory": "2Gi",
+      "limitedMemory": "21Gi",
+      "requiredCpu": "50m",
+      "limitedCPU": "6000m",
+      "requiredDisk": "50Mi",
+      "limitedDisk": "500Gi",
+      "requiredGpu": "2Gi",
+      "supportArch": [
+        "amd64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://llamafactory.readthedocs.io/",
+      "website": "https://github.com/hiyouga/LLaMA-Factory",
+      "sourceCode": "https://github.com/hiyouga/LLaMA-Factory",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://github.com/hiyouga/LLaMA-Factory?tab=Apache-2.0-1-ov-file#readme"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/hiyouga/llamafactory:0.9.4",
+        "docker.io/nginx:alpine",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "llamafactoryclient",
+          "ports": [
+            {
+              "name": "webui",
+              "port": 8080
+            },
+            {
+              "name": "api",
+              "port": 8081
+            }
+          ]
+        },
+        {
+          "name": "llamafactory",
+          "ports": [
+            {
+              "name": "api",
+              "port": 8000
+            },
+            {
+              "name": "webui",
+              "port": 7860
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "penpot",
+      "cfgType": "app",
+      "chartName": "penpot",
+      "icon": "/api/market/icons/penpot.png",
+      "description": "Penpot is the web-based open-source design tool that bridges the gap between designers and developers.",
+      "fullDescription": "Penpot is the first open-source design tool for design and code collaboration. Designers can create stunning designs, interactive prototypes, design systems at scale, while developers enjoy ready-to-use code and make their workflow easy and fast. And all of this with no handoff drama.\n\n# Why Penpot\nPenpot expresses designs as code. Designers can do their best work and see it will be beautifully implemented by developers in a two-way collaboration.\n\n- Designed for developers\nPenpot was built to serve both designers and developers and create a fluid design-code process. You have the choice to enjoy real-time collaboration or play \"solo\".\n\n- Inspect mode\nWork with ready-to-use code and make your workflow easy and fast. The inspect tab gives instant access to SVG, CSS and HTML code.\n\n- Self host your own instance\nProvide your team or organization with a completely owned collaborative design tool. Use Penpot's cloud service or deploy your own Penpot server.\n\n- Integrations\nPenpot offers integration into the development toolchain, thanks to its support for webhooks and an API accessible through access tokens.\n\n# What's great for design\nWith Penpot you can design libraries to share and reuse; turn design elements into components and tokens to allow reusability and scalability; and build realistic user flows and interactions\n",
+      "upgradeDescription": "Bumped to upstream v2.14.3 and consolidated postgres/redis into chart-local sidecars.",
+      "promoteImage": [
+        "/api/market/screenshots/penpot/1.png",
+        "/api/market/screenshots/penpot/2.png",
+        "/api/market/screenshots/penpot/3.png",
+        "/api/market/screenshots/penpot/4.png",
+        "/api/market/screenshots/penpot/5.png"
+      ],
+      "featuredImage": "/api/market/screenshots/penpot/featured.png",
+      "developer": "penpot",
+      "title": "Penpot",
+      "entrances": [
+        {
+          "name": "penpot",
+          "host": "penpot-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/penpot.png",
+          "title": "Penpot",
+          "authLevel": "public",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.10",
+      "versionName": "2.14.3",
+      "categories": [
+        "Creativity",
+        "Productivity"
+      ],
+      "rating": 0,
+      "requiredMemory": "2Gi",
+      "limitedMemory": "5Gi",
+      "requiredCpu": "500m",
+      "limitedCPU": "3000m",
+      "requiredDisk": "128Mi",
+      "limitedDisk": "512Mi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": null
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://help.penpot.app/",
+      "website": "https://penpot.app/",
+      "sourceCode": "https://github.com/penpot/penpot",
+      "license": [
+        {
+          "name": "MPL-2.0",
+          "url": "https://github.com/penpot/penpot/blob/develop/LICENSE"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/penpotapp/frontend:2.14.3",
+        "docker.io/penpotapp/backend:2.14.3",
+        "docker.io/penpotapp/exporter:2.14.3",
+        "docker.io/postgres:17-alpine",
+        "ghcr.io/packalares/redis:7-alpine",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "penpot-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "protomaps",
+      "cfgType": "app",
+      "chartName": "protomaps",
+      "icon": "/api/market/icons/protomaps.png",
+      "description": "Offline OpenStreetMap tile server using PMTiles format",
+      "fullDescription": "ProtoMaps (go-pmtiles) is an offline OpenStreetMap tile server that uses the PMTiles format to serve map tiles without requiring an internet connection. PMTiles is a single-file archive format for pyramids of tiled data that enables fast, low-cost map hosting.\n\nKey Features:\n- Serve OpenStreetMap vector and raster tiles from local .pmtiles files\n- Zero external dependencies - fully offline capable\n- Extremely lightweight and fast (built in Go, runs as a single binary)\n- Supports PMTiles v3 format with clustered and optimized tile access\n- Built-in HTTP tile server with TileJSON endpoint\n- Extract subsets of tiles by bounding box or GeoJSON region\n- Convert MBTiles databases to PMTiles format\n- Merge multiple archives into one\n- Cloud-native: can serve tiles from local files or remote cloud storage (S3, GCS, Azure)\n- Configurable in-memory tile cache for high performance\n\nUse Cases:\n- Self-hosted map tile server for web applications\n- Offline maps for air-gapped or low-connectivity environments\n- Privacy-focused mapping without third-party tile services\n- Development and testing of map applications\n- Hosting custom map styles and overlays\n\nTo get started, place your .pmtiles files in the data directory. The server will automatically detect and serve all .pmtiles archives found in the configured path. Download planet-scale or regional extracts from https://maps.protomaps.com/builds/ or create your own from OpenStreetMap data.\n",
+      "upgradeDescription": "Initial release; bumped to upstream v1.30.2.",
+      "promoteImage": [],
+      "featuredImage": "",
+      "developer": "Protomaps",
+      "title": "ProtoMaps",
+      "entrances": [
+        {
+          "name": "protomaps",
+          "host": "protomaps-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/protomaps.png",
+          "title": "ProtoMaps",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.0",
+      "versionName": "1.30.2",
+      "categories": [
+        "Lifestyle",
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "128Mi",
+      "limitedMemory": "1Gi",
+      "requiredCpu": "50m",
+      "limitedCPU": "1000m",
+      "requiredDisk": "512Mi",
+      "limitedDisk": "50Gi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": false,
+        "userData": null
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://docs.protomaps.com/pmtiles/cli",
+      "website": "https://protomaps.com/",
+      "sourceCode": "https://github.com/protomaps/go-pmtiles",
+      "license": [
+        {
+          "name": "BSD-3-Clause",
+          "url": "https://github.com/protomaps/go-pmtiles/blob/main/LICENSE"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/protomaps/go-pmtiles:v1.30.2",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "protomaps-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "ragflow",
+      "cfgType": "app",
+      "chartName": "ragflow",
+      "icon": "/api/market/icons/ragflow.png",
+      "description": "An open-source RAG engine based on deep document understanding.",
+      "fullDescription": "What is RAGFlow?\nRAGFlow is an open-source RAG (Retrieval-Augmented Generation) engine based on deep document understanding. It offers a streamlined RAG workflow for businesses of any scale, combining LLM (Large Language Models) to provide truthful question-answering capabilities, backed by well-founded citations from various complex formatted data.\n\nKey Features\n\"Quality in, quality out\"\n- Deep document understanding-based knowledge extraction from unstructured data with complicated formats.\n- Finds \"needle in a data haystack\" of literally unlimited tokens.\n\nTemplate-based chunking\n- Intelligent and explainable.\n- Plenty of template options to choose from.\n\nGrounded citations with reduced hallucinations\n- Visualization of text chunking to allow human intervention.\n- Quick view of the key references and traceable citations to support grounded answers.\n\nCompatibility with heterogeneous data sources\n- Supports Word, slides, excel, txt, images, scanned copies, structured data, web pages, and more.\n\nAutomated and effortless RAG workflow\n- Streamlined RAG orchestration catered to both personal and large businesses.\n- Configurable LLMs as well as embedding models.\n- Multiple recall paired with fused re-ranking.\n- Intuitive APIs for seamless integration with business.\n",
+      "upgradeDescription": "Upgrade app version to v0.23.1\n\nImprovements\n- Memory: Enhances the stability of memory extraction when all memory types are selected.\n- RAG: Refines the context window extraction strategy for images and tables.\n\nFixed issues\n- Memory: The RAGFlow server failed to start if an empty memory object existed.\n- Memory: Unable to delete a newly created empty Memory.\n- RAG: MDX file parsing was not supported.\n\nData sources\n- GitHub\n- Gitlab\n- Asana\n- IMAP\n\nFull release note at: https://github.com/infiniflow/ragflow/releases/tag/v0.23.1\n",
+      "promoteImage": [
+        "/api/market/screenshots/ragflow/1.webp",
+        "/api/market/screenshots/ragflow/2.webp",
+        "/api/market/screenshots/ragflow/3.webp",
+        "/api/market/screenshots/ragflow/4.webp",
+        "/api/market/screenshots/ragflow/5.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/ragflow/featured.webp",
+      "developer": "InfiniFlow",
+      "title": "RAGFlow",
+      "entrances": [
+        {
+          "name": "ragflow",
+          "host": "ragflow-svc",
+          "port": 80,
+          "icon": "/api/market/icons/ragflow.png",
+          "title": "RAGFlow",
+          "authLevel": "private",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.20",
+      "versionName": "0.23.1",
+      "categories": [
+        "Productivity"
+      ],
+      "rating": 0,
+      "requiredMemory": "4Gi",
+      "limitedMemory": "28Gi",
+      "requiredCpu": "1000m",
+      "limitedCPU": "13000m",
+      "requiredDisk": "56Mi",
+      "limitedDisk": "1Gi",
+      "requiredGpu": "1",
+      "supportArch": [
+        "amd64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": null
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://ragflow.io/docs/dev/",
+      "website": "https://ragflow.io/",
+      "sourceCode": "https://github.com/infiniflow/ragflow",
+      "license": [
+        {
+          "name": "Apache-2.0",
+          "url": "https://github.com/infiniflow/ragflow#Apache-2.0-1-ov-file"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/infiniflow/ragflow:v0.23.1",
+        "docker.io/elasticsearch:8.11.3",
+        "docker.io/infiniflow/infinity:v0.6.14",
+        "docker.io/minio/minio:RELEASE.2023-12-20T01-00-02Z",
+        "docker.io/mysql:8.0",
+        "docker.io/valkey/valkey:8-alpine",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "ragflow-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 80
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "rsshub",
+      "cfgType": "app",
+      "chartName": "rsshub",
+      "icon": "/api/market/icons/rsshub.png",
+      "description": "A extensible RSS feed generator",
+      "fullDescription": "RSSHub is an open source, easy to use, and extensible RSS feed generator. It's capable of generating RSS feeds from pretty much everything.\n\nRSSHub delivers millions of contents aggregated from all kinds of sources, our vibrant open source community is ensuring the deliver of RSSHub's new routes, new features and bug fixes.\n",
+      "upgradeDescription": "Initial release for Packalares marketplace.",
+      "promoteImage": [],
+      "featuredImage": "",
+      "developer": "DIYgod",
+      "title": "RSSHub",
+      "entrances": [
+        {
+          "name": "rsshub",
+          "host": "rsshub-svc",
+          "port": 1200,
+          "icon": "/api/market/icons/rsshub.png",
+          "title": "RSSHub",
+          "authLevel": "internal",
+          "openMethod": "default"
+        }
+      ],
+      "version": "1.0.8",
+      "versionName": "2025-12-13",
+      "categories": [
+        "Productivity"
+      ],
+      "rating": 0,
+      "requiredMemory": "512Mi",
+      "limitedMemory": "2Gi",
+      "requiredCpu": "100m",
+      "limitedCPU": "1500m",
+      "requiredDisk": "128Mi",
+      "limitedDisk": "256Mi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": null
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://docs.rsshub.app/",
+      "website": "https://rsshub.app/",
+      "sourceCode": "https://github.com/DIYgod/RSSHub",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/DIYgod/RSSHub/blob/master/LICENSE"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/diygod/rsshub:chromium-bundled-2026-04-22",
+        "ghcr.io/packalares/redis:7-alpine"
+      ],
+      "services": [
+        {
+          "name": "rsshub-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 1200
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "stirlingpdf",
+      "cfgType": "app",
+      "chartName": "stirlingpdf",
+      "icon": "/api/market/icons/stirlingpdf.png",
+      "description": "A locally hosted one-stop shop for all your PDF needs.",
+      "fullDescription": "Stirling-PDF is a robust, locally hosted web-based PDF manipulation tool. It enables you to carry out various operations on PDF files, including splitting, merging, converting, reorganizing, adding images, rotating, compressing, and more. This locally hosted web application has evolved to encompass a comprehensive set of features, addressing all your PDF requirements.\n\nAll files and PDFs exist either exclusively on the client side, reside in server memory only during task execution, or temporarily reside in a file solely for the execution of the task. Any file downloaded by the user will have been deleted from the server by that point.\n\nFeatures\n50+ PDF Operations\nParallel file processing and downloads\nDark mode support\nCustom download options\nCustom 'Pipelines' to run multiple features in a automated queue\nAPI for integration with external scripts\nOptional Login and Authentication support\nDatabase Backup and Import\nEnterprise features like SSO\n\nFind complete feature list at: https://github.com/Stirling-Tools/Stirling-PDF?tab=readme-ov-file#features\n",
+      "upgradeDescription": "Upgrade to upstream v2.9.2 with official Docker image\n",
+      "promoteImage": [
+        "/api/market/screenshots/stirlingpdf/1.jpg",
+        "/api/market/screenshots/stirlingpdf/2.jpg",
+        "/api/market/screenshots/stirlingpdf/3.jpg"
+      ],
+      "featuredImage": "/api/market/screenshots/stirlingpdf/featured.jpg",
+      "developer": "Stirling PDF",
+      "title": "Stirling-PDF",
+      "entrances": [
+        {
+          "name": "stirlingpdf",
+          "host": "stirlingpdf-svc",
+          "port": 8080,
+          "icon": "/api/market/icons/stirlingpdf.png",
+          "title": "Stirling-PDF",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.0.8",
+      "versionName": "2.9.2",
+      "categories": [
+        "Productivity",
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "512Mi",
+      "limitedMemory": "4Gi",
+      "requiredCpu": "250m",
+      "limitedCPU": "1000m",
+      "requiredDisk": "128Mi",
+      "limitedDisk": "256Mi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64",
+        "arm64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": [
+          "Home"
+        ]
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://docs.stirlingpdf.com/",
+      "website": "https://www.stirlingpdf.com/",
+      "sourceCode": "https://github.com/Stirling-Tools/Stirling-PDF",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/Stirling-Tools/Stirling-PDF?tab=readme-ov-file#MIT-1-ov-file"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": false,
+      "loginType": "",
+      "images": [
+        "docker.io/stirlingtools/stirling-pdf:2.9.2",
+        "docker.io/busybox:1.37.0"
+      ],
+      "services": [
+        {
+          "name": "stirlingpdf-svc",
+          "ports": [
+            {
+              "name": "http",
+              "port": 8080
+            }
+          ]
+        }
+      ],
+      "status": "active"
+    },
+    {
+      "name": "windows",
+      "cfgType": "app",
+      "chartName": "windows",
+      "icon": "/api/market/icons/windows.png",
+      "description": "Run Windows on Olares",
+      "fullDescription": "This app helps you run Windows on Olares.\nBased on dockur's Windows inside a Docker container.\n\nFeatures\nISO downloader\nKVM acceleration\nWeb-based viewer\n\nSupported Windows\tVersions\n- Windows 11 Pro\n- Windows 11 LTSC\n- Windows 11 Enterprise\n- Windows 10 Pro\n- Windows 10 Enterprise\n- Windows 8.1 Enterprise\n- Windows 7 Ultimate\n- Windows Vista Ultimate\n- Windows 2000 Professional\n- Windows Server 2025\n- Windows Server 2022\n- Windows Server 2019\n- Windows Server 2016\n- Windows Server 2012\n- Windows Server 2008\n- Windows Server 2003\n",
+      "upgradeDescription": "Upgrade to version 5.14 using official dockurr/windows image.\n\nChanges include updates to Workspaces configuration, VirtIO drivers v1.9.49,\nQEMU base image v7.29, and various code refactoring improvements.\n\nFull release notes: https://github.com/dockur/windows/releases/tag/v5.14\n",
+      "promoteImage": [
+        "/api/market/screenshots/windows/1.webp",
+        "/api/market/screenshots/windows/2.webp",
+        "/api/market/screenshots/windows/3.webp"
+      ],
+      "featuredImage": "/api/market/screenshots/windows/featured.webp",
+      "developer": "dockur",
+      "title": "Windows",
+      "entrances": [
+        {
+          "name": "windows",
+          "host": "windows-svc",
+          "port": 8006,
+          "icon": "/api/market/icons/windows.png",
+          "title": "Windows",
+          "authLevel": "internal",
+          "openMethod": "window"
+        }
+      ],
+      "version": "1.1.2",
+      "versionName": "5.14",
+      "categories": [
+        "Utilities"
+      ],
+      "rating": 0,
+      "requiredMemory": "6Gi",
+      "limitedMemory": "24Gi",
+      "requiredCpu": "4000m",
+      "limitedCPU": "12000m",
+      "requiredDisk": "128Gi",
+      "limitedDisk": "300Gi",
+      "requiredGpu": "",
+      "supportArch": [
+        "amd64"
+      ],
+      "type": "app",
+      "locale": [
+        "en-US"
+      ],
+      "permission": {
+        "appData": true,
+        "appCache": true,
+        "userData": null
+      },
+      "dependencies": [
+        {
+          "name": "packalares",
+          "version": ">= 1.0.0",
+          "type": "system"
+        }
+      ],
+      "source": "olares",
+      "doc": "https://github.com/dockur/windows",
+      "website": "https://github.com/dockur/windows?tab=readme-ov-file#readme",
+      "sourceCode": "https://github.com/dockur/windows",
+      "license": [
+        {
+          "name": "MIT",
+          "url": "https://github.com/dockur/windows?tab=MIT-1-ov-file#readme"
+        }
+      ],
+      "hasChart": true,
+      "hasCredentials": true,
+      "loginType": "user",
+      "images": [
+        "docker.io/dockurr/windows:5.14"
+      ],
+      "services": [
+        {
+          "name": "windows-svc",
+          "ports": [
+            {
+              "name": "tcp-8006",
+              "port": 8006
+            },
+            {
+              "name": "tcp-3389",
+              "port": 3389
             }
           ]
         }
