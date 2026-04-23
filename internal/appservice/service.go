@@ -1066,6 +1066,9 @@ func (s *Service) GetAppCredentials(ctx context.Context, appName, loginType stri
 
 // generateAppPassword generates a random password for an app's admin user.
 // Always includes uppercase, lowercase, digit, and symbol to satisfy strict validators.
+// The appended symbol is `!` (NOT `@`) because `@` is the URL-userinfo
+// delimiter and breaks `postgresql://user:pass@host/db`-style connection
+// strings used by apps like ytnavigator, hoppscotch, freshrss.
 func generateAppPassword(appName string) string {
 	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 	b := make([]byte, 14)
@@ -1073,13 +1076,13 @@ func generateAppPassword(appName string) string {
 	if _, err := cryptoRand.Read(b); err != nil {
 		// Fallback: hash the app name with a timestamp
 		h := md5.Sum([]byte(appName + fmt.Sprint(time.Now().UnixNano())))
-		return fmt.Sprintf("%x", h)[:14] + "@A"
+		return fmt.Sprintf("%x", h)[:14] + "!A"
 	}
 	for i := range b {
 		b[i] = chars[int(b[i])%len(chars)]
 	}
 	// Append symbol+uppercase to guarantee complexity
-	return string(b) + "@A"
+	return string(b) + "!A"
 }
 
 // buildOlaresEnv builds the olaresEnv map for helm values injection.

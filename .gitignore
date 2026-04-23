@@ -39,3 +39,4 @@ frontend-app/.quasar/
 # Local dev tools (not deployed)
 docs/
 scripts/
+apps/

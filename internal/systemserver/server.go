@@ -1,9 +1,11 @@
 package systemserver
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -616,5 +618,87 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 	} else {
 		r.Host = publicHost
 	}
+
+	// WebSocket upgrade: tunnel the connection instead of reverse-proxying
+	if strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+		s.handleWebSocketProxy(w, r, target)
+		return
+	}
+
 	proxy.ServeHTTP(w, r)
+}
+
+// handleWebSocketProxy tunnels a WebSocket connection to the upstream target.
+func (s *Server) handleWebSocketProxy(w http.ResponseWriter, r *http.Request, target *url.URL) {
+	// Build upstream URL
+	upstreamURL := *target
+	upstreamURL.Scheme = "ws"
+	if target.Scheme == "https" {
+		upstreamURL.Scheme = "wss"
+	}
+	upstreamURL.Path = r.URL.Path
+	upstreamURL.RawQuery = r.URL.RawQuery
+
+	// Hijack the client connection
+	hijacker, ok := w.(http.Hijacker)
+	if !ok {
+		http.Error(w, "websocket hijack not supported", http.StatusInternalServerError)
+		return
+	}
+
+	// Connect to upstream
+	upstreamConn, err := net.DialTimeout("tcp", upstreamURL.Host, 5*time.Second)
+	if err != nil {
+		http.Error(w, "upstream connect failed", http.StatusBadGateway)
+		return
+	}
+	defer upstreamConn.Close()
+
+	// Send the original HTTP upgrade request to upstream
+	reqLine := fmt.Sprintf("GET %s HTTP/1.1\r\n", r.URL.RequestURI())
+	upstreamConn.Write([]byte(reqLine))
+	upstreamConn.Write([]byte(fmt.Sprintf("Host: %s\r\n", upstreamURL.Host)))
+	for key, vals := range r.Header {
+		for _, val := range vals {
+			upstreamConn.Write([]byte(fmt.Sprintf("%s: %s\r\n", key, val)))
+		}
+	}
+	upstreamConn.Write([]byte("\r\n"))
+
+	// Read the upstream response to verify the upgrade was accepted
+	upstreamBuf := bufio.NewReader(upstreamConn)
+	resp, err := http.ReadResponse(upstreamBuf, r)
+	if err != nil || resp.StatusCode != http.StatusSwitchingProtocols {
+		http.Error(w, "upstream websocket upgrade failed", http.StatusBadGateway)
+		return
+	}
+
+	// Hijack the client connection
+	clientConn, clientBuf, err := hijacker.Hijack()
+	if err != nil {
+		return
+	}
+	defer clientConn.Close()
+
+	// Send the 101 response back to the client
+	resp.Write(clientBuf)
+	clientBuf.Flush()
+
+	// Bidirectional copy
+	done := make(chan struct{}, 2)
+	go func() {
+		io.Copy(upstreamConn, clientConn)
+		done <- struct{}{}
+	}()
+	go func() {
+		// Copy buffered data first, then raw connection
+		if upstreamBuf.Buffered() > 0 {
+			buffered := make([]byte, upstreamBuf.Buffered())
+			upstreamBuf.Read(buffered)
+			clientConn.Write(buffered)
+		}
+		io.Copy(clientConn, upstreamConn)
+		done <- struct{}{}
+	}()
+	<-done
 }

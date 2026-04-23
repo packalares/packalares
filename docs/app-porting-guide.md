@@ -20,27 +20,34 @@ Before building ANY chart, verify ALL of these:
 
 ## Complete App Package
 
-A market app requires ALL of these files:
+A market app requires ALL of these files. When building a new app, you MUST create/download ALL of them — not just the chart:
 
 ```
 market/
-  catalog.json                          # App entry with metadata
-  icons/{appname}.png                   # App icon (PNG)
+  catalog.json                          # App entry with FULL metadata (description, screenshots, resources, etc.)
+  icons/{appname}.png                   # App icon (PNG) — download from upstream or Olares CDN
   screenshots/{appname}/                # Screenshot directory
     featured.webp                       # Featured image
     1.webp                              # Screenshot 1
     2.webp                              # Screenshot 2 (optional)
     3.webp                              # Screenshot 3 (optional)
   charts/{appname}-{version}.tgz        # Packaged Helm chart (helm package output)
-  charts/{appname}/                     # Raw chart dir (temporary, for editing before packaging)
-    Chart.yaml
-    OlaresManifest.yaml
-    values.yaml
-    templates/
-      deployment.yaml
-      configmap.yaml                    # (if needed)
-      ...
 ```
+
+### Building a new app — FULL checklist:
+1. **Research the app** — Follow this order:
+   a. **Check Olares app store** — Fetch `https://market.olares.com/app-store/api/v2/market/data` (JSON endpoint with all apps). Search for the app by name. This gives you the correct image, ports, chart structure, env vars, and metadata. Also check the Olares GitHub (`https://github.com/beclab/apps`) for chart source code.
+   b. **Check CUDA compatibility** — RTX 5090 (Blackwell) needs CUDA 12.8+. Images with cu124 or lower won't work. Search Docker Hub for a cu128+ variant of the same image.
+   c. **Check upstream** — Visit the app's GitHub repo for official Docker images, default ports, required env vars, volume paths.
+   d. **Verify image exists** — `docker manifest inspect image:tag` or check Docker Hub page
+2. **Download icon** — from upstream project, Olares CDN, or app website
+3. **Download/create screenshots** — from upstream, Olares CDN, or take them manually
+4. **Create the chart** — Chart.yaml, OlaresManifest.yaml (with FULL spec including fullDescription, developer, website, license, resources), templates/deployment.yaml, values.yaml
+5. **Use `{{ .Values.appName }}`** — for ALL names, labels, service names, volume paths in templates
+6. **Add GPU support** — if the app needs GPU, add `runtimeClassName: nvidia` to pod spec
+7. **Package the chart** — `helm package {appname}/` to create .tgz
+8. **Add catalog.json entry** — with FULL metadata including fullDescription matching the manifest
+9. **Verify** — icon file is not empty (>1KB), screenshots exist, chart packages without errors
 
 ### Chart.yaml
 
@@ -55,14 +62,40 @@ version: '{chart_version}'
 
 ### OlaresManifest.yaml
 
-Key fields:
-- `olaresManifest.version: "0.10.0"`
-- `metadata.name` / `metadata.appid` — must match chart name
-- `metadata.version` — must match Chart.yaml version
-- `entrances` — each needs `name`, `port`, `host`, `title`, `icon`, `openMethod`
-- `permission.appData: true` / `permission.appCache: true` — as needed
-- `options.apiTimeout: 0` — for AI/long-running apps
-- NO `subCharts` section (we flattened)
+`metadata.name` is the **single source of truth** for the app name. The installer injects it as `{{ .Values.appName }}` into Helm templates. Entrance `name`, `host`, and `appid` are auto-derived from `metadata.name` when omitted.
+
+Minimal example:
+```yaml
+olaresManifest.version: '0.10.0'
+olaresManifest.type: app
+metadata:
+  name: myapp              # Single source of truth — becomes {{ .Values.appName }}
+  title: My App            # Display name (can differ from name)
+  description: Short description
+  icon: https://file.bttcdn.com/appstore/default/icon.png
+  version: '1.0.0'
+  categories:
+  - Creativity
+entrances:
+- port: 3000               # name/host auto-filled from metadata.name
+  title: My App
+  openMethod: window
+permission:
+  appData: true
+  appCache: true
+spec:
+  versionName: '1.0.0'
+  supportArch:
+  - amd64
+options:
+  apiTimeout: 0             # Set to 0 for AI/long-running apps
+```
+
+Key rules:
+- `metadata.name` = URL subdomain = service name = data path prefix
+- `metadata.version` must match Chart.yaml `version`
+- Entrance `name`/`host` can be omitted — auto-filled from `metadata.name`
+- NO `subCharts` section (we flatten sub-charts)
 - `spec.supportArch: [amd64]` minimum
 
 ### catalog.json Entry
@@ -131,8 +164,9 @@ Each app in `catalog.json` → `apps[]` array needs:
 
 App-service injects these at install time:
 
-| Value | Path | Notes |
-|-------|------|-------|
+| Value | Path / Example | Notes |
+|-------|----------------|-------|
+| `{{ .Values.appName }}` | `sunoace` | **App name** — injected from OlaresManifest `metadata.name`. Use for service names, labels, volume paths |
 | `{{ .Values.sharedlib }}` | `/packalares/Apps/sharedlib` | Shared AI models (ollama, comfyui, etc.) |
 | `{{ .Values.userspace.appData }}` | `/packalares/Apps/appdata` | Persistent app config/databases (if permission.appData=true) |
 | `{{ .Values.userspace.appCache }}` | `/packalares/Apps/appcache` | App cache/scratch (if permission.appCache=true) |
@@ -145,13 +179,13 @@ App-service injects these at install time:
 ## Volume Path Conventions
 
 ```
-{{ .Values.sharedlib }}/ai/ollama           # Ollama models (shared)
-{{ .Values.sharedlib }}/ai/comfyui          # ComfyUI models (shared)
-{{ .Values.userspace.appData }}/{appname}             # App-specific persistent data
-{{ .Values.userspace.appCache }}/{appname}            # App-specific cache
-{{ .Values.userspace.appCache }}/redis/{appname}      # Redis data (per-app)
-{{ .Values.userspace.appCache }}/postgres/{appname}   # Postgres sidecar data
-{{ .Values.userspace.appCache }}/mysql/{appname}      # MySQL sidecar data
+{{ .Values.sharedlib }}/ai/ollama                          # Ollama models (shared)
+{{ .Values.sharedlib }}/ai/comfyui                         # ComfyUI models (shared)
+{{ .Values.userspace.appData }}/{{ .Values.appName }}                # App-specific persistent data
+{{ .Values.userspace.appCache }}/{{ .Values.appName }}               # App-specific cache
+{{ .Values.userspace.appCache }}/redis/{{ .Values.appName }}         # Redis data (per-app)
+{{ .Values.userspace.appCache }}/postgres/{{ .Values.appName }}      # Postgres sidecar data
+{{ .Values.userspace.appCache }}/mysql/{{ .Values.appName }}         # MySQL sidecar data
 ```
 
 ## Database Patterns
@@ -221,6 +255,25 @@ For apps needing specific extensions (pgvector, etc.):
     type: DirectoryOrCreate
 ```
 
+## Porting from Olares — General Approach
+
+When porting an app from Olares, follow this order:
+
+1. **Get the original chart** — fetch from Olares market API or GitHub
+2. **Keep the original structure** — do NOT rewrite from scratch. The original chart works. Preserve all template files, init containers, env vars, volume mounts, proxy configurations. Only change what's listed below.
+3. **Apply these modifications:**
+   - Replace all hardcoded app names with `{{ .Values.appName }}`
+   - Replace `beclab/aboveos-busybox` with `docker.io/busybox:1.37.0`
+   - Remove `appid` from OlaresManifest.yaml (auto-derived)
+   - Remove `subCharts` section and flatten into single `templates/` dir
+   - Remove ProviderRegistry templates, admin conditionals, OIDC config
+   - Add `runtimeClassName: nvidia` if the app needs GPU
+   - For GPU apps: read the image conditional logic (CUDA version checks) and pick the correct image for CUDA 12.8+
+   - Add service name suffix `-svc` to match installer auto-fill convention
+   - All hostPath volumes: `type: DirectoryOrCreate`
+   - Use `{{ .Values.userspace.appData }}/{{ .Values.appName }}` for data paths
+4. **Do NOT remove** init containers, nginx proxies, configmaps, scripts, or env vars unless you understand exactly what they do. If unsure, keep them.
+
 ## Common Chart Fix Patterns
 
 ### Shared App Flattening
@@ -232,10 +285,22 @@ The sub-chart deploys in a different namespace. In Packalares:
 4. Watch for duplicate deployment names across sub-charts — rename if needed
 
 ### Nginx Proxy Sidecars
-If the original app has an nginx proxy sub-chart for auth:
-- Usually NOT needed in Packalares (system-server handles routing)
-- If kept, fix upstream to point to `localhost:{port}` or local service name
+There are TWO types of nginx proxies in Olares charts. Treat them differently:
+
+**1. Auth/routing proxy** — proxies traffic through Olares auth system. These are NOT needed in Packalares (system-server handles auth routing). Remove them.
+
+**2. Internal service merger proxy** — merges multiple internal ports (e.g., web UI on 8080, API on 3000, backend on 8188) into one endpoint. These ARE needed. Keep them. Without them the app won't function because the frontend expects all endpoints on the same port.
+
+How to tell the difference:
+- If the proxy config has `auth_request`, `X-BFL-USER`, or references to auth services → it's type 1, remove it
+- If the proxy config just does `proxy_pass` to different internal ports → it's type 2, keep it
+
+When keeping the proxy:
+- Move the proxy deployment + configmap + service into the main `templates/` directory
+- Rename resources to use `{{ .Values.appName }}-proxy` or `{{ .Values.appName }}-entrance`
+- Fix upstream service references to use `{{ .Values.appName }}.{{ .Release.Namespace }}`
 - Set proper timeouts for AI apps: `proxy_read_timeout 600s;`
+- The entrance should point to the PROXY service, not the app service directly
 
 ### envFrom ConfigMap
 Each container needs its OWN envFrom. Don't share a Python app's configmap with a Go daemon — they may not understand the same env vars.
