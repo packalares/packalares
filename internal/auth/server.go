@@ -99,12 +99,21 @@ func (s *Server) ListenAndServe() error {
 // Returns 200 if authenticated, 401 if not.
 // nginx uses this with auth_request directive.
 func (s *Server) handleVerify(w http.ResponseWriter, r *http.Request) {
-	// Check if the target domain is public
-	targetDomain := r.Header.Get("X-Original-URL")
-	if targetDomain == "" {
-		targetDomain = r.Header.Get("X-Forwarded-Host")
+	// Resolve the requesting host. nginx's auth-subrequest sets:
+	//   X-Forwarded-Host = "<host>"           (authoritative for host)
+	//   X-Original-URL   = "<request_uri>"    (path only, NOT a host)
+	// Older code preferred X-Original-URL → that read the path and the
+	// public-domain check never matched. Always prefer the host header,
+	// fall through to Host as a last resort.
+	host := r.Header.Get("X-Forwarded-Host")
+	if host == "" {
+		host = r.Host
 	}
-	if s.isDomainPublic(targetDomain) {
+	// Strip optional port.
+	if i := strings.IndexByte(host, ':'); i >= 0 {
+		host = host[:i]
+	}
+	if s.isDomainPublic(host) {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
