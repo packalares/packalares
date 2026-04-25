@@ -1,4 +1,21 @@
 ---
+# Empty stub for the per-app public-domain list. Created here so the
+# ConfigMap exists from platform install; appservice updates its `data`
+# whenever a user toggles "Public access" on/off in the Market detail
+# dialog. Without this stub, the auth-backend pod's `optional: true`
+# volume mount stays empty until first manual restart after the CM is
+# created — see `internal/auth/publicdomainwatcher.go` for the reader
+# side and `internal/appservice/publicdomains.go` for the writer.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: public-app-domains
+  namespace: {{FRAMEWORK_NAMESPACE}}
+  labels:
+    app: packalares-auth
+data:
+  domains.txt: ""
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
