@@ -27,6 +27,7 @@ type Service struct {
 	lldap          *LLDAPClient
 	genMgr         *GeneratedAppManager
 	chartDL        *ChartDownloader
+	publicDomains  *PublicDomainSync
 	owner          string
 	namespace      string
 	chartRepo      string
@@ -85,14 +86,15 @@ func NewService(cfg *Config) (*Service, error) {
 	lldap := NewLLDAPClient()
 
 	svc := &Service{
-		helm:      helm,
-		store:     store,
-		k8s:       k8s,
-		lldap:     lldap,
-		chartDL:   NewChartDownloader(),
-		owner:     cfg.Owner,
-		namespace: cfg.Namespace,
-		chartRepo: cfg.ChartRepoURL,
+		helm:          helm,
+		store:         store,
+		k8s:           k8s,
+		lldap:         lldap,
+		chartDL:       NewChartDownloader(),
+		publicDomains: NewPublicDomainSync(config.FrameworkNamespace(), "public-app-domains"),
+		owner:         cfg.Owner,
+		namespace:     cfg.Namespace,
+		chartRepo:     cfg.ChartRepoURL,
 	}
 
 	svc.genMgr = NewGeneratedAppManager(helm, store, cfg.Owner)
@@ -123,6 +125,16 @@ func (s *Service) Start(ctx context.Context) error {
 
 	// Apply internet blocks for blocked apps
 	go s.SyncInternetBlocks(ctx)
+
+	// Reconcile public-access domain ConfigMap from current store state
+	go func() {
+		if s.publicDomains == nil {
+			return
+		}
+		if err := s.publicDomains.Reconcile(ctx, s.store.List(ctx)); err != nil {
+			klog.Warningf("public-domains reconcile: %v", err)
+		}
+	}()
 
 	return nil
 }
@@ -908,6 +920,7 @@ func recordToInfo(rec *AppRecord) AppInfo {
 		Source:          rec.Source,
 		Entrances:       rec.Entrances,
 		InternetBlocked: rec.InternetBlocked,
+		PublicAccess:    rec.PublicAccess,
 		CreatedAt:       rec.CreatedAt,
 		UpdatedAt:       rec.UpdatedAt,
 	}

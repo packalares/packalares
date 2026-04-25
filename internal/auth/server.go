@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -17,11 +18,12 @@ import (
 
 // Server is the auth HTTP server.
 type Server struct {
-	cfg      *Config
-	lldap    *LLDAPClient
-	sessions *SessionStore
-	limiter  *RateLimiter
-	mux      *http.ServeMux
+	cfg             *Config
+	lldap           *LLDAPClient
+	sessions        *SessionStore
+	limiter         *RateLimiter
+	mux             *http.ServeMux
+	publicDomainSet atomic.Pointer[publicDomainSet]
 }
 
 func NewServer(cfg *Config) *Server {
@@ -540,12 +542,35 @@ func (s *Server) getSessionIDFromCookie(r *http.Request) string {
 }
 
 func (s *Server) isDomainPublic(domain string) bool {
+	if domain == "" {
+		return false
+	}
+	// Static cfg list (deploy-time)
 	for _, d := range s.cfg.PublicDomains {
+		if d == "" {
+			continue
+		}
 		if d == domain || strings.HasSuffix(domain, "."+d) {
 			return true
 		}
 	}
+	// Dynamic per-app set populated by the watcher
+	if set := s.publicDomainSet.Load(); set != nil {
+		if _, ok := (*set)[domain]; ok {
+			return true
+		}
+	}
 	return false
+}
+
+// StartPublicDomainWatcher launches a background poller that keeps
+// publicDomainSet in sync with the on-disk ConfigMap mount. Safe to call once.
+func (s *Server) StartPublicDomainWatcher(ctx context.Context) {
+	if s.cfg.PublicDomainsFile == "" {
+		return
+	}
+	w := newPublicDomainWatcher(s.cfg.PublicDomainsFile, 30*time.Second, &s.publicDomainSet)
+	go w.start(ctx)
 }
 
 // cookieDomainForRequest returns the appropriate cookie domain.

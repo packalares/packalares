@@ -133,6 +133,7 @@
                 <div class="app-card-developer">{{ app.developer || 'Unknown' }}</div>
               </div>
               <q-badge v-if="app.type === 'model'" label="Model" class="app-model-badge" />
+              <q-badge v-if="publicAccess[app.name]" label="Public" class="app-public-badge" />
             </div>
             <div class="app-card-desc">{{ app.description }}</div>
             <div class="app-card-footer">
@@ -474,6 +475,13 @@
                 :label="internetBlocked[detailApp.name] ? 'Internet Blocked' : 'Internet Allowed'"
                 :class="internetBlocked[detailApp.name] ? 'text-negative' : 'text-positive'"
                 @click="internetBlocked[detailApp.name] = !internetBlocked[detailApp.name]; toggleInternet(detailApp)" />
+              <q-btn flat dense no-caps size="sm" class="toolbar-btn"
+                :icon="publicAccess[detailApp.name] ? 'sym_r_public' : 'sym_r_lock'"
+                :label="publicAccess[detailApp.name] ? 'Public' : 'Private'"
+                :class="publicAccess[detailApp.name] ? 'text-warning' : 'text-positive'"
+                @click="onPublicAccessClick(detailApp)">
+                <q-tooltip>When public, anyone can reach this app's URL without logging in. Use carefully — your data inside the app may be exposed.</q-tooltip>
+              </q-btn>
             </template>
             <!-- Running: model -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running' && detailApp.type === 'model'">
@@ -517,6 +525,13 @@
                 :label="internetBlocked[detailApp.name] ? 'Internet Blocked' : 'Internet Allowed'"
                 :class="internetBlocked[detailApp.name] ? 'text-negative' : 'text-positive'"
                 @click="internetBlocked[detailApp.name] = !internetBlocked[detailApp.name]; toggleInternet(detailApp)" />
+              <q-btn flat dense no-caps size="sm" class="toolbar-btn"
+                :icon="publicAccess[detailApp.name] ? 'sym_r_public' : 'sym_r_lock'"
+                :label="publicAccess[detailApp.name] ? 'Public' : 'Private'"
+                :class="publicAccess[detailApp.name] ? 'text-warning' : 'text-positive'"
+                @click="onPublicAccessClick(detailApp)">
+                <q-tooltip>When public, anyone can reach this app's URL without logging in. Use carefully — your data inside the app may be exposed.</q-tooltip>
+              </q-btn>
             </template>
             <!-- Stopping -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'stopping'">
@@ -1045,6 +1060,7 @@ const installingSet = reactive(new Set<string>());
 const backendMissing = ref<string | null>(null);
 const appStates = reactive<Record<string, string>>({});
 const internetBlocked = reactive<Record<string, boolean>>({});
+const publicAccess = reactive<Record<string, boolean>>({});
 const installProgress = reactive<Record<string, { step: number; totalSteps: number; detail: string; bytesDownloaded: number; bytesTotal: number }>>({});
 const installedModels = reactive<Record<string, InstalledModelInfo>>({});
 
@@ -1406,6 +1422,9 @@ async function fetchInstalled() {
         if (app.internetBlocked !== undefined) {
           internetBlocked[app.name] = app.internetBlocked;
         }
+        if (app.publicAccess !== undefined) {
+          publicAccess[app.name] = app.publicAccess;
+        }
       }
     }
   } catch {
@@ -1682,6 +1701,40 @@ async function toggleInternet(app: MarketApp) {
   }
 }
 
+function onPublicAccessClick(app: MarketApp) {
+  const turningOn = !publicAccess[app.name];
+  if (turningOn) {
+    $q.dialog({
+      title: 'Make app public?',
+      message: 'Anyone with the link will be able to reach this app without logging in. Your data inside the app may be exposed. Continue?',
+      cancel: true,
+      persistent: true,
+      ok: { label: 'Make public', color: 'warning', noCaps: true },
+    }).onOk(() => {
+      publicAccess[app.name] = true;
+      void togglePublicAccess(app);
+    });
+  } else {
+    publicAccess[app.name] = false;
+    void togglePublicAccess(app);
+  }
+}
+
+async function togglePublicAccess(app: MarketApp) {
+  try {
+    await api.post('/api/apps/public-access', { name: app.name, enabled: !!publicAccess[app.name] });
+    $q.notify({
+      type: 'positive',
+      message: publicAccess[app.name]
+        ? `${app.title} is now public`
+        : `${app.title} is now private`,
+    });
+  } catch (e: any) {
+    publicAccess[app.name] = !publicAccess[app.name]; // revert on error
+    $q.notify({ type: 'negative', message: `Failed: ${e.message || 'unknown error'}` });
+  }
+}
+
 function connectWebSocket() {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
   const wsUrl = proto + '//' + window.location.host + '/ws';
@@ -1693,6 +1746,11 @@ function connectWebSocket() {
         const msg = JSON.parse(event.data);
         if (msg.type === 'app_state' && msg.data) {
           const { name, state } = msg.data as { name: string; state: string };
+          // The handler may piggy-back updated publicAccess on app_state.
+          const pub = (msg.data as { publicAccess?: boolean }).publicAccess;
+          if (typeof pub === 'boolean' && name) {
+            publicAccess[name] = pub;
+          }
           if (state === 'running') {
             installingSet.delete(name);
             delete appStates[name];

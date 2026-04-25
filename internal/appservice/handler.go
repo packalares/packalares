@@ -37,6 +37,7 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/app-service/v1/app-credentials/", h.handleAppCredentials)
 	mux.HandleFunc("/app-service/v1/app-services/", h.handleAppServices)
 	mux.HandleFunc("/app-service/v1/internet", h.handleInternet)
+	mux.HandleFunc("/app-service/v1/public-access", h.handlePublicAccess)
 
 	// Model endpoints
 	mux.HandleFunc("/app-service/v1/models/status", h.handleModelStatus)
@@ -612,6 +613,53 @@ func (h *Handler) handleInternet(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"code":    200,
 		"message": fmt.Sprintf("internet %s for %s", map[bool]string{true: "blocked", false: "allowed"}[req.Blocked], req.Name),
+	})
+}
+
+// handlePublicAccess toggles whether an app's domains can be reached without login.
+func (h *Handler) handlePublicAccess(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+
+	var req struct {
+		Name    string `json:"name"`
+		Enabled bool   `json:"enabled"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body: "+err.Error())
+		return
+	}
+
+	rec, exists := h.svc.store.Get(r.Context(), req.Name)
+	if !exists {
+		writeError(w, http.StatusNotFound, fmt.Sprintf("app %q not found", req.Name))
+		return
+	}
+
+	rec.PublicAccess = req.Enabled
+	_ = h.svc.store.Put(r.Context(), rec)
+
+	if h.svc.publicDomains != nil {
+		if err := h.svc.publicDomains.Sync(r.Context(), rec.Name, rec.PublicAccess, hostsForApp(rec)); err != nil {
+			klog.Warningf("public-access sync %s: %v", rec.Name, err)
+		}
+	}
+
+	GetWSHub().Broadcast(WSMessage{
+		Type: "app_state",
+		Data: map[string]interface{}{
+			"name":         rec.Name,
+			"state":        string(rec.State),
+			"publicAccess": rec.PublicAccess,
+		},
+	})
+
+	writeJSON(w, http.StatusOK, map[string]interface{}{
+		"code":         200,
+		"publicAccess": rec.PublicAccess,
+		"message":      fmt.Sprintf("public access %s for %s", map[bool]string{true: "enabled", false: "disabled"}[req.Enabled], req.Name),
 	})
 }
 

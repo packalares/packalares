@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"os/signal"
@@ -22,12 +23,20 @@ func main() {
 
 	srv := auth.NewServer(cfg)
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	// Background watcher that mirrors the public-domains ConfigMap mount
+	// into an in-memory set consulted by isDomainPublic.
+	srv.StartPublicDomainWatcher(ctx)
+
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
 		<-sigCh
 		log.Println("shutting down")
+		cancel()
 		os.Exit(0)
 	}()
 

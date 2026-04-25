@@ -293,6 +293,7 @@ type AppInfo struct {
 	Source        string                  `json:"source"`
 	Entrances       []Entrance              `json:"entrances,omitempty"`
 	InternetBlocked bool                    `json:"internetBlocked,omitempty"`
+	PublicAccess    bool                    `json:"publicAccess,omitempty"`
 	CreatedAt       time.Time               `json:"createdAt"`
 	UpdatedAt       time.Time               `json:"updatedAt"`
 }

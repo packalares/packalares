@@ -54,6 +54,12 @@ spec:
           value: "packalares"
         - name: AUTH_LISTEN_ADDR
           value: ":9091"
+        - name: PUBLIC_DOMAINS_FILE
+          value: "/etc/auth-backend/public-domains/domains.txt"
+        volumeMounts:
+        - name: public-domains
+          mountPath: /etc/auth-backend/public-domains
+          readOnly: true
         livenessProbe:
           httpGet:
             path: /api/health
@@ -73,6 +79,11 @@ spec:
           limits:
             cpu: 500m
             memory: 256Mi
+      volumes:
+      - name: public-domains
+        configMap:
+          name: public-app-domains
+          optional: true
 
 ---
 apiVersion: v1

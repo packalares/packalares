@@ -68,6 +68,10 @@ type Config struct {
 	// AccessControl rules loaded from config.
 	PublicDomains []string
 
+	// PublicDomainsFile is the path to a file containing dynamic per-app
+	// public domains (one host per line). Refreshed periodically.
+	PublicDomainsFile string
+
 	// CookieSameSite controls the SameSite attribute.
 	CookieSameSite string
 }
@@ -94,8 +98,9 @@ func LoadConfig() (*Config, error) {
 		SessionName:    "packalares_session",
 		SessionMaxAgeSec:  1209600, // 14 days
 		SessionInactivity: 604800,  // 7 days
-		TOTPIssuer:     "packalares",
-		CookieSameSite: "none",
+		TOTPIssuer:        "packalares",
+		PublicDomainsFile: "/etc/auth-backend/public-domains/domains.txt",
+		CookieSameSite:    "none",
 	}
 
 	// Helper: get from Infisical first, then env var
@@ -179,6 +184,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if v := get("COOKIE_SAMESITE"); v != "" {
 		cfg.CookieSameSite = v
+	}
+	if v := get("PUBLIC_DOMAINS_FILE"); v != "" {
+		cfg.PublicDomainsFile = v
 	}
 
 	if cfg.UserZone == "" {
