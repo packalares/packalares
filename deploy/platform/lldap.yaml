@@ -1,4 +1,25 @@
 ---
+# Persistent volume for LLDAP's SQLite database. Previously this was an
+# EmptyDir, which silently wiped every pod restart — including
+# disk-pressure evictions, node reboots, and routine rollouts. That
+# destroyed the user database and the svc-packalares service account
+# (which auth-backend needs to bind to LLDAP), locking everyone out.
+# A PVC survives pod restarts; the storage class is left empty so the
+# cluster's default (openebs-localpv) handles provisioning.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: lldap-data
+  namespace: {{PLATFORM_NAMESPACE}}
+  labels:
+    app: lldap
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -63,7 +84,8 @@ spec:
           periodSeconds: 5
       volumes:
       - name: data
-        emptyDir: {}
+        persistentVolumeClaim:
+          claimName: lldap-data
 ---
 apiVersion: v1
 kind: Secret
