@@ -7,7 +7,7 @@
       "icon": "/api/market/icons/ollama.png",
       "description": "Get up and running with large language models.",
       "fullDescription": "## IMPORTANT NOTE ##\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## OVERVIEW ##\nOllama is a user-friendly interface for running large language models (LLMs) locally. It is a valuable tool for researchers, developers, and anyone who wants to experiment with language models. With Ollama, you can easily download and run LLMs, customize and create your own models, and chat with your LLMs using files on your device.\n\nOllama supports a wide range of models, including:\n- Llama 3 8B\n- Llama 3 70B\n- Phi 3 Mini 3.8B\n- Phi 3 Medium 14B\n- Gemma 2 9B\n- Gemma 2 27B\n- Mistral 7B\n- Moondream 2 1.4B\n- Neural Chat 7B\n- Starling 7B\n- Code Llama 7B\n- Llama 2 Uncensored 7B\n- LLaVA 7B\n- Solar 10.7B\n",
-      "upgradeDescription": "Upgrade Ollama version from v0.17.7 to v0.20.3\n\nFor detailed release notes including new models and features in each version, please visit:\nhttps://github.com/ollama/ollama/releases\n",
+      "upgradeDescription": "Upgrade Ollama version from v0.20.3 to v0.24.0, and expose the Ollama API as a public entrance.\n\nFor detailed release notes including new models and features in each version, please visit:\nhttps://github.com/ollama/ollama/releases\n",
       "promoteImage": [
         "/api/market/screenshots/ollama/1.webp",
         "/api/market/screenshots/ollama/2.webp",
@@ -23,10 +23,19 @@
           "icon": "https://app.cdn.olares.com/appstore/ollama/icon.png",
           "title": "Ollama",
           "openMethod": "window"
+        },
+        {
+          "name": "ollamaapi",
+          "host": "ollama",
+          "port": 11434,
+          "icon": "https://app.cdn.olares.com/appstore/ollama/icon.png",
+          "title": "Ollama API",
+          "openMethod": "window",
+          "authLevel": "public"
         }
       ],
-      "version": "1.0.17",
-      "versionName": "0.20.3",
+      "version": "1.0.18",
+      "versionName": "0.24.0",
       "categories": [
         "Working"
       ],
