@@ -1,0 +1,90 @@
+{
+  "categories": [
+    "Productivity",
+    "Utilities"
+  ],
+  "cfgType": "app",
+  "chartName": "kolibri",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "Offline educational platform for teaching and learning without internet.",
+  "developer": "Learning Equality",
+  "doc": "https://kolibri.readthedocs.io/en/latest/",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "kolibri-nginx-svc",
+      "icon": "/api/market/icons/kolibri.png",
+      "name": "kolibri",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "Kolibri"
+    }
+  ],
+  "featuredImage": "",
+  "fullDescription": "Kolibri is an offline-first educational platform created by Learning Equality that enables teaching and learning with technology in environments without reliable internet connectivity.\n\nOverview\nKolibri provides a complete learning management system that works entirely offline. It is designed for schools, community centers, libraries, and any learning environment where internet access is limited or unavailable. Once installed, educators and learners can access a vast library of open educational content without needing an internet connection.\n\nKey Features\n- Offline-First Design: Kolibri is built from the ground up to work without internet. Content is downloaded once and served locally to all connected devices on a local network.\n- Rich Content Library: Access thousands of educational resources from trusted providers including Khan Academy, CK-12, MIT OpenCourseWare, PhET Interactive Simulations, and many more through Kolibri content channels.\n- Learning Management: Teachers can create classes, assign lessons and quizzes, and track student progress through a comprehensive coach dashboard.\n- Multi-User Support: Supports multiple user roles including learners, coaches, and administrators. Learners can track their own progress and pick up where they left off.\n- Content Channels: Browse and import content from the Kolibri Content Library, which includes curated educational materials in dozens of languages covering math, science, reading, and more.\n- Low Resource Requirements: Designed to run on low-cost hardware including Raspberry Pi, making it accessible for resource-constrained environments.\n- Multi-Language Support: Available in over 30 languages with localized content channels.\n- Standards-Aligned: Content is organized and tagged according to educational standards, making it easy for teachers to find relevant materials.\n\nContent Available\n- Khan Academy: Complete math, science, computing, and humanities courses\n- CK-12: Textbooks and practice exercises for K-12 education\n- PhET Simulations: Interactive science and math simulations from University of Colorado\n- MIT OpenCourseWare: University-level course materials\n- African Storybook: Multilingual stories for early readers\n- And many more community-contributed channels\n\nUse Cases\n- Schools without internet access\n- Community learning centers\n- Libraries and after-school programs\n- Refugee camps and disaster relief\n- Home education and self-directed learning\n",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/kolibri.png",
+  "images": [
+    "docker.io/learningequality/kolibri:0.19.3",
+    "docker.io/nginx:alpine",
+    "docker.io/busybox:1.37.0"
+  ],
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/learningequality/kolibri/blob/develop/LICENSE"
+    }
+  ],
+  "limitedCPU": "2000m",
+  "limitedDisk": "50Gi",
+  "limitedMemory": "2Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "kolibri",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": [
+      "Home"
+    ]
+  },
+  "promoteImage": [],
+  "rating": 0,
+  "requiredCpu": "200m",
+  "requiredDisk": "5Gi",
+  "requiredGpu": "",
+  "requiredMemory": "512Mi",
+  "services": [
+    {
+      "name": "kolibri-nginx-svc",
+      "ports": [
+        {
+          "name": "http",
+          "port": 8080
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/learningequality/kolibri",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Kolibri",
+  "type": "app",
+  "upgradeDescription": "Initial release for Packalares marketplace.",
+  "version": "1.0.1",
+  "versionName": "0.19.3",
+  "website": "https://learningequality.org/kolibri/"
+}

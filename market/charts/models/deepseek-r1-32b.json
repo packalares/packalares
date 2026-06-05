@@ -1,0 +1,81 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "tools",
+    "thinking"
+  ],
+  "categories": [
+    "Reasoning",
+    "Code",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "128K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Best open reasoning model. Excels at math, logic, and complex problem solving.",
+  "developer": "DeepSeek",
+  "doc": "https://ollama.com/library/deepseek-r1",
+  "fullDescription": "## MODEL OVERVIEW ##\nDeepSeek-R1 is a state-of-the-art reasoning model that has demonstrated outstanding performance across mathematics, programming, and general logic benchmarks. The 32B distilled version brings powerful reasoning to a single GPU.\n\n## Key Features\n- **Superior Reasoning**: Top-tier performance on math and logic tasks\n- **Chain-of-Thought**: Transparent step-by-step reasoning process\n- **128K Context**: Large context window for complex problems\n- **Distilled**: Knowledge distilled from the full 671B model\n- **Competitive**: Performance approaching O3 and Gemini 2.5 Pro\n\n## Specifications\n- Parameters: 32B (distilled from 671B)\n- Context Length: 128K tokens\n- Disk Size: ~20GB\n- Quantization: Q4_K_M\n\n## Use Cases\n- Mathematical reasoning and proofs\n- Complex logic puzzles\n- Code generation and debugging\n- Scientific analysis\n- Multi-step problem solving",
+  "hfRepo": "",
+  "icon": "/api/market/icons/deepseek-r1-32b.png",
+  "lastUpdated": "2025-07-12",
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "deepseek-r1:32b",
+  "modelImages": [
+    "/api/market/screenshots/deepseek-r1-32b/logo.png"
+  ],
+  "modelReadme": "DeepSeek-R1 is a family of open reasoning models with performance approaching that of leading models such as O3 and Gemini 2.5 Pro. The 32B distilled version brings powerful reasoning to a single GPU.\n\nThe model received a version upgrade to DeepSeek-R1-0528 with significantly improved reasoning and inference. Performance benchmarks show strong results in mathematics, programming, and general logic.\n\nDistilled from the full 671B model using 800k reasoning samples, demonstrating that larger model reasoning patterns transfer effectively to smaller dense models.\n\nKey features:\n- Superior reasoning on math, coding, and logic tasks\n- Transparent chain-of-thought reasoning process\n- 128K context window\n- Tool calling support\n- MIT License",
+  "name": "deepseek-r1-32b",
+  "parameters": "32B",
+  "pullCount": "82.4M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "22Gi",
+  "requiredMemory": "4200Mi",
+  "sourceCode": "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "DeepSeek R1 32B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "20GB",
+      "tag": "32b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "35GB",
+      "tag": "32b-qwen-distill-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "66GB",
+      "tag": "32b-qwen-distill-fp16"
+    }
+  ],
+  "versionName": "deepseek-r1:32b",
+  "website": "https://www.deepseek.com/"
+}

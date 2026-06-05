@@ -1,0 +1,51 @@
+{
+  "categories": [
+    "Creativity",
+    "AI"
+  ],
+  "cfgType": "app",
+  "chartName": "comfyuistudio",
+  "description": "AI creative studio with ComfyUI - generate images, video, audio, 3D",
+  "developer": "ComfyAnonymous",
+  "entrances": [
+    {
+      "host": "comfyui-entrance",
+      "name": "comfyui",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "ComfyUI"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/comfyui/featured.webp",
+  "fullDescription": "ComfyUI is the most powerful and modular diffusion model GUI with a launcher for model and workflow management.\n\nFeatures:\n- Node-based workflow editor\n- Launcher with model manager\n- Supports SD, SDXL, SD3, Flux, video models\n- ControlNet, LoRA support\n- GPU accelerated",
+  "hasChart": true,
+  "icon": "/api/market/icons/comfyui.png",
+  "limitedCPU": "4",
+  "limitedMemory": "32Gi",
+  "locale": [
+    "en-US"
+  ],
+  "name": "comfyuistudio",
+  "permission": {
+    "appCache": true,
+    "appData": true
+  },
+  "promoteImage": [
+    "/api/market/screenshots/comfyui/1.webp",
+    "/api/market/screenshots/comfyui/2.webp",
+    "/api/market/screenshots/comfyui/3.webp"
+  ],
+  "requiredCpu": "500m",
+  "requiredDisk": "500Mi",
+  "requiredGpu": "2Gi",
+  "requiredMemory": "4Gi",
+  "source": "packalares",
+  "status": "active",
+  "supportArch": [
+    "amd64"
+  ],
+  "title": "ComfyUI Studio",
+  "type": "app",
+  "version": "1.0.1",
+  "versionName": "0.18.2"
+}

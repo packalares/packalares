@@ -1,0 +1,96 @@
+{
+  "categories": [
+    "Productivity"
+  ],
+  "cfgType": "app",
+  "chartName": "ragflow",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "An open-source RAG engine based on deep document understanding.",
+  "developer": "InfiniFlow",
+  "doc": "https://ragflow.io/docs/dev/",
+  "entrances": [
+    {
+      "authLevel": "private",
+      "host": "ragflow-svc",
+      "icon": "/api/market/icons/ragflow.png",
+      "name": "ragflow",
+      "openMethod": "window",
+      "port": 80,
+      "title": "RAGFlow"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/ragflow/featured.webp",
+  "fullDescription": "What is RAGFlow?\nRAGFlow is an open-source RAG (Retrieval-Augmented Generation) engine based on deep document understanding. It offers a streamlined RAG workflow for businesses of any scale, combining LLM (Large Language Models) to provide truthful question-answering capabilities, backed by well-founded citations from various complex formatted data.\n\nKey Features\n\"Quality in, quality out\"\n- Deep document understanding-based knowledge extraction from unstructured data with complicated formats.\n- Finds \"needle in a data haystack\" of literally unlimited tokens.\n\nTemplate-based chunking\n- Intelligent and explainable.\n- Plenty of template options to choose from.\n\nGrounded citations with reduced hallucinations\n- Visualization of text chunking to allow human intervention.\n- Quick view of the key references and traceable citations to support grounded answers.\n\nCompatibility with heterogeneous data sources\n- Supports Word, slides, excel, txt, images, scanned copies, structured data, web pages, and more.\n\nAutomated and effortless RAG workflow\n- Streamlined RAG orchestration catered to both personal and large businesses.\n- Configurable LLMs as well as embedding models.\n- Multiple recall paired with fused re-ranking.\n- Intuitive APIs for seamless integration with business.\n",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/ragflow.png",
+  "images": [
+    "docker.io/infiniflow/ragflow:v0.23.1",
+    "docker.io/elasticsearch:8.11.3",
+    "docker.io/infiniflow/infinity:v0.6.14",
+    "docker.io/minio/minio:RELEASE.2023-12-20T01-00-02Z",
+    "docker.io/mysql:8.0",
+    "docker.io/valkey/valkey:8-alpine",
+    "docker.io/busybox:1.37.0"
+  ],
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://github.com/infiniflow/ragflow#Apache-2.0-1-ov-file"
+    }
+  ],
+  "limitedCPU": "13000m",
+  "limitedDisk": "1Gi",
+  "limitedMemory": "28Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "ragflow",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": null
+  },
+  "promoteImage": [
+    "/api/market/screenshots/ragflow/1.webp",
+    "/api/market/screenshots/ragflow/2.webp",
+    "/api/market/screenshots/ragflow/3.webp",
+    "/api/market/screenshots/ragflow/4.webp",
+    "/api/market/screenshots/ragflow/5.webp"
+  ],
+  "rating": 0,
+  "requiredCpu": "1000m",
+  "requiredDisk": "56Mi",
+  "requiredGpu": "1",
+  "requiredMemory": "4Gi",
+  "services": [
+    {
+      "name": "ragflow-svc",
+      "ports": [
+        {
+          "name": "http",
+          "port": 80
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/infiniflow/ragflow",
+  "status": "active",
+  "supportArch": [
+    "amd64"
+  ],
+  "title": "RAGFlow",
+  "type": "app",
+  "upgradeDescription": "Upgrade app version to v0.23.1\n\nImprovements\n- Memory: Enhances the stability of memory extraction when all memory types are selected.\n- RAG: Refines the context window extraction strategy for images and tables.\n\nFixed issues\n- Memory: The RAGFlow server failed to start if an empty memory object existed.\n- Memory: Unable to delete a newly created empty Memory.\n- RAG: MDX file parsing was not supported.\n\nData sources\n- GitHub\n- Gitlab\n- Asana\n- IMAP\n\nFull release note at: https://github.com/infiniflow/ragflow/releases/tag/v0.23.1\n",
+  "version": "1.0.20",
+  "versionName": "0.23.1",
+  "website": "https://ragflow.io/"
+}

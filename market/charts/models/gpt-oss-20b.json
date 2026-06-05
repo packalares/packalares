@@ -1,0 +1,73 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "tools",
+    "thinking"
+  ],
+  "categories": [
+    "General",
+    "Reasoning",
+    "Code",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "128K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "OpenAI's first open-weight model. Configurable reasoning with Apache 2.0 license.",
+  "developer": "OpenAI",
+  "doc": "https://ollama.com/library/gpt-oss",
+  "fullDescription": "## MODEL OVERVIEW ##\nWelcome to the gpt-oss series, OpenAI's open-weight models designed for powerful reasoning, agentic tasks, and versatile developer use cases.\n\n## Models\ngpt-oss-20b is designed for lower latency and local or specialized use cases (21B parameters with 3.6B active parameters).\n\n## Key Features\n- **Permissive Apache 2.0 License**: Build freely without copyleft restrictions or patent risk\n- **Configurable Reasoning Effort**: Adjust reasoning effort (low, medium, high) based on your use case\n- **Full Chain-of-Thought**: Complete access to the model's reasoning process for debugging and trust\n- **MoE Architecture**: 21B total / 3.6B active parameters for fast inference\n\n## Specifications\n- Total Parameters: 21B\n- Active Parameters: 3.6B (MoE)\n- Context Length: 128K tokens\n- Disk Size: ~14GB\n- Format: Harmony response format\n\n## Use Cases\n- Local AI assistant\n- Agentic coding tasks\n- Reasoning and problem solving\n- Tool use and function calling\n- Custom fine-tuning base",
+  "hfRepo": "",
+  "icon": "/api/market/icons/gpt-oss-20b.png",
+  "lastUpdated": "2025-10-12",
+  "license": [
+    {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "gpt-oss:20b",
+  "modelImages": [
+    "/api/market/screenshots/gpt-oss-20b/logo.png",
+    "/api/market/screenshots/gpt-oss-20b/benchmark.png"
+  ],
+  "modelReadme": "Welcome to the gpt-oss series, OpenAI's open-weight models designed for powerful reasoning, agentic tasks, and versatile developer use cases.\n\ngpt-oss-20b is designed for lower latency and local or specialized use cases with 21B total parameters and 3.6B active parameters (MoE architecture).\n\nKey features:\n- Permissive Apache 2.0 License for commercial deployment\n- Configurable reasoning effort (low, medium, high)\n- Full chain-of-thought access for debugging and trust\n- MoE architecture: 21B total / 3.6B active for fast inference\n- Native agentic support with tool calling\n- MXFP4 quantization reducing memory requirements\n- Harmony response format",
+  "name": "gpt-oss-20b",
+  "parameters": "20B",
+  "pullCount": "8.7M",
+  "quantization": "MXFP4",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "16Gi",
+  "requiredMemory": "4200Mi",
+  "sourceCode": "https://huggingface.co/openai/gpt-oss-20b",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "GPT-OSS 20B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "MXFP4",
+      "size": "14GB",
+      "tag": "20b"
+    }
+  ],
+  "versionName": "gpt-oss:20b",
+  "website": "https://openai.com/"
+}

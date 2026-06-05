@@ -1,0 +1,78 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion"
+  ],
+  "categories": [
+    "Code"
+  ],
+  "cfgType": "model",
+  "contextLength": "160K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Open-source MoE coding model achieving GPT-4 Turbo-level performance. 338 languages, 160K context.",
+  "developer": "DeepSeek",
+  "doc": "https://ollama.com/library/deepseek-coder-v2",
+  "fullDescription": "## MODEL OVERVIEW\nDeepSeek-Coder-V2 is an open-source Mixture-of-Experts code language model that achieves performance comparable to GPT-4 Turbo in code-specific tasks. The 16B Lite version offers efficient inference with a 160K context window.\n\n## Key Features\n- **GPT-4 Turbo Comparable**: Competitive code performance with much larger models\n- **338 Languages**: Extensive programming language support\n- **160K Context**: Process entire repositories and documentation\n- **MoE Architecture**: Efficient inference with expert routing\n- **6T Training Tokens**: Extensive pre-training from high-quality corpus\n\n## Specifications\n- Parameters: 16B (MoE)\n- Context Length: 160K tokens\n- Default Size: 8.9GB (Q4_K_M)\n- Supported Languages: 338 programming languages\n- License: DeepSeek Model License",
+  "hfRepo": "",
+  "icon": "/api/market/icons/deepseek-coder-v2-16b.png",
+  "lastUpdated": "2025-04-12",
+  "license": [
+    {
+      "name": "DeepSeek License",
+      "url": "https://github.com/deepseek-ai/DeepSeek-Coder-V2/blob/main/LICENSE-MODEL"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "33Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "deepseek-coder-v2:16b",
+  "modelImages": [
+    "/api/market/screenshots/deepseek-coder-v2-16b/logo.png"
+  ],
+  "modelReadme": "DeepSeek-Coder-V2 is an open-source Mixture-of-Experts code language model that achieves performance comparable to GPT4-Turbo in code-specific tasks. It was further pre-trained from DeepSeek-Coder-V2-Base using 6 trillion tokens sourced from high-quality, multi-source corpus materials. The model supports 338 programming languages and features a 160K context window.",
+  "name": "deepseek-coder-v2-16b",
+  "parameters": "16B",
+  "pullCount": "2.3M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "10Gi",
+  "requiredMemory": "11000Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/deepseek-ai/DeepSeek-Coder-V2-Lite-Instruct",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "DeepSeek Coder V2 16B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "8.9GB",
+      "tag": "16b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "17GB",
+      "tag": "16b-lite-instruct-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "31GB",
+      "tag": "16b-lite-instruct-fp16"
+    }
+  ],
+  "versionName": "deepseek-coder-v2:16b",
+  "website": "https://ollama.com/library/deepseek-coder-v2"
+}

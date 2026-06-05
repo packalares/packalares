@@ -1,0 +1,95 @@
+{
+  "categories": [
+    "Creativity",
+    "Productivity"
+  ],
+  "cfgType": "app",
+  "chartName": "jaaz",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "AI design agent, local alternative for Lovart",
+  "developer": "11cafe",
+  "doc": "https://github.com/11cafe/jaaz",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "jaaz-web-svc",
+      "icon": "/api/market/icons/jaaz.png",
+      "name": "jaaz",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "Jaaz"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/jaaz/featured.webp",
+  "fullDescription": "The world's first open-source multimodal creative agent, a creative tool that prioritizes privacy, local usage, and ease of use, as an alternative to Lovart, Manus and Figma.\n\nKey Features\nSmart Prompt Agent Powered by LLMs, Jaaz can interpret your ideas and generate optimized prompts for high-quality image or storyboard creation.\n\nHybrid Model Deployment Works with local models via Ollama, ComfyUI, and remote APIs like Replicate, OpenAI, or Claude. Run 100% locally or connect to the cloud.\n\nSimply access all the strongest apis After logging in, you can use all the latest models (gpt-image-1,flux kntext,google……)\n\nInteractive Image Editing Supports advanced operations such as object insertion, style transfer, and multi-character coherence via Flux Kontext — all controllable via chat.\n\nInfinite Canvas \u0026 Storyboarding Design layouts, plan scenes, and create visual storytelling flows with drag-and-drop simplicity.\n\n(Coming Soon) Video Agent：Video generation and editing via models like Wan2.1, Kling, and more, seamlessly integrated with your creative workflow. Intelligently invoke custom comfyui workflows\n",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/jaaz.png",
+  "images": [
+    "docker.io/beclab/harveyff-jaaz:v1.0.7",
+    "docker.io/nginx:alpine",
+    "docker.io/busybox:1.37.0"
+  ],
+  "license": [
+    {
+      "name": "Open Source License",
+      "url": "https://github.com/11cafe/jaaz?tab=License-1-ov-file"
+    }
+  ],
+  "limitedCPU": "3000m",
+  "limitedDisk": "20Gi",
+  "limitedMemory": "3Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "jaaz",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": [
+      "Home"
+    ]
+  },
+  "promoteImage": [
+    "/api/market/screenshots/jaaz/1.webp",
+    "/api/market/screenshots/jaaz/2.webp",
+    "/api/market/screenshots/jaaz/3.webp",
+    "/api/market/screenshots/jaaz/4.webp"
+  ],
+  "rating": 0,
+  "requiredCpu": "1000m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "",
+  "requiredMemory": "1Gi",
+  "services": [
+    {
+      "name": "jaaz-web-svc",
+      "ports": [
+        {
+          "name": "jaaz",
+          "port": 8080
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/11cafe/jaaz",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Jaaz",
+  "type": "app",
+  "upgradeDescription": "Swapped OpenResty sidecar for lightweight nginx:alpine; templated resource names.",
+  "version": "1.0.13",
+  "versionName": "1.0.7",
+  "website": "https://jaaz.app/"
+}

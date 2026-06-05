@@ -18,12 +18,11 @@ import (
 )
 
 const (
-	// defaultDataDir is the base directory for market data (charts, icons, screenshots, catalog).
+	// defaultDataDir is the base directory for market data (charts, icons, screenshots).
 	defaultDataDir    = "/data/market"
 	chartsSubdir      = "charts"
 	iconsSubdir       = "icons"
 	screenshotsSubdir = "screenshots"
-	modelcardsSubdir  = "modelcards"
 )
 
 // Handler implements the HTTP API for the market backend.
@@ -61,7 +60,6 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/icons/", h.handleServeIcon)
 	mux.HandleFunc("/market/v1/icons/", h.handleServeIcon)
 	mux.HandleFunc("/market/v1/screenshots/", h.handleServeScreenshot)
-	mux.HandleFunc("/market/v1/modelcards/", h.handleServeModelcard)
 
 	// Health check
 	mux.HandleFunc("/market/healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -77,10 +75,9 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("/api/v1/search", h.handleSearch)
 	mux.HandleFunc("/api/v1/recommendations", h.handleRecommendations)
 
-	// Screenshot serving under /api/ prefix too
+	// Screenshot and icon serving under /api/ prefix too
 	mux.HandleFunc("/api/market/screenshots/", h.handleServeScreenshot)
 	mux.HandleFunc("/api/market/icons/", h.handleServeIcon)
-	mux.HandleFunc("/api/market/modelcards/", h.handleServeModelcard)
 }
 
 // handleListApps handles GET /market/v1/apps
@@ -902,33 +899,6 @@ func (h *Handler) handleServeScreenshot(w http.ResponseWriter, r *http.Request) 
 	http.ServeFile(w, r, filePath)
 }
 
-// handleServeModelcard serves model card asset files.
-// Path format: /api/market/modelcards/{modelname}/{filename}
-func (h *Handler) handleServeModelcard(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
-		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
-		return
-	}
-
-	pathSuffix := r.URL.Path
-	for _, prefix := range []string{"/api/market/modelcards/", "/market/v1/modelcards/"} {
-		if strings.HasPrefix(pathSuffix, prefix) {
-			pathSuffix = strings.TrimPrefix(pathSuffix, prefix)
-			break
-		}
-	}
-	parts := strings.SplitN(pathSuffix, "/", 2)
-	if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-		writeError(w, http.StatusBadRequest, "path format: /modelcards/{modelname}/{filename}")
-		return
-	}
-
-	modelName := filepath.Base(parts[0])
-	filename := filepath.Base(parts[1])
-
-	filePath := filepath.Join(h.dataDir, modelcardsSubdir, modelName, filename)
-	http.ServeFile(w, r, filePath)
-}
 
 func writeJSON(w http.ResponseWriter, status int, data interface{}) {
 	w.Header().Set("Content-Type", "application/json")

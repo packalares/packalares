@@ -1,0 +1,84 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "vision"
+  ],
+  "categories": [
+    "Vision",
+    "OCR"
+  ],
+  "cfgType": "model",
+  "contextLength": "32K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Compact vision model with strong OCR. Handles documents, handwriting, and tables.",
+  "developer": "OpenBMB",
+  "doc": "https://ollama.com/library/minicpm-v",
+  "fullDescription": "## MODEL OVERVIEW\nMiniCPM-V 2.6 is the latest and most capable model in the MiniCPM-V series from OpenBMB. Built on SigLip-400M and Qwen2-7B with 8B total parameters, it surpasses GPT-4o mini, GPT-4V, Gemini 1.5 Pro, and Claude 3.5 Sonnet on single image understanding.\n\n## Key Features\n- **Leading Performance**: Average score of 65.2 on OpenCompass across 8 benchmarks\n- **Multi-Image Understanding**: Conversation and reasoning over multiple images\n- **Strong OCR**: Processes images up to 1.8M pixels, surpasses GPT-4o on OCRBench\n- **Video Understanding**: New multi-image and video analysis capabilities\n- **Efficient**: Only 640 tokens for 1.8M pixel images (75% fewer than competitors)\n- **Multilingual OCR**: English, Chinese, German, French, Italian, Korean\n\n## Specifications\n- Parameters: 8B\n- Max Resolution: 1344x1344 (1.8M pixels)\n- Context Length: 32K tokens\n- Modalities: Text + Images + Video\n- Default Size: ~5.5GB (Q4_0)\n\n**Requires Ollama 0.3.10 or later.**",
+  "hfRepo": "",
+  "icon": "/api/market/icons/minicpm-v-8b.png",
+  "lastUpdated": "2024-08-12",
+  "license": [
+    {
+      "name": "MiniCPM License",
+      "url": "https://github.com/OpenBMB/MiniCPM/blob/main/LICENSE"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "25Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "minicpm-v:8b",
+  "modelImages": [
+    "/api/market/screenshots/minicpm-v-8b/logo.png"
+  ],
+  "modelReadme": "MiniCPM-V 2.6 is the latest and most capable model in the MiniCPM-V series. The model is built on SigLip-400M and Qwen2-7B with a total of 8B parameters. It exhibits significant performance improvement over MiniCPM-Llama3-V 2.5, introducing new features for multi-image and video understanding.\n\n## Leading Performance\nAchieves an average score of 65.2 on OpenCompass (8 popular benchmarks). With 8B parameters, it surpasses GPT-4o mini, GPT-4V, Gemini 1.5 Pro, and Claude 3.5 Sonnet for single image understanding.\n\n## Multi-Image Understanding and In-context Learning\nPerforms conversation and reasoning over multiple images. State-of-the-art performance on Mantis-Eval, BLINK, Mathverse mv, and Sciverse mv benchmarks.\n\n## Strong OCR Capability\nProcesses images with any aspect ratio up to 1.8 million pixels (1344x1344). Surpasses GPT-4o, GPT-4V, and Gemini 1.5 Pro on OCRBench. Supports English, Chinese, German, French, Italian, Korean.\n\n## Superior Efficiency\nProduces only 640 tokens processing 1.8M pixel images (75% fewer than most models), improving inference speed, latency, memory, and power consumption.\n\n**Requires Ollama 0.3.10 or later.**",
+  "name": "minicpm-v-8b",
+  "parameters": "8B",
+  "pullCount": "5M",
+  "quantization": "Q4_0",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "10Gi",
+  "requiredMemory": "4200Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/openbmb/MiniCPM-V-2_6",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "MiniCPM-V 8B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_0",
+      "size": "5.5GB",
+      "tag": "8b"
+    },
+    {
+      "quantization": "Q4_K_M",
+      "size": "5.7GB",
+      "tag": "8b-2.6-q4_K_M"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "9.1GB",
+      "tag": "8b-2.6-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "16GB",
+      "tag": "8b-2.6-fp16"
+    }
+  ],
+  "versionName": "minicpm-v:8b",
+  "website": "https://github.com/OpenBMB/MiniCPM-V"
+}

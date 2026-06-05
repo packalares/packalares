@@ -1,0 +1,46 @@
+{
+  "categories": [
+    "Creativity",
+    "AI"
+  ],
+  "cfgType": "app",
+  "chartName": "sunoace",
+  "description": "AI music studio — create songs, remix, stem separation, LoRA training",
+  "developer": "Packalares",
+  "doc": "https://github.com/packalares/ace-step-ui",
+  "fullDescription": "SunoAce is a self-hosted AI music studio powered by ACE-Step 1.5. Generate full songs from text descriptions, train custom styles with LoRA, and remix existing tracks.\n\n## Features\n### Music Generation\n- **Simple Mode**: Describe your song, pick genres, and generate — AI handles lyrics, style, and production\n- **Custom Mode**: Full control over lyrics, style, BPM, key, time signature, vocal language and gender\n- **Multiple DiT Models**: Switch between turbo (fast), base (quality), SFT (prompt-following) models\n\n### Lyrics \u0026 Style\n- **AI Lyrics Writer**: Llama Song Stream 3B generates structured lyrics\n- **Style Generator**: Creates detailed Suno-like production descriptions\n- **40+ Languages**: Generate vocals in any supported language\n\n### Audio Tools\n- **Cover / Remix**: Upload source audio and recreate in a new style\n- **Reference Audio**: Style-match generation inspired by reference tracks\n- **Audio Analysis**: Auto-detect BPM, key, genre, lyrics from any audio\n\n### LoRA Training\n- **5-Step Wizard**: Upload → Label → Preprocess → Train → Export\n- **Auto-Labeling**: AI analyzes your audio samples\n- **Custom Styles**: Train on 10-50 songs to capture any style\n\n### GPU Management\n- **Lazy Loading**: Models load on demand, freeing VRAM when idle\n- **Auto-Unload**: Configurable idle timeout to free GPU memory\n",
+  "hasChart": true,
+  "icon": "/api/market/icons/musicgen.png",
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/fspecii/ace-step-ui/blob/main/LICENSE"
+    }
+  ],
+  "limitedCPU": "8000m",
+  "limitedMemory": "29Gi",
+  "locale": [
+    "en-US"
+  ],
+  "name": "sunoace",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": null
+  },
+  "requiredCpu": "500m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "12Gi",
+  "requiredMemory": "4Gi",
+  "source": "packalares",
+  "sourceCode": "https://github.com/packalares/ace-step-ui",
+  "status": "active",
+  "supportArch": [
+    "amd64"
+  ],
+  "title": "SunoAce",
+  "type": "app",
+  "version": "1.0.0",
+  "versionName": "1.5.0",
+  "website": "https://github.com/packalares/ace-step-ui"
+}

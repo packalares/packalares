@@ -1,0 +1,82 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "tools"
+  ],
+  "categories": [
+    "General",
+    "Uncensored",
+    "Tools",
+    "Code"
+  ],
+  "cfgType": "model",
+  "contextLength": "128K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Uncensored 8B model with function calling, coding, and math. No content restrictions.",
+  "developer": "Cognitive Computations",
+  "doc": "https://ollama.com/library/dolphin3",
+  "fullDescription": "## MODEL OVERVIEW\nDolphin 3.0 Llama 3.1 8B is the next generation of the Dolphin series of instruct-tuned models designed to be the ultimate general purpose local model. It supports coding, math, agentic functions, function calling, and general use cases.\n\n## Key Features\n- **Uncensored**: No artificial content restrictions or refusals\n- **Function Calling**: Native tool use and API interaction\n- **128K Context**: Large context window for complex tasks\n- **8B Parameters**: Compact and fast\n- **Local Control**: Full control over system prompts, model versions, alignment tuning, and data privacy\n- **Versatile**: Supports coding, math, agentic functions, and general tasks\n\n## Specifications\n- Parameters: 8B\n- Context Length: 128K tokens\n- Default Size: 4.9GB (Q4_K_M)\n- Architecture: Llama 3.1 based\n\n## Use Cases\n- Unrestricted AI assistance\n- Tool use and function calling\n- Code generation and math\n- Creative writing without limitations\n- Custom AI agent building with full local control",
+  "hfRepo": "",
+  "icon": "/api/market/icons/dolphin3-8b.png",
+  "lastUpdated": "2025-04-12",
+  "license": [
+    {
+      "name": "Llama 3.1 License",
+      "url": "https://llama.meta.com/llama3_1/license/"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "25Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "dolphin3:8b",
+  "modelImages": [
+    "/api/market/screenshots/dolphin3-8b/logo.png"
+  ],
+  "modelReadme": "Dolphin 3.0 Llama 3.1 8B is the next generation of the Dolphin series of instruct-tuned models designed to be the ultimate general purpose local model. It supports coding, math, agentic functions, function calling, and general use cases.\n\nUnlike cloud-based alternatives that maintain control of the system prompt, deprecating and changing things as they wish, Dolphin prioritizes user autonomy. With a local model you maintain control over the system prompt, you decide which version, you can tune the alignment to your own preferences, and your data stays private.",
+  "name": "dolphin3-8b",
+  "parameters": "8B",
+  "pullCount": "3.8M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "6Gi",
+  "requiredMemory": "7000Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/cognitivecomputations/Dolphin3.0-Llama3.1-8B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Dolphin 3 8B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "4.9GB",
+      "tag": "8b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "8.5GB",
+      "tag": "8b-llama3.1-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "16GB",
+      "tag": "8b-llama3.1-fp16"
+    }
+  ],
+  "versionName": "dolphin3:8b",
+  "website": "https://ollama.com/library/dolphin3"
+}

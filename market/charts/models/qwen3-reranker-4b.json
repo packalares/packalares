@@ -1,0 +1,78 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "embedding"
+  ],
+  "categories": [
+    "Reranking"
+  ],
+  "cfgType": "model",
+  "contextLength": "40K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Compact 4B reranker with Q4_K_M quantization (2.5 GB) — best quality/size tradeoff for multilingual RAG reranking.",
+  "developer": "Alibaba",
+  "doc": "https://ollama.com/dengcao/Qwen3-Reranker-4B",
+  "fullDescription": "## IMPORTANT NOTE ##\nThis model runs on CPU only. If you want to run it on GPU, please install the generic version of Ollama program.\n\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## MODEL OVERVIEW ##\nQwen3-Reranker-4B is a compact text reranking model from Alibaba's Qwen team, built on the Qwen3-4B-Base architecture with 36 layers. It is designed for ranking and retrieval tasks across multilingual contexts.\n\nThe model supports 100+ languages with instruction-aware capabilities for task customization. It scores 69.76 on MTEB-R benchmarks, ranking among top-performing multilingual reranking models.\n\n**Note:** As of June 2025, Ollama doesn't fully support reranking models in Ragflow/Dify. Alternatives include FastGPT or vLLM deployment.\n\n## QUANTIZATION ##\nThis model uses **Q4_K_M** quantization (2.5 GB). Quantization compresses model weights from 16-bit to 4-bit precision, reducing memory usage ~4x with minimal quality loss. The K-quant method keeps critical layers at higher precision.\n\n## Model Details\n- Model Name: Qwen/Qwen3-Reranker-4B\n- Parameters: 4B\n- Quantization: Q4_K_M (2.5GB)\n- Context Length: 32768 tokens\n- Task: Text Reranking\n- Languages: 100+",
+  "hfRepo": "",
+  "icon": "/api/market/icons/qwen3-reranker-4b.png",
+  "lastUpdated": "2025-06-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://huggingface.co/Qwen/Qwen3-Reranker-4B"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "33Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "dengcao/Qwen3-Reranker-4B:Q4_K_M",
+  "modelImages": [],
+  "modelReadme": "Qwen3-Reranker-4B is a compact text reranking model from Alibaba's Qwen team, built on the Qwen3-4B-Base architecture with 36 layers. It supports 100+ languages with instruction-aware capabilities for task customization. It scores 69.76 on MTEB-R benchmarks, ranking among top-performing multilingual reranking models.\n\nThree quantized versions available: Q4_K_M (2.5GB), Q5_K_M (2.9GB), Q8_0 (4.3GB). Q4_K_M recommended for most users.\n\nNote: As of June 2025, Ollama doesn't fully support reranking models in RAGflow, Dify, and FastGPT. Alternatives include API-based or vLLM deployment.",
+  "name": "qwen3-reranker-4b",
+  "parameters": "4B",
+  "pullCount": "10.6K",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "0",
+  "requiredMemory": "4000Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/Qwen/Qwen3-Reranker-4B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Qwen3 Reranker 4B (Ollama)",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "2.5GB",
+      "tag": "Q4_K_M"
+    },
+    {
+      "default": false,
+      "quantization": "Q5_K_M",
+      "size": "2.9GB",
+      "tag": "Q5_K_M"
+    },
+    {
+      "default": false,
+      "quantization": "Q8_0",
+      "size": "4.3GB",
+      "tag": "Q8_0"
+    }
+  ],
+  "versionName": "dengcao/Qwen3-Reranker-4B:Q4_K_M",
+  "website": "https://ollama.com/dengcao/Qwen3-Reranker-4B"
+}

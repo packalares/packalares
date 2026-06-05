@@ -1,0 +1,81 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "vision",
+    "tools"
+  ],
+  "categories": [
+    "General",
+    "Vision",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "128K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Mistral AI's 24B model with vision support and strong multilingual chat capabilities.",
+  "developer": "Mistral AI",
+  "doc": "https://ollama.com/library/mistral-small3.2",
+  "fullDescription": "## MODEL OVERVIEW ##\nMistral Small 3.2 is a 24B parameter model from Mistral AI with native vision capabilities. It builds on the successful Mistral Small line with added multimodal support.\n\n## Key Features\n- **Vision Support**: Process and understand images alongside text\n- **24B Parameters**: Strong capability in a single-GPU package\n- **Multilingual**: Excellent performance across many languages\n- **Fast Inference**: Optimized for responsive chat\n- **Function Calling**: Supports tool use and structured outputs\n\n## Specifications\n- Parameters: 24B\n- Context Length: 128K tokens\n- Modalities: Text + Vision\n- Disk Size: ~15GB\n\n## Use Cases\n- Multimodal chat with image understanding\n- Document and image analysis\n- Multilingual assistance\n- Tool-augmented workflows\n- General-purpose AI assistant",
+  "hfRepo": "",
+  "icon": "/api/market/icons/mistral-small32-24b.png",
+  "lastUpdated": "2025-07-12",
+  "license": [
+    {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "mistral-small3.2:24b",
+  "modelImages": [
+    "/api/market/screenshots/mistral-small32-24b/logo.svg"
+  ],
+  "modelReadme": "Mistral-Small-3.2-24B-Instruct-2506 is a minor update to Mistral Small 3.1, improving function calling, instruction following, and reducing repetition errors. It features native vision capabilities for processing images alongside text.\n\nKey features:\n- Vision support: process and understand images alongside text\n- Robust function calling templates\n- Better instruction following\n- 128K context window\n- Strong multilingual performance across 24+ languages",
+  "name": "mistral-small32-24b",
+  "parameters": "24B",
+  "pullCount": "1.7M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "17Gi",
+  "requiredMemory": "4200Mi",
+  "sourceCode": "https://huggingface.co/mistralai/Mistral-Small-3.2-24B-Instruct-2506",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Mistral Small 3.2 24B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "15GB",
+      "tag": "24b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "26GB",
+      "tag": "24b-instruct-2506-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "48GB",
+      "tag": "24b-instruct-2506-fp16"
+    }
+  ],
+  "versionName": "mistral-small3.2:24b",
+  "website": "https://mistral.ai/"
+}

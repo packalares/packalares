@@ -1,0 +1,84 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "vision",
+    "tools",
+    "thinking"
+  ],
+  "categories": [
+    "General",
+    "Vision",
+    "Reasoning",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "256K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Latest small Qwen model with improved architecture. Best quality under 4GB.",
+  "developer": "Qwen Team (Alibaba)",
+  "doc": "https://ollama.com/library/qwen3.5",
+  "fullDescription": "## MODEL OVERVIEW\nQwen3.5 4B is the latest generation of Alibaba's small model, featuring architectural improvements including Gated Delta Networks, sparse MoE, and expanded language support for 201 languages. Built on unified vision-language training.\n\n## Key Features\n- **Latest Architecture**: Gated Delta Networks with sparse MoE\n- **201 Languages**: Broadest language support in small models\n- **Multimodal**: Unified vision-language foundation with early fusion training\n- **Tool Calling**: Native tool/function calling support\n- **Thinking Mode**: Chain-of-thought reasoning support\n- **256K Context**: Extended context window\n\n## Specifications\n- Parameters: 4B\n- Context Length: 256K tokens\n- Default Size: ~3.4GB (Q4_K_M)\n- Languages: 201\n\n## Use Cases\n- Lightweight multilingual assistant\n- Fast chat and Q\u0026A\n- Edge deployment\n- Basic coding and vision tasks",
+  "hfRepo": "",
+  "icon": "/api/market/icons/qwen35-4b.png",
+  "lastUpdated": "2026-03-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "20Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "qwen3.5:4b",
+  "modelImages": [
+    "/api/market/screenshots/qwen35-4b/logo1.png",
+    "/api/market/screenshots/qwen35-4b/logo2.png"
+  ],
+  "modelReadme": "Qwen 3.5 is a family of open-source multimodal models that delivers exceptional utility and performance. Qwen3.5 represents a significant leap forward, integrating breakthroughs in multimodal learning, architectural efficiency, reinforcement learning scale, and global accessibility.\n\n## Highlights\n- **Unified Vision-Language Foundation**: Early fusion training on multimodal tokens achieves cross-generational parity with Qwen3 and outperforms Qwen3-VL models.\n- **Efficient Hybrid Architecture**: Gated Delta Networks combined with sparse Mixture-of-Experts deliver high-throughput inference with minimal latency.\n- **Scalable RL Generalization**: Reinforcement learning scaled across million-agent environments with progressively complex task distributions.\n- **Global Linguistic Coverage**: Expanded support to 201 languages and dialects.\n- **Next-Generation Training Infrastructure**: Near-100% multimodal training efficiency compared to text-only training.",
+  "name": "qwen35-4b",
+  "parameters": "4B",
+  "pullCount": "5.8M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "4Gi",
+  "requiredGpu": "6Gi",
+  "requiredMemory": "4200Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/Qwen/Qwen3.5-4B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Qwen 3.5 4B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "3.4GB",
+      "tag": "4b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "5.3GB",
+      "tag": "4b-q8_0"
+    },
+    {
+      "quantization": "BF16",
+      "size": "9.3GB",
+      "tag": "4b-bf16"
+    }
+  ],
+  "versionName": "qwen3.5:4b",
+  "website": "https://ollama.com/library/qwen3.5"
+}

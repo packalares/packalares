@@ -1,0 +1,105 @@
+{
+  "categories": [
+    "Productivity",
+    "Utilities"
+  ],
+  "cfgType": "app",
+  "chartName": "vane",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    },
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.0"
+    },
+    {
+      "name": "searxng",
+      "type": "application",
+      "version": "\u003e=1.0.0"
+    }
+  ],
+  "description": "Vane (previously Perplexica) is an AI-powered answering engine.",
+  "developer": "ItzCrazyKns",
+  "doc": "https://github.com/ItzCrazyKns/Vane",
+  "entrances": [
+    {
+      "authLevel": "private",
+      "host": "vane-svc",
+      "icon": "/api/market/icons/vane.png",
+      "name": "vane",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "Vane"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/vane/featured.webp",
+  "fullDescription": "Vane (Previously Perplexica) is a privacy-focused AI answering engine that runs entirely on your own hardware. It combines knowledge from the vast internet with support for local LLMs (Ollama) and cloud providers (OpenAI, Claude, Groq), delivering accurate answers with cited sources while keeping your searches completely private.\n\nFeatures\n- Support for all major AI providers - Use local LLMs through Ollama or connect to OpenAI, Anthropic Claude, Google Gemini, Groq, and more. Mix and match models based on your needs.\n- Smart search modes - Choose Speed Mode when you need quick answers, Balanced Mode for everyday searches, or Quality Mode for deep research.\n- Pick your sources - Search the web, discussions, or academic papers. More sources and integrations are in progress.\n- Widgets - Helpful UI cards that show up when relevant, like weather, calculations, stock prices, and other quick lookups.\n- Web search powered by SearxNG - Access multiple search engines while keeping your identity private. Support for Tavily and Exa coming soon for even better results.\n- Image and video search - Find visual content alongside text results. Search isn't limited to just articles anymore.\n- File uploads - Upload documents and ask questions about them. PDFs, text files, images - Vane understands them all.\n- Search specific domains - Limit your search to specific websites when you know where to look. Perfect for technical documentation or research papers.\n- Smart suggestions - Get intelligent search suggestions as you type, helping you formulate better queries.\n- Discover - Browse interesting articles and trending content throughout the day. Stay informed without even searching.\n- Search history - Every search is saved locally so you can revisit your discoveries anytime. Your research is never lost.\n- More coming soon - We're actively developing new features based on community feedback. Join our Discord to help shape Vane's future!",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/vane.png",
+  "images": [
+    "docker.io/itzcrazykns1337/vane:v1.12.2",
+    "docker.io/postgres:17-alpine",
+    "docker.io/beclab/aboveos-bitnami-openresty:1.25.3-2",
+    "docker.io/busybox:1.37.0"
+  ],
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/ItzCrazyKns/Vane?tab=readme-ov-file#MIT-1-ov-file"
+    }
+  ],
+  "limitedCPU": "4.5",
+  "limitedDisk": "50Gi",
+  "limitedMemory": "4608Mi",
+  "locale": [
+    "en-US",
+    "zh-CN"
+  ],
+  "loginType": "",
+  "name": "vane",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": null
+  },
+  "promoteImage": [
+    "/api/market/screenshots/vane/1.webp",
+    "/api/market/screenshots/vane/2.webp",
+    "/api/market/screenshots/vane/3.webp",
+    "/api/market/screenshots/vane/4.webp"
+  ],
+  "rating": 0,
+  "requiredCpu": "50m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "",
+  "requiredMemory": "1000Mi",
+  "services": [
+    {
+      "name": "vane-svc",
+      "ports": [
+        {
+          "name": "http",
+          "port": 8080
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/ItzCrazyKns/Vane",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Vane",
+  "type": "app",
+  "upgradeDescription": "Initial release for Packalares marketplace.",
+  "version": "1.0.0",
+  "versionName": "1.12.2",
+  "website": "https://github.com/ItzCrazyKns/Vane"
+}

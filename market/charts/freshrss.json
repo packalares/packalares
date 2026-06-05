@@ -1,0 +1,94 @@
+{
+  "categories": [
+    "Productivity",
+    "Utilities"
+  ],
+  "cfgType": "app",
+  "chartName": "freshrss",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "A free, self-hostable feed aggregator.",
+  "developer": "FreshRSS",
+  "doc": "https://freshrss.github.io/FreshRSS/en/",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "freshrss-nginx-svc",
+      "icon": "/api/market/icons/freshrss.png",
+      "name": "freshrss",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "FreshRSS"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/freshrss/featured.webp",
+  "fullDescription": "FreshRSS is a self-hosted RSS and Atom feed aggregator.It is lightweight, easy to work with, powerful, and customizable.\n\nFeatures\n- Independent Data Control : Supports self-hosted deployment, allowing users to have full control over their data without third-party reliance, ensuring privacy and security.\n- Open-Source \u0026 Stable Updates : Open-source under the AGPL 3 license, with an active community. It has maintained continuous iterations and updates from 2023 to 2024, ensuring strong stability.\n- Multi-Source Content Aggregation : Aggregates website RSS/Atom feeds, podcasts, and video channels. It can also scrape websites without official feeds to generate custom subscription sources.\n- Efficient Content Management : Enables searching and saving queries, generating new feeds based on rules, and supports marking, favoriting, and categorizing articles for management.\n- Real-Time Sync \u0026 Migration : Achieves real-time content synchronization based on WebSub, and supports importing and exporting subscription lists in OPML format.\n- Flexible Customization \u0026 Permissions : Offers theme and extension customization features, as well as multi-user permission management to meet different needs.\n- Full-Device \u0026 High-Efficiency Adaptation : Features a responsive design compatible with computers and mobile phones, capable of efficiently managing over 1 million articles and 50,000+ feeds.\n- Multi-Language Support \u0026 Integration : Supports more than 15 languages and provides API interfaces for connecting to third-party clients or proprietary systems.\n- Low-Threshold Deployment : Has a low deployment threshold, is compatible with mainstream web servers, and comes with detailed installation documentation, making it easy for beginners to get started.\n",
+  "hasChart": true,
+  "hasCredentials": true,
+  "icon": "/api/market/icons/freshrss.png",
+  "images": [
+    "docker.io/freshrss/freshrss:1.28.1",
+    "docker.io/postgres:17-alpine",
+    "docker.io/nginx:alpine",
+    "docker.io/busybox:1.37.0"
+  ],
+  "license": [
+    {
+      "name": "AGPL-3.0",
+      "url": "https://github.com/FreshRSS/FreshRSS/blob/edge/LICENSE.txt"
+    }
+  ],
+  "limitedCPU": "1000m",
+  "limitedDisk": "1Gi",
+  "limitedMemory": "2.5Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "user-email",
+  "name": "freshrss",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": [
+      "Home"
+    ]
+  },
+  "promoteImage": [
+    "/api/market/screenshots/freshrss/1.webp",
+    "/api/market/screenshots/freshrss/2.webp"
+  ],
+  "rating": 0,
+  "requiredCpu": "200m",
+  "requiredDisk": "256Mi",
+  "requiredGpu": "",
+  "requiredMemory": "256Mi",
+  "services": [
+    {
+      "name": "freshrss-nginx-svc",
+      "ports": [
+        {
+          "name": "http",
+          "port": 8080
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/FreshRSS/FreshRSS",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "FreshRSS",
+  "type": "app",
+  "upgradeDescription": "Upgrade app version to 1.28.1\n\nThis is a release focusing on bug fixing, in particular regressions from the release 1.28.0.\n\nSelected new features:\n- New customisable message for closed registrations\n- Add username in Apache access logs (also in Docker logs): for GReader API, and for HTTP Basic Auth from reverse proxy\n\nImproved performance:\n- Disable counting articles in user labels for Ajax requests (unused)\n\nBug fixes:\n- Fix unwanted expansion of user queries (saved searches) applied to filters\n- Fix encoding of filter actions for labels\n- Fix searching of tags\n- Fix refreshing feeds with token while anonymous refresh is disabled\n- Fix RSS and OPML access by token\n- Fix MySQL/MariaDB transliterator_transliterate fallback\n- Fix regression with MySQL/MariaDB index hint\n- Fix shortcut for next unread article\n- Fix custom session.cookie-lifetime\n- Fix feed validator button when changing the feed URL\n\nFull release notes: https://github.com/FreshRSS/FreshRSS/releases/tag/1.28.1\n",
+  "version": "1.0.4",
+  "versionName": "1.28.1",
+  "website": "https://freshrss.org"
+}

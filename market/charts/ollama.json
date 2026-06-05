@@ -1,0 +1,80 @@
+{
+  "categories": [
+    "Working"
+  ],
+  "cfgType": "app",
+  "chartName": "ollama",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "Get up and running with large language models.",
+  "developer": "ollama",
+  "doc": "https://github.com/ollama/ollama/tree/main/docs",
+  "entrances": [
+    {
+      "host": "terminal",
+      "icon": "https://app.cdn.olares.com/appstore/ollama/icon.png",
+      "name": "terminal",
+      "openMethod": "window",
+      "port": 80,
+      "title": "Ollama"
+    },
+    {
+      "authLevel": "public",
+      "host": "ollama",
+      "icon": "https://app.cdn.olares.com/appstore/ollama/icon.png",
+      "name": "ollamaapi",
+      "openMethod": "window",
+      "port": 11434,
+      "title": "Ollama API"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/ollama/featured.webp",
+  "fullDescription": "## IMPORTANT NOTE ##\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## OVERVIEW ##\nOllama is a user-friendly interface for running large language models (LLMs) locally. It is a valuable tool for researchers, developers, and anyone who wants to experiment with language models. With Ollama, you can easily download and run LLMs, customize and create your own models, and chat with your LLMs using files on your device.\n\nOllama supports a wide range of models, including:\n- Llama 3 8B\n- Llama 3 70B\n- Phi 3 Mini 3.8B\n- Phi 3 Medium 14B\n- Gemma 2 9B\n- Gemma 2 27B\n- Mistral 7B\n- Moondream 2 1.4B\n- Neural Chat 7B\n- Starling 7B\n- Code Llama 7B\n- Llama 2 Uncensored 7B\n- LLaVA 7B\n- Solar 10.7B\n",
+  "hasChart": true,
+  "icon": "/api/market/icons/ollama.png",
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/ollama/ollama#MIT-1-ov-file"
+    }
+  ],
+  "limitedCPU": "7",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "name": "ollama",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": null
+  },
+  "promoteImage": [
+    "/api/market/screenshots/ollama/1.webp",
+    "/api/market/screenshots/ollama/2.webp",
+    "/api/market/screenshots/ollama/3.webp"
+  ],
+  "rating": 0,
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "1Gi",
+  "requiredMemory": "5Gi",
+  "source": "olares",
+  "sourceCode": "https://github.com/ollama/ollama",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Ollama",
+  "type": "app",
+  "upgradeDescription": "Upgrade Ollama version from v0.20.3 to v0.24.0, and expose the Ollama API as a public entrance.\n\nFor detailed release notes including new models and features in each version, please visit:\nhttps://github.com/ollama/ollama/releases\n",
+  "version": "1.0.18",
+  "versionName": "0.24.0",
+  "website": "https://ollama.com/"
+}

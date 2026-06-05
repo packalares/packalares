@@ -1,0 +1,80 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "tools"
+  ],
+  "categories": [
+    "Code",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "256K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Alibaba's most agentic coding model. 256K context, SWE-bench optimized, MoE 30B (3.3B active).",
+  "developer": "Alibaba",
+  "doc": "https://ollama.com/library/qwen3-coder",
+  "fullDescription": "## MODEL OVERVIEW\nQwen3-Coder 30B is the most agentic code model in the Qwen series. It uses a Mixture-of-Experts architecture with 30B total parameters and 3.3B activated per token, optimized for real-world software engineering tasks.\n\n## Key Features\n- **SWE-bench Optimized**: Advanced long-horizon reinforcement learning for real-world coding tasks\n- **256K Native Context**: Expandable to 1M tokens via extrapolation\n- **MoE Architecture**: 30B total / 3.3B active parameters for efficient inference\n- **Code-Heavy Training**: 7.5T tokens with 70% code ratio\n- **Tool Use**: Built-in agentic tool calling\n\n## Specifications\n- Parameters: 30B (active: 3.3B)\n- Context Length: 256K tokens (up to 1M)\n- Default Size: 19GB (Q4_K_M)\n- Architecture: Mixture-of-Experts\n- License: Apache 2.0",
+  "hfRepo": "",
+  "icon": "/api/market/icons/qwen3-coder-30b.png",
+  "lastUpdated": "2025-10-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct/blob/main/LICENSE"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "qwen3-coder:30b",
+  "modelImages": [
+    "/api/market/screenshots/qwen3-coder-30b/logo.png"
+  ],
+  "modelReadme": "Qwen3-Coder is the most agentic code model in the Qwen series. It features exceptional agentic capabilities for real-world software engineering tasks via advanced long-horizon reinforcement learning on SWE-Bench. The model supports a native 256K token context, expandable to 1M tokens using extrapolation, and was pretrained on 7.5T tokens with a 70% code ratio while maintaining general and mathematical abilities. Execution-driven reinforcement learning enhances code execution success rates.",
+  "name": "qwen3-coder-30b",
+  "parameters": "30B",
+  "pullCount": "4.6M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "21Gi",
+  "requiredMemory": "21000Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/Qwen/Qwen3-Coder-30B-A3B-Instruct",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Qwen 3 Coder 30B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "19GB",
+      "tag": "30b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "32GB",
+      "tag": "30b-a3b-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "61GB",
+      "tag": "30b-a3b-fp16"
+    }
+  ],
+  "versionName": "qwen3-coder:30b",
+  "website": "https://ollama.com/library/qwen3-coder"
+}

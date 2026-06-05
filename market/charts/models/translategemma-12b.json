@@ -1,0 +1,80 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "vision"
+  ],
+  "categories": [
+    "Translation",
+    "Vision"
+  ],
+  "cfgType": "model",
+  "contextLength": "128K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Google's 12B translation model built on Gemma 3. Supports 55 languages with vision input.",
+  "developer": "Google",
+  "doc": "https://ollama.com/library/translategemma",
+  "fullDescription": "## MODEL OVERVIEW\nTranslateGemma is a new collection of open translation models built on Gemma 3, helping people communicate across 55 languages. The 12B model offers a good balance of translation quality and speed.\n\n## Key Features\n- **55 Languages**: Broad language pair support including major world languages and many regional variants\n- **Vision Input**: Supports both text and image inputs for translation\n- **Translation-Specialized**: Purpose-built for high-quality, natural translation\n- **128K Context**: Large context window for document-level translation\n- **12B Parameters**: Good balance of quality and speed\n\n## Specifications\n- Parameters: 12B\n- Supported Languages: 55\n- Default Size: 8.1GB (Q4_K_M)\n- Architecture: Gemma 3 based\n- Context Length: 128K tokens\n- Input: Text + Images\n\n## Prompt Format\nThe model expects a structured prompt identifying source and target languages with language codes, requesting translation without additional commentary. Two blank lines must precede the text to translate.\n\n## Use Cases\n- Document translation\n- Real-time chat translation\n- Website localization\n- Multilingual content creation\n- Cross-language communication\n- Image-based translation",
+  "hfRepo": "",
+  "icon": "/api/market/icons/translategemma-12b.png",
+  "lastUpdated": "2026-02-12",
+  "license": [
+    {
+      "name": "Gemma License",
+      "url": "https://ai.google.dev/gemma/terms"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "33Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "translategemma:12b",
+  "modelImages": [
+    "/api/market/screenshots/translategemma-12b/logo.png"
+  ],
+  "modelReadme": "TranslateGemma is a new collection of open translation models built on Gemma 3, helping people communicate across 55 languages. Available in 4B, 12B, and 27B parameter sizes, the models support both text and image inputs with a 128K context window.\n\nThe model expects a structured prompt template identifying source and target languages with language codes. Two blank lines must precede the text to translate.\n\nSupported languages include: English, Spanish, French, German, Italian, Portuguese, Dutch, Russian, Polish, Turkish, Arabic, Hebrew, Persian, Hindi, Bengali, Tamil, Telugu, Kannada, Malayalam, Thai, Vietnamese, Japanese, Korean, Chinese (Simplified and Traditional), Afrikaans, Amharic, Azerbaijani, Bulgarian, Catalan, Czech, Danish, Estonian, Finnish, Filipino, Georgian, Greek, Gujarati, Hausa, Hungarian, Icelandic, Indonesian, Irish, Kazakh, Latvian, Lithuanian, Macedonian, Malay, Maltese, Nepali, Norwegian, Oriya, Romanian, Serbian, Slovak, Slovenian, Somali, Swahili, Swedish, Ukrainian, Urdu, Uzbek, Welsh, Yoruba, and Zulu.",
+  "name": "translategemma-12b",
+  "parameters": "12B",
+  "pullCount": "1.1M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "10Gi",
+  "requiredMemory": "10000Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/google/translategemma-12b-it",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "TranslateGemma 12B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "8.1GB",
+      "tag": "12b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "13GB",
+      "tag": "12b-it-q8_0"
+    },
+    {
+      "quantization": "BF16",
+      "size": "24GB",
+      "tag": "12b-it-bf16"
+    }
+  ],
+  "versionName": "translategemma:12b",
+  "website": "https://ollama.com/library/translategemma"
+}

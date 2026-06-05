@@ -1,0 +1,92 @@
+{
+  "categories": [
+    "AI",
+    "Utilities"
+  ],
+  "cfgType": "app",
+  "chartName": "deepseekocrwebuiv2",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "Ready-to-use DeepSeek-OCR-2 Web UI",
+  "developer": "neosun100",
+  "doc": "https://github.com/neosun100/DeepSeek-OCR-WebUI",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "deepseekocrwebui-web-svc",
+      "icon": "/api/market/icons/deepseekocrwebuiv2.png",
+      "name": "deepseekocrwebuiv2",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "DeepSeek-OCR-2 WebUI"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/deepseekocrwebuiv2/featured.webp",
+  "fullDescription": "## IMPORTANT NOTE ##\nThis is a shared app. Only one service will be installed across the entire Olares system. Every user can install a desktop entry to access or use the shared entrance to call the service API.\n\n## OVERVIEW ##\nDeepSeek-OCR-WebUI is an intelligent image recognition web application based on the DeepSeek-OCR-2 model (Visual Causal Flow), providing an intuitive user interface and powerful recognition capabilities.\n\nCore Highlights\n- DeepSeek-OCR-2 Model - Next-gen OCR powered by Visual Causal Flow architecture\n- 7 Recognition Modes - Document, OCR, Chart, Find, Freeform, etc.\n- Bounding Box Visualization - Find mode automatically annotates positions\n- Batch Processing - Support for multiple image sequential recognition\n- PDF Support - Upload PDF files, automatically convert to images\n- Modern UI - Cool gradient backgrounds and animation effects\n- Multilingual Support - Simplified Chinese, Traditional Chinese, English, Japanese\n- GPU Acceleration - High-performance inference based on NVIDIA GPU\n- Auto Model Download - Built-in HuggingFace model downloader with progress tracking\n- ModelScope Fallback - Auto-switch to ModelScope when HuggingFace is unavailable\n",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/deepseekocrwebuiv2.png",
+  "images": [
+    "docker.io/beclab/harveyff-deepseekocr-webui:v2.0.3",
+    "docker.io/beclab/harveyff-hf-downloader-only:v0.0.6",
+    "docker.io/nginx:alpine"
+  ],
+  "license": [
+    {
+      "name": "MIT License",
+      "url": "https://github.com/neosun100/DeepSeek-OCR-WebUI?tab=License-1-ov-file"
+    }
+  ],
+  "limitedCPU": "5000m",
+  "limitedDisk": "20Gi",
+  "limitedMemory": "25Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "deepseekocrwebuiv2",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": [
+      "Home"
+    ]
+  },
+  "promoteImage": [
+    "/api/market/screenshots/deepseekocrwebuiv2/1.webp",
+    "/api/market/screenshots/deepseekocrwebuiv2/2.webp"
+  ],
+  "rating": 0,
+  "requiredCpu": "1000m",
+  "requiredDisk": "8Gi",
+  "requiredGpu": "10Gi",
+  "requiredMemory": "6Gi",
+  "services": [
+    {
+      "name": "deepseekocrwebui-web-svc",
+      "ports": [
+        {
+          "name": "http",
+          "port": 8080
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/neosun100/DeepSeek-OCR-WebUI",
+  "status": "active",
+  "supportArch": [
+    "amd64"
+  ],
+  "title": "DeepSeek-OCR-2 WebUI",
+  "type": "app",
+  "upgradeDescription": "Separated the model downloader and OCR service into independent Deployments for better resource isolation and lifecycle management.\n",
+  "version": "1.0.7",
+  "versionName": "2.0.3",
+  "website": "https://github.com/neosun100/DeepSeek-OCR-WebUI"
+}

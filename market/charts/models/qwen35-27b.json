@@ -1,0 +1,88 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "vision",
+    "tools",
+    "thinking"
+  ],
+  "categories": [
+    "General",
+    "Vision",
+    "Reasoning",
+    "Tools",
+    "Code"
+  ],
+  "cfgType": "model",
+  "contextLength": "256K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Alibaba's flagship 27B multimodal model with vision, thinking, tools, and 256K context across 201 languages.",
+  "developer": "Alibaba",
+  "doc": "https://ollama.com/library/qwen3.5",
+  "fullDescription": "## MODEL OVERVIEW ##\nQwen 3.5 27B is a flagship model from Alibaba's latest Qwen generation, integrating breakthroughs in multimodal learning, architectural efficiency, and reinforcement learning.\n\n## Key Features\n- **Unified Vision-Language Foundation**: Early fusion training on multimodal tokens\n- **Efficient Hybrid Architecture**: Gated Delta Networks combined with sparse MoE\n- **Scalable RL Generalization**: Robust real-world adaptability via million-agent environments\n- **201 Languages**: Expanded global linguistic coverage\n- **256K Context**: Native 262K tokens, extensible to 1M+\n- **Vision**: Multimodal vision-language understanding\n- **Tool Calling**: Agent capabilities with function calling\n- **Thinking Mode**: Chain-of-thought reasoning\n\n## Specifications\n- Parameters: 27B\n- Context Length: 256K tokens (native), extensible to 1M+\n- Architecture: Hybrid transformer with Gated Delta Networks + sparse MoE\n- Disk Size: ~17GB (Q4_K_M)\n\n## Use Cases\n- Advanced chat and conversation\n- Complex reasoning and analysis\n- Multilingual communication (201 languages)\n- Code generation and debugging\n- Document analysis and summarization\n- Agentic workflows with tool calling",
+  "hfRepo": "",
+  "icon": "/api/market/icons/qwen35-27b.png",
+  "lastUpdated": "2026-03-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "qwen3.5:27b",
+  "modelImages": [
+    "/api/market/screenshots/qwen35-27b/logo.png",
+    "/api/market/screenshots/qwen35-27b/benchmark.png"
+  ],
+  "modelReadme": "Qwen3.5 is a family of open-source multimodal models delivering exceptional utility and performance across text and vision tasks with support for 201 languages and dialects.\n\nKey breakthroughs include unified vision-language foundation via early fusion training, efficient hybrid architecture using Gated Delta Networks with sparse Mixture-of-Experts, scalable RL across million-agent environments, and near-100% multimodal training efficiency.\n\nThe 27B variant supports native 262K token context (extensible to 1M+), vision understanding, tool calling, and thinking mode for chain-of-thought reasoning.",
+  "name": "qwen35-27b",
+  "parameters": "27B",
+  "pullCount": "5.8M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "17Gi",
+  "requiredGpu": "23Gi",
+  "requiredMemory": "4200Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/Qwen/Qwen3.5-27B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Qwen 3.5 27B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "17GB",
+      "tag": "27b"
+    },
+    {
+      "default": false,
+      "quantization": "Q8_0",
+      "size": "30GB",
+      "tag": "27b-q8_0"
+    },
+    {
+      "default": false,
+      "quantization": "BF16",
+      "size": "56GB",
+      "tag": "27b-bf16"
+    }
+  ],
+  "versionName": "qwen3.5:27b",
+  "website": "https://ollama.com/library/qwen3.5"
+}

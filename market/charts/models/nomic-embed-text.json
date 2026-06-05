@@ -1,0 +1,71 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "embedding"
+  ],
+  "categories": [
+    "Embedding"
+  ],
+  "cfgType": "model",
+  "contextLength": "8K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "High-performing open embedding model. Outperforms OpenAI Ada-002 and text-embedding-3-small.",
+  "developer": "Nomic AI",
+  "doc": "https://ollama.com/library/nomic-embed-text",
+  "fullDescription": "## MODEL OVERVIEW\nnomic-embed-text is a high-performing open embedding model from Nomic AI with an 8K token context window. It surpasses OpenAI's text-embedding-ada-002 and text-embedding-3-small on both short and long context tasks.\n\n## Key Features\n- **Outperforms OpenAI**: Better than Ada-002 and text-embedding-3-small\n- **8K Context**: Process long documents for embedding\n- **Lightweight**: Only 274MB for fast loading and inference\n- **Open Source**: Apache 2.0 licensed\n- **CPU-Friendly**: Runs efficiently on CPU without GPU\n\n## Specifications\n- Parameters: 137M\n- Max Sequence Length: 8192 tokens\n- Embedding Dimension: 768\n- Size: 274MB\n- License: Apache 2.0",
+  "hfRepo": "",
+  "icon": "/api/market/icons/nomic-embed-text.png",
+  "lastUpdated": "2024-04-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5/blob/main/LICENSE"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "20Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "nomic-embed-text:v1.5",
+  "modelImages": [],
+  "modelReadme": "nomic-embed-text is a high-performing open embedding model with a large token context window. It surpasses OpenAI's text-embedding-ada-002 and text-embedding-3-small on both short and long context tasks. The model requires Ollama 0.1.26 or later and functions exclusively for generating embeddings.",
+  "name": "nomic-embed-text",
+  "parameters": "137M",
+  "pullCount": "64.1M",
+  "quantization": "FP16",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "0",
+  "requiredMemory": "2000Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/nomic-ai/nomic-embed-text-v1.5",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Nomic Embed Text v1.5",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "FP16",
+      "size": "274MB",
+      "tag": "v1.5"
+    },
+    {
+      "quantization": "FP16",
+      "size": "274MB",
+      "tag": "137m-v1.5-fp16"
+    }
+  ],
+  "versionName": "nomic-embed-text:v1.5",
+  "website": "https://ollama.com/library/nomic-embed-text"
+}

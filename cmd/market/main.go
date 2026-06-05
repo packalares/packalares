@@ -19,14 +19,15 @@ func main() {
 
 	cfg := market.DefaultConfig()
 
-	klog.Infof("starting market backend listen=%s", cfg.ListenAddr)
+	klog.Infof("starting market backend listen=%s chartsDir=%s", cfg.ListenAddr, cfg.ChartsDir)
 
-	catalog := market.NewCatalog(cfg.CatalogPath)
+	catalog := market.NewCatalog(cfg.ChartsDir, cfg.CurationPath)
 	if err := catalog.Load(); err != nil {
 		klog.Warningf("initial catalog load: %v", err)
 	}
 
-	// Start background refresh
+	// StartRefreshLoop is a no-op (lazy rescan on every request); kept for
+	// API compatibility and clean shutdown signalling.
 	done := make(chan struct{})
 	go catalog.StartRefreshLoop(done)
 

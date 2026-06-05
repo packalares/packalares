@@ -1,0 +1,88 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "vision",
+    "tools",
+    "thinking",
+    "audio"
+  ],
+  "categories": [
+    "General",
+    "Vision",
+    "Reasoning",
+    "Tools",
+    "Audio"
+  ],
+  "cfgType": "model",
+  "contextLength": "128K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Google's efficient multimodal model with 128K context, vision, audio, and tool use. Great speed-quality balance.",
+  "developer": "Google DeepMind",
+  "doc": "https://ollama.com/library/gemma4",
+  "fullDescription": "## MODEL OVERVIEW ##\nGemma 4 E4B is Google DeepMind's efficiency-optimized multimodal model with 4.5B effective parameters (8B with embeddings). The 'E' designation indicates an efficiency-optimized architecture designed for fast inference.\n\n## Key Features\n- **128K Context Window**: Large context for document analysis\n- **Multimodal**: Process text, images, and audio inputs\n- **Tool/Function Calling**: Native support for autonomous agents\n- **Thinking Mode**: Configurable chain-of-thought reasoning\n- **Efficiency-Optimized**: Faster inference than larger models\n- **140+ Languages**: Broad multilingual support\n\n## Specifications\n- Parameters: 4.5B effective (8B with embeddings)\n- Context Length: 128K tokens\n- Vision Encoder: ~150M parameters\n- Audio Encoder: ~300M parameters\n- Disk Size: ~9.6GB\n- Architecture: Efficient transformer variant\n\n## Use Cases\n- Fast chat and Q\u0026A\n- Image and audio understanding\n- Document summarization\n- Agentic workflows with tool calling\n- Resource-constrained deployments",
+  "hfRepo": "",
+  "icon": "/api/market/icons/gemma4-e4b.png",
+  "lastUpdated": "2026-04-05",
+  "license": [
+    {
+      "name": "Gemma Terms of Use",
+      "url": "https://ai.google.dev/gemma/terms"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "33Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "gemma4:e4b",
+  "modelImages": [
+    "/api/market/screenshots/gemma4-e4b/logo.png"
+  ],
+  "modelReadme": "Gemma 4 is a family of multimodal models by Google DeepMind designed to deliver frontier-level performance. The E4B variant is an efficiency-optimized model with 4.5B effective parameters (8B with embeddings).\n\nIt supports text, image, and audio inputs with native function-calling for autonomous agents and configurable thinking modes. The 128K context window enables processing of long documents and conversations.",
+  "name": "gemma4-e4b",
+  "parameters": "E4B",
+  "pullCount": "2.4M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "10Gi",
+  "requiredGpu": "12Gi",
+  "requiredMemory": "4200Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/google/gemma-4-e4b-it",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Gemma 4 E4B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "9.6GB",
+      "tag": "e4b"
+    },
+    {
+      "default": false,
+      "quantization": "Q8_0",
+      "size": "12GB",
+      "tag": "e4b-it-q8_0"
+    },
+    {
+      "default": false,
+      "quantization": "BF16",
+      "size": "16GB",
+      "tag": "e4b-it-bf16"
+    }
+  ],
+  "versionName": "gemma4:e4b",
+  "website": "https://ollama.com/library/gemma4"
+}

@@ -1,0 +1,86 @@
+{
+  "categories": [
+    "Utilities",
+    "Developer Tools"
+  ],
+  "cfgType": "app",
+  "chartName": "cyberchef",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "The Cyber Swiss Army Knife - a web app for encryption, encoding, compression and data analysis",
+  "developer": "GCHQ",
+  "doc": "https://github.com/gchq/CyberChef/wiki",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "cyberchef-svc",
+      "icon": "/api/market/icons/cyberchef.png",
+      "name": "cyberchef",
+      "openMethod": "window",
+      "port": 8000,
+      "title": "CyberChef"
+    }
+  ],
+  "featuredImage": "",
+  "fullDescription": "CyberChef is a simple, intuitive web app for carrying out all manner of \"cyber\" operations within a web browser. These operations include simple encoding like XOR and Base64, more complex encryption like AES, DES and Blowfish, creating binary and hexdumps, compression and decompression of data, calculating hashes and checksums, IPv6 and X.509 parsing, changing character encodings, and much more.\n\nThe tool is designed to enable both technical and non-technical analysts to manipulate data in complex ways without having to deal with more specialised tools or algorithms. It was conceived, designed, built and incrementally improved by an analyst in their 10% innovation time over several years.\n\nFeatures:\n- Drag and drop operations to build recipes\n- Auto Bake for real-time processing as you type\n- Automated encoding detection with Magic operation\n- Breakpoints and step-through debugging for recipes\n- Save and load recipes as URLs for easy sharing\n- Search for operations by name or keyword\n- Highlighting to trace data between input and output\n- Load files up to 2GB directly in the browser\n- All processing happens client-side - no data sent to any server\n\nSupported operations include:\n- Encoding/decoding (Base64, URL, HTML, Hex, Unicode, etc.)\n- Encryption/decryption (AES, DES, 3DES, Blowfish, RC4, Rabbit, etc.)\n- Hashing (MD5, SHA1, SHA256, SHA512, HMAC, etc.)\n- Compression (Gzip, Bzip2, Zlib, Raw Deflate, etc.)\n- Data format conversion (JSON, XML, CSV, YAML, etc.)\n- Networking (Parse IP, Parse URI, HTTP request, DNS lookup, etc.)\n- Binary operations (XOR, AND, OR, NOT, bit shifts, etc.)\n- Text manipulation (Find/Replace, Regular expressions, etc.)\n- And many more - over 300 operations in total\n",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/cyberchef.png",
+  "images": [
+    "docker.io/mpepping/cyberchef:v10.23.0"
+  ],
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://github.com/gchq/CyberChef/blob/master/LICENSE"
+    }
+  ],
+  "limitedCPU": "500m",
+  "limitedDisk": "128Mi",
+  "limitedMemory": "512Mi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "cyberchef",
+  "permission": {
+    "appCache": false,
+    "appData": false,
+    "userData": null
+  },
+  "promoteImage": [],
+  "rating": 0,
+  "requiredCpu": "50m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "",
+  "requiredMemory": "128Mi",
+  "services": [
+    {
+      "name": "cyberchef-svc",
+      "ports": [
+        {
+          "name": "http",
+          "port": 8000
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/gchq/CyberChef",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "CyberChef",
+  "type": "app",
+  "upgradeDescription": "Initial release for Packalares marketplace. Bumped to upstream v10.23.0.",
+  "version": "1.0.1",
+  "versionName": "10.23.0",
+  "website": "https://gchq.github.io/CyberChef/"
+}

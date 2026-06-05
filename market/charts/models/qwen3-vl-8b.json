@@ -1,0 +1,82 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "vision",
+    "tools",
+    "thinking"
+  ],
+  "categories": [
+    "Vision",
+    "Reasoning",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "256K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Fast vision-language model. Quick image understanding in a compact 8B package.",
+  "developer": "Qwen Team (Alibaba)",
+  "doc": "https://ollama.com/library/qwen3-vl",
+  "fullDescription": "## MODEL OVERVIEW\nQwen3-VL 8B is a compact yet powerful vision-language model from the Qwen family. Despite its smaller size, it provides strong multimodal understanding with support for images, documents, and video at 256K context length.\n\n## Key Features\n- **Fast Vision**: Quick image processing and understanding\n- **Visual Agent**: GUI interaction, tool calling support\n- **Visual Coding**: Generate code from design mockups\n- **Spatial Understanding**: 2D/3D grounding for spatial reasoning\n- **256K Context**: Long context for multi-image and video tasks\n- **OCR in 32 Languages**: Expanded multilingual OCR support\n- **Thinking Mode**: Optimized variant for STEM reasoning\n\n## Specifications\n- Parameters: 8B\n- Context Length: 256K tokens\n- Modalities: Text + Images + Video\n- Default Size: ~6.1GB (Q4_K_M)",
+  "hfRepo": "",
+  "icon": "/api/market/icons/qwen3-vl-8b.png",
+  "lastUpdated": "2025-11-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "25Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "qwen3-vl:8b",
+  "modelImages": [
+    "/api/market/screenshots/qwen3-vl-8b/logo.png"
+  ],
+  "modelReadme": "Qwen3-VL is the most powerful vision-language model in the Qwen model family to date. In this generation, there are improvements to the model in many areas: its understanding and generating text, perceiving and reasoning about visual content, supporting longer context lengths, understanding spatial relationships and dynamic videos, or interacting with AI agents.\n\n## Key Features\n- **Visual Agent Capabilities**: Operate computer/mobile interfaces, recognize GUI elements, and call tools.\n- **Superior Text-Centric Performance**: Joint pretraining of text and visual modalities.\n- **Greatly Improved Visual Coding**: Generate code from images or videos.\n- **Much Better Spatial Understanding**: 2D and 3D grounding capabilities.\n- **Long Context \u0026 Long Video Understanding**: Natively supports 256K tokens, expandable to 1M.\n- **Stronger Multimodal Reasoning**: Thinking variant optimized for STEM and math.\n- **Better OCR Across More Languages**: OCR supports 32 languages.",
+  "name": "qwen3-vl-8b",
+  "parameters": "8B",
+  "pullCount": "3.1M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "10Gi",
+  "requiredMemory": "4200Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/Qwen/Qwen3-VL-8B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Qwen 3 VL 8B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "6.1GB",
+      "tag": "8b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "9.8GB",
+      "tag": "8b-instruct-q8_0"
+    },
+    {
+      "quantization": "BF16",
+      "size": "18GB",
+      "tag": "8b-instruct-bf16"
+    }
+  ],
+  "versionName": "qwen3-vl:8b",
+  "website": "https://ollama.com/library/qwen3-vl"
+}

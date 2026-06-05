@@ -163,16 +163,14 @@ type PageLayout struct {
 	Content  json.RawMessage `json:"content,omitempty"`
 }
 
-// EnrichedCatalog is the full catalog structure saved to catalog.json.
-// It includes all appstore metadata beyond just the app list.
-type EnrichedCatalog struct {
-	Apps            []MarketApp               `json:"apps"`
-	Categories      []Category                `json:"categories"`
+// Curation holds catalog-level metadata that is NOT per-entity.
+type Curation struct {
 	Recommendations map[string]RecommendGroup `json:"recommendations,omitempty"`
 	TopicLists      map[string]TopicListEntry `json:"topicLists,omitempty"`
 	Tops            []TopApp                  `json:"tops,omitempty"`
 	Latest          []string                  `json:"latest,omitempty"`
 	Pages           map[string]PageLayout     `json:"pages,omitempty"`
+	Categories      []Category                `json:"categories,omitempty"`
 }
 
 // --- API response types ---

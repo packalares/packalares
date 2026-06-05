@@ -1,0 +1,75 @@
+{
+  "categories": [
+    "Productivity"
+  ],
+  "cfgType": "app",
+  "chartName": "onlyoffice",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e=1.0.0"
+    }
+  ],
+  "description": "Run your private office with ONLYOFFICE Docs",
+  "developer": "ONLYOFFICE",
+  "doc": "https://helpcenter.onlyoffice.com/index.aspx",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "onlyoffice-svc",
+      "icon": "https://app.cdn.olares.com/appstore/onlyoffice/icon.png",
+      "name": "onlyoffice",
+      "openMethod": "window",
+      "port": 80,
+      "title": "OnlyOffice"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/onlyoffice/featured.webp",
+  "fullDescription": "ONLYOFFICE Docs is a free collaborative online office suite comprising viewers and editors for texts, spreadsheets and presentations, forms and PDF, fully compatible with Office Open XML formats: .docx, .xlsx, .pptx and enabling collaborative editing in real time.\n\n# IMPORTANT NOTE\nWhen starting ONLYOFFICE for the first time, navigate to ControlHub. In the onlyoffice pod, open the terminal of the 'onlyoffice' container. Enter the command `supervisorctl start ds:example`. Then, return to the welcome page and click on 'go to test example' to try it out.\n\nONLYOFFICE Docs includes the following editors:\n# ONLYOFFICE Document Editor\n# ONLYOFFICE Spreadsheet Editor\n# ONLYOFFICE Presentation Editor\n# ONLYOFFICE Form Creator\n# ONLYOFFICE PDF editor, reader \u0026 converter\n\nThe editors allow you to create, edit, save and export text, spreadsheet and presentation documents and additionally have the features:\n# Collaborative editing\n# Hieroglyph support\n# Reviewing\n# Spell-checking",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/onlyoffice.png",
+  "license": [
+    {
+      "text": "AGPL-3.0",
+      "url": "https://github.com/ONLYOFFICE/DocumentServer?tab=AGPL-3.0-1-ov-file#readme"
+    }
+  ],
+  "limitedCPU": "4000m",
+  "limitedMemory": "9.5Gi",
+  "locale": [
+    "en-US"
+  ],
+  "name": "onlyoffice",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": [
+      "Home"
+    ]
+  },
+  "promoteImage": [
+    "/api/market/screenshots/onlyoffice/1.webp",
+    "/api/market/screenshots/onlyoffice/2.webp",
+    "/api/market/screenshots/onlyoffice/3.webp"
+  ],
+  "rating": 0,
+  "requiredCpu": "500m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "",
+  "requiredMemory": "800Mi",
+  "source": "olares",
+  "sourceCode": "https://github.com/ONLYOFFICE/DocumentServer",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "OnlyOffice",
+  "type": "app",
+  "upgradeDescription": "Upgrade to 9.3.1\nView full changelog at: https://github.com/ONLYOFFICE/DocumentServer/blob/master/CHANGELOG.md",
+  "version": "1.0.9",
+  "versionName": "9.3.1",
+  "website": "https://www.onlyoffice.com/"
+}

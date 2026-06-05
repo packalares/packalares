@@ -1,0 +1,86 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "embedding"
+  ],
+  "categories": [
+    "Embedding"
+  ],
+  "cfgType": "model",
+  "contextLength": "512",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Ultra-tiny embedding model. Only 46MB, perfect for lightweight RAG on any hardware.",
+  "developer": "Sentence Transformers",
+  "doc": "https://ollama.com/library/all-minilm",
+  "fullDescription": "## MODEL OVERVIEW\nAll-MiniLM is a tiny, ultra-fast embedding model based on the Sentence Transformers framework. At only 46MB, it can run on virtually any hardware while providing useful semantic embeddings for sentence-level datasets using self-supervised contrastive learning.\n\n## Key Features\n- **Ultra-Tiny**: Only 46MB, smallest practical embedding model\n- **Blazing Fast**: Near-instant embedding generation\n- **Low Resources**: Runs on any CPU, even edge devices\n- **Good Quality**: Reasonable embedding quality for its size\n- **Battle-Tested**: One of the most widely used embedding models (2.9M+ pulls)\n\n## Specifications\n- Parameters: ~22M (L6-v2) / ~33M (L12-v2)\n- Max Sequence Length: 512 tokens\n- Embedding Dimension: 384\n- Disk Size: 46MB (22m) / 67MB (33m)\n\n## Use Cases\n- Lightweight RAG pipelines\n- Edge device deployment\n- Rapid prototyping\n- High-throughput embedding\n- Resource-constrained environments\n\n**Note:** Requires Ollama 0.1.26 or later. This model can only be used to generate embeddings.",
+  "hfRepo": "",
+  "icon": "/api/market/icons/all-minilm.png",
+  "lastUpdated": "2024-04-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "10Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "all-minilm:latest",
+  "modelImages": [],
+  "modelReadme": "Embedding models on very large sentence level datasets.\n\nThe project aims to train sentence embedding models on very large sentence level datasets using a self-supervised contrastive learning objective. This model can only be used to generate embeddings.\n\n**Note:** This model requires Ollama 0.1.26 or later.\n\n## Usage\n\n### REST API\n```\ncurl http://localhost:11434/api/embeddings -d '{\n  \"model\": \"all-minilm\",\n  \"prompt\": \"The sky is blue because of Rayleigh scattering\"\n}'\n```\n\n### Python\n```python\nollama.embeddings(model='all-minilm', prompt='The sky is blue because of Rayleigh scattering')\n```\n\n### JavaScript\n```javascript\nollama.embeddings({ model: 'all-minilm', prompt: 'The sky is blue because of Rayleigh scattering' })\n```",
+  "name": "all-minilm",
+  "parameters": "22M",
+  "pullCount": "2.9M",
+  "quantization": "FP16",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "0",
+  "requiredMemory": "2000Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "All-MiniLM",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "FP16",
+      "size": "46MB",
+      "tag": "latest"
+    },
+    {
+      "quantization": "FP16",
+      "size": "46MB",
+      "tag": "22m"
+    },
+    {
+      "quantization": "FP16",
+      "size": "67MB",
+      "tag": "33m"
+    },
+    {
+      "quantization": "FP16",
+      "size": "46MB",
+      "tag": "l6-v2"
+    },
+    {
+      "quantization": "FP16",
+      "size": "67MB",
+      "tag": "l12-v2"
+    }
+  ],
+  "versionName": "all-minilm:latest",
+  "website": "https://www.sbert.net/"
+}

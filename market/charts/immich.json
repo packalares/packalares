@@ -1,0 +1,97 @@
+{
+  "categories": [
+    "Lifestyle",
+    "Entertainment"
+  ],
+  "cfgType": "app",
+  "chartName": "immich",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "High performance self-hosted photo and video management solution.",
+  "developer": "immich-app",
+  "doc": "https://immich.app/docs/overview/introduction",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "immich-svc",
+      "icon": "/api/market/icons/immich.png",
+      "name": "immich",
+      "openMethod": "window",
+      "port": 80,
+      "title": "Immich"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/immich/featured.png",
+  "fullDescription": "## OVERVIEW ##\nImmich is a self-hosted photo and video management solution that allows you to back up your precious memories directly from your mobile phone.\n\nHere are some key features:\n- Web Portal and Mobile App:\nImmich provides a user-friendly web interface and a mobile app for both iOS and Android. You can easily browse, organize, and manage your media files.\n\n- Automatic Backup\nImmich ensures that your photos and videos are automatically backed up, just like Google Photos. Say goodbye to manual uploads!\n\n- Bulk Upload\nNeed to transfer a large batch of files? Immich supports bulk uploads, making it efficient to migrate your existing media.\n\n- Partner Sharing\nShare specific albums or memories with friends and family. Immich lets you collaborate and reminisce together.\n\n- Facial Recognition\nImmich can recognize faces in your photos, making it easier to find specific people or moments.\n\n- Reverse Geocoding\nWondering where a particular photo was taken? Immich adds location information to your media.\n",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/immich.png",
+  "images": [
+    "ghcr.io/immich-app/immich-server:v2.7.5",
+    "ghcr.io/immich-app/immich-machine-learning:v2.7.5",
+    "docker.io/pgvector/pgvector:0.8.2-pg17",
+    "ghcr.io/packalares/redis:7-alpine",
+    "docker.io/busybox:1.37.0"
+  ],
+  "license": [
+    {
+      "name": "AGPL-3.0",
+      "url": "https://github.com/immich-app/immich?tab=AGPL-3.0-1-ov-file#readme"
+    }
+  ],
+  "limitedCPU": "5500m",
+  "limitedDisk": "500Gi",
+  "limitedMemory": "6500Mi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "immich",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": [
+      "Home"
+    ]
+  },
+  "promoteImage": [
+    "/api/market/screenshots/immich/1.png",
+    "/api/market/screenshots/immich/2.png",
+    "/api/market/screenshots/immich/3.png",
+    "/api/market/screenshots/immich/4.png"
+  ],
+  "rating": 0,
+  "requiredCpu": "600m",
+  "requiredDisk": "5Gi",
+  "requiredGpu": "",
+  "requiredMemory": "2000Mi",
+  "services": [
+    {
+      "name": "immich-svc",
+      "ports": [
+        {
+          "name": "http",
+          "port": 80
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/immich-app/immich",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Immich",
+  "type": "app",
+  "upgradeDescription": "Bumped to upstream v2.7.5; renamed all internal resources for multi-tenant compatibility.",
+  "version": "1.0.23",
+  "versionName": "2.7.5",
+  "website": "https://immich.app"
+}

@@ -1,0 +1,92 @@
+{
+  "categories": [
+    "Utilities"
+  ],
+  "cfgType": "app",
+  "chartName": "windows",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "Run Windows on Olares",
+  "developer": "dockur",
+  "doc": "https://github.com/dockur/windows",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "windows-svc",
+      "icon": "/api/market/icons/windows.png",
+      "name": "windows",
+      "openMethod": "window",
+      "port": 8006,
+      "title": "Windows"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/windows/featured.webp",
+  "fullDescription": "This app helps you run Windows on Olares.\nBased on dockur's Windows inside a Docker container.\n\nFeatures\nISO downloader\nKVM acceleration\nWeb-based viewer\n\nSupported Windows\tVersions\n- Windows 11 Pro\n- Windows 11 LTSC\n- Windows 11 Enterprise\n- Windows 10 Pro\n- Windows 10 Enterprise\n- Windows 8.1 Enterprise\n- Windows 7 Ultimate\n- Windows Vista Ultimate\n- Windows 2000 Professional\n- Windows Server 2025\n- Windows Server 2022\n- Windows Server 2019\n- Windows Server 2016\n- Windows Server 2012\n- Windows Server 2008\n- Windows Server 2003\n",
+  "hasChart": true,
+  "hasCredentials": true,
+  "icon": "/api/market/icons/windows.png",
+  "images": [
+    "docker.io/dockurr/windows:5.14"
+  ],
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/dockur/windows?tab=MIT-1-ov-file#readme"
+    }
+  ],
+  "limitedCPU": "12000m",
+  "limitedDisk": "300Gi",
+  "limitedMemory": "24Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "user",
+  "name": "windows",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": null
+  },
+  "promoteImage": [
+    "/api/market/screenshots/windows/1.webp",
+    "/api/market/screenshots/windows/2.webp",
+    "/api/market/screenshots/windows/3.webp"
+  ],
+  "rating": 0,
+  "requiredCpu": "4000m",
+  "requiredDisk": "128Gi",
+  "requiredGpu": "",
+  "requiredMemory": "6Gi",
+  "services": [
+    {
+      "name": "windows-svc",
+      "ports": [
+        {
+          "name": "tcp-8006",
+          "port": 8006
+        },
+        {
+          "name": "tcp-3389",
+          "port": 3389
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/dockur/windows",
+  "status": "active",
+  "supportArch": [
+    "amd64"
+  ],
+  "title": "Windows",
+  "type": "app",
+  "upgradeDescription": "Upgrade to version 5.14 using official dockurr/windows image.\n\nChanges include updates to Workspaces configuration, VirtIO drivers v1.9.49,\nQEMU base image v7.29, and various code refactoring improvements.\n\nFull release notes: https://github.com/dockur/windows/releases/tag/v5.14\n",
+  "version": "1.1.2",
+  "versionName": "5.14",
+  "website": "https://github.com/dockur/windows?tab=readme-ov-file#readme"
+}

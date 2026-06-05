@@ -1,0 +1,93 @@
+{
+  "categories": [
+    "Productivity",
+    "Utilities"
+  ],
+  "cfgType": "app",
+  "chartName": "stirlingpdf",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "A locally hosted one-stop shop for all your PDF needs.",
+  "developer": "Stirling PDF",
+  "doc": "https://docs.stirlingpdf.com/",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "stirlingpdf-svc",
+      "icon": "/api/market/icons/stirlingpdf.png",
+      "name": "stirlingpdf",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "Stirling-PDF"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/stirlingpdf/featured.jpg",
+  "fullDescription": "Stirling-PDF is a robust, locally hosted web-based PDF manipulation tool. It enables you to carry out various operations on PDF files, including splitting, merging, converting, reorganizing, adding images, rotating, compressing, and more. This locally hosted web application has evolved to encompass a comprehensive set of features, addressing all your PDF requirements.\n\nAll files and PDFs exist either exclusively on the client side, reside in server memory only during task execution, or temporarily reside in a file solely for the execution of the task. Any file downloaded by the user will have been deleted from the server by that point.\n\nFeatures\n50+ PDF Operations\nParallel file processing and downloads\nDark mode support\nCustom download options\nCustom 'Pipelines' to run multiple features in a automated queue\nAPI for integration with external scripts\nOptional Login and Authentication support\nDatabase Backup and Import\nEnterprise features like SSO\n\nFind complete feature list at: https://github.com/Stirling-Tools/Stirling-PDF?tab=readme-ov-file#features\n",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/stirlingpdf.png",
+  "images": [
+    "docker.io/stirlingtools/stirling-pdf:2.9.2",
+    "docker.io/busybox:1.37.0"
+  ],
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/Stirling-Tools/Stirling-PDF?tab=readme-ov-file#MIT-1-ov-file"
+    }
+  ],
+  "limitedCPU": "1000m",
+  "limitedDisk": "256Mi",
+  "limitedMemory": "4Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "stirlingpdf",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": [
+      "Home"
+    ]
+  },
+  "promoteImage": [
+    "/api/market/screenshots/stirlingpdf/1.jpg",
+    "/api/market/screenshots/stirlingpdf/2.jpg",
+    "/api/market/screenshots/stirlingpdf/3.jpg"
+  ],
+  "rating": 0,
+  "requiredCpu": "250m",
+  "requiredDisk": "128Mi",
+  "requiredGpu": "",
+  "requiredMemory": "512Mi",
+  "services": [
+    {
+      "name": "stirlingpdf-svc",
+      "ports": [
+        {
+          "name": "http",
+          "port": 8080
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/Stirling-Tools/Stirling-PDF",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Stirling-PDF",
+  "type": "app",
+  "upgradeDescription": "Upgrade to upstream v2.9.2 with official Docker image\n",
+  "version": "1.0.8",
+  "versionName": "2.9.2",
+  "website": "https://www.stirlingpdf.com/"
+}

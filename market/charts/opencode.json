@@ -1,0 +1,58 @@
+{
+  "categories": [
+    "Developer Tools",
+    "Productivity"
+  ],
+  "cfgType": "app",
+  "chartName": "opencode",
+  "description": "The open source AI coding agent.",
+  "developer": "Anomaly",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "opencode-ingress",
+      "icon": "/api/market/icons/opencode.png",
+      "name": "opencode",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "OpenCode"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/opencode/featured.webp",
+  "fullDescription": "OpenCode is an open-source agent that helps you write code in the terminal, IDE, or desktop.\n\n- Support LSPs to automatically load appropriate LSPs for LLMs\n- Multi-session Launch multiple agents in parallel in the same project\n- Share Link Share any session link for reference or debugging\n- GitHub Copilot Sign in with GitHub to use your Copilot account\n- ChatGPT Plus/Pro Login with OpenAI to use your ChatGPT Plus or Pro account\n- Arbitrary Models supports 75+ LLM providers with Models.dev, including native models\n- Any editor provides terminal interfaces, desktop applications, and IDE extensions\n\nUsage\n- Open the app and use the Web UI directly in your browser.\n- Configure your LLM provider and API keys in the Web UI.\n- Your code workspace is mounted at /home/opencode/workspace (linked to your Home/Code directory).",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/opencode.png",
+  "limitedCPU": "3.1",
+  "limitedMemory": "3Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "opencode",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": [
+      "Home"
+    ]
+  },
+  "promoteImage": [
+    "/api/market/screenshots/opencode/1.webp",
+    "/api/market/screenshots/opencode/2.webp"
+  ],
+  "requiredCpu": "0.2",
+  "requiredDisk": "3Gi",
+  "requiredGpu": "",
+  "requiredMemory": "832Mi",
+  "source": "olares",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "OpenCode",
+  "type": "app",
+  "version": "1.0.5",
+  "versionName": "1.4.0"
+}

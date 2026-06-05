@@ -3,263 +3,224 @@ package market
 import (
 	"encoding/json"
 	"os"
-	"regexp"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru/v2"
 	"k8s.io/klog/v2"
 )
 
-// catVersionSuffix matches version suffixes like "_v112" in category/page names.
-var catVersionSuffix = regexp.MustCompile(`_v\d+$`)
+const (
+	modelsSubdir    = "models"
+	rescanInterval  = 5 * time.Second
+	lruCacheSize    = 64
+)
 
-// Catalog loads and serves app catalog data from local files.
-// All data is self-contained: catalog.json, charts, icons, and screenshots
-// are baked into the Docker image at /data/market/.
+// chartEntry is a lightweight index record for one sidecar file.
+type chartEntry struct {
+	sidecarPath string
+	mtime       time.Time
+	kind        string // "app" | "model"
+}
+
+// Catalog scans per-entity sidecar JSONs from chartsDir on demand.
+// No boot-load, no goroutines spawned per request; rescans are debounced.
 type Catalog struct {
-	mu         sync.RWMutex
-	apps       []MarketApp
-	appsByName map[string]*MarketApp
-	categories []Category
-	lastFetch  time.Time
-	cacheTTL   time.Duration
+	chartsDir    string
+	curationPath string
 
-	// Appstore-provided curated data
-	recommendations map[string]RecommendGroup
-	topicLists      map[string]TopicListEntry
-	tops            []TopApp
-	latest          []string
-	pages           map[string]PageLayout
+	mu          sync.RWMutex
+	indexedAt   time.Time
+	chartIndex  map[string]chartEntry // name → entry
 
-	// Detail cache
-	detailMu    sync.RWMutex
-	detailCache map[string]*MarketApp // name -> enriched app
+	parsed   *lru.Cache[string, *MarketApp] // bounded; evicts LRU on overflow
+	curation *Curation                      // small; always loaded; reread on mtime change
 
-	localPath string // path to local catalog JSON file
+	curationMu    sync.RWMutex
+	curationMtime time.Time
 }
 
-// NewCatalog creates a new catalog.
-func NewCatalog(localPath string) *Catalog {
-	c := &Catalog{
-		appsByName:      make(map[string]*MarketApp),
-		recommendations: make(map[string]RecommendGroup),
-		topicLists:      make(map[string]TopicListEntry),
-		pages:           make(map[string]PageLayout),
-		detailCache:     make(map[string]*MarketApp),
-		cacheTTL:        30 * time.Minute,
-		localPath:       localPath,
+// NewCatalog creates a Catalog rooted at the given chartsDir.
+// chartsDir is e.g. /data/market/charts; models live in chartsDir/models/.
+// curationPath is the path to curation.json.
+func NewCatalog(chartsDir, curationPath string) *Catalog {
+	cache, _ := lru.New[string, *MarketApp](lruCacheSize)
+	return &Catalog{
+		chartsDir:    chartsDir,
+		curationPath: curationPath,
+		chartIndex:   make(map[string]chartEntry),
+		parsed:       cache,
 	}
-	return c
 }
 
-// Load reads the catalog from local files only.
-// Priority: /data/market/catalog.json -> user-specified path -> fallback paths -> built-in.
+// Load performs an initial directory scan.
+// Idempotent — calling it again is the same as a forced rescan.
 func (c *Catalog) Load() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	return c.rescan()
+}
 
-	localPaths := []string{
-		"/data/market/catalog.json",
+// ensureFresh rescans at most once per rescanInterval.
+func (c *Catalog) ensureFresh() {
+	c.mu.RLock()
+	age := time.Since(c.indexedAt)
+	c.mu.RUnlock()
+
+	if age <= rescanInterval {
+		return
 	}
 
-	if c.localPath != "" {
-		localPaths = append(localPaths, c.localPath)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	// Double-check under write lock
+	if time.Since(c.indexedAt) > rescanInterval {
+		if err := c.rescan(); err != nil {
+			klog.Warningf("catalog rescan: %v", err)
+		}
+	}
+}
+
+// rescan reads chartsDir (and chartsDir/models/) to rebuild chartIndex.
+// Must be called with c.mu held for writing.
+func (c *Catalog) rescan() error {
+	newIndex := make(map[string]chartEntry)
+
+	// Scan apps
+	if err := scanDir(c.chartsDir, "app", newIndex); err != nil && !os.IsNotExist(err) {
+		klog.Warningf("catalog: scan %s: %v", c.chartsDir, err)
 	}
 
-	localPaths = append(localPaths,
-		"/etc/packalares/catalog.json",
-		"/app/catalog.json",
-		"/tmp/packalares-catalog.json",
-		"catalog.json",
-	)
+	// Scan models
+	modelsDir := filepath.Join(c.chartsDir, modelsSubdir)
+	if err := scanDir(modelsDir, "model", newIndex); err != nil && !os.IsNotExist(err) {
+		klog.Warningf("catalog: scan %s: %v", modelsDir, err)
+	}
 
-	for _, p := range localPaths {
-		enriched, err := c.loadLocal(p)
-		if err == nil && len(enriched.Apps) > 0 {
-			c.setFromEnriched(enriched)
-			klog.Infof("loaded %d apps from local file %s", len(enriched.Apps), p)
-			return nil
+	// Evict LRU entries for files that changed mtime or were removed
+	for name, old := range c.chartIndex {
+		newEntry, exists := newIndex[name]
+		if !exists || newEntry.mtime != old.mtime {
+			c.parsed.Remove(name)
+		}
+	}
+	// Also evict entries that are new (shouldn't be cached yet, but be safe)
+	for name := range newIndex {
+		if _, existed := c.chartIndex[name]; !existed {
+			c.parsed.Remove(name)
 		}
 	}
 
-	// Final fallback: built-in catalog
-	apps := builtinCatalog()
-	c.setApps(apps)
-	klog.Infof("loaded %d apps from built-in catalog", len(apps))
+	c.chartIndex = newIndex
+	c.indexedAt = time.Now()
+	klog.Infof("catalog: indexed %d entries (%s)", len(newIndex), c.indexedAt.Format(time.RFC3339))
 	return nil
 }
 
-// setFromEnriched populates the catalog from an EnrichedCatalog.
-func (c *Catalog) setFromEnriched(ec *EnrichedCatalog) {
-	c.apps = ec.Apps
-	c.appsByName = make(map[string]*MarketApp, len(ec.Apps))
-	for i := range ec.Apps {
-		ec.Apps[i].Categories = cleanCategories(ec.Apps[i].Categories)
-		c.appsByName[ec.Apps[i].Name] = &ec.Apps[i]
+// scanDir reads all *.json files in dir and adds them to idx with the given kind.
+// Sub-directories are not descended (models/ is handled separately by the caller).
+func scanDir(dir, kind string, idx map[string]chartEntry) error {
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return err
 	}
-
-	if len(ec.Categories) > 0 {
-		c.categories = ec.Categories
-		catCount := make(map[string]int)
-		for _, app := range ec.Apps {
-			for _, cat := range app.Categories {
-				catCount[cat]++
-			}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
 		}
-		for i := range c.categories {
-			c.categories[i].Count = catCount[c.categories[i].Name]
+		name := e.Name()
+		if !strings.HasSuffix(name, ".json") {
+			continue
 		}
-	} else {
-		c.deriveCategories()
+		appName := strings.TrimSuffix(name, ".json")
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		idx[appName] = chartEntry{
+			sidecarPath: filepath.Join(dir, name),
+			mtime:       info.ModTime(),
+			kind:        kind,
+		}
 	}
-
-	if ec.Recommendations != nil {
-		c.recommendations = ec.Recommendations
-	}
-	if ec.TopicLists != nil {
-		c.topicLists = ec.TopicLists
-	}
-	if ec.Tops != nil {
-		c.tops = ec.Tops
-	}
-	if ec.Latest != nil {
-		c.latest = ec.Latest
-	}
-	if ec.Pages != nil {
-		c.pages = ec.Pages
-	}
-
-	c.lastFetch = time.Now()
+	return nil
 }
 
-func (c *Catalog) setApps(apps []MarketApp) {
-	c.apps = apps
-	c.appsByName = make(map[string]*MarketApp, len(apps))
+// ListApps returns all apps/models as a light slice.
+// Each entry is parsed fresh if not in LRU cache, or stale if mtime hasn't changed.
+func (c *Catalog) ListApps() []MarketApp {
+	c.ensureFresh()
 
-	for i := range apps {
-		apps[i].Categories = cleanCategories(apps[i].Categories)
-		c.appsByName[apps[i].Name] = &apps[i]
+	c.mu.RLock()
+	names := make([]string, 0, len(c.chartIndex))
+	for n := range c.chartIndex {
+		names = append(names, n)
 	}
+	c.mu.RUnlock()
 
-	c.deriveCategories()
-	c.lastFetch = time.Now()
+	sort.Strings(names)
+	result := make([]MarketApp, 0, len(names))
+	for _, n := range names {
+		app := c.loadOne(n)
+		if app != nil {
+			result = append(result, *app)
+		}
+	}
+	return result
 }
 
-// deriveCategories builds the category list from app data.
-func (c *Catalog) deriveCategories() {
+// GetApp returns a single app by name. The second return is false if not found.
+func (c *Catalog) GetApp(name string) (*MarketApp, bool) {
+	c.ensureFresh()
+	app := c.loadOne(name)
+	if app == nil {
+		return nil, false
+	}
+	cp := *app
+	return &cp, true
+}
+
+// GetAppDetail is an alias for GetApp (all data is local).
+func (c *Catalog) GetAppDetail(name string) (*MarketApp, bool) {
+	return c.GetApp(name)
+}
+
+// ListCategories derives categories from all apps.
+func (c *Catalog) ListCategories() []Category {
+	apps := c.ListApps()
+
 	catCount := make(map[string]int)
-	for _, app := range c.apps {
+	for _, app := range apps {
 		for _, cat := range app.Categories {
 			catCount[cat]++
 		}
 	}
 
-	c.categories = make([]Category, 0, len(catCount))
+	cats := make([]Category, 0, len(catCount))
 	for name, count := range catCount {
-		c.categories = append(c.categories, Category{Name: name, Count: count})
+		cats = append(cats, Category{Name: name, Count: count})
 	}
-	sort.Slice(c.categories, func(i, j int) bool {
-		return c.categories[i].Name < c.categories[j].Name
+	sort.Slice(cats, func(i, j int) bool {
+		return cats[i].Name < cats[j].Name
 	})
+	return cats
 }
 
-// loadLocal loads a catalog from a local JSON file.
-// Supports both the enriched format and legacy flat array format.
-func (c *Catalog) loadLocal(path string) (*EnrichedCatalog, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	// Try enriched format first (has "apps" key at top level)
-	var enriched EnrichedCatalog
-	if err := json.Unmarshal(data, &enriched); err != nil {
-		klog.Warningf("loadLocal %s enriched parse error: %v", path, err)
-	} else if len(enriched.Apps) > 0 {
-		return &enriched, nil
-	} else {
-		klog.Warningf("loadLocal %s enriched parsed OK but 0 apps", path)
-	}
-
-	// Try flat array of apps
-	var apps []MarketApp
-	if err := json.Unmarshal(data, &apps); err == nil && len(apps) > 0 {
-		return &EnrichedCatalog{Apps: apps}, nil
-	}
-
-	// Try wrapped format with "data" key
-	var wrapped struct {
-		Data []MarketApp `json:"data"`
-	}
-	if err := json.Unmarshal(data, &wrapped); err == nil && len(wrapped.Data) > 0 {
-		return &EnrichedCatalog{Apps: wrapped.Data}, nil
-	}
-
-	return nil, os.ErrNotExist
-}
-
-// Refresh reloads the catalog from local files if cache has expired.
-func (c *Catalog) Refresh() error {
-	c.mu.RLock()
-	expired := time.Since(c.lastFetch) > c.cacheTTL
-	c.mu.RUnlock()
-
-	if !expired {
+// ListRecommendations returns recommendation groups with expanded app objects.
+func (c *Catalog) ListRecommendations() map[string][]MarketApp {
+	cur := c.loadCuration()
+	if cur == nil || len(cur.Recommendations) == 0 {
 		return nil
 	}
 
-	return c.Load()
-}
-
-// ListApps returns all apps in the catalog.
-func (c *Catalog) ListApps() []MarketApp {
-	_ = c.Refresh()
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	result := make([]MarketApp, len(c.apps))
-	copy(result, c.apps)
-	return result
-}
-
-// GetApp returns a single app by name.
-func (c *Catalog) GetApp(name string) (*MarketApp, bool) {
-	_ = c.Refresh()
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	app, ok := c.appsByName[name]
-	return app, ok
-}
-
-// ListCategories returns all known categories.
-func (c *Catalog) ListCategories() []Category {
-	_ = c.Refresh()
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	result := make([]Category, len(c.categories))
-	copy(result, c.categories)
-	return result
-}
-
-// ListRecommendations returns app recommendation groups.
-func (c *Catalog) ListRecommendations() map[string][]MarketApp {
-	_ = c.Refresh()
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	result := make(map[string][]MarketApp, len(c.recommendations))
-	for groupName, rec := range c.recommendations {
+	result := make(map[string][]MarketApp, len(cur.Recommendations))
+	for groupName, rec := range cur.Recommendations {
 		var apps []MarketApp
 		for _, id := range rec.AppIDs {
-			if app, ok := c.appsByName[id]; ok {
+			if app, ok := c.GetApp(id); ok {
 				apps = append(apps, *app)
 			}
 		}
@@ -270,36 +231,16 @@ func (c *Catalog) ListRecommendations() map[string][]MarketApp {
 	return result
 }
 
-// GetAppDetail returns the full detail for an app.
-// All data is local — no remote enrichment.
-func (c *Catalog) GetAppDetail(name string) (*MarketApp, bool) {
-	app, ok := c.GetApp(name)
-	if !ok {
-		return nil, false
-	}
-
-	// Return a copy
-	detail := *app
-	return &detail, true
-}
-
-// Search searches apps by query string (matches name, title, description).
+// Search matches apps by name, title, description, or category.
 func (c *Catalog) Search(query string) []MarketApp {
-	_ = c.Refresh()
-
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
+	all := c.ListApps()
 	if query == "" {
-		result := make([]MarketApp, len(c.apps))
-		copy(result, c.apps)
-		return result
+		return all
 	}
 
 	q := strings.ToLower(query)
 	var results []MarketApp
-
-	for _, app := range c.apps {
+	for _, app := range all {
 		if strings.Contains(strings.ToLower(app.Name), q) ||
 			strings.Contains(strings.ToLower(app.Title), q) ||
 			strings.Contains(strings.ToLower(app.Description), q) ||
@@ -307,8 +248,83 @@ func (c *Catalog) Search(query string) []MarketApp {
 			results = append(results, app)
 		}
 	}
-
 	return results
+}
+
+// StartRefreshLoop is a no-op retained for API compatibility.
+// The catalog now self-refreshes lazily via ensureFresh; no goroutine needed.
+func (c *Catalog) StartRefreshLoop(_ <-chan struct{}) {}
+
+// --- internal helpers ---
+
+// loadOne fetches a parsed MarketApp from the LRU cache, or reads from disk.
+func (c *Catalog) loadOne(name string) *MarketApp {
+	c.mu.RLock()
+	entry, ok := c.chartIndex[name]
+	c.mu.RUnlock()
+	if !ok {
+		return nil
+	}
+
+	// Check LRU cache
+	if cached, hit := c.parsed.Get(name); hit {
+		// Validate mtime hasn't changed
+		if fi, err := os.Stat(entry.sidecarPath); err == nil && fi.ModTime().Equal(entry.mtime) {
+			return cached
+		}
+		// Stale — evict and re-read
+		c.parsed.Remove(name)
+	}
+
+	// Read from disk
+	data, err := os.ReadFile(entry.sidecarPath)
+	if err != nil {
+		klog.Warningf("catalog: read sidecar %s: %v", entry.sidecarPath, err)
+		return nil
+	}
+	var app MarketApp
+	if err := json.Unmarshal(data, &app); err != nil {
+		klog.Warningf("catalog: parse sidecar %s: %v", entry.sidecarPath, err)
+		return nil
+	}
+	app.Categories = cleanCategories(app.Categories)
+	c.parsed.Add(name, &app)
+	return &app
+}
+
+// loadCuration returns curation data, re-reading from disk if mtime changed.
+func (c *Catalog) loadCuration() *Curation {
+	c.curationMu.RLock()
+	cur := c.curation
+	mtime := c.curationMtime
+	c.curationMu.RUnlock()
+
+	if fi, err := os.Stat(c.curationPath); err == nil {
+		if cur != nil && fi.ModTime().Equal(mtime) {
+			return cur
+		}
+	} else if cur != nil {
+		return cur // file gone but we have cached copy
+	}
+
+	data, err := os.ReadFile(c.curationPath)
+	if err != nil {
+		return cur // return stale or nil
+	}
+	var newCur Curation
+	if err := json.Unmarshal(data, &newCur); err != nil {
+		klog.Warningf("catalog: parse curation.json: %v", err)
+		return cur
+	}
+
+	fi, _ := os.Stat(c.curationPath)
+	c.curationMu.Lock()
+	c.curation = &newCur
+	if fi != nil {
+		c.curationMtime = fi.ModTime()
+	}
+	c.curationMu.Unlock()
+	return &newCur
 }
 
 func matchesCategory(categories []string, query string) bool {
@@ -318,21 +334,4 @@ func matchesCategory(categories []string, query string) bool {
 		}
 	}
 	return false
-}
-
-// StartRefreshLoop periodically refreshes the catalog in the background.
-func (c *Catalog) StartRefreshLoop(done <-chan struct{}) {
-	ticker := time.NewTicker(c.cacheTTL)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-done:
-			return
-		case <-ticker.C:
-			if err := c.Load(); err != nil {
-				klog.Warningf("catalog refresh: %v", err)
-			}
-		}
-	}
 }

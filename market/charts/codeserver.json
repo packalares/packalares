@@ -1,0 +1,72 @@
+{
+  "categories": [
+    "Developer Tools",
+    "Productivity"
+  ],
+  "cfgType": "app",
+  "chartName": "codeserver",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "VS Code in the browser",
+  "developer": "Coder Technologies, Inc.",
+  "doc": "https://coder.com/docs/code-server/latest",
+  "entrances": [
+    {
+      "host": "codeserver-svc",
+      "icon": "/api/market/icons/codeserver.png",
+      "name": "codeserver",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "Code Server"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/codeserver/featured.webp",
+  "fullDescription": "Run VS Code on any machine anywhere and access it in the browser.\n\nHighlights:\n- Code on any device with a consistent development environment\n- Use cloud servers to speed up tests, compilations, downloads, and more\n- Preserve battery life when you're on the go; all intensive tasks run on your server\n- VS Code features are supported but not all extensions\n\ncode-server is an open-source project that transforms Visual Studio Code (VS Code) into a server, enabling it to run on any machine. Developers can access VS Code from any device with an internet connection, opening up new possibilities for remote development.\n\ncode-server stands out for its compatibility with most VS Code extensions. This feature allows developers to tailor their coding environment to their specific needs, even when working remotely.",
+  "hasChart": true,
+  "icon": "/api/market/icons/codeserver.png",
+  "license": [
+    {
+      "name": "AGPL-3.0",
+      "url": "https://github.com/coder/coder/blob/main/LICENSE"
+    }
+  ],
+  "limitedCPU": "2000m",
+  "limitedMemory": "4Gi",
+  "locale": [
+    "en-US"
+  ],
+  "name": "codeserver",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": [
+      "Home"
+    ]
+  },
+  "promoteImage": [
+    "/api/market/screenshots/codeserver/1.webp",
+    "/api/market/screenshots/codeserver/2.webp",
+    "/api/market/screenshots/codeserver/3.webp"
+  ],
+  "requiredCpu": "200m",
+  "requiredDisk": "128Mi",
+  "requiredMemory": "256Mi",
+  "source": "olares",
+  "sourceCode": "https://github.com/coder/code-server",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Code Server",
+  "type": "app",
+  "upgradeDescription": "Upgrade to upstream v4.115.0\n\nOrigin: https://github.com/coder/code-server/releases/tag/v4.115.0",
+  "version": "1.0.0",
+  "versionName": "4.115.0",
+  "website": "https://coder.com/"
+}

@@ -1,0 +1,68 @@
+{
+  "categories": [
+    "Developer Tools"
+  ],
+  "cfgType": "app",
+  "chartName": "context7",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "Up-to-date library documentation for AI coding assistants",
+  "developer": "Upstash",
+  "doc": "https://github.com/upstash/context7#readme",
+  "entrances": [
+    {
+      "host": "context7-svc",
+      "icon": "/api/market/icons/context7.png",
+      "name": "context7",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "Context7"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/context7/featured.webp",
+  "fullDescription": "Context7 is an MCP server by Upstash that provides up-to-date, version-specific documentation and code examples directly from source to your AI coding assistant.\n\nInstead of relying on outdated training data, Context7 fetches current library documentation on demand. This resolves common issues where AI models hallucinate APIs, use deprecated patterns, or generate generic code based on stale knowledge.\n\nFeatures:\n* Provides up-to-date documentation for thousands of libraries\n* Works with any MCP-compatible AI coding tool (Cursor, Claude Code, VS Code Copilot, etc.)\n* Fetches version-specific docs and code examples from source\n* Runs as an HTTP MCP server accessible on port 8080\n* No database or GPU required — lightweight and simple",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/context7.png",
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/upstash/context7/blob/master/LICENSE"
+    }
+  ],
+  "limitedCPU": "1000m",
+  "limitedMemory": "512Mi",
+  "locale": [
+    "en-US"
+  ],
+  "name": "context7",
+  "permission": {
+    "appCache": false,
+    "appData": false,
+    "userData": null
+  },
+  "promoteImage": [
+    "/api/market/screenshots/context7/1.webp",
+    "/api/market/screenshots/context7/2.webp"
+  ],
+  "requiredCpu": "100m",
+  "requiredDisk": "50Mi",
+  "requiredMemory": "128Mi",
+  "source": "olares",
+  "sourceCode": "https://github.com/upstash/context7",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Context7",
+  "type": "app",
+  "version": "1.0.0",
+  "versionName": "0.3.11",
+  "website": "https://context7.com/"
+}

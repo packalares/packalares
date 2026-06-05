@@ -1,0 +1,83 @@
+{
+  "categories": [
+    "Utilities"
+  ],
+  "cfgType": "app",
+  "chartName": "chromium",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "Chromium is an open-source browser project that aims to build a safer, faster, and more stable way for all users to experience the web.",
+  "developer": "Google",
+  "doc": "https://chromium.googlesource.com/chromium/src/+/main/docs/README.md",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "chromium-svc",
+      "icon": "/api/market/icons/chromium.png",
+      "invisible": false,
+      "name": "chromium",
+      "openMethod": "window",
+      "port": 3000,
+      "title": "Chromium"
+    }
+  ],
+  "fullDescription": "Chromium is an open-source browser project that aims to build a safer, faster, and more stable way for all users to experience the web.\n",
+  "hasChart": true,
+  "icon": "/api/market/icons/chromium.png",
+  "images": [
+    "docker.io/linuxserver/chromium:version-76e3a185",
+    "docker.io/beclab/aboveos-busybox:1.37.0"
+  ],
+  "license": [
+    {
+      "name": "BSD",
+      "url": "https://chromium.googlesource.com/chromium/src/+/HEAD/LICENSE"
+    }
+  ],
+  "limitedCPU": "1",
+  "limitedMemory": "512Mi",
+  "locale": [
+    "en-US"
+  ],
+  "name": "chromium",
+  "permission": {
+    "appCache": true,
+    "appData": true
+  },
+  "promoteImage": [],
+  "rating": 0,
+  "requiredCpu": "0.5",
+  "requiredDisk": "128Mi",
+  "requiredMemory": "256Mi",
+  "services": [
+    {
+      "name": "chromium-svc",
+      "ports": [
+        {
+          "name": "http",
+          "port": 3000
+        },
+        {
+          "name": "https",
+          "port": 3001
+        }
+      ]
+    }
+  ],
+  "sourceCode": "https://github.com/nicholasgasior/docker-chromium",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Chromium",
+  "type": "app",
+  "version": "1.0.6",
+  "versionName": "120.0.6070.1",
+  "website": "https://www.chromium.org/chromium-projects/"
+}

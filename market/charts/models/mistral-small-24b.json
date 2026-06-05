@@ -1,0 +1,85 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "tools"
+  ],
+  "categories": [
+    "General",
+    "Tools",
+    "Code"
+  ],
+  "cfgType": "model",
+  "contextLength": "32K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Mistral's 24B model with native function calling, multilingual support, and agent-centric design.",
+  "developer": "Mistral AI",
+  "doc": "https://ollama.com/library/mistral-small",
+  "fullDescription": "## MODEL OVERVIEW\nMistral Small 3 sets a new benchmark in the small LLM category below 70B, featuring 24B parameters with capabilities rivaling much larger models. It is exceptionally knowledge-dense, fitting in a single RTX 4090 or a 32GB RAM MacBook once quantized.\n\n## Key Features\n- **Native Tool Use**: Best-in-class agentic capabilities with native function calling and JSON output\n- **Multilingual**: Covers dozens of languages including English, French, German, Spanish, Italian, Chinese, Japanese, Korean, Portuguese, Dutch, and Polish\n- **Advanced Reasoning**: State-of-the-art conversational and reasoning capabilities\n- **32K Context Window**: Efficient context handling\n- **Strong System Prompt Adherence**: Reliable instruction following\n- **Tekken Tokenizer**: 131K vocabulary for efficient tokenization\n\n## Specifications\n- Parameters: 24B\n- Context Length: 32K tokens\n- Default Size: 14GB (Q4_K_M)\n- Quantization: Q4_K_M\n\n## Use Cases\n- Fast response conversational agents\n- Low latency function calling\n- Subject matter expert fine-tuning\n- Local inference for sensitive data\n- Fraud detection, customer triaging, on-device control",
+  "hfRepo": "",
+  "icon": "/api/market/icons/mistral-small-24b.png",
+  "lastUpdated": "2025-04-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "mistral-small:24b",
+  "modelImages": [
+    "/api/market/screenshots/mistral-small-24b/logo.png",
+    "/api/market/screenshots/mistral-small-24b/benchmark1.png",
+    "/api/market/screenshots/mistral-small-24b/benchmark2.png",
+    "/api/market/screenshots/mistral-small-24b/benchmark3.png",
+    "/api/market/screenshots/mistral-small-24b/benchmark4.png"
+  ],
+  "modelReadme": "Mistral Small 3 sets a new benchmark in the 'small' Large Language Models category below 70B, featuring 24B parameters with state-of-the-art capabilities. The model is exceptionally knowledge-dense, fitting in a single RTX 4090 or a 32GB RAM MacBook once quantized.\n\nIdeal use cases include fast response conversational agents, low latency function calling, subject matter experts via fine-tuning, and local inference for hobbyists and organizations handling sensitive data. The model features multilingual support covering dozens of languages, best-in-class agentic capabilities with native function calling and JSON output, advanced conversational and reasoning capabilities, and strong system prompt adherence. It uses the Tekken tokenizer with 131K vocabulary.\n\nIndustry applications span fraud detection in financial services, customer triaging in healthcare, on-device command and control in robotics/automotive/manufacturing, plus virtual customer service and sentiment analysis across sectors.",
+  "name": "mistral-small-24b",
+  "parameters": "24B",
+  "pullCount": "2.9M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "16Gi",
+  "requiredMemory": "16000Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/mistralai/Mistral-Small-24B-Instruct-2501",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Mistral Small 24B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "14GB",
+      "tag": "24b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "25GB",
+      "tag": "24b-instruct-2501-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "47GB",
+      "tag": "24b-instruct-2501-fp16"
+    }
+  ],
+  "versionName": "mistral-small:24b",
+  "website": "https://mistral.ai/news/mistral-small-3"
+}

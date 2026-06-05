@@ -1,0 +1,84 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "vision",
+    "tools",
+    "thinking"
+  ],
+  "categories": [
+    "General",
+    "Vision",
+    "Reasoning",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "256K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Largest Qwen 3.5 that fits in VRAM. Best quality from the latest generation.",
+  "developer": "Qwen Team (Alibaba)",
+  "doc": "https://ollama.com/library/qwen3.5",
+  "fullDescription": "## MODEL OVERVIEW\nQwen3.5 35B is the largest model in the Qwen 3.5 generation that fits within standard GPU VRAM limits. It is a MoE model (35B total, 3B active) representing the peak of Alibaba's latest open model technology with unified vision-language capabilities.\n\n## Key Features\n- **Largest Qwen 3.5**: Maximum quality from the latest generation\n- **Unified Vision-Language**: Early fusion multimodal training outperforms Qwen3-VL\n- **Efficient Architecture**: Gated Delta Networks with sparse MoE\n- **201 Languages**: Broadest multilingual coverage\n- **Thinking Mode**: Chain-of-thought reasoning support\n- **Tool Calling**: Native function/tool calling\n- **256K Context**: Extended context window\n\n## Specifications\n- Parameters: 35B (MoE, 3B active)\n- Context Length: 256K tokens\n- Default Size: ~24GB (Q4_K_M)\n- Architecture: Hybrid with MoE\n\n## Use Cases\n- Maximum quality chat and reasoning\n- Complex analysis and research\n- Professional translation (201 languages)\n- Advanced code generation\n- Enterprise AI applications",
+  "hfRepo": "",
+  "icon": "/api/market/icons/qwen35-35b.png",
+  "lastUpdated": "2026-03-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "qwen3.5:35b",
+  "modelImages": [
+    "/api/market/screenshots/qwen35-35b/logo1.png",
+    "/api/market/screenshots/qwen35-35b/logo2.png"
+  ],
+  "modelReadme": "Qwen 3.5 is a family of open-source multimodal models that delivers exceptional utility and performance. Qwen3.5 represents a significant leap forward, integrating breakthroughs in multimodal learning, architectural efficiency, reinforcement learning scale, and global accessibility.\n\n## Highlights\n- **Unified Vision-Language Foundation**: Early fusion training on multimodal tokens achieves cross-generational parity with Qwen3 and outperforms Qwen3-VL models across reasoning, coding, agents, and visual understanding benchmarks.\n- **Efficient Hybrid Architecture**: Gated Delta Networks combined with sparse Mixture-of-Experts deliver high-throughput inference with minimal latency and cost overhead.\n- **Scalable RL Generalization**: Reinforcement learning scaled across million-agent environments with progressively complex task distributions for robust real-world adaptability.\n- **Global Linguistic Coverage**: Expanded support to 201 languages and dialects, enabling inclusive, worldwide deployment.\n- **Next-Generation Training Infrastructure**: Near-100% multimodal training efficiency compared to text-only training and asynchronous RL frameworks.",
+  "name": "qwen35-35b",
+  "parameters": "35B",
+  "pullCount": "5.8M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "23.5Gi",
+  "requiredMemory": "4200Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/Qwen/Qwen3.5-35B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Qwen 3.5 35B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "24GB",
+      "tag": "35b-a3b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "39GB",
+      "tag": "35b-a3b-q8_0"
+    },
+    {
+      "quantization": "BF16",
+      "size": "72GB",
+      "tag": "35b-a3b-bf16"
+    }
+  ],
+  "versionName": "qwen3.5:35b",
+  "website": "https://ollama.com/library/qwen3.5"
+}

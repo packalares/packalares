@@ -1,0 +1,81 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "tools",
+    "thinking"
+  ],
+  "categories": [
+    "Reasoning",
+    "Code",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "128K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Lighter reasoning model distilled from DeepSeek R1. Good reasoning in a smaller package.",
+  "developer": "DeepSeek",
+  "doc": "https://ollama.com/library/deepseek-r1",
+  "fullDescription": "## MODEL OVERVIEW ##\nDeepSeek-R1 14B is a distilled version of the full DeepSeek-R1 671B reasoning model. It brings strong reasoning capabilities to a smaller, more accessible size while maintaining impressive performance on math, coding, and logic tasks.\n\n## Key Features\n- **Distilled Reasoning**: Knowledge from 671B model in 14B parameters\n- **Efficient Size**: Fits comfortably on consumer GPUs\n- **Strong Math**: Good performance on mathematical benchmarks\n- **Chain-of-Thought**: Transparent reasoning process\n- **Fast Inference**: Quick responses for interactive use\n\n## Specifications\n- Parameters: 14B (distilled from 671B)\n- Context Length: 128K tokens\n- Disk Size: ~9GB\n- Quantization: Q4_K_M\n\n## Use Cases\n- Mathematical reasoning\n- Logic and analytical tasks\n- Code generation\n- Problem solving on consumer hardware\n- Lightweight reasoning workloads",
+  "hfRepo": "",
+  "icon": "/api/market/icons/deepseek-r1-14b.png",
+  "lastUpdated": "2025-07-12",
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://opensource.org/licenses/MIT"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "33Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "deepseek-r1:14b",
+  "modelImages": [
+    "/api/market/screenshots/deepseek-r1-14b/logo.png"
+  ],
+  "modelReadme": "DeepSeek-R1 is a family of open reasoning models with performance approaching that of leading models such as O3 and Gemini 2.5 Pro. The 14B distilled version brings strong reasoning to consumer GPUs.\n\nDistilled from the full 671B model using 800k reasoning samples. The model received a version upgrade to DeepSeek-R1-0528 with significantly improved reasoning.\n\nKey features:\n- Strong reasoning on math, coding, and logic tasks\n- Transparent chain-of-thought reasoning\n- 128K context window\n- Tool calling support\n- Fits on consumer GPUs\n- MIT License",
+  "name": "deepseek-r1-14b",
+  "parameters": "14B",
+  "pullCount": "82.4M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "11Gi",
+  "requiredMemory": "4200Mi",
+  "sourceCode": "https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "DeepSeek R1 14B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "9.0GB",
+      "tag": "14b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "16GB",
+      "tag": "14b-qwen-distill-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "30GB",
+      "tag": "14b-qwen-distill-fp16"
+    }
+  ],
+  "versionName": "deepseek-r1:14b",
+  "website": "https://www.deepseek.com/"
+}

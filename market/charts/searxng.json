@@ -1,0 +1,91 @@
+{
+  "categories": [
+    "Productivity",
+    "Utilities"
+  ],
+  "cfgType": "app",
+  "chartName": "searxng",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "Search without being tracked.",
+  "developer": "SearXNG team",
+  "doc": "https://docs.searxng.org/",
+  "entrances": [
+    {
+      "authLevel": "private",
+      "host": "searxng-svc",
+      "icon": "/api/market/icons/searxng.png",
+      "name": "searxng",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "SearXNG"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/searxng/featured.webp",
+  "fullDescription": "## IMPORTANT NOTE ##\nThis is a shared app. Only one service will be installed across the entire Olares system. However, every user still needs to install an desktop entry to access and use the service installed by the Olares Admin.\n\n## OVERVIEW ##\nSearXNG is a free internet metasearch engine which aggregates results from more than 70 search services. Users are neither tracked nor profiled. Additionally, SearXNG can be used over Tor for online anonymity.\n\nWhy use it?\n- SearXNG may not offer you as personalized results as Google, but it doesn't generate a profile about you.\n- SearXNG doesn't care about what you search for, never shares anything with a third-party, and it can't be used to compromise you.\n- SearXNG is free software, the code is 100% open, and everyone is welcome to make it bette\n\nFeatures\n- self hosted\n- no user tracking / no profiling\n- script \u0026 cookies are optional\n- secure, encrypted connections\n- about 200 search engines\n- about 60 translations\n- about 100 well maintained instances on searx.space\n- easy integration of search engines\n- professional development: CI, quality assurance \u0026 automated tested UI",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/searxng.png",
+  "images": [
+    "docker.io/searxng/searxng:2026.4.22-74f1ca203"
+  ],
+  "license": [
+    {
+      "name": "AGPL-3.0",
+      "url": "https://github.com/searxng/searxng#AGPL-3.0-1-ov-file"
+    }
+  ],
+  "limitedCPU": "4.5",
+  "limitedDisk": "256Mi",
+  "limitedMemory": "10Gi",
+  "locale": [
+    "en-US",
+    "zh-CN"
+  ],
+  "loginType": "",
+  "name": "searxng",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": null
+  },
+  "promoteImage": [
+    "/api/market/screenshots/searxng/1.webp",
+    "/api/market/screenshots/searxng/2.webp",
+    "/api/market/screenshots/searxng/3.webp"
+  ],
+  "rating": 0,
+  "requiredCpu": "50m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "",
+  "requiredMemory": "512Mi",
+  "services": [
+    {
+      "name": "searxng-svc",
+      "ports": [
+        {
+          "name": "http",
+          "port": 8080
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/searxng/searxng",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "SearXNG",
+  "type": "app",
+  "upgradeDescription": "Initial release for Packalares marketplace.",
+  "version": "1.0.0",
+  "versionName": "2026.4.22",
+  "website": "https://docs.searxng.org/"
+}

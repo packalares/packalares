@@ -1,0 +1,121 @@
+{
+  "categories": [
+    "Developer Tools",
+    "Productivity"
+  ],
+  "cfgType": "app",
+  "chartName": "llamafactory",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "Easily fine-tune 100+ large language models with zero-code CLI and Web UI",
+  "developer": "hiyouga",
+  "doc": "https://llamafactory.readthedocs.io/",
+  "entrances": [
+    {
+      "authLevel": "private",
+      "host": "llamafactoryclient",
+      "icon": "/api/market/icons/llamafactory.png",
+      "name": "llamafactoryclient",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "LLaMA Factory"
+    },
+    {
+      "authLevel": "private",
+      "host": "llamafactoryclient",
+      "icon": "/api/market/icons/llamafactory.png",
+      "invisible": true,
+      "name": "llamafactoryapi",
+      "openMethod": "default",
+      "port": 8081,
+      "title": "llamafactoryapi"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/llamafactory/featured.jpg",
+  "fullDescription": "LlamaFactory, a unified framework that integrates a suite of cutting-edge efficient training methods. It provides a solution for flexibly customizing the fine-tuning of 100+ LLMs without the need for coding through the built-in web UI LlamaBoard.\n\nFeatures\n- Various models: LLaMA, LLaVA, Mistral, Mixtral-MoE, Qwen, Yi, Gemma, Baichuan, ChatGLM, Phi, etc.\n- Integrated methods: (Continuous) pre-training, (multimodal) supervised fine-tuning, reward modeling, PPO, DPO, KTO, ORPO, etc.\n- Scalable resources: 16-bit full-tuning, freeze-tuning, LoRA and 2/3/4/5/6/8-bit QLoRA via AQLM/AWQ/GPTQ/LLM.int8/HQQ/EETQ.\n- Advanced algorithms: GaLore, BAdam, Adam-mini, DoRA, LongLoRA, LLaMA Pro, Mixture-of-Depths, LoRA+, LoftQ, PiSSA and Agent tuning.\n- Practical tricks: FlashAttention-2, Unsloth, RoPE scaling, NEFTune and rsLoRA.\n- Experiment monitors: LlamaBoard, TensorBoard, Wandb, MLflow, etc.\n- Faster inference: OpenAI-style API, Gradio UI and CLI with vLLM worker.\n",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/llamafactory.png",
+  "images": [
+    "docker.io/hiyouga/llamafactory:0.9.4",
+    "docker.io/nginx:alpine",
+    "docker.io/busybox:1.37.0"
+  ],
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://github.com/hiyouga/LLaMA-Factory?tab=Apache-2.0-1-ov-file#readme"
+    }
+  ],
+  "limitedCPU": "6000m",
+  "limitedDisk": "500Gi",
+  "limitedMemory": "21Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "llamafactory",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": [
+      "Home"
+    ]
+  },
+  "promoteImage": [
+    "/api/market/screenshots/llamafactory/1.jpg",
+    "/api/market/screenshots/llamafactory/2.jpg",
+    "/api/market/screenshots/llamafactory/3.jpg",
+    "/api/market/screenshots/llamafactory/4.jpg"
+  ],
+  "rating": 0,
+  "requiredCpu": "50m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "2Gi",
+  "requiredMemory": "2Gi",
+  "services": [
+    {
+      "name": "llamafactoryclient",
+      "ports": [
+        {
+          "name": "webui",
+          "port": 8080
+        },
+        {
+          "name": "api",
+          "port": 8081
+        }
+      ]
+    },
+    {
+      "name": "llamafactory",
+      "ports": [
+        {
+          "name": "api",
+          "port": 8000
+        },
+        {
+          "name": "webui",
+          "port": 7860
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/hiyouga/LLaMA-Factory",
+  "status": "active",
+  "supportArch": [
+    "amd64"
+  ],
+  "title": "LLaMA Factory",
+  "type": "app",
+  "upgradeDescription": "Upgrade to upstream v0.9.4\n",
+  "version": "1.0.11",
+  "versionName": "0.9.4",
+  "website": "https://github.com/hiyouga/LLaMA-Factory"
+}

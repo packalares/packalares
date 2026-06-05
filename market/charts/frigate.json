@@ -1,0 +1,103 @@
+{
+  "categories": [
+    "Lifestyle"
+  ],
+  "cfgType": "app",
+  "chartName": "frigate",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "NVR with real-time AI object detection for security cameras",
+  "developer": "Blake Blackshear",
+  "doc": "https://docs.frigate.video/",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "frigate-svc",
+      "icon": "/api/market/icons/frigate.png",
+      "name": "frigate",
+      "openMethod": "window",
+      "port": 5000,
+      "title": "Frigate"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/frigate/featured.webp",
+  "fullDescription": "Frigate is a complete and local NVR (Network Video Recorder) designed with AI-powered object detection. It uses OpenCV and TensorFlow to perform real-time object detection locally for IP cameras.\n\nFrigate is optimized to minimize resource use and maximize performance by only looking for objects when and where it is necessary. It leverages multiprocessing heavily with an emphasis on real-time processing over processing every frame.\n\nKey Features:\n- Real-time AI object detection using TensorFlow with support for GPU acceleration\n- Very low overhead motion detection to determine where to run object detection\n- Records video with retention settings based on detected objects\n- 24/7 continuous recording support\n- Re-streaming via RTSP to reduce the number of connections to your camera\n- WebRTC and MSE support for low-latency live view\n- Communicates over MQTT for easy integration into other systems\n- Built-in mask and zone editor for customization\n- Live dashboard for monitoring all cameras\n- Streamlined review workflow for analyzing events\n- Multi-camera scrubbing capabilities\n- Supports NVIDIA GPU hardware acceleration for AI detection\n- Configuration file based setup (config.yml)\n\nFrigate is designed to run locally, keeping your camera feeds and recordings private. It processes everything on your own hardware with no cloud dependencies.\n",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/frigate.png",
+  "images": [
+    "ghcr.io/blakeblackshear/frigate:0.17.1",
+    "docker.io/busybox:1.37.0"
+  ],
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/blakeblackshear/frigate/blob/dev/LICENSE"
+    }
+  ],
+  "limitedCPU": "4000m",
+  "limitedDisk": "500Gi",
+  "limitedMemory": "8Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "frigate",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": [
+      "Home"
+    ]
+  },
+  "promoteImage": [
+    "/api/market/screenshots/frigate/1.webp",
+    "/api/market/screenshots/frigate/2.webp",
+    "/api/market/screenshots/frigate/3.webp"
+  ],
+  "rating": 0,
+  "requiredCpu": "500m",
+  "requiredDisk": "5Gi",
+  "requiredGpu": "1",
+  "requiredMemory": "1Gi",
+  "services": [
+    {
+      "name": "frigate-svc",
+      "ports": [
+        {
+          "name": "web",
+          "port": 5000
+        },
+        {
+          "name": "rtsp",
+          "port": 8554
+        },
+        {
+          "name": "rtmp",
+          "port": 1935
+        },
+        {
+          "name": "webrtc-tcp",
+          "port": 8555
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/blakeblackshear/frigate",
+  "status": "active",
+  "supportArch": [
+    "amd64"
+  ],
+  "title": "Frigate",
+  "type": "app",
+  "upgradeDescription": "Initial release of Frigate 0.17.1 for Packalares.\n",
+  "version": "1.0.0",
+  "versionName": "0.17.1",
+  "website": "https://frigate.video/"
+}

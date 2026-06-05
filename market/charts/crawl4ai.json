@@ -1,0 +1,69 @@
+{
+  "categories": [
+    "Developer Tools",
+    "Productivity"
+  ],
+  "cfgType": "app",
+  "chartName": "crawl4ai",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "Open-source LLM Friendly Web Crawler \u0026 Scraper",
+  "developer": "unclecode",
+  "doc": "https://docs.crawl4ai.com",
+  "entrances": [
+    {
+      "host": "crawl4ai-svc",
+      "icon": "https://app.cdn.olares.com/appstore/crawl4ai/icon.png",
+      "name": "crawl4ai",
+      "openMethod": "window",
+      "port": 11235,
+      "title": "Crawl4AI"
+    }
+  ],
+  "featuredImage": "",
+  "fullDescription": "Crawl4AI turns the web into clean, LLM ready Markdown for RAG, agents, and data pipelines. Fast, controllable, battle tested by a 50k+ star community.\n\n# Features\nMarkdown Generation\n- Clean Markdown: Generates clean, structured Markdown with accurate formatting.\n- Fit Markdown: Heuristic-based filtering to remove noise and irrelevant parts for AI-friendly processing.\n- Citations and References: Converts page links into a numbered reference list with clean citations.\n- BM25 Algorithm: Employs BM25-based filtering for extracting core information and removing irrelevant content.\n\nStructured Data Extraction\n- LLM-Driven Extraction: Supports all LLMs (open-source and proprietary) for structured data extraction.\n- Chunking Strategies: Implements chunking (topic-based, regex, sentence-level) for targeted content processing.\n- CSS-Based Extraction: Fast schema-based data extraction using XPath and CSS selectors.\n- Schema Definition: Define custom schemas for extracting structured JSON from repetitive patterns.\n\nBrowser Integration\n- Managed Browser: Use user-owned browsers with full control, avoiding bot detection.\n- Remote Browser Control: Connect to Chrome Developer Tools Protocol for remote, large-scale data extraction.\n- Session Management: Preserve browser states and reuse them for multi-step crawling.\n- Proxy Support: Seamlessly connect to proxies with authentication for secure access.\n- Multi-Browser Support: Compatible with Chromium, Firefox, and WebKit.\n\nCrawling \u0026 Scraping\n- Dynamic Crawling: Execute JS and wait for async or sync for dynamic content extraction.\n- Screenshots: Capture page screenshots during crawling for debugging or analysis.\n- Comprehensive Link Extraction: Extracts internal, external links, and embedded iframe content.\n- Caching: Cache data for improved speed and to avoid redundant fetches.\n- Full-Page Scanning: Simulates scrolling to load and capture all dynamic content.\n\nDeployment\n- Dockerized Setup: Optimized Docker image with FastAPI server for easy deployment.\n- Secure Authentication: Built-in JWT token authentication for API security.\n- Scalable Architecture: Designed for mass-scale production and optimized server performance.",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/crawl4ai.png",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://github.com/unclecode/crawl4ai?tab=Apache-2.0-1-ov-file"
+    }
+  ],
+  "limitedCPU": "4",
+  "limitedMemory": "6Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "crawl4ai",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": null
+  },
+  "promoteImage": [],
+  "rating": 0,
+  "requiredCpu": "1",
+  "requiredDisk": "256Mi",
+  "requiredGpu": "",
+  "requiredMemory": "1Gi",
+  "source": "olares",
+  "sourceCode": "https://github.com/unclecode/crawl4ai",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Crawl4AI",
+  "type": "app",
+  "version": "1.0.4",
+  "versionName": "0.8.6",
+  "website": "https://crawl4ai.com"
+}

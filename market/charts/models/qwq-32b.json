@@ -1,0 +1,79 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "tools"
+  ],
+  "categories": [
+    "Reasoning",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "40K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Alibaba's dedicated reasoning model. Specialized for math, logic, and analytical tasks.",
+  "developer": "Qwen Team (Alibaba)",
+  "doc": "https://ollama.com/library/qwq",
+  "fullDescription": "## MODEL OVERVIEW ##\nQwQ (Qwen with Questions) is Alibaba's dedicated reasoning model, designed to think deeply about problems before answering. It excels at mathematical reasoning, logical analysis, and complex problem-solving tasks.\n\n## Key Features\n- **Deep Reasoning**: Extended thinking chains for complex problems\n- **Math Excellence**: Top performance on mathematical benchmarks\n- **Logic Mastery**: Strong analytical and logical reasoning\n- **32B Dense**: Full 32B parameters for maximum reasoning depth\n- **128K Context**: Handle long, complex problem descriptions\n\n## Specifications\n- Parameters: 32B (dense)\n- Context Length: 128K tokens\n- Disk Size: ~20GB\n- Quantization: Q4_K_M\n\n## Use Cases\n- Advanced mathematics and proofs\n- Logical reasoning and analysis\n- Scientific problem solving\n- Complex coding challenges\n- Research and academic tasks",
+  "hfRepo": "",
+  "icon": "/api/market/icons/qwq-32b.png",
+  "lastUpdated": "2025-04-12",
+  "license": [
+    {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "qwq:32b",
+  "modelImages": [
+    "/api/market/screenshots/qwq-32b/logo.png"
+  ],
+  "modelReadme": "QwQ is the reasoning model of the Qwen series. Compared with conventional instruction-tuned models, QwQ can achieve significantly enhanced performance in downstream tasks, especially hard problems.\n\nQwQ-32B is the medium-sized reasoning model, capable of achieving competitive performance against state-of-the-art reasoning models, e.g., DeepSeek-R1, o1-mini.\n\nThe model represents Qwen's initial exploration of scaling Reinforcement Learning to enhance reasoning, with future work focused on combining stronger foundation models with RL and exploring agent integration for long-horizon reasoning.\n\nKey features:\n- Deep reasoning with extended thinking chains\n- Tool calling support\n- 40K context window\n- Competitive with DeepSeek-R1 and o1-mini\n- 32B dense parameters",
+  "name": "qwq-32b",
+  "parameters": "32B",
+  "pullCount": "2.2M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "22Gi",
+  "requiredMemory": "4200Mi",
+  "sourceCode": "https://huggingface.co/Qwen/QwQ-32B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "QwQ 32B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "20GB",
+      "tag": "32b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "35GB",
+      "tag": "32b-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "66GB",
+      "tag": "32b-fp16"
+    }
+  ],
+  "versionName": "qwq:32b",
+  "website": "https://qwenlm.github.io/blog/qwq-32b-preview/"
+}

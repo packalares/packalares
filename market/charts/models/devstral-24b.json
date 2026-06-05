@@ -1,0 +1,81 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "tools"
+  ],
+  "categories": [
+    "Code",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "128K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Mistral AI's agentic coding model. State-of-the-art on SWE-bench among open-source models.",
+  "developer": "Mistral AI",
+  "doc": "https://ollama.com/library/devstral",
+  "fullDescription": "## MODEL OVERVIEW\nDevstral is an agentic LLM for software engineering tasks, built in collaboration between Mistral AI and All Hands AI. It excels at using tools to explore codebases, editing multiple files, and powering software engineering agents.\n\n## Key Features\n- **SWE-bench Leader**: State-of-the-art performance among open-source models\n- **Agentic Coding**: Purpose-built for autonomous coding workflows\n- **128K Context**: Process large codebases and documentation\n- **Lightweight**: Runs on a single RTX 4090 or Mac with 32GB RAM\n- **Tool Use**: Integrates with coding tools and environments\n\n## Specifications\n- Parameters: 24B\n- Context Length: 128K tokens\n- Default Size: 14GB (Q4_K_M)\n- Architecture: Dense transformer\n- License: Apache 2.0",
+  "hfRepo": "",
+  "icon": "/api/market/icons/devstral-24b.png",
+  "lastUpdated": "2025-07-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "devstral:24b",
+  "modelImages": [
+    "/api/market/screenshots/devstral-24b/performance.png",
+    "/api/market/screenshots/devstral-24b/comparison.png"
+  ],
+  "modelReadme": "Devstral is an agentic LLM for software engineering tasks built under a collaboration between Mistral AI and All Hands AI. Devstral excels at using tools to explore codebases, editing multiple files and powering software engineering agents. It achieves state-of-the-art performance on SWE-bench among open-source models. The model is lightweight at 24 billion parameters, runnable on a single RTX 4090 or Mac with 32GB RAM, and features a 128K token context window.",
+  "name": "devstral-24b",
+  "parameters": "24B",
+  "pullCount": "908.5K",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "16Gi",
+  "requiredMemory": "16000Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/mistralai/Devstral-Small-2507",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Devstral 24B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "14GB",
+      "tag": "24b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "25GB",
+      "tag": "24b-small-2505-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "47GB",
+      "tag": "24b-small-2505-fp16"
+    }
+  ],
+  "versionName": "devstral:24b",
+  "website": "https://ollama.com/library/devstral"
+}

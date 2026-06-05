@@ -1,0 +1,81 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "tools"
+  ],
+  "categories": [
+    "Reasoning",
+    "Code",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "128K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Hybrid reasoning model with toggleable thinking. 60% shorter reasoning chains than DeepSeek R1.",
+  "developer": "Deep Cogito",
+  "doc": "https://ollama.com/library/cogito",
+  "fullDescription": "## MODEL OVERVIEW ##\nBuilt on Iterated Distillation and Amplification (IDA), Cogito models don't just search longer -- they develop better intuition through self-improvement, paving the way to superintelligence.\n\nCogito v1 Preview is a family of hybrid reasoning models by Deep Cogito that outperform the best available open models of the same size across most standard benchmarks.\n\n## Key Features\n- **Iterative Self-Improvement**: First reasoning models to improve core intelligence, not just search time\n- **Hybrid Reasoning**: Toggle between fast and deep thinking modes\n- **60% Shorter Chains**: More efficient reasoning than DeepSeek R1 with superior performance\n- **Breakthrough Efficiency**: Complete model family trained for \u003c$3.5M total cost\n- **Toggle Thinking**: Switch reasoning on/off based on task complexity\n\n## Specifications\n- Parameters: 32B\n- Context Length: 128K tokens\n- Disk Size: ~20GB\n- Architecture: Dense transformer with hybrid reasoning\n\n## Use Cases\n- Complex reasoning with efficiency\n- General-purpose AI assistant\n- Coding and analysis\n- Tasks requiring adaptive thinking depth\n- Production reasoning workloads",
+  "hfRepo": "",
+  "icon": "/api/market/icons/cogito-32b.png",
+  "lastUpdated": "2025-04-12",
+  "license": [
+    {
+      "name": "Apache 2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "cogito:32b",
+  "modelImages": [
+    "/api/market/screenshots/cogito-32b/logo.png",
+    "/api/market/screenshots/cogito-32b/benchmark.png"
+  ],
+  "modelReadme": "Cogito v1 Preview is a family of hybrid reasoning models by Deep Cogito that outperform the best available open models of the same size across most standard benchmarks.\n\nBuilt on Iterated Distillation and Amplification (IDA), Cogito models don't just search longer -- they develop better intuition through self-improvement, paving the way to superintelligence.\n\nThe models feature hybrid reasoning: toggle between direct fast answering and deep thinking subroutine via system prompt. They produce 60% shorter reasoning chains than DeepSeek R1 with superior performance.\n\nKey features:\n- Iterative self-improvement via IDA methodology\n- Hybrid reasoning with toggleable deep thinking\n- Tool calling support\n- 128K context window\n- Multilingual support (30+ languages)\n- Entire model family trained for \u003c$3.5M total cost",
+  "name": "cogito-32b",
+  "parameters": "32B",
+  "pullCount": "1.9M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "22Gi",
+  "requiredMemory": "4200Mi",
+  "sourceCode": "https://huggingface.co/deepcogito/cogito-v1-preview-qwen-32B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Cogito 32B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "20GB",
+      "tag": "32b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "35GB",
+      "tag": "32b-v1-preview-qwen-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "66GB",
+      "tag": "32b-v1-preview-qwen-fp16"
+    }
+  ],
+  "versionName": "cogito:32b",
+  "website": "https://www.deepcogito.com/"
+}

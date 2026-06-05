@@ -1,0 +1,81 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "vision",
+    "tools"
+  ],
+  "categories": [
+    "Vision",
+    "OCR",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "128K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Multimodal 0.9B OCR model for complex document understanding — text, table, and figure recognition with 128K context.",
+  "developer": "ZhipuAI (zai-org)",
+  "doc": "https://ollama.com/library/glm-ocr",
+  "fullDescription": "## MODEL OVERVIEW\nGLM-OCR is a multimodal optical character recognition model for complex document understanding, built on the GLM-V encoder-decoder architecture. It integrates the CogViT visual encoder pre-trained on large-scale image-text data, a lightweight cross-modal connector with efficient token downsampling, and a GLM-0.5B language decoder.\n\n## Key Features\n- **State-of-the-Art Performance**: Achieves 94.62 on OmniDocBench V1.5, ranking #1 overall\n- **Real-World Optimized**: Robust on complex tables, code-heavy documents, seals, and unconventional layouts\n- **Efficient Inference**: Only 0.9B parameters — supports vLLM, SGLang, and Ollama deployment\n- **Easy to Use**: Fully open-sourced with comprehensive SDK and inference toolchain\n\n## Capabilities\n- **Text Recognition**: `ollama run glm-ocr \"Text Recognition: ./image.png\"`\n- **Table Recognition**: `ollama run glm-ocr \"Table Recognition: ./image.png\"`\n- **Figure Recognition**: `ollama run glm-ocr \"Figure Recognition: ./image.png\"`\n\n## Specifications\n- Parameters: 0.9B\n- Context Length: 128K\n- Input: Text + Image\n- Default Size: 2.2GB (BF16)",
+  "hfRepo": "",
+  "icon": "/api/market/icons/glm-ocr.png",
+  "lastUpdated": "2026-02-11",
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://huggingface.co/zai-org/GLM-OCR"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "20Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "glm-ocr:latest",
+  "modelImages": [
+    "/api/market/screenshots/glm-ocr/benchmark.png"
+  ],
+  "modelReadme": "GLM-OCR is a multimodal optical character recognition model designed for sophisticated document analysis. Built on the GLM-V encoder-decoder framework, it integrates the CogViT visual encoder trained on extensive image-text datasets, a streamlined cross-modal connector featuring efficient token downsampling, and a GLM-0.5B language decoder.\n\n## Key Capabilities\n- **Text recognition**: `ollama run glm-ocr \"Text Recognition: ./image.png\"`\n- **Table recognition**: `ollama run glm-ocr \"Table Recognition: ./image.png\"`\n- **Figure recognition**: `ollama run glm-ocr \"Figure Recognition: ./image.png\"`\n\n## Distinguishing Features\n\n**State-of-the-Art Performance**: Achieves 94.62 score on OmniDocBench V1.5, ranking first overall.\n\n**Real-World Optimization**: Purpose-built for practical enterprise applications, maintaining consistent performance on intricate tables, code-dense documents, seals, and unconventional layouts.\n\n**Computational Efficiency**: Operating with merely 0.9B parameters, supports vLLM, SGLang, and Ollama deployment options.\n\n**Accessibility**: Fully open-source with comprehensive SDK and inference infrastructure.",
+  "name": "glm-ocr",
+  "parameters": "0.9B",
+  "pullCount": "243K",
+  "quantization": "BF16",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "3Gi",
+  "requiredMemory": "4200Mi",
+  "source": "olares",
+  "sourceCode": "https://github.com/zai-org/GLM-OCR",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "GLM OCR",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "BF16",
+      "size": "2.2GB",
+      "tag": "latest"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "1.6GB",
+      "tag": "q8_0"
+    },
+    {
+      "quantization": "BF16",
+      "size": "2.2GB",
+      "tag": "bf16"
+    }
+  ],
+  "versionName": "glm-ocr:latest",
+  "website": "https://ollama.com/library/glm-ocr"
+}

@@ -1,0 +1,82 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "tools",
+    "thinking"
+  ],
+  "categories": [
+    "General",
+    "Reasoning",
+    "Code",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "256K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Alibaba's MoE model with 30B total parameters and 17B active. Efficient and powerful.",
+  "developer": "Qwen Team (Alibaba)",
+  "doc": "https://ollama.com/library/qwen3",
+  "fullDescription": "## MODEL OVERVIEW ##\nQwen3 30B is a Mixture-of-Experts (MoE) model from Alibaba with 30B total parameters but only 17B active per forward pass, offering an excellent balance of capability and efficiency.\n\n## Key Features\n- **MoE Architecture**: 30B total / 17B active parameters for efficiency\n- **Hybrid Thinking**: Toggle between fast and deep reasoning modes\n- **128K Context**: Large context window for complex tasks\n- **Multilingual**: Supports 100+ languages\n- **Strong Benchmarks**: Competitive with much larger dense models\n\n## Specifications\n- Total Parameters: 30B\n- Active Parameters: 17B (MoE)\n- Context Length: 128K tokens\n- Disk Size: ~19GB\n\n## Use Cases\n- General-purpose chat and assistance\n- Reasoning and analysis\n- Code generation\n- Multilingual tasks\n- Production deployments requiring efficiency",
+  "hfRepo": "",
+  "icon": "/api/market/icons/qwen3-30b.png",
+  "lastUpdated": "2025-10-12",
+  "license": [
+    {
+      "name": "Apache 2.0",
+      "url": "https://huggingface.co/Qwen/Qwen3-30B-A3B/blob/main/LICENSE"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "qwen3:30b",
+  "modelImages": [
+    "/api/market/screenshots/qwen3-30b/logo.png"
+  ],
+  "modelReadme": "Qwen3 is the latest generation of large language models in Qwen series, offering a comprehensive suite of dense and mixture-of-experts (MoE) models. Built upon extensive training, Qwen3 delivers groundbreaking advancements in reasoning, instruction-following, agent capabilities, and multilingual support.\n\nThe Qwen3-30B-A3B is a Mixture-of-Experts model with 30B total parameters and ~3B active parameters per forward pass, providing an excellent balance of capability and efficiency. It supports a 256K context window and over 100 languages.\n\nKey features:\n- Hybrid thinking modes: toggle between fast responses and deep chain-of-thought reasoning\n- Native tool/function calling for agent workflows\n- MoE architecture for efficient inference\n- Competitive with much larger dense models on reasoning benchmarks",
+  "name": "qwen3-30b",
+  "parameters": "30B",
+  "pullCount": "26.5M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "21Gi",
+  "requiredMemory": "4200Mi",
+  "sourceCode": "https://huggingface.co/Qwen/Qwen3-30B-A3B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Qwen 3 30B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "19GB",
+      "tag": "30b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "33GB",
+      "tag": "30b-a3b-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "61GB",
+      "tag": "30b-a3b-fp16"
+    }
+  ],
+  "versionName": "qwen3:30b",
+  "website": "https://qwenlm.github.io/blog/qwen3/"
+}

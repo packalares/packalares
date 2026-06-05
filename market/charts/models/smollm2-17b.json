@@ -1,0 +1,80 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "tools"
+  ],
+  "categories": [
+    "General",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "8K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Instant responses from HuggingFace's tiny model. Only 1.8GB for basic tasks.",
+  "developer": "HuggingFace",
+  "doc": "https://ollama.com/library/smollm2",
+  "fullDescription": "## MODEL OVERVIEW\nSmolLM2 is HuggingFace's compact language model family designed for instant responses and on-device deployment. The 1.7B variant provides useful AI assistance with near-zero latency and tool calling support.\n\n## Key Features\n- **Instant Responses**: Near-zero latency for real-time interaction\n- **Ultra-Compact**: Only 1.8GB on disk\n- **Tool Calling**: Native tool/function calling support\n- **Low Resources**: Runs on minimal hardware\n- **On-Device**: Lightweight enough to run on-device\n\n## Specifications\n- Parameters: 1.7B\n- Context Length: 8K tokens\n- Default Size: ~1.8GB (Q8_0)\n- Architecture: Dense transformer\n\n## Use Cases\n- Quick Q\u0026A\n- Simple text generation with tool use\n- Edge and on-device deployment\n- Prototyping and testing\n- Ultra-low-resource environments",
+  "hfRepo": "",
+  "icon": "/api/market/icons/smollm2-17b.png",
+  "lastUpdated": "2024-11-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "15Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "smollm2:1.7b",
+  "modelImages": [
+    "/api/market/screenshots/smollm2-17b/architecture.png",
+    "/api/market/screenshots/smollm2-17b/benchmark.png"
+  ],
+  "modelReadme": "SmolLM2 is a family of compact language models available in three sizes: 135M, 360M, and 1.7B parameters. They are capable of solving a wide range of tasks while being lightweight enough to run on-device.",
+  "name": "smollm2-17b",
+  "parameters": "1.7B",
+  "pullCount": "3.2M",
+  "quantization": "Q8_0",
+  "requiredCpu": "150m",
+  "requiredDisk": "2Gi",
+  "requiredGpu": "4Gi",
+  "requiredMemory": "2000Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/HuggingFaceTB/SmolLM2-1.7B-Instruct",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "SmolLM2 1.7B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q8_0",
+      "size": "1.8GB",
+      "tag": "1.7b"
+    },
+    {
+      "quantization": "Q4_K_M",
+      "size": "1.1GB",
+      "tag": "1.7b-instruct-q4_K_M"
+    },
+    {
+      "quantization": "FP16",
+      "size": "3.4GB",
+      "tag": "1.7b-instruct-fp16"
+    }
+  ],
+  "versionName": "smollm2:1.7b",
+  "website": "https://ollama.com/library/smollm2"
+}

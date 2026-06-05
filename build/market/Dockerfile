@@ -14,7 +14,11 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder /market-backend /usr/local/bin/market-backend
-COPY market/ /data/market/
+# Copy per-entity sidecars, icons, screenshots, and curation (no catalog.json)
+COPY market/charts/ /data/market/charts/
+COPY market/icons/ /data/market/icons/
+COPY market/screenshots/ /data/market/screenshots/
+COPY market/curation.json /data/market/curation.json
 
 ENV MARKET_LISTEN_ADDR=:6756
 

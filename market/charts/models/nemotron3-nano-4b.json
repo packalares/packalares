@@ -1,0 +1,80 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion",
+    "tools",
+    "thinking"
+  ],
+  "categories": [
+    "General",
+    "Reasoning",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "256K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "NVIDIA's efficient 4B hybrid MoE model with reasoning and tool-use capabilities.",
+  "developer": "NVIDIA",
+  "doc": "https://ollama.com/library/nemotron-3-nano",
+  "fullDescription": "## MODEL OVERVIEW\nNemotron 3 Nano is NVIDIA's compact language model designed for both reasoning and non-reasoning tasks. The 4B variant features a hybrid Mixture-of-Experts architecture with 23 Mamba-2/MoE layers plus 6 Attention layers, achieving strong performance in a small footprint.\n\n## Key Features\n- **Thinking Mode**: Generates reasoning traces before final responses\n- **Tool/Function Calling**: Native support for structured tool interactions\n- **Hybrid MoE Architecture**: 128 experts + 1 shared expert per MoE layer, 6 experts activated per token\n- **256K Context Window**: Extended context for complex tasks\n- **Multilingual**: English, German, Spanish, French, Italian, Japanese\n\n## Specifications\n- Parameters: 4B (active: 3.5B)\n- Context Length: 256K tokens\n- Architecture: Hybrid Mamba-2/MoE + Attention\n- Quantization: Q4_K_M (default, 2.8GB)",
+  "hfRepo": "",
+  "icon": "/api/market/icons/nemotron3-nano-4b.png",
+  "lastUpdated": "2026-03-22",
+  "license": [
+    {
+      "name": "NVIDIA Open Model License",
+      "url": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "20Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "nemotron-3-nano:4b",
+  "modelImages": [],
+  "modelReadme": "Nemotron 3 Nano is an LLM trained by NVIDIA designed for both reasoning and non-reasoning tasks. It generates reasoning traces before providing final responses, with configurable reasoning output. The architecture employs a hybrid Mixture-of-Experts design with 23 Mamba-2/MoE layers plus 6 Attention layers. Each MoE layer contains 128 experts plus 1 shared expert, with 6 experts activated per token. Supported languages: English, German, Spanish, French, Italian, and Japanese.",
+  "name": "nemotron3-nano-4b",
+  "parameters": "4B",
+  "pullCount": "382.7K",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "4Gi",
+  "requiredMemory": "4800Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/nvidia/Nemotron-3-Nano-4B-Instruct",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Nemotron-3 Nano 4B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "2.8GB",
+      "tag": "4b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "4.2GB",
+      "tag": "4b-q8_0"
+    },
+    {
+      "quantization": "BF16",
+      "size": "8.0GB",
+      "tag": "4b-bf16"
+    }
+  ],
+  "versionName": "nemotron-3-nano:4b",
+  "website": "https://ollama.com/library/nemotron-3-nano"
+}

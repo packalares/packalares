@@ -1,0 +1,71 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "embedding"
+  ],
+  "categories": [
+    "Embedding"
+  ],
+  "cfgType": "model",
+  "contextLength": "512",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "SOTA embedding model from mixedbread.ai. Surpasses OpenAI text-embedding-3-large on MTEB.",
+  "developer": "MixedBread AI",
+  "doc": "https://ollama.com/library/mxbai-embed-large",
+  "fullDescription": "## MODEL OVERVIEW\nmxbai-embed-large is a state-of-the-art text embedding model from mixedbread.ai, achieving top MTEB scores for Bert-large sized models. It surpasses OpenAI's text-embedding-3-large and matches models 20x larger.\n\n## Key Features\n- **SOTA on MTEB**: Top performance for Bert-large class models\n- **Beats OpenAI**: Surpasses text-embedding-3-large\n- **Strong Generalization**: Trained without MTEB data overlap\n- **Compact**: 335M parameters, only 670MB\n- **CPU-Friendly**: Efficient inference without GPU\n\n## Specifications\n- Parameters: 335M\n- Max Sequence Length: 512 tokens\n- Embedding Dimension: 1024\n- Size: 670MB\n- License: Apache 2.0",
+  "hfRepo": "",
+  "icon": "/api/market/icons/mxbai-embed-large.png",
+  "lastUpdated": "2025-04-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1/blob/main/LICENSE"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "20Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "mxbai-embed-large:335m",
+  "modelImages": [],
+  "modelReadme": "mxbai-embed-large is a state-of-the-art large embedding model from mixedbread.ai that achieves SOTA performance for Bert-large sized models on MTEB, surpassing OpenAI's text-embedding-3-large and matching models 20x larger. It was trained without MTEB data overlap, demonstrating strong generalization across domains, tasks, and text lengths.",
+  "name": "mxbai-embed-large",
+  "parameters": "335M",
+  "pullCount": "9.4M",
+  "quantization": "FP16",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "0",
+  "requiredMemory": "2000Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/mixedbread-ai/mxbai-embed-large-v1",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "MixedBread Embed Large",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "FP16",
+      "size": "670MB",
+      "tag": "335m"
+    },
+    {
+      "quantization": "FP16",
+      "size": "670MB",
+      "tag": "335m-v1-fp16"
+    }
+  ],
+  "versionName": "mxbai-embed-large:335m",
+  "website": "https://ollama.com/library/mxbai-embed-large"
+}

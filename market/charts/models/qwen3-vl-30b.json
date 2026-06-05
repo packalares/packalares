@@ -1,0 +1,82 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "vision",
+    "tools",
+    "thinking"
+  ],
+  "categories": [
+    "Vision",
+    "Reasoning",
+    "Tools"
+  ],
+  "cfgType": "model",
+  "contextLength": "256K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Best open vision-language model. Understand images, charts, documents, and video.",
+  "developer": "Qwen Team (Alibaba)",
+  "doc": "https://ollama.com/library/qwen3-vl",
+  "fullDescription": "## MODEL OVERVIEW\nQwen3-VL 30B is the most powerful vision-language model in the Qwen family to date, with significant improvements in text understanding, visual reasoning, spatial understanding, and video comprehension. This 30B MoE model (3B active parameters) delivers flagship-level multimodal performance.\n\n## Key Features\n- **Visual Agent Capabilities**: Operate computer/mobile interfaces, recognize GUI elements, and call tools\n- **Superior Text-Centric Performance**: Matches Qwen3-235B flagship on text tasks through joint pretraining\n- **Visual Coding**: Generate code from images or videos (mockups to HTML/CSS/JS)\n- **Spatial Understanding**: 2D and 3D grounding for complex spatial reasoning\n- **256K Context**: Natively supports 256K tokens, expandable to 1M tokens\n- **Multimodal Reasoning**: Thinking variant optimized for STEM and math\n- **OCR in 32 Languages**: Expanded from 10 to 32 supported OCR languages\n\n## Specifications\n- Parameters: 30B (MoE, 3B active)\n- Context Length: 256K tokens\n- Modalities: Text + Images + Video\n- Default Size: ~20GB (Q4_K_M)",
+  "hfRepo": "",
+  "icon": "/api/market/icons/qwen3-vl-30b.png",
+  "lastUpdated": "2025-11-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://www.apache.org/licenses/LICENSE-2.0"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "40Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "qwen3-vl:30b",
+  "modelImages": [
+    "/api/market/screenshots/qwen3-vl-30b/logo.png"
+  ],
+  "modelReadme": "Qwen3-VL is the most powerful vision-language model in the Qwen model family to date. In this generation, there are improvements to the model in many areas: its understanding and generating text, perceiving and reasoning about visual content, supporting longer context lengths, understanding spatial relationships and dynamic videos, or interacting with AI agents.\n\n## Key Features\n- **Visual Agent Capabilities**: Operate computer/mobile interfaces, recognize GUI elements, and call tools. Achieves top global performance on benchmarks like OS World.\n- **Superior Text-Centric Performance**: Joint pretraining of text and visual modalities matches Qwen3-235B-A22B-2507 flagship language model performance.\n- **Greatly Improved Visual Coding**: Generate code from images or videos — turning design mockups into Draw.io, HTML, CSS, or JavaScript code.\n- **Much Better Spatial Understanding**: 2D grounding with relative coordinates and 3D grounding capabilities for complex spatial reasoning and embodied AI.\n- **Long Context \u0026 Long Video Understanding**: Natively supports 256K tokens of context, expandable up to 1 million tokens.\n- **Stronger Multimodal Reasoning**: Thinking variant specially optimized for STEM and math reasoning.\n- **Better OCR Across More Languages**: OCR now supports 32 languages (increased from 10).",
+  "name": "qwen3-vl-30b",
+  "parameters": "30B",
+  "pullCount": "3.1M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "23Gi",
+  "requiredMemory": "4200Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/Qwen/Qwen3-VL-30B",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Qwen 3 VL 30B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "20GB",
+      "tag": "30b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "34GB",
+      "tag": "30b-a3b-instruct-q8_0"
+    },
+    {
+      "quantization": "BF16",
+      "size": "62GB",
+      "tag": "30b-a3b-instruct-bf16"
+    }
+  ],
+  "versionName": "qwen3-vl:30b",
+  "website": "https://ollama.com/library/qwen3-vl"
+}

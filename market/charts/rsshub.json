@@ -1,0 +1,86 @@
+{
+  "categories": [
+    "Productivity"
+  ],
+  "cfgType": "app",
+  "chartName": "rsshub",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": "\u003e= 1.0.0"
+    }
+  ],
+  "description": "A extensible RSS feed generator",
+  "developer": "DIYgod",
+  "doc": "https://docs.rsshub.app/",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "rsshub-svc",
+      "icon": "/api/market/icons/rsshub.png",
+      "name": "rsshub",
+      "openMethod": "default",
+      "port": 1200,
+      "title": "RSSHub"
+    }
+  ],
+  "featuredImage": "",
+  "fullDescription": "RSSHub is an open source, easy to use, and extensible RSS feed generator. It's capable of generating RSS feeds from pretty much everything.\n\nRSSHub delivers millions of contents aggregated from all kinds of sources, our vibrant open source community is ensuring the deliver of RSSHub's new routes, new features and bug fixes.\n",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/rsshub.png",
+  "images": [
+    "docker.io/diygod/rsshub:chromium-bundled-2026-04-22",
+    "ghcr.io/packalares/redis:7-alpine"
+  ],
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/DIYgod/RSSHub/blob/master/LICENSE"
+    }
+  ],
+  "limitedCPU": "1500m",
+  "limitedDisk": "256Mi",
+  "limitedMemory": "2Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "rsshub",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": null
+  },
+  "promoteImage": [],
+  "rating": 0,
+  "requiredCpu": "100m",
+  "requiredDisk": "128Mi",
+  "requiredGpu": "",
+  "requiredMemory": "512Mi",
+  "services": [
+    {
+      "name": "rsshub-svc",
+      "ports": [
+        {
+          "name": "http",
+          "port": 1200
+        }
+      ]
+    }
+  ],
+  "source": "olares",
+  "sourceCode": "https://github.com/DIYgod/RSSHub",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "RSSHub",
+  "type": "app",
+  "upgradeDescription": "Initial release for Packalares marketplace.",
+  "version": "1.0.8",
+  "versionName": "2025-12-13",
+  "website": "https://rsshub.app/"
+}

@@ -1,0 +1,66 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "embedding"
+  ],
+  "categories": [
+    "Reranking"
+  ],
+  "cfgType": "model",
+  "contextLength": "8K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Lightweight multilingual reranker (1.2 GB) optimized for RAG pipelines with strong Chinese-English performance.",
+  "developer": "BAAI",
+  "doc": "https://ollama.com/dengcao/bge-reranker-v2-m3",
+  "fullDescription": "## IMPORTANT NOTE ##\nThis model runs on CPU only. If you want to run it on GPU, please install the generic version of Ollama program.\n\nThis is a shared app. Once installed by the Olares Admin, all users in the cluster can use it through reference app.\n\n## MODEL OVERVIEW ##\nBGE-Reranker-v2-M3 is a lightweight reranking model developed by BAAI (Beijing Academy of Artificial Intelligence), optimized based on BGE-M3-0.5B architecture. It is designed for multilingual retrieval tasks and provides efficient context reranking capability for RAG workflows.\n\nThe model filters irrelevant content and prioritizes relevant passages to improve accuracy and response speed in generative AI applications. It is especially strengthened for mixed Chinese-English scenarios.\n\n**Note:** As of June 2025, Ragflow 0.19 and Dify don't support Ollama reranking models. Alternatives include FastGPT or vLLM deployment.\n\n## Model Details\n- Model Name: BAAI/bge-reranker-v2-m3\n- Base: BGE-M3-0.5B\n- Size: 1.2GB\n- Context Length: 8192 tokens\n- Task: Text Reranking",
+  "hfRepo": "",
+  "icon": "/api/market/icons/bge-reranker-v2-m3.png",
+  "lastUpdated": "2025-06-12",
+  "license": [
+    {
+      "name": "Apache 2.0",
+      "url": "https://huggingface.co/BAAI/bge-reranker-v2-m3"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "33Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "dengcao/bge-reranker-v2-m3",
+  "modelImages": [],
+  "modelReadme": "BGE-Reranker-v2-M3 is a lightweight reranking model from Beijing Academy of Artificial Intelligence (BAAI), optimized based on BGE-M3-0.5B architecture, designed for multilingual retrieval tasks with enhanced performance in mixed Chinese-English scenarios. It filters irrelevant content and prioritizes relevant passages to improve accuracy and response speed for generative AI.\n\nNote: As of June 2025, Ragflow 0.19 and Dify don't support Ollama reranking models. Alternatives include FastGPT or vLLM deployment.",
+  "name": "bge-reranker-v2-m3",
+  "parameters": "0.5B",
+  "pullCount": "6.5K",
+  "quantization": "FP16",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "0",
+  "requiredMemory": "2500Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/BAAI/bge-reranker-v2-m3",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "BGE Reranker v2 M3 (Ollama)",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "FP16",
+      "size": "1.2GB",
+      "tag": "latest"
+    }
+  ],
+  "versionName": "dengcao/bge-reranker-v2-m3",
+  "website": "https://ollama.com/dengcao/bge-reranker-v2-m3"
+}

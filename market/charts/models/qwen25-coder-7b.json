@@ -1,0 +1,79 @@
+{
+  "backend": "ollama",
+  "capabilities": [
+    "completion"
+  ],
+  "categories": [
+    "Code"
+  ],
+  "cfgType": "model",
+  "contextLength": "32K",
+  "dependencies": [
+    {
+      "name": "ollama",
+      "type": "application",
+      "version": "\u003e=1.0.3"
+    }
+  ],
+  "description": "Fast 7B code model supporting 40+ languages. Code generation, repair, and reasoning.",
+  "developer": "Alibaba",
+  "doc": "https://ollama.com/library/qwen2.5-coder",
+  "fullDescription": "## MODEL OVERVIEW\nQwen2.5-Coder 7B is a code-specific model from Alibaba's Qwen series, optimized for code generation, repair, and reasoning tasks across 40+ programming languages.\n\n## Key Features\n- **40+ Languages**: Strong support for Python, JavaScript, TypeScript, Java, C++, Go, Rust, Haskell, Racket and more\n- **Code Generation \u0026 Repair**: Excels at both writing and fixing code\n- **32K Context**: Process large files and specifications\n- **Compact Size**: 4.7GB default for fast inference\n- **Part of Qwen2.5 Series**: Available in 0.5B to 32B sizes\n\n## Specifications\n- Parameters: 7B\n- Context Length: 32K tokens\n- Default Size: 4.7GB (Q4_K_M)\n- Architecture: Dense transformer\n- License: Apache 2.0",
+  "hfRepo": "",
+  "icon": "/api/market/icons/qwen25-coder-7b.png",
+  "lastUpdated": "2025-06-12",
+  "license": [
+    {
+      "name": "Apache-2.0",
+      "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct/blob/main/LICENSE"
+    }
+  ],
+  "limitedCPU": "6200m",
+  "limitedMemory": "25Gi",
+  "locale": [
+    "en-US"
+  ],
+  "modelId": "qwen2.5-coder:7b",
+  "modelImages": [
+    "/api/market/screenshots/qwen25-coder-7b/logo.png",
+    "/api/market/screenshots/qwen25-coder-7b/benchmark.png"
+  ],
+  "modelReadme": "Qwen2.5-Coder is a code-specific model in the Qwen series, available in 6 sizes from 0.5B to 32B parameters. The 32B variant demonstrates competitive performance with GPT-4o. Models excel at code generation, repair capabilities, and reasoning tasks across 40+ programming languages with strong performance in Haskell and Racket.",
+  "name": "qwen25-coder-7b",
+  "parameters": "7B",
+  "pullCount": "14M",
+  "quantization": "Q4_K_M",
+  "requiredCpu": "150m",
+  "requiredDisk": "50Mi",
+  "requiredGpu": "6Gi",
+  "requiredMemory": "6700Mi",
+  "source": "olares",
+  "sourceCode": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct",
+  "status": "active",
+  "supportArch": [
+    "amd64",
+    "arm64"
+  ],
+  "title": "Qwen 2.5 Coder 7B",
+  "type": "model",
+  "variants": [
+    {
+      "default": true,
+      "quantization": "Q4_K_M",
+      "size": "4.7GB",
+      "tag": "7b"
+    },
+    {
+      "quantization": "Q8_0",
+      "size": "8.1GB",
+      "tag": "7b-instruct-q8_0"
+    },
+    {
+      "quantization": "FP16",
+      "size": "15GB",
+      "tag": "7b-instruct-fp16"
+    }
+  ],
+  "versionName": "qwen2.5-coder:7b",
+  "website": "https://ollama.com/library/qwen2.5-coder"
+}
