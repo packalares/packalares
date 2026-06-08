@@ -767,17 +767,24 @@ func (s *Server) handleIPAccess(w http.ResponseWriter, r *http.Request) {
 			// Remove the block if present
 			conf = strings.ReplaceAll(conf, blockLine, "")
 		} else {
-			// Add block after "server_name {{SERVER_IP}};" if not already there
+			// Add block INSIDE the IP server block so the `return 403`
+			// directive lands in `server {}` context (where nginx allows it),
+			// not at `http {}` context (where it triggers
+			// `"return" directive is not allowed here`).
+			//
+			// Anchor on the IP server block marker, then insert right after
+			// its `listen 443 ssl default_server;` line.
 			if !strings.Contains(conf, marker) {
-				// Find the first IP server block's server_name line and add after it
-				idx := strings.Index(conf, "ssl_protocols TLSv1.2 TLSv1.3;")
-				if idx > 0 {
-					insertAt := idx + len("ssl_protocols TLSv1.2 TLSv1.3;")
-					// Find end of line
-					nlIdx := strings.Index(conf[insertAt:], "\n")
-					if nlIdx >= 0 {
-						insertAt += nlIdx + 1
-						conf = conf[:insertAt] + "    " + blockLine + conf[insertAt:]
+				ipBlockIdx := strings.Index(conf, "# ═══ IP ACCESS ═══")
+				if ipBlockIdx >= 0 {
+					listenLine := "listen 443 ssl default_server;"
+					listenRel := strings.Index(conf[ipBlockIdx:], listenLine)
+					if listenRel >= 0 {
+						insertAt := ipBlockIdx + listenRel + len(listenLine)
+						if nl := strings.Index(conf[insertAt:], "\n"); nl >= 0 {
+							insertAt += nl + 1
+							conf = conf[:insertAt] + "    " + blockLine + conf[insertAt:]
+						}
 					}
 				}
 			}
