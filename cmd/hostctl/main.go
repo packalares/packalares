@@ -359,6 +359,45 @@ func parseWGEndpoint(config string) (ip string, port string) {
 	return "", ""
 }
 
+// ensureInterfaceField inserts `key = value` into the [Interface] section of a
+// WG config if no line for that key is already present there. Used to pin
+// ListenPort so the kernel doesn't pick a fresh ephemeral port on every restart
+// (which would invalidate the home router's NAT mapping and leave the relay's
+// stored peer endpoint pointing at a dead port until it re-learns).
+func ensureInterfaceField(config, key, value string) string {
+	inInterface := false
+	for _, line := range strings.Split(config, "\n") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "[Interface]" {
+			inInterface = true
+			continue
+		}
+		if strings.HasPrefix(trimmed, "[") {
+			inInterface = false
+			continue
+		}
+		if !inInterface {
+			continue
+		}
+		lower := strings.ToLower(trimmed)
+		k := strings.ToLower(key)
+		if strings.HasPrefix(lower, k+" ") || strings.HasPrefix(lower, k+"=") {
+			return config // key already present, respect user setting
+		}
+	}
+	lines := strings.Split(config, "\n")
+	var result []string
+	injected := false
+	for _, line := range lines {
+		result = append(result, line)
+		if !injected && strings.TrimSpace(line) == "[Interface]" {
+			result = append(result, fmt.Sprintf("%s = %s", key, value))
+			injected = true
+		}
+	}
+	return strings.Join(result, "\n")
+}
+
 // No rewriteAllowedIPs needed — we let wg-quick handle routing normally
 // and add throw routes for cluster CIDRs in PostUp.
 
@@ -366,8 +405,11 @@ func parseWGEndpoint(config string) (ip string, port string) {
 // wg-quick handles routing normally (creates its own table + fwmark + nft rules).
 // PostUp adds throw routes for cluster CIDRs + optional DNS + optional kill-switch.
 func buildWGConfig(userConfig string, killSwitch bool) string {
+	// Pin ListenPort so NAT mappings survive reboots. User can override by
+	// setting their own ListenPort in [Interface].
+	userConfig = ensureInterfaceField(userConfig, "ListenPort", "51820")
+
 	clusterCIDRs := detectClusterCIDRs()
-	clusterDNS := detectClusterDNS()
 	dns := parseWGDNS(userConfig)
 
 	// Throw routes so cluster traffic bypasses the WG tunnel.
@@ -377,19 +419,35 @@ func buildWGConfig(userConfig string, killSwitch bool) string {
 	}
 
 	// DNS block only when the user's config has DNS =; otherwise leave resolv.conf alone.
+	// Use tunnel DNS + public fallback. NEVER put cluster DNS (10.233.0.10) here —
+	// CoreDNS reads /etc/resolv.conf to find its upstream, so listing the cluster's
+	// own service IP makes CoreDNS forward to itself, the loop plugin trips, and
+	// the cluster's DNS layer dies — bringing every dependent pod with it.
+	// Pod-side cluster DNS is injected by kubelet via pod-spec and doesn't need help here.
 	dnsBlock := ""
 	if dns != "" {
-		dnsBlock = fmt.Sprintf(`# DNS: use tunnel DNS + cluster DNS
+		dnsBlock = fmt.Sprintf(`# DNS: tunnel DNS + public DNS fallback (no cluster DNS — would loop CoreDNS)
 cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
-echo "nameserver %s" > /etc/resolv.conf
-[ -n "%s" ] && echo "nameserver %s" >> /etc/resolv.conf
-`, dns, clusterDNS, clusterDNS)
+cat > /etc/resolv.conf <<'EOF'
+nameserver %s
+nameserver 1.1.1.1
+nameserver 8.8.8.8
+EOF
+`, dns)
 	}
 
 	// Kill-switch iptables rules — only when enabled.
 	killSwitchBlock := ""
 	if killSwitch {
 		endpointIP, endpointPort := parseWGEndpoint(userConfig)
+		// Build the endpoint-accept line conditionally in Go. Doing it in bash
+		// via `[ -n "%s" ] && ...` after fmt.Sprintf substitutes the literal
+		// makes the test always-true — the conditional was effectively dead.
+		endpointAccept := ""
+		if endpointIP != "" {
+			endpointAccept = fmt.Sprintf("iptables -A WG_OUT -d %s -p udp --dport %s -j ACCEPT\n",
+				endpointIP, endpointPort)
+		}
 		killSwitchBlock = fmt.Sprintf(`# Kill-switch (iptables)
 iptables -N WG_OUT 2>/dev/null; iptables -F WG_OUT
 iptables -A WG_OUT -o lo -j ACCEPT
@@ -397,10 +455,9 @@ iptables -A WG_OUT -d 10.0.0.0/8 -j ACCEPT
 iptables -A WG_OUT -d 172.16.0.0/12 -j ACCEPT
 iptables -A WG_OUT -d 192.168.0.0/16 -j ACCEPT
 iptables -A WG_OUT -o wg0 -j ACCEPT
-[ -n "%s" ] && iptables -A WG_OUT -d %s -p udp --dport %s -j ACCEPT
-iptables -A WG_OUT -j REJECT
+%siptables -A WG_OUT -j REJECT
 iptables -C OUTPUT -j WG_OUT 2>/dev/null || iptables -I OUTPUT -j WG_OUT
-`, endpointIP, endpointIP, endpointPort)
+`, endpointAccept)
 	}
 
 	upScript := fmt.Sprintf(`#!/bin/bash
@@ -668,22 +725,6 @@ func detectClusterCIDRs() []string {
 		log.Printf("[wg] detected cluster CIDRs: %v", result)
 	}
 	return result
-}
-
-// detectClusterDNS finds the cluster DNS IP from kubelet config or resolv.conf.
-func detectClusterDNS() string {
-	// Read from kubelet's resolv.conf (K3s sets cluster-dns in kubelet args)
-	out, _ := nsenterOutput("bash", "-c", "cat /var/lib/rancher/k3s/agent/etc/resolv.conf 2>/dev/null | grep nameserver | head -1 | awk '{print $2}'")
-	if out != "" && strings.Contains(out, ".") {
-		return out
-	}
-	// Fallback: check iptables for kube-dns service IP
-	iptOut, _ := nsenterOutput("bash", "-c", "iptables -t nat -L KUBE-SERVICES -n 2>/dev/null | grep 'kube-system/kube-dns:dns ' | awk '{print $5}'")
-	if iptOut != "" && strings.Contains(iptOut, ".") {
-		return iptOut
-	}
-	log.Printf("[wg] WARNING: could not detect cluster DNS")
-	return ""
 }
 
 // removeWGKillSwitch fully removes all iptables kill-switch and DNS redirect rules.
