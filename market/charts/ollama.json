@@ -8,7 +8,7 @@
     {
       "name": "packalares",
       "type": "system",
-      "version": "\u003e= 1.0.0"
+      "version": ">= 1.0.0"
     }
   ],
   "description": "Get up and running with large language models.",
@@ -73,8 +73,8 @@
   ],
   "title": "Ollama",
   "type": "app",
-  "upgradeDescription": "Upgrade Ollama version from v0.20.3 to v0.24.0, and expose the Ollama API as a public entrance.\n\nFor detailed release notes including new models and features in each version, please visit:\nhttps://github.com/ollama/ollama/releases\n",
-  "version": "1.0.18",
-  "versionName": "0.24.0",
+  "upgradeDescription": "Upgrade Ollama version from v0.24.0 to v0.30.7, and bump terminal image v0.0.10 to v0.0.11.\n\nFor detailed release notes including new models and features in each version, please visit:\nhttps://github.com/ollama/ollama/releases\n\n--- previous ---\nUpgrade Ollama version from v0.20.3 to v0.24.0, and expose the Ollama API as a public entrance.\n\nFor detailed release notes including new models and features in each version, please visit:\nhttps://github.com/ollama/ollama/releases\n",
+  "version": "1.0.19",
+  "versionName": "0.30.7",
   "website": "https://ollama.com/"
 }
