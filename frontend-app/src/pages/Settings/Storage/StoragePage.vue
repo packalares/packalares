@@ -95,6 +95,20 @@
             <q-input v-model="newMount.password" dense dark outlined type="password" />
           </div>
         </div>
+        <div v-if="newMount.type !== 'rclone'" class="form-grid cols-1" style="padding-top: 0">
+          <div class="form-group">
+            <label class="form-label">Mount Options (optional)</label>
+            <q-input
+              v-model="newMount.options"
+              dense dark outlined
+              :placeholder="newMount.type === 'smb' ? 'uid=1000,gid=1000,file_mode=0660,dir_mode=0770' : 'nfsvers=4,rsize=131072'"
+            />
+            <div style="font-size:11px;color:var(--ink-3);margin-top:4px;line-height:1.5">
+              Comma-separated. For Immich/app writeability on SMB use
+              <code>uid=1000,gid=1000,file_mode=0660,dir_mode=0770,nounix</code>.
+            </div>
+          </div>
+        </div>
         <div class="card-footer">
           <span v-if="mountMsg" class="footer-msg" :class="mountMsg.startsWith('Error') ? 'text-red-5' : 'text-green-5'">{{ mountMsg }}</span>
           <q-btn unelevated dense label="Add Mount" class="btn-primary" :loading="adding" @click="addMount" />
@@ -120,7 +134,7 @@ const diskPct = computed(() => diskTotal.value ? (diskUsed.value / diskTotal.val
 const mounts = ref<Mount[]>([]);
 const adding = ref(false);
 const mountMsg = ref('');
-const newMount = ref({ type: 'smb', name: '', remote: '', username: '', password: '' });
+const newMount = ref({ type: 'smb', name: '', remote: '', username: '', password: '', options: '' });
 
 async function loadMounts() {
   try { const r: any = await api.get('/api/mounts'); mounts.value = r?.mounts || r || []; } catch { mounts.value = []; }
@@ -151,11 +165,12 @@ async function addMount() {
       share,
       user: newMount.value.username || '',
       password: newMount.value.password || '',
+      options: newMount.value.options || '',
       remote: remote,
     };
     await api.post('/api/mounts', payload);
     mountMsg.value = 'Mount added';
-    newMount.value = { type: 'smb', name: '', remote: '', username: '', password: '' };
+    newMount.value = { type: 'smb', name: '', remote: '', username: '', password: '', options: '' };
     await loadMounts();
   } catch (e: any) { mountMsg.value = 'Error: ' + (e?.response?.data || e.message || 'failed'); }
   adding.value = false;
