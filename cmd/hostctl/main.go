@@ -417,10 +417,12 @@ func rewriteAllowedIPs(config, newAllowed string) string {
 // PostUp adds throw routes for cluster CIDRs + optional DNS + optional kill-switch.
 //
 // Modes:
-//   - "" / "full": user's AllowedIPs honored; optional resolv.conf rewrite; optional killswitch.
+//   - "" / "full": user's AllowedIPs honored.
+//     killSwitch=true → iptables WG_OUT chain blocks all non-LAN/non-WG egress.
 //   - "dns-only": AllowedIPs forced to 10.8.0.0/24 (peer mesh) — internet stays direct.
-//     DNS pinned via iptables NAT redirect so apps reach the WG-side filtered resolver.
-//     Killswitch is incompatible with split tunnel and is forced off.
+//     DNS pinned via iptables NAT redirect (catches apps that bypass /etc/resolv.conf).
+//     killSwitch=true → strict resolv.conf (only 10.8.0.1, no public fallback).
+//     killSwitch=false → resolv.conf has 10.8.0.1 + 1.1.1.1 + 8.8.8.8 fallback.
 func buildWGConfig(userConfig, mode string, killSwitch bool) string {
 	// Pin ListenPort so NAT mappings survive reboots. User can override by
 	// setting their own ListenPort in [Interface].
@@ -428,10 +430,10 @@ func buildWGConfig(userConfig, mode string, killSwitch bool) string {
 
 	dns := parseWGDNS(userConfig)
 
-	// dns-only mode: only peer mesh through WG; force killswitch off; pin DNS via NAT.
+	// dns-only mode: only peer mesh through WG. killSwitch is reinterpreted here
+	// to control DNS strictness rather than gating an iptables egress chain.
 	if mode == "dns-only" {
 		userConfig = rewriteAllowedIPs(userConfig, "10.8.0.0/24")
-		killSwitch = false
 	}
 
 	clusterCIDRs := detectClusterCIDRs()
@@ -442,16 +444,25 @@ func buildWGConfig(userConfig, mode string, killSwitch bool) string {
 		throwRoutes += fmt.Sprintf("ip route add throw %s table $WG_TABLE 2>/dev/null\n", cidr)
 	}
 
-	// DNS block only when the user's config has DNS = AND we're NOT in dns-only mode.
-	// (dns-only mode handles DNS via iptables NAT, not resolv.conf rewrite.)
-	// Use tunnel DNS + public fallback. NEVER put cluster DNS (10.233.0.10) here —
+	// DNS resolv.conf rewrite. NEVER put cluster DNS (10.233.0.10) here —
 	// CoreDNS reads /etc/resolv.conf to find its upstream, so listing the cluster's
 	// own service IP makes CoreDNS forward to itself, the loop plugin trips, and
 	// the cluster's DNS layer dies — bringing every dependent pod with it.
 	// Pod-side cluster DNS is injected by kubelet via pod-spec and doesn't need help here.
 	dnsBlock := ""
-	if mode != "dns-only" && dns != "" {
-		dnsBlock = fmt.Sprintf(`# DNS: tunnel DNS + public DNS fallback (no cluster DNS — would loop CoreDNS)
+	if dns != "" {
+		switch {
+		case mode == "dns-only" && killSwitch:
+			// Strict: only the WG-side resolver. AdGuard down → no DNS.
+			dnsBlock = fmt.Sprintf(`# DNS: strict (tunnel resolver only — killswitch ON in dns-only mode)
+cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
+cat > /etc/resolv.conf <<'EOF'
+nameserver %s
+EOF
+`, dns)
+		default:
+			// Soft: tunnel DNS first, then public fallback.
+			dnsBlock = fmt.Sprintf(`# DNS: tunnel DNS + public DNS fallback (no cluster DNS — would loop CoreDNS)
 cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
 cat > /etc/resolv.conf <<'EOF'
 nameserver %s
@@ -459,6 +470,7 @@ nameserver 1.1.1.1
 nameserver 8.8.8.8
 EOF
 `, dns)
+		}
 	}
 
 	// DNS NAT pin — dns-only mode only.
@@ -480,9 +492,10 @@ iptables -t nat -C OUTPUT -p tcp --dport 53 -j WG_DNS_REDIRECT 2>/dev/null || ip
 `, dnsTarget, dnsTarget)
 	}
 
-	// Kill-switch iptables rules — only when enabled.
+	// Kill-switch iptables egress chain — full mode only.
+	// In dns-only mode, killSwitch controls resolv.conf strictness instead (above).
 	killSwitchBlock := ""
-	if killSwitch {
+	if killSwitch && mode != "dns-only" {
 		endpointIP, endpointPort := parseWGEndpoint(userConfig)
 		// Build the endpoint-accept line conditionally in Go. Doing it in bash
 		// via `[ -n "%s" ] && ...` after fmt.Sprintf substitutes the literal
@@ -504,12 +517,17 @@ iptables -C OUTPUT -j WG_OUT 2>/dev/null || iptables -I OUTPUT -j WG_OUT
 `, endpointAccept)
 	}
 
-	// Mode marker so handleWGStatus can report which mode is active.
+	// Mode + killswitch markers so handleWGStatus can report state without
+	// having to guess from iptables (which only reflects full-mode killswitch).
 	modeValue := mode
 	if modeValue == "" {
 		modeValue = "full"
 	}
-	modeMarker := fmt.Sprintf("echo %s > /etc/wireguard/wg0.mode\n", modeValue)
+	killSwitchValue := "0"
+	if killSwitch {
+		killSwitchValue = "1"
+	}
+	modeMarker := fmt.Sprintf("echo %s > /etc/wireguard/wg0.mode\necho %s > /etc/wireguard/wg0.killswitch\n", modeValue, killSwitchValue)
 
 	upScript := fmt.Sprintf(`#!/bin/bash
 # Get wg-quick's routing table from the fwmark it set
@@ -638,7 +656,7 @@ func handleWGDisable(w http.ResponseWriter, r *http.Request) {
 	_ = nsenterRun("systemctl", "disable", "wg-quick@wg0")
 
 	// Remove config and helper scripts
-	_ = nsenterRun("rm", "-f", "/etc/wireguard/wg0.conf", "/etc/wireguard/wg0.env", "/etc/wireguard/wg0.mode")
+	_ = nsenterRun("rm", "-f", "/etc/wireguard/wg0.conf", "/etc/wireguard/wg0.env", "/etc/wireguard/wg0.mode", "/etc/wireguard/wg0.killswitch")
 	_ = nsenterRun("rm", "-f", "/usr/local/bin/wg0-up.sh", "/usr/local/bin/wg0-down.sh")
 
 	log.Printf("[wg] WireGuard disabled and fully cleaned")
@@ -694,16 +712,22 @@ func handleWGStatus(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Check if kill-switch is active
-	iptOut, _ := nsenterOutput("iptables", "-L", "WG_OUT", "-n")
-	status.KillSwitch = strings.Contains(iptOut, "REJECT")
-
 	// Read mode marker (written by PostUp). Defaults to "full" for backwards compat.
 	if modeOut, err := nsenterOutput("cat", "/etc/wireguard/wg0.mode"); err == nil {
 		status.Mode = strings.TrimSpace(modeOut)
 	}
 	if status.Mode == "" {
 		status.Mode = "full"
+	}
+
+	// Kill-switch: prefer the marker file (covers both modes' semantics).
+	// Fall back to iptables REJECT detection for older WG sessions that
+	// predate the marker.
+	if ksOut, err := nsenterOutput("cat", "/etc/wireguard/wg0.killswitch"); err == nil {
+		status.KillSwitch = strings.TrimSpace(ksOut) == "1"
+	} else {
+		iptOut, _ := nsenterOutput("iptables", "-L", "WG_OUT", "-n")
+		status.KillSwitch = strings.Contains(iptOut, "REJECT")
 	}
 
 	respondJSON(w, http.StatusOK, status)

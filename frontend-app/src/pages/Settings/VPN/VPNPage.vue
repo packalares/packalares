@@ -237,18 +237,23 @@ AllowedIPs = 0.0.0.0/0"
         </div>
         <div class="info-row">
           <span class="info-label">Kill Switch</span>
-          <q-toggle v-model="wgKillSwitch" :disable="wgMode === 'dns-only'" dense color="primary" />
+          <q-toggle v-model="wgKillSwitch" dense color="primary" />
         </div>
         <div class="card-body" style="padding-top:0">
           <div style="font-size:11px;color:var(--ink-3);line-height:1.5">
             <q-icon name="sym_r_info" size="13px" style="vertical-align:middle;margin-right:4px" />
             <span v-if="wgMode === 'dns-only'">
-              Only DNS goes through the tunnel — internet stays direct at LAN speed.
-              The WG-side resolver (e.g. AdGuard) sees and filters every query.
-              Killswitch is unavailable in this mode (would block intentional direct traffic).
+              <strong>DNS-only:</strong> only the WG-side resolver (e.g. AdGuard) sees DNS;
+              internet traffic stays direct at LAN speed. Killswitch:
+              <strong>ON</strong> = strict DNS — only the WG resolver is written to /etc/resolv.conf
+              (AdGuard down = no name resolution).
+              <strong>OFF</strong> = falls back to 1.1.1.1 and 8.8.8.8 if the WG resolver times out
+              (more resilient, but those queries skip your filter).
             </span>
             <span v-else>
-              Block all internet traffic if VPN disconnects. LAN and cluster access preserved.
+              <strong>Full tunnel:</strong> all internet through VPN.
+              Killswitch: <strong>ON</strong> = block all egress if VPN drops (LAN + cluster still work, no leaks).
+              <strong>OFF</strong> = traffic falls back to the host's direct path when VPN is down.
             </span>
           </div>
         </div>
@@ -369,7 +374,7 @@ async function enableWireGuard() {
     await api.post('/api/settings/vpn/wireguard/enable', {
       config: wgConfig.value,
       mode: wgMode.value,
-      killSwitch: wgMode.value === 'dns-only' ? false : wgKillSwitch.value,
+      killSwitch: wgKillSwitch.value,
     });
     wgMsg.value = 'Enabling...';
     setTimeout(loadStatus, 3000);
