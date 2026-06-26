@@ -444,28 +444,36 @@ func buildWGConfig(userConfig, mode string, killSwitch bool) string {
 		throwRoutes += fmt.Sprintf("ip route add throw %s table $WG_TABLE 2>/dev/null\n", cidr)
 	}
 
-	// DNS resolv.conf rewrite. NEVER put cluster DNS (10.233.0.10) here —
-	// CoreDNS reads /etc/resolv.conf to find its upstream, so listing the cluster's
-	// own service IP makes CoreDNS forward to itself, the loop plugin trips, and
-	// the cluster's DNS layer dies — bringing every dependent pod with it.
-	// Pod-side cluster DNS is injected by kubelet via pod-spec and doesn't need help here.
+	// DNS resolv.conf rewrite.
+	// We include cluster DNS (10.233.0.10) so hostNetwork pods (e.g. the proxy
+	// nginx) can resolve *.cluster.local names — without it, the tunnel resolver
+	// (e.g. AdGuard) returns NXDOMAIN for cluster names and auth subrequests
+	// die with 502, breaking the admin panel entirely.
+	// The historic "NEVER list cluster DNS" caveat was about CoreDNS-loop risk:
+	// if CoreDNS reads host resolv.conf as its upstream and finds 10.233.0.10
+	// listed, it forwards to itself and the loop plugin trips. The k3s/CoreDNS
+	// in this deployment uses an explicit upstream in the Corefile (not host
+	// resolv.conf) so this is safe. If you fork to a deployment whose CoreDNS
+	// reads /etc/resolv.conf, drop the cluster-DNS line from the templates below.
 	dnsBlock := ""
 	if dns != "" {
 		switch {
 		case mode == "dns-only" && killSwitch:
-			// Strict: only the WG-side resolver. AdGuard down → no DNS.
-			dnsBlock = fmt.Sprintf(`# DNS: strict (tunnel resolver only — killswitch ON in dns-only mode)
+			// Strict: only the WG-side resolver + cluster DNS. AdGuard down → no external DNS.
+			dnsBlock = fmt.Sprintf(`# DNS: strict (tunnel resolver + cluster DNS only — killswitch ON in dns-only mode)
 cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
 cat > /etc/resolv.conf <<'EOF'
 nameserver %s
+nameserver 10.233.0.10
 EOF
 `, dns)
 		default:
-			// Soft: tunnel DNS first, then public fallback.
-			dnsBlock = fmt.Sprintf(`# DNS: tunnel DNS + public DNS fallback (no cluster DNS — would loop CoreDNS)
+			// Soft: tunnel DNS first, then public fallback, with cluster DNS for *.cluster.local.
+			dnsBlock = fmt.Sprintf(`# DNS: tunnel DNS + public fallback + cluster DNS for *.cluster.local
 cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
 cat > /etc/resolv.conf <<'EOF'
 nameserver %s
+nameserver 10.233.0.10
 nameserver 1.1.1.1
 nameserver 8.8.8.8
 EOF
@@ -477,6 +485,13 @@ EOF
 	// Forces every port-53 packet through the WG-side resolver regardless of
 	// /etc/resolv.conf, so apps that bake their own resolver (browsers with DoH off,
 	// stub libc, dnsmasq forwarders) still hit the filtered DNS.
+	//
+	// Exemption: traffic destined for the cluster service CIDR (10.233.0.0/16)
+	// skips the redirect so kube-proxy's KUBE-SERVICES DNAT can translate the
+	// service VIP (e.g. 10.233.0.10:53) to the actual CoreDNS pod. Without this
+	// the host (and any hostNetwork pod, like the proxy nginx) cannot resolve
+	// *.cluster.local names — every query gets hijacked to AdGuard, which
+	// returns NXDOMAIN, and the admin panel auth subrequest dies with 502.
 	dnsNATBlock := ""
 	if mode == "dns-only" {
 		dnsTarget := dns
@@ -484,11 +499,12 @@ EOF
 			dnsTarget = "10.8.0.1"
 		}
 		dnsNATBlock = fmt.Sprintf(`# DNS NAT pin: redirect all :53 to the WG-side filtered resolver
+# (cluster CIDR 10.233.0.0/16 exempted so kube-proxy can DNAT the cluster DNS VIP)
 iptables -t nat -N WG_DNS_REDIRECT 2>/dev/null; iptables -t nat -F WG_DNS_REDIRECT
 iptables -t nat -A WG_DNS_REDIRECT -p udp --dport 53 -j DNAT --to-destination %s:53
 iptables -t nat -A WG_DNS_REDIRECT -p tcp --dport 53 -j DNAT --to-destination %s:53
-iptables -t nat -C OUTPUT -p udp --dport 53 -j WG_DNS_REDIRECT 2>/dev/null || iptables -t nat -I OUTPUT 1 -p udp --dport 53 -j WG_DNS_REDIRECT
-iptables -t nat -C OUTPUT -p tcp --dport 53 -j WG_DNS_REDIRECT 2>/dev/null || iptables -t nat -I OUTPUT 1 -p tcp --dport 53 -j WG_DNS_REDIRECT
+iptables -t nat -C OUTPUT -p udp --dport 53 ! -d 10.233.0.0/16 -j WG_DNS_REDIRECT 2>/dev/null || iptables -t nat -I OUTPUT 1 -p udp --dport 53 ! -d 10.233.0.0/16 -j WG_DNS_REDIRECT
+iptables -t nat -C OUTPUT -p tcp --dport 53 ! -d 10.233.0.0/16 -j WG_DNS_REDIRECT 2>/dev/null || iptables -t nat -I OUTPUT 1 -p tcp --dport 53 ! -d 10.233.0.0/16 -j WG_DNS_REDIRECT
 `, dnsTarget, dnsTarget)
 	}
 
