@@ -455,29 +455,41 @@ func buildWGConfig(userConfig, mode string, killSwitch bool) string {
 	// in this deployment uses an explicit upstream in the Corefile (not host
 	// resolv.conf) so this is safe. If you fork to a deployment whose CoreDNS
 	// reads /etc/resolv.conf, drop the cluster-DNS line from the templates below.
+	// Break-the-symlink dance: on systemd-resolved hosts, /etc/resolv.conf is a
+	// symlink to /run/systemd/resolve/stub-resolv.conf. Writing through the
+	// symlink (cat >) modifies the stub file, which systemd-resolved owns and
+	// regenerates on its own — losing our changes within minutes. We snapshot
+	// the original (preserving symlink type), remove it, and write a real file.
+	// PostDown reverses this.
+	snapshotResolv := `# Snapshot original /etc/resolv.conf (preserve symlink target if any)
+if [ -L /etc/resolv.conf ]; then
+  readlink /etc/resolv.conf > /etc/resolv.conf.pre-wg-link 2>/dev/null
+else
+  cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
+fi
+rm -f /etc/resolv.conf
+`
 	dnsBlock := ""
 	if dns != "" {
 		switch {
 		case mode == "dns-only" && killSwitch:
 			// Strict: only the WG-side resolver + cluster DNS. AdGuard down → no external DNS.
 			dnsBlock = fmt.Sprintf(`# DNS: strict (tunnel resolver + cluster DNS only — killswitch ON in dns-only mode)
-cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
-cat > /etc/resolv.conf <<'EOF'
+%scat > /etc/resolv.conf <<'EOF'
 nameserver %s
 nameserver 10.233.0.10
 EOF
-`, dns)
+`, snapshotResolv, dns)
 		default:
 			// Soft: tunnel DNS first, then public fallback, with cluster DNS for *.cluster.local.
 			dnsBlock = fmt.Sprintf(`# DNS: tunnel DNS + public fallback + cluster DNS for *.cluster.local
-cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
-cat > /etc/resolv.conf <<'EOF'
+%scat > /etc/resolv.conf <<'EOF'
 nameserver %s
 nameserver 10.233.0.10
 nameserver 1.1.1.1
 nameserver 8.8.8.8
 EOF
-`, dns)
+`, snapshotResolv, dns)
 		}
 	}
 
@@ -555,8 +567,21 @@ WG_TABLE=$(wg show wg0 fwmark 2>/dev/null)
 
 	// PostDown restores DNS only; iptables rules (if any) stay for safety on crash.
 	// Full cleanup happens in handleWGDisable → removeWGKillSwitch.
+	//
+	// Resolv.conf restore handles both cases: original was a symlink (-link snapshot)
+	// or a real file (.pre-wg snapshot). PostUp replaced /etc/resolv.conf with a real
+	// file, so we always rm it first before restoring.
 	downScript := `#!/bin/bash
-[ -f /etc/resolv.conf.pre-wg ] && mv /etc/resolv.conf.pre-wg /etc/resolv.conf
+rm -f /etc/resolv.conf
+if [ -f /etc/resolv.conf.pre-wg-link ]; then
+  ln -sf "$(cat /etc/resolv.conf.pre-wg-link)" /etc/resolv.conf
+  rm -f /etc/resolv.conf.pre-wg-link
+elif [ -f /etc/resolv.conf.pre-wg ]; then
+  mv /etc/resolv.conf.pre-wg /etc/resolv.conf
+else
+  # Safety net: re-link to systemd-resolved stub if neither snapshot exists.
+  ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+fi
 `
 
 	_ = nsenterWrite("/usr/local/bin/wg0-up.sh", upScript)
