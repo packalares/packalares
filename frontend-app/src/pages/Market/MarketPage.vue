@@ -168,7 +168,7 @@
                 <div class="app-card-actions">
                   <!-- Running: app -->
                   <template v-if="getAppDisplayState(app.name, app.hasChart) === 'running' && app.type !== 'model'">
-                    <q-btn unelevated dense no-caps size="sm" label="Open" icon="sym_r_open_in_new" class="app-primary-btn" @click.stop="openApp(app.name)" />
+                    <q-btn unelevated dense no-caps size="sm" label="Open" icon="sym_r_open_in_new" class="app-primary-btn" @click.stop="openApp(openAppName(app))" />
                     <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
                       <q-menu dark class="app-action-menu">
                         <q-list dense>
@@ -328,7 +328,7 @@
                 <div class="app-card-actions">
                   <!-- Running: app -->
                   <template v-if="getAppDisplayState(app.name) === 'running' && app.type !== 'model'">
-                    <q-btn unelevated dense no-caps size="sm" label="Open" icon="sym_r_open_in_new" class="app-primary-btn" @click.stop="openApp(app.name)" />
+                    <q-btn unelevated dense no-caps size="sm" label="Open" icon="sym_r_open_in_new" class="app-primary-btn" @click.stop="openApp(openAppName(app))" />
                     <q-btn flat dense round size="sm" icon="sym_r_more_vert" class="app-menu-btn" @click.stop>
                       <q-menu dark class="app-action-menu">
                         <q-list dense>
@@ -453,7 +453,7 @@
             <!-- Running: app -->
             <template v-else-if="getAppDisplayState(detailApp.name, detailApp.hasChart) === 'running' && detailApp.type !== 'model'">
               <div class="hero-actions-row">
-                <q-btn unelevated no-caps label="Open" class="btn-primary" icon="sym_r_open_in_new" @click="openApp(detailApp.name)" style="padding:6px 24px" />
+                <q-btn unelevated no-caps label="Open" class="btn-primary" icon="sym_r_open_in_new" @click="openApp(openAppName(detailApp))" style="padding:6px 24px" />
                 <q-btn flat no-caps label="Stop" icon="sym_r_stop_circle" class="btn-secondary" @click="stopApp(detailApp)" />
                 <q-btn flat dense round icon="sym_r_more_vert" class="app-menu-btn" style="width:36px;height:36px;min-width:36px;min-height:36px">
                 <q-menu dark class="app-action-menu">
@@ -1296,6 +1296,15 @@ function appUrl(name: string): string {
 
 function openApp(name: string) {
   window.open(appUrl(name), '_blank');
+}
+
+// Subdomain prefix for the Open button: prefer the first entrance's name when
+// the chart customised it (e.g. "photos" for immich). Falls back to the chart
+// name when no entrance is declared. system-server's handleAppProxy uses the
+// same precedence, so the URL we build here matches what it can actually route.
+function openAppName(app: AppInfo): string {
+  const e = app.entrances && app.entrances.length > 0 ? app.entrances[0] : null;
+  return (e && e.name) ? e.name : app.name;
 }
 
 function copyText(text: string) {

@@ -504,18 +504,23 @@ func (s *Server) handleAppProxy(w http.ResponseWriter, r *http.Request) {
 	var sharedEntrance *SharedEntrance
 	var matchedEntrance *Entrance
 	for _, a := range s.apps {
-		if a.Spec.Name == appName {
+		// When an app declares entrances, match strictly by entrance name. This
+		// stops the app-name (e.g. "immich") from being a second valid subdomain
+		// alongside a customised entrance (e.g. "photos"). Apps with no entrances
+		// (cluster-only / API-only services) still fall back to the app name so
+		// they remain reachable.
+		if len(a.Spec.Entrances) > 0 {
+			for i, e := range a.Spec.Entrances {
+				if e.Name == appName {
+					app = a
+					matchedEntrance = &a.Spec.Entrances[i]
+					exists = true
+					break
+				}
+			}
+		} else if a.Spec.Name == appName {
 			app = a
 			exists = true
-			break
-		}
-		for i, e := range a.Spec.Entrances {
-			if e.Name == appName {
-				app = a
-				matchedEntrance = &a.Spec.Entrances[i]
-				exists = true
-				break
-			}
 		}
 		if exists {
 			break
