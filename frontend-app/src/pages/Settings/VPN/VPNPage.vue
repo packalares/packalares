@@ -181,6 +181,10 @@
           <span class="info-value">{{ vpnStatus.wireguard.transfer || '--' }}</span>
         </div>
         <div class="info-row">
+          <span class="info-label">Mode</span>
+          <span class="info-value">{{ vpnStatus.wireguard.mode === 'dns-only' ? 'DNS-only' : 'Full tunnel' }}</span>
+        </div>
+        <div class="info-row">
           <span class="info-label">Kill Switch</span>
           <span class="info-value">{{ vpnStatus.wireguard.killSwitch ? 'Active' : 'Off' }}</span>
         </div>
@@ -219,13 +223,33 @@ AllowedIPs = 0.0.0.0/0"
         </div>
         <q-separator class="card-separator" />
         <div class="info-row">
+          <span class="info-label">Mode</span>
+          <q-btn-toggle
+            v-model="wgMode"
+            :options="[
+              {label: 'Full tunnel', value: 'full'},
+              {label: 'DNS-only', value: 'dns-only'},
+            ]"
+            dense unelevated
+            color="default"
+            toggle-color="primary"
+          />
+        </div>
+        <div class="info-row">
           <span class="info-label">Kill Switch</span>
-          <q-toggle v-model="wgKillSwitch" dense color="primary" />
+          <q-toggle v-model="wgKillSwitch" :disable="wgMode === 'dns-only'" dense color="primary" />
         </div>
         <div class="card-body" style="padding-top:0">
           <div style="font-size:11px;color:var(--ink-3);line-height:1.5">
             <q-icon name="sym_r_info" size="13px" style="vertical-align:middle;margin-right:4px" />
-            Block all internet traffic if VPN disconnects. LAN and cluster access preserved.
+            <span v-if="wgMode === 'dns-only'">
+              Only DNS goes through the tunnel — internet stays direct at LAN speed.
+              The WG-side resolver (e.g. AdGuard) sees and filters every query.
+              Killswitch is unavailable in this mode (would block intentional direct traffic).
+            </span>
+            <span v-else>
+              Block all internet traffic if VPN disconnects. LAN and cluster access preserved.
+            </span>
           </div>
         </div>
         <div class="card-footer">
@@ -264,6 +288,7 @@ const tsMsg = ref('');
 
 // WireGuard
 const wgConfig = ref('');
+const wgMode = ref<'full' | 'dns-only'>('full');
 const wgKillSwitch = ref(true);
 const wgLoading = ref(false);
 const wgMsg = ref('');
@@ -343,7 +368,8 @@ async function enableWireGuard() {
   try {
     await api.post('/api/settings/vpn/wireguard/enable', {
       config: wgConfig.value,
-      killSwitch: wgKillSwitch.value,
+      mode: wgMode.value,
+      killSwitch: wgMode.value === 'dns-only' ? false : wgKillSwitch.value,
     });
     wgMsg.value = 'Enabling...';
     setTimeout(loadStatus, 3000);

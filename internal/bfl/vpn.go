@@ -41,12 +41,14 @@ type WGStatusDetail struct {
 	Endpoint   string `json:"endpoint"`
 	Handshake  string `json:"latestHandshake"`
 	Transfer   string `json:"transfer"`
+	Mode       string `json:"mode"`
 	KillSwitch bool   `json:"killSwitch"`
 }
 
 // WGEnableRequest is the request body for enabling WireGuard.
 type WGEnableRequest struct {
 	Config     string `json:"config"`
+	Mode       string `json:"mode"` // "full" (default) or "dns-only"
 	KillSwitch bool   `json:"killSwitch"`
 }
 

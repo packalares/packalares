@@ -290,17 +290,19 @@ func nsenterOutput(args ...string) (string, error) {
 
 type WGEnableRequest struct {
 	Config     string `json:"config"`
+	Mode       string `json:"mode"` // "full" (default) or "dns-only"
 	KillSwitch bool   `json:"killSwitch"`
 }
 
 type WGStatusResponse struct {
-	Active    bool   `json:"active"`
-	IP        string `json:"ip"`
-	PublicKey string `json:"publicKey"`
-	Endpoint  string `json:"endpoint"`
-	Handshake string `json:"latestHandshake"`
-	Transfer  string `json:"transfer"`
-	KillSwitch bool  `json:"killSwitch"`
+	Active     bool   `json:"active"`
+	IP         string `json:"ip"`
+	PublicKey  string `json:"publicKey"`
+	Endpoint   string `json:"endpoint"`
+	Handshake  string `json:"latestHandshake"`
+	Transfer   string `json:"transfer"`
+	Mode       string `json:"mode"`
+	KillSwitch bool   `json:"killSwitch"`
 }
 
 // parseWGAddress extracts the Address (IP) from a WireGuard config.
@@ -398,19 +400,41 @@ func ensureInterfaceField(config, key, value string) string {
 	return strings.Join(result, "\n")
 }
 
-// No rewriteAllowedIPs needed — we let wg-quick handle routing normally
-// and add throw routes for cluster CIDRs in PostUp.
+// rewriteAllowedIPs replaces every AllowedIPs line in [Peer] sections with newAllowed.
+// Used to override AllowedIPs when mode requires it (e.g. dns-only mode forces peer-mesh only).
+func rewriteAllowedIPs(config, newAllowed string) string {
+	lines := strings.Split(config, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(strings.TrimSpace(line), "AllowedIPs") {
+			lines[i] = "AllowedIPs = " + newAllowed
+		}
+	}
+	return strings.Join(lines, "\n")
+}
 
 // buildWGConfig injects PostUp/PostDown into the user's WG config.
 // wg-quick handles routing normally (creates its own table + fwmark + nft rules).
 // PostUp adds throw routes for cluster CIDRs + optional DNS + optional kill-switch.
-func buildWGConfig(userConfig string, killSwitch bool) string {
+//
+// Modes:
+//   - "" / "full": user's AllowedIPs honored; optional resolv.conf rewrite; optional killswitch.
+//   - "dns-only": AllowedIPs forced to 10.8.0.0/24 (peer mesh) — internet stays direct.
+//     DNS pinned via iptables NAT redirect so apps reach the WG-side filtered resolver.
+//     Killswitch is incompatible with split tunnel and is forced off.
+func buildWGConfig(userConfig, mode string, killSwitch bool) string {
 	// Pin ListenPort so NAT mappings survive reboots. User can override by
 	// setting their own ListenPort in [Interface].
 	userConfig = ensureInterfaceField(userConfig, "ListenPort", "51820")
 
-	clusterCIDRs := detectClusterCIDRs()
 	dns := parseWGDNS(userConfig)
+
+	// dns-only mode: only peer mesh through WG; force killswitch off; pin DNS via NAT.
+	if mode == "dns-only" {
+		userConfig = rewriteAllowedIPs(userConfig, "10.8.0.0/24")
+		killSwitch = false
+	}
+
+	clusterCIDRs := detectClusterCIDRs()
 
 	// Throw routes so cluster traffic bypasses the WG tunnel.
 	var throwRoutes string
@@ -418,14 +442,15 @@ func buildWGConfig(userConfig string, killSwitch bool) string {
 		throwRoutes += fmt.Sprintf("ip route add throw %s table $WG_TABLE 2>/dev/null\n", cidr)
 	}
 
-	// DNS block only when the user's config has DNS =; otherwise leave resolv.conf alone.
+	// DNS block only when the user's config has DNS = AND we're NOT in dns-only mode.
+	// (dns-only mode handles DNS via iptables NAT, not resolv.conf rewrite.)
 	// Use tunnel DNS + public fallback. NEVER put cluster DNS (10.233.0.10) here —
 	// CoreDNS reads /etc/resolv.conf to find its upstream, so listing the cluster's
 	// own service IP makes CoreDNS forward to itself, the loop plugin trips, and
 	// the cluster's DNS layer dies — bringing every dependent pod with it.
 	// Pod-side cluster DNS is injected by kubelet via pod-spec and doesn't need help here.
 	dnsBlock := ""
-	if dns != "" {
+	if mode != "dns-only" && dns != "" {
 		dnsBlock = fmt.Sprintf(`# DNS: tunnel DNS + public DNS fallback (no cluster DNS — would loop CoreDNS)
 cp -f /etc/resolv.conf /etc/resolv.conf.pre-wg 2>/dev/null
 cat > /etc/resolv.conf <<'EOF'
@@ -434,6 +459,25 @@ nameserver 1.1.1.1
 nameserver 8.8.8.8
 EOF
 `, dns)
+	}
+
+	// DNS NAT pin — dns-only mode only.
+	// Forces every port-53 packet through the WG-side resolver regardless of
+	// /etc/resolv.conf, so apps that bake their own resolver (browsers with DoH off,
+	// stub libc, dnsmasq forwarders) still hit the filtered DNS.
+	dnsNATBlock := ""
+	if mode == "dns-only" {
+		dnsTarget := dns
+		if dnsTarget == "" {
+			dnsTarget = "10.8.0.1"
+		}
+		dnsNATBlock = fmt.Sprintf(`# DNS NAT pin: redirect all :53 to the WG-side filtered resolver
+iptables -t nat -N WG_DNS_REDIRECT 2>/dev/null; iptables -t nat -F WG_DNS_REDIRECT
+iptables -t nat -A WG_DNS_REDIRECT -p udp --dport 53 -j DNAT --to-destination %s:53
+iptables -t nat -A WG_DNS_REDIRECT -p tcp --dport 53 -j DNAT --to-destination %s:53
+iptables -t nat -C OUTPUT -p udp --dport 53 -j WG_DNS_REDIRECT 2>/dev/null || iptables -t nat -I OUTPUT 1 -p udp --dport 53 -j WG_DNS_REDIRECT
+iptables -t nat -C OUTPUT -p tcp --dport 53 -j WG_DNS_REDIRECT 2>/dev/null || iptables -t nat -I OUTPUT 1 -p tcp --dport 53 -j WG_DNS_REDIRECT
+`, dnsTarget, dnsTarget)
 	}
 
 	// Kill-switch iptables rules — only when enabled.
@@ -460,13 +504,20 @@ iptables -C OUTPUT -j WG_OUT 2>/dev/null || iptables -I OUTPUT -j WG_OUT
 `, endpointAccept)
 	}
 
+	// Mode marker so handleWGStatus can report which mode is active.
+	modeValue := mode
+	if modeValue == "" {
+		modeValue = "full"
+	}
+	modeMarker := fmt.Sprintf("echo %s > /etc/wireguard/wg0.mode\n", modeValue)
+
 	upScript := fmt.Sprintf(`#!/bin/bash
 # Get wg-quick's routing table from the fwmark it set
 WG_TABLE=$(wg show wg0 fwmark 2>/dev/null)
 [ -z "$WG_TABLE" ] && WG_TABLE=51820
-# Add throw routes so cluster traffic bypasses WG tunnel
+%s# Add throw routes so cluster traffic bypasses WG tunnel
 %s
-%s%s`, throwRoutes, dnsBlock, killSwitchBlock)
+%s%s%s`, modeMarker, throwRoutes, dnsBlock, dnsNATBlock, killSwitchBlock)
 
 	// PostDown restores DNS only; iptables rules (if any) stay for safety on crash.
 	// Full cleanup happens in handleWGDisable → removeWGKillSwitch.
@@ -517,7 +568,7 @@ func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[wg] enabling WireGuard with IP %s, killSwitch=%v", ip, req.KillSwitch)
+	log.Printf("[wg] enabling WireGuard with IP %s, mode=%q, killSwitch=%v", ip, req.Mode, req.KillSwitch)
 
 	// Ensure wireguard-tools is installed
 	if _, err := nsenterOutput("which", "wg"); err != nil {
@@ -532,7 +583,7 @@ func handleWGEnable(w http.ResponseWriter, r *http.Request) {
 	_ = nsenterRun("wg-quick", "down", "wg0")
 
 	// Build final config (injects PostUp/PostDown if kill-switch enabled)
-	finalConfig := buildWGConfig(req.Config, req.KillSwitch)
+	finalConfig := buildWGConfig(req.Config, req.Mode, req.KillSwitch)
 
 	// Write config to /etc/wireguard/wg0.conf
 	if err := nsenterRun("mkdir", "-p", "/etc/wireguard"); err != nil {
@@ -587,7 +638,7 @@ func handleWGDisable(w http.ResponseWriter, r *http.Request) {
 	_ = nsenterRun("systemctl", "disable", "wg-quick@wg0")
 
 	// Remove config and helper scripts
-	_ = nsenterRun("rm", "-f", "/etc/wireguard/wg0.conf", "/etc/wireguard/wg0.env")
+	_ = nsenterRun("rm", "-f", "/etc/wireguard/wg0.conf", "/etc/wireguard/wg0.env", "/etc/wireguard/wg0.mode")
 	_ = nsenterRun("rm", "-f", "/usr/local/bin/wg0-up.sh", "/usr/local/bin/wg0-down.sh")
 
 	log.Printf("[wg] WireGuard disabled and fully cleaned")
@@ -646,6 +697,14 @@ func handleWGStatus(w http.ResponseWriter, r *http.Request) {
 	// Check if kill-switch is active
 	iptOut, _ := nsenterOutput("iptables", "-L", "WG_OUT", "-n")
 	status.KillSwitch = strings.Contains(iptOut, "REJECT")
+
+	// Read mode marker (written by PostUp). Defaults to "full" for backwards compat.
+	if modeOut, err := nsenterOutput("cat", "/etc/wireguard/wg0.mode"); err == nil {
+		status.Mode = strings.TrimSpace(modeOut)
+	}
+	if status.Mode == "" {
+		status.Mode = "full"
+	}
 
 	respondJSON(w, http.StatusOK, status)
 }
