@@ -168,10 +168,17 @@ func parseOlaresManifest(data []byte, fallbackName string) (MarketApp, error) {
 		app.Title = name
 	}
 
-	// Convert entrances
+	// Convert entrances. When a chart omits `name:` on an entrance (common —
+	// the first entrance often inherits the app name), Olares' install path
+	// defaults the live CRD's entrance.name to the chart's metadata.name.
+	// We mirror that here so the catalog matches the CRD.
 	for _, e := range m.Entrances {
+		entranceName := e.Name
+		if entranceName == "" {
+			entranceName = name
+		}
 		app.Entrances = append(app.Entrances, Entrance{
-			Name:       e.Name,
+			Name:       entranceName,
 			Host:       e.Host,
 			Port:       e.Port,
 			Icon:       e.Icon,
