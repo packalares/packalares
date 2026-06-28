@@ -1,7 +1,11 @@
 package market
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"encoding/json"
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -14,16 +18,20 @@ import (
 )
 
 const (
-	modelsSubdir    = "models"
-	rescanInterval  = 5 * time.Second
-	lruCacheSize    = 64
+	modelsSubdir   = "models"
+	rescanInterval = 5 * time.Second
+	lruCacheSize   = 64
 )
 
-// chartEntry is a lightweight index record for one sidecar file.
+// chartEntry is a lightweight index record for one app/model.
+// Tracks both the sidecar JSON and the chart .tgz so cache invalidation
+// fires when either file changes.
 type chartEntry struct {
-	sidecarPath string
-	mtime       time.Time
-	kind        string // "app" | "model"
+	sidecarPath  string
+	sidecarMtime time.Time
+	tgzPath      string    // "" if no matching .tgz found (e.g. model sidecar)
+	tgzMtime     time.Time // zero if tgzPath is empty
+	kind         string    // "app" | "model"
 }
 
 // Catalog scans per-entity sidecar JSONs from chartsDir on demand.
@@ -100,10 +108,14 @@ func (c *Catalog) rescan() error {
 		klog.Warningf("catalog: scan %s: %v", modelsDir, err)
 	}
 
-	// Evict LRU entries for files that changed mtime or were removed
+	// Evict LRU entries for files that changed mtime or were removed.
+	// Both sidecar JSON and chart .tgz are tracked — either drift invalidates.
 	for name, old := range c.chartIndex {
 		newEntry, exists := newIndex[name]
-		if !exists || newEntry.mtime != old.mtime {
+		if !exists ||
+			!newEntry.sidecarMtime.Equal(old.sidecarMtime) ||
+			!newEntry.tgzMtime.Equal(old.tgzMtime) ||
+			newEntry.tgzPath != old.tgzPath {
 			c.parsed.Remove(name)
 		}
 	}
@@ -121,12 +133,51 @@ func (c *Catalog) rescan() error {
 }
 
 // scanDir reads all *.json files in dir and adds them to idx with the given kind.
+// For each sidecar JSON it also looks up the matching chart .tgz in the same dir
+// (named "<appName>-*.tgz") so the catalog can read entrances live from the chart.
 // Sub-directories are not descended (models/ is handled separately by the caller).
 func scanDir(dir, kind string, idx map[string]chartEntry) error {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return err
 	}
+	// First pass: collect .tgz mtimes by app prefix so each sidecar can pair O(1).
+	tgzByApp := make(map[string]struct {
+		path  string
+		mtime time.Time
+	})
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasSuffix(name, ".tgz") {
+			continue
+		}
+		stem := strings.TrimSuffix(name, ".tgz")
+		// Versioned shape "<appName>-x.y.z". The trailing version block
+		// is everything after the last hyphen; the app name is the prefix.
+		dash := strings.LastIndex(stem, "-")
+		var appName string
+		if dash > 0 {
+			appName = stem[:dash]
+		} else {
+			appName = stem
+		}
+		info, err := e.Info()
+		if err != nil {
+			continue
+		}
+		// If multiple versions exist, prefer the newest mtime so a stale
+		// older .tgz doesn't shadow a freshly-copied one.
+		if existing, ok := tgzByApp[appName]; !ok || info.ModTime().After(existing.mtime) {
+			tgzByApp[appName] = struct {
+				path  string
+				mtime time.Time
+			}{path: filepath.Join(dir, name), mtime: info.ModTime()}
+		}
+	}
+
 	for _, e := range entries {
 		if e.IsDir() {
 			continue
@@ -140,13 +191,49 @@ func scanDir(dir, kind string, idx map[string]chartEntry) error {
 		if err != nil {
 			continue
 		}
-		idx[appName] = chartEntry{
-			sidecarPath: filepath.Join(dir, name),
-			mtime:       info.ModTime(),
-			kind:        kind,
+		entry := chartEntry{
+			sidecarPath:  filepath.Join(dir, name),
+			sidecarMtime: info.ModTime(),
+			kind:         kind,
 		}
+		if t, ok := tgzByApp[appName]; ok {
+			entry.tgzPath = t.path
+			entry.tgzMtime = t.mtime
+		}
+		idx[appName] = entry
 	}
 	return nil
+}
+
+// readOlaresManifestFromTGZ extracts <chartName>/OlaresManifest.yaml from a Helm
+// chart .tgz and returns its raw bytes. Streams in-memory — no disk writes.
+func readOlaresManifestFromTGZ(tgzPath string) ([]byte, error) {
+	f, err := os.Open(tgzPath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	gz, err := gzip.NewReader(f)
+	if err != nil {
+		return nil, err
+	}
+	defer gz.Close()
+
+	tr := tar.NewReader(gz)
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if filepath.Base(header.Name) == "OlaresManifest.yaml" && header.Typeflag == tar.TypeReg {
+			return io.ReadAll(tr)
+		}
+	}
+	return nil, fmt.Errorf("OlaresManifest.yaml not found in %s", tgzPath)
 }
 
 // ListApps returns all apps/models as a light slice.
@@ -258,6 +345,10 @@ func (c *Catalog) StartRefreshLoop(_ <-chan struct{}) {}
 // --- internal helpers ---
 
 // loadOne fetches a parsed MarketApp from the LRU cache, or reads from disk.
+// Entrances are always sourced from the chart .tgz's OlaresManifest.yaml when
+// present — the sidecar's entrances[] is treated as legacy storefront metadata
+// and overridden. Sidecar and chart are independent files; either changing
+// invalidates the cache entry via the mtime check below.
 func (c *Catalog) loadOne(name string) *MarketApp {
 	c.mu.RLock()
 	entry, ok := c.chartIndex[name]
@@ -266,17 +357,25 @@ func (c *Catalog) loadOne(name string) *MarketApp {
 		return nil
 	}
 
-	// Check LRU cache
+	// Stat both sources up-front so the cache validation and the read path
+	// both see the same on-disk state.
+	sidecarFI, sidecarErr := os.Stat(entry.sidecarPath)
+	var tgzFI os.FileInfo
+	if entry.tgzPath != "" {
+		tgzFI, _ = os.Stat(entry.tgzPath)
+	}
+
+	// Check LRU cache: must match both sidecar AND chart mtimes.
 	if cached, hit := c.parsed.Get(name); hit {
-		// Validate mtime hasn't changed
-		if fi, err := os.Stat(entry.sidecarPath); err == nil && fi.ModTime().Equal(entry.mtime) {
+		if sidecarErr == nil &&
+			sidecarFI.ModTime().Equal(entry.sidecarMtime) &&
+			(entry.tgzPath == "" || (tgzFI != nil && tgzFI.ModTime().Equal(entry.tgzMtime))) {
 			return cached
 		}
-		// Stale — evict and re-read
 		c.parsed.Remove(name)
 	}
 
-	// Read from disk
+	// Read sidecar from disk
 	data, err := os.ReadFile(entry.sidecarPath)
 	if err != nil {
 		klog.Warningf("catalog: read sidecar %s: %v", entry.sidecarPath, err)
@@ -288,6 +387,21 @@ func (c *Catalog) loadOne(name string) *MarketApp {
 		return nil
 	}
 	app.Categories = cleanCategories(app.Categories)
+
+	// Override entrances from the chart's OlaresManifest.yaml — the chart is
+	// the single source of truth because it's what creates the live CRD.
+	// Failures are non-fatal: we keep the sidecar's value as a last resort,
+	// but log loud so drift is visible.
+	if entry.tgzPath != "" {
+		if manifestBytes, err := readOlaresManifestFromTGZ(entry.tgzPath); err != nil {
+			klog.Warningf("catalog: read manifest from %s: %v", entry.tgzPath, err)
+		} else if parsed, err := parseOlaresManifest(manifestBytes, name); err != nil {
+			klog.Warningf("catalog: parse manifest from %s: %v", entry.tgzPath, err)
+		} else {
+			app.Entrances = parsed.Entrances
+		}
+	}
+
 	c.parsed.Add(name, &app)
 	return &app
 }

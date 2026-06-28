@@ -208,10 +208,10 @@ func TestMtimeInvalidation(t *testing.T) {
 	if entry, ok := cat.chartIndex["mtime-test"]; ok {
 		info, _ := os.Stat(path)
 		if info != nil {
-			entry.mtime = info.ModTime()
+			entry.sidecarMtime = info.ModTime()
 		}
 		// Zero out mtime in index to force cache-miss path
-		entry.mtime = time.Time{}
+		entry.sidecarMtime = time.Time{}
 		cat.chartIndex["mtime-test"] = entry
 	}
 	cat.mu.Unlock()
