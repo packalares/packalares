@@ -20,7 +20,7 @@
       "authLevel": "internal",
       "host": "immich-svc",
       "icon": "/api/market/icons/immich.png",
-      "name": "immich",
+      "name": "photos",
       "openMethod": "window",
       "port": 80,
       "title": "Immich"
