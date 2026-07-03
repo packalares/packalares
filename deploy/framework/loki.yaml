@@ -92,6 +92,8 @@ data:
     compactor:
       working_directory: /loki/compactor
       retention_enabled: true
+    analytics:
+      reporting_enabled: false
 ---
 apiVersion: v1
 kind: Service
