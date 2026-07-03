@@ -40,8 +40,6 @@ data:
       filename: /tmp/positions.yaml
     clients:
       - url: http://loki-svc.{{MONITORING_NAMESPACE}}:3100/loki/api/v1/push
-    analytics:
-      reporting_enabled: false
     scrape_configs:
       - job_name: pods
         static_configs:
