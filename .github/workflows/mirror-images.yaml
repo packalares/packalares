@@ -18,9 +18,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - source: postgres:16.0-alpine3.18
+          - source: postgres:16.15-alpine
             target: postgres
-            tag: 16.0-alpine
+            tag: 16.15-alpine
             desc: "PostgreSQL relational database"
             repo: "https://github.com/postgres/postgres"
           - source: redis:7-alpine

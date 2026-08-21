@@ -91,7 +91,7 @@ spec:
     spec:
       initContainers:
       - name: wait-for-postgres
-        image: ghcr.io/packalares/postgres:16.0-alpine
+        image: ghcr.io/packalares/postgres:16.15-alpine
         command:
           - sh
           - -c

@@ -14,16 +14,25 @@ RUN apt-get update && \
         ca-certificates curl && \
     rm -rf /var/lib/apt/lists/*
 
-# Install helm
-RUN curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+# Install helm — pinned (latest 3.x; do NOT bump to helm 4.x without testing,
+# it is a breaking major). Was: get-helm-3 script (unpinned "latest 3.x").
+RUN HELM_VERSION=v3.21.4 && \
+    curl -fsSL "https://get.helm.sh/helm-${HELM_VERSION}-linux-amd64.tar.gz" | tar -xz -C /tmp && \
+    install -o root -g root -m 0755 /tmp/linux-amd64/helm /usr/local/bin/helm && \
+    rm -rf /tmp/linux-amd64
 
-# Install kubectl
-RUN curl -fsSLO "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
+# Install kubectl — pinned to the cluster's minor (k3s v1.29). Keep in lockstep
+# with the cluster on upgrade (kubectl supports only +/-1 minor skew).
+# Was: unpinned fetch of dl.k8s.io/release/stable.txt (currently v1.36, a 7-minor
+# skew against a 1.29 cluster).
+RUN KUBECTL_VERSION=v1.29.15 && \
+    curl -fsSLO "https://dl.k8s.io/release/${KUBECTL_VERSION}/bin/linux/amd64/kubectl" && \
     install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl && \
     rm kubectl
 
-# Install crictl (for image pull progress tracking) and ctr (for content GC)
-RUN CRICTL_VERSION=$(curl -fsSL https://api.github.com/repos/kubernetes-sigs/cri-tools/releases/latest | grep '"tag_name"' | sed 's/.*"v\(.*\)".*/\1/') && \
+# Install crictl (for image pull progress tracking) and ctr (for content GC).
+# crictl pinned to the cluster minor. Was: unpinned GitHub "latest" release.
+RUN CRICTL_VERSION=1.29.0 && \
     curl -fsSL "https://github.com/kubernetes-sigs/cri-tools/releases/download/v${CRICTL_VERSION}/crictl-v${CRICTL_VERSION}-linux-amd64.tar.gz" | tar -xz -C /usr/local/bin
 
 # Install ctr (containerd CLI for content store garbage collection)

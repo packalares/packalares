@@ -6,7 +6,7 @@ RUN go mod download
 COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /mdns-agent ./cmd/mdns
 
-FROM alpine:3.19
+FROM alpine:3.24
 RUN apk add --no-cache ca-certificates
 COPY --from=builder /mdns-agent /usr/local/bin/mdns-agent
 ENTRYPOINT ["/usr/local/bin/mdns-agent"]
