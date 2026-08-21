@@ -1,0 +1,81 @@
+{
+  "categories": [
+    "Productivity"
+  ],
+  "cfgType": "app",
+  "chartName": "voice",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": ">= 1.0.0"
+    }
+  ],
+  "description": "Whisper (STT, GPU with auto-unload) + Kokoro (TTS, CPU) as a reusable voice service pair.",
+  "developer": "Packalares",
+  "doc": "https://github.com/speaches-ai/speaches",
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "voice-whisper-svc",
+      "icon": "/api/market/icons/voice.png",
+      "name": "whisper",
+      "openMethod": "window",
+      "port": 8000,
+      "title": "Whisper API"
+    },
+    {
+      "authLevel": "internal",
+      "host": "voice-kokoro-svc",
+      "icon": "/api/market/icons/voice.png",
+      "name": "kokoro",
+      "openMethod": "window",
+      "port": 8880,
+      "title": "Kokoro TTS"
+    }
+  ],
+  "featuredImage": "/api/market/screenshots/voice/featured.webp",
+  "fullDescription": "Voice provides two OpenAI-compatible microservices used by AnythingLLM and other chat apps:\n\n- Whisper (STT) — Speaches (faster-whisper). Runs on GPU with dynamic model loading. Automatically unloads the model after a period of inactivity (default 5 minutes), returning VRAM to the shared pool. First transcription after idle takes ~10s to warm up; subsequent requests are fast.\n- Kokoro (TTS) — natural-sounding text-to-speech via the Kokoro FastAPI wrapper. Runs on CPU.\n\nBoth services are exposed at OpenAI-compatible /v1 endpoints so any chat app pointing at them \"just works\".\n\nNo UI. Install AnythingLLM (AI Stack chart) and point its Whisper/TTS providers here to use them.\n",
+  "hasChart": true,
+  "hasCredentials": false,
+  "icon": "/api/market/icons/voice.png",
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/speaches-ai/speaches?tab=MIT-1-ov-file"
+    }
+  ],
+  "limitedCPU": "4",
+  "limitedMemory": "8Gi",
+  "locale": [
+    "en-US"
+  ],
+  "loginType": "",
+  "name": "voice",
+  "permission": {
+    "appCache": true,
+    "appData": false,
+    "userData": null
+  },
+  "promoteImage": [
+    "/api/market/screenshots/voice/1.webp"
+  ],
+  "rating": 0,
+  "requiredCpu": "200m",
+  "requiredDisk": "100Mi",
+  "requiredGpu": "2Gi",
+  "requiredMemory": "1Gi",
+  "source": "packalares",
+  "sourceCode": "https://github.com/speaches-ai/speaches",
+  "status": "active",
+  "submitter": "Packalares",
+  "supportArch": [
+    "amd64"
+  ],
+  "title": "Voice",
+  "type": "app",
+  "upgradeDescription": "Initial release.\n",
+  "version": "1.0.0",
+  "versionName": "0.9.0-rc.3",
+  "website": "https://github.com/speaches-ai/speaches"
+}
