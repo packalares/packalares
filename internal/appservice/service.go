@@ -208,8 +208,10 @@ func (s *Service) syncStatuses(ctx context.Context) {
 //  5. Create the Application CRD so the desktop and other services can discover the app
 //  6. Return success immediately; the actual install runs in the background
 func (s *Service) Install(ctx context.Context, req *InstallRequest) (*InstallationResponse, error) {
-	if req.Name == "" {
-		return nil, fmt.Errorf("app name is required")
+	// The name becomes a Helm release name and a path segment under the chart
+	// cache and the app data directories, so validate its shape up front.
+	if err := ValidateAppName(req.Name); err != nil {
+		return nil, fmt.Errorf("app %w", err)
 	}
 
 	if existing, exists := s.store.Get(ctx, req.Name); exists {
@@ -402,8 +404,8 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		"user": map[string]interface{}{
 			"zone": zone,
 		},
-		"domain":    domainMap,
-		"namespace": s.namespace,
+		"domain":     domainMap,
+		"namespace":  s.namespace,
 		"sysVersion": "1.12.0",
 		"userspace": map[string]interface{}{
 			"appData":  "/packalares/Apps/appdata",
@@ -432,8 +434,8 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 			"port":     redisPort,
 			"password": redisPass,
 		},
-		"appName":   req.Name,
-		"olaresEnv": s.buildOlaresEnv(req.Name, zone, manifest),
+		"appName":        req.Name,
+		"olaresEnv":      s.buildOlaresEnv(req.Name, zone, manifest),
 		"sharedlib":      "/packalares/Apps/sharedlib",
 		"downloadCdnURL": "https://cdn.olares.com",
 		"gpu":            "",
@@ -617,8 +619,8 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 
 // Uninstall removes an installed app.
 func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*InstallationResponse, error) {
-	if req.Name == "" {
-		return nil, fmt.Errorf("app name is required")
+	if err := ValidateAppName(req.Name); err != nil {
+		return nil, fmt.Errorf("app %w", err)
 	}
 
 	rec, exists := s.store.Get(ctx, req.Name)
@@ -652,9 +654,14 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 		for _, img := range manifestImages {
 			found := false
 			for _, existing := range appImages {
-				if existing == img { found = true; break }
+				if existing == img {
+					found = true
+					break
+				}
 			}
-			if !found { appImages = append(appImages, img) }
+			if !found {
+				appImages = append(appImages, img)
+			}
 		}
 
 		if err := s.helm.Uninstall(bgCtx, rec.ReleaseName); err != nil {
@@ -704,11 +711,18 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 			purgeContainerImages(bgCtx, appImages)
 
 			GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 5, 5, "Removing app data...", 0, 0)
-			// Remove app data directories
-			for _, dir := range []string{
-				"/packalares/Apps/appdata/" + req.Name,
-				"/packalares/Apps/appcache/" + req.Name,
+			// Remove app data directories. Build each path with childPath
+			// rather than string concatenation: these go to os.RemoveAll, and
+			// "appdata/" + "../../.." would resolve to the filesystem root.
+			for _, base := range []string{
+				"/packalares/Apps/appdata",
+				"/packalares/Apps/appcache",
 			} {
+				dir, err := childPath(base, req.Name)
+				if err != nil {
+					klog.Warningf("skipping app data cleanup for %q: %v", req.Name, err)
+					continue
+				}
 				_ = os.RemoveAll(dir)
 			}
 		}
@@ -926,15 +940,15 @@ func (s *Service) GetApp(ctx context.Context, name string) (*AppInfo, error) {
 
 func recordToInfo(rec *AppRecord) AppInfo {
 	return AppInfo{
-		Name:        rec.Name,
-		AppID:       rec.AppID,
-		Namespace:   rec.Namespace,
-		Owner:       rec.Owner,
-		Icon:        rec.Icon,
-		Title:       rec.Title,
-		Description: rec.Description,
-		Version:     rec.Version,
-		State:       rec.State,
+		Name:            rec.Name,
+		AppID:           rec.AppID,
+		Namespace:       rec.Namespace,
+		Owner:           rec.Owner,
+		Icon:            rec.Icon,
+		Title:           rec.Title,
+		Description:     rec.Description,
+		Version:         rec.Version,
+		State:           rec.State,
 		Source:          rec.Source,
 		Entrances:       rec.Entrances,
 		InternetBlocked: rec.InternetBlocked,

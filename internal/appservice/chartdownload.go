@@ -47,7 +47,10 @@ func NewChartDownloader() *ChartDownloader {
 // DownloadChart downloads an app's chart from the local market-backend.
 // All charts are baked into the market image — no external fallback.
 func (d *ChartDownloader) DownloadChart(ctx context.Context, appName string) (string, error) {
-	destDir := filepath.Join(chartCacheDir, appName)
+	destDir, err := childPath(chartCacheDir, appName)
+	if err != nil {
+		return "", err
+	}
 
 	localPath, err := d.DownloadChartFromRepo(ctx, d.localChartRepo, appName, destDir)
 	if err != nil {
@@ -62,6 +65,15 @@ func (d *ChartDownloader) DownloadChart(ctx context.Context, appName string) (st
 // repository and unpacks it into destDir. It first fetches the repo's index.yaml
 // to find the chart URL, then downloads and extracts the .tgz.
 func (d *ChartDownloader) DownloadChartFromRepo(ctx context.Context, chartRepoURL, appName, destDir string) (string, error) {
+	// destDir is about to be recursively deleted, so confirm it is actually a
+	// directory under the chart cache before touching it.
+	if !withinRoot(destDir, chartCacheDir) || filepath.Clean(destDir) == filepath.Clean(chartCacheDir) {
+		return "", fmt.Errorf("refusing to use chart dir %q outside %s", destDir, chartCacheDir)
+	}
+	if err := ValidateAppName(appName); err != nil {
+		return "", err
+	}
+
 	_ = os.RemoveAll(destDir)
 	if err := os.MkdirAll(destDir, 0755); err != nil {
 		return "", fmt.Errorf("create chart dir %s: %w", destDir, err)
@@ -201,8 +213,11 @@ func unpackTGZ(tgzPath, destDir string) error {
 			return fmt.Errorf("tar read: %w", err)
 		}
 
+		// Compare path segments, not string prefixes: a "../<dir>-evil/x" entry
+		// cleans to a sibling of destDir that shares its prefix, which a
+		// HasPrefix test would wave through.
 		target := filepath.Join(destDir, header.Name)
-		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(destDir)) {
+		if !withinRoot(target, destDir) {
 			continue // prevent directory traversal
 		}
 
@@ -312,7 +327,11 @@ func ParseChartMetadata(chartDir string) (chartVersion, appVersion string, err e
 
 // CleanupChart removes a downloaded chart directory.
 func CleanupChart(appName string) {
-	dir := filepath.Join(chartCacheDir, appName)
+	dir, err := childPath(chartCacheDir, appName)
+	if err != nil {
+		klog.Warningf("cleanup chart: %v", err)
+		return
+	}
 	if err := os.RemoveAll(dir); err != nil {
 		klog.V(2).Infof("cleanup chart %s: %v", dir, err)
 	}

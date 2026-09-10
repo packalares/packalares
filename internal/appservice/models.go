@@ -579,12 +579,14 @@ func (v *VLLMBackend) Uninstall(ctx context.Context, model ModelSpec) error {
 	vllmURL := fmt.Sprintf("http://%s-api.%s:8000/v1", releaseName, v.namespace)
 	v.removeOpenWebUIEndpoint(vllmURL)
 
-	// Clean up model data on disk
-	storagePath := model.StoragePath
-	if storagePath == "" {
-		storagePath = filepath.Join(defaultModelStorageBase, model.Name)
-	}
-	if err := os.RemoveAll(storagePath); err != nil {
+	// Clean up model data on disk. StoragePath arrives straight off the API
+	// request, so confine it to the model storage base before deleting: an
+	// unchecked value ("/", say) would be removed recursively.
+	if storagePath, err := modelStoragePath(model); err != nil {
+		// Skip only the disk cleanup; the release is already gone and the image
+		// purge below should still run.
+		klog.Warningf("vllm %s: skipping model data cleanup: %v", model.Name, err)
+	} else if err := os.RemoveAll(storagePath); err != nil {
 		klog.Warningf("vllm %s: failed to clean model data at %s: %v", model.Name, storagePath, err)
 	} else {
 		klog.Infof("vllm %s: cleaned model data at %s", model.Name, storagePath)
@@ -597,6 +599,21 @@ func (v *VLLMBackend) Uninstall(ctx context.Context, model ModelSpec) error {
 	})
 
 	return nil
+}
+
+// modelStoragePath resolves where a model's data lives on disk, confined to
+// defaultModelStorageBase. StoragePath arrives straight off the API request and
+// the result is passed to os.RemoveAll, so an unchecked value such as "/" would
+// be deleted recursively.
+func modelStoragePath(model ModelSpec) (string, error) {
+	if model.StoragePath == "" {
+		return childPath(defaultModelStorageBase, model.Name)
+	}
+	if !withinRoot(model.StoragePath, defaultModelStorageBase) ||
+		filepath.Clean(model.StoragePath) == filepath.Clean(defaultModelStorageBase) {
+		return "", fmt.Errorf("storage path %q is outside %s", model.StoragePath, defaultModelStorageBase)
+	}
+	return model.StoragePath, nil
 }
 
 // InstalledModels lists vLLM models by checking Helm releases with a model label.
