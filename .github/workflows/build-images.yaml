@@ -27,6 +27,12 @@ env:
   REGISTRY: ghcr.io
   ORG: packalares
 
+# Default for jobs that do not set their own: enough to check out the repo and
+# nothing else. The build job raises this to packages: write and build-cli to
+# contents: write, each declaring what it needs.
+permissions:
+  contents: read
+
 jobs:
   # Detect which images need rebuilding based on changed files
   detect:
