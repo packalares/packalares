@@ -9,11 +9,26 @@
   "developer": "ComfyAnonymous",
   "entrances": [
     {
-      "host": "comfyui-entrance",
-      "name": "comfyui",
+      "host": "comfyuistudio-entrance",
+      "name": "comfyuistudio",
+      "openMethod": "window",
+      "port": 8081,
+      "title": "ComfyUI Studio"
+    },
+    {
+      "host": "comfyuistudio-entrance",
+      "name": "comfyuieditor",
       "openMethod": "window",
       "port": 8080,
-      "title": "ComfyUI"
+      "title": "ComfyUI Editor"
+    },
+    {
+      "authLevel": "public",
+      "host": "comfyuistudio-entrance",
+      "name": "comfyuistudioapi",
+      "openMethod": "window",
+      "port": 8090,
+      "title": "ComfyUI Studio API"
     }
   ],
   "featuredImage": "/api/market/screenshots/comfyui/featured.webp",
@@ -46,6 +61,6 @@
   ],
   "title": "ComfyUI Studio",
   "type": "app",
-  "version": "1.0.2",
+  "version": "1.0.5",
   "versionName": "0.18.2"
 }
