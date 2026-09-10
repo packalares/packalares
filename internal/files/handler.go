@@ -64,9 +64,12 @@ func (h *Handler) RegisterRoutes(mux *http.ServeMux) {
 // safePath validates and resolves a request path to a real filesystem path,
 // ensuring it stays within DataPath. Returns ("", error) on traversal attempt.
 func (h *Handler) safePath(reqPath string) (string, error) {
-	// Strip leading /data prefix if present (legacy path variant)
+	// Strip leading /data prefix if present (legacy path variant). Compare whole
+	// segments: a bare prefix test would turn "/database/x" into "base/x".
 	cleaned := reqPath
-	if strings.HasPrefix(cleaned, "/data") {
+	if cleaned == "/data" {
+		cleaned = "/"
+	} else if strings.HasPrefix(cleaned, "/data/") {
 		cleaned = strings.TrimPrefix(cleaned, "/data")
 	}
 	if cleaned == "" {
@@ -86,20 +89,61 @@ func (h *Handler) safePath(reqPath string) (string, error) {
 		realDataAbs = dataAbs
 	}
 
-	// Check if target exists — if so, resolve symlinks on the full path
-	realAbs := abs
-	if _, statErr := os.Lstat(abs); statErr == nil {
-		realAbs, err = filepath.EvalSymlinks(abs)
-		if err != nil {
-			return "", fmt.Errorf("invalid path")
-		}
+	// Resolve symlinks on the target. resolveExisting falls back to the nearest
+	// existing ancestor when the target itself does not exist yet (create,
+	// upload, mkdir); resolving only an existing target would let a symlinked
+	// parent directory carry the write outside DataPath after the check passed.
+	realAbs, err := resolveExisting(abs)
+	if err != nil {
+		return "", fmt.Errorf("invalid path")
 	}
 
-	if !strings.HasPrefix(realAbs, realDataAbs) {
+	if !withinRoot(realAbs, realDataAbs) {
 		return "", fmt.Errorf("path traversal denied")
 	}
 
 	return abs, nil
+}
+
+// resolveExisting resolves symlinks in path. When path does not exist it walks
+// up to the nearest existing ancestor, resolves that, and re-appends the
+// unresolved tail, so the result reflects where a write to path would land.
+func resolveExisting(path string) (string, error) {
+	cur := path
+	rest := ""
+	for {
+		resolved, err := filepath.EvalSymlinks(cur)
+		if err == nil {
+			if rest == "" {
+				return resolved, nil
+			}
+			return filepath.Join(resolved, rest), nil
+		}
+		if !os.IsNotExist(err) {
+			return "", err
+		}
+		parent := filepath.Dir(cur)
+		if parent == cur {
+			// Walked to the filesystem root without finding anything that exists.
+			return "", err
+		}
+		rest = filepath.Join(filepath.Base(cur), rest)
+		cur = parent
+	}
+}
+
+// withinRoot reports whether path is root or lies beneath it, comparing path
+// segments rather than raw string prefixes: "/data-backup" is not inside
+// "/data", though it does share its prefix.
+func withinRoot(path, root string) bool {
+	if path == root {
+		return true
+	}
+	rel, err := filepath.Rel(root, path)
+	if err != nil {
+		return false
+	}
+	return rel != ".." && !strings.HasPrefix(rel, ".."+string(filepath.Separator))
 }
 
 func (h *Handler) handleResources(w http.ResponseWriter, r *http.Request) {
