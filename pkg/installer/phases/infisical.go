@@ -145,17 +145,24 @@ func SeedInfisical(opts *InstallOptions, w io.Writer) error {
 		"TAPR_AUTH_TOKEN":      os.Getenv("TAPR_AUTH_TOKEN"),
 	}
 
-	// Store secrets via kubectl exec into the tapr sidecar
-	secretsJSON, _ := json.Marshal(secrets)
+	// Store secrets via kubectl exec into the tapr sidecar.
+	// Pass wget's arguments as separate argv elements rather than building a
+	// shell string: a single quote in any secret value would otherwise break
+	// out of the --post-data='...' quoting and run as part of the sh -c
+	// command line.
+	secretsJSON, err := json.Marshal(secrets)
+	if err != nil {
+		return fmt.Errorf("marshal secrets: %w", err)
+	}
 	taprToken := os.Getenv("TAPR_AUTH_TOKEN")
-	storeCmd := fmt.Sprintf(
-		`wget -q -O- --post-data='%s' --header='Content-Type: application/json' --header='Authorization: Bearer %s' http://localhost:8081/secrets`,
-		string(secretsJSON), taprToken,
-	)
 
 	cmd := exec.Command("kubectl", "exec", "-n", ns,
 		"deploy/infisical", "-c", "tapr", "--",
-		"sh", "-c", storeCmd)
+		"wget", "-q", "-O-",
+		"--post-data", string(secretsJSON),
+		"--header", "Content-Type: application/json",
+		"--header", "Authorization: Bearer "+taprToken,
+		"http://localhost:8081/secrets")
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("store secrets in Infisical: %v\n%s", err, string(out))
