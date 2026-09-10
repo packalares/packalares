@@ -1,7 +1,9 @@
 package appservice
 
 import (
+	"context"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -102,5 +104,34 @@ func TestModelStoragePathConfinement(t *testing.T) {
 	// A traversing model name is refused rather than derived.
 	if got, err := modelStoragePath(ModelSpec{Name: "../../.."}); err == nil {
 		t.Errorf("derived a path from a traversing model name: %q", got)
+	}
+}
+
+// The endpoint-injection guard: a model name carrying ";" would append an
+// attacker-chosen URL to OpenWebUI's semicolon-separated OPENAI_API_BASE_URLS.
+// Validation must happen before the backend lookup, so an empty Service is
+// enough to prove the check is wired into the entry points.
+func TestModelEntryPointsRejectUnsafeNames(t *testing.T) {
+	s := &Service{}
+	bad := []string{"a;http://evil.tld/v1", "../../..", "", "UPPER", "sp ace"}
+
+	for _, name := range bad {
+		spec := ModelSpec{Name: name, Backend: "vllm"}
+		if err := s.InstallModel(context.Background(), spec); err == nil {
+			t.Errorf("InstallModel accepted unsafe model name %q", name)
+		}
+		if err := s.UninstallModel(context.Background(), spec); err == nil {
+			t.Errorf("UninstallModel accepted unsafe model name %q", name)
+		}
+	}
+}
+
+func TestModelEntryPointsRejectUnknownBackendAfterValidName(t *testing.T) {
+	s := &Service{}
+	// A valid name gets past validation and fails on the backend lookup instead,
+	// confirming validation is not rejecting legitimate names.
+	err := s.InstallModel(context.Background(), ModelSpec{Name: "gemma3-27b", Backend: "nope"})
+	if err == nil || !strings.Contains(err.Error(), "unknown model backend") {
+		t.Errorf("expected backend error for a valid name, got %v", err)
 	}
 }

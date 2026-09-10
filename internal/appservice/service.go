@@ -961,6 +961,13 @@ func recordToInfo(rec *AppRecord) AppInfo {
 // InstallModel installs a model via the appropriate backend.
 // The install runs in a background goroutine; progress is broadcast via WebSocket.
 func (s *Service) InstallModel(ctx context.Context, spec ModelSpec) error {
+	// The name becomes part of a Helm release name and is interpolated into the
+	// semicolon-separated OPENAI_API_BASE_URLS list that OpenWebUI consumes, so
+	// a name carrying ";" would append an endpoint of the caller's choosing.
+	if err := ValidateAppName(spec.Name); err != nil {
+		return fmt.Errorf("model %w", err)
+	}
+
 	backend, ok := s.modelBackends[spec.Backend]
 	if !ok {
 		return fmt.Errorf("unknown model backend %q (available: ollama, vllm)", spec.Backend)
@@ -991,6 +998,10 @@ func (s *Service) InstallModel(ctx context.Context, spec ModelSpec) error {
 
 // UninstallModel removes a model via the appropriate backend.
 func (s *Service) UninstallModel(ctx context.Context, spec ModelSpec) error {
+	if err := ValidateAppName(spec.Name); err != nil {
+		return fmt.Errorf("model %w", err)
+	}
+
 	backend, ok := s.modelBackends[spec.Backend]
 	if !ok {
 		return fmt.Errorf("unknown model backend %q", spec.Backend)

@@ -670,7 +670,7 @@ func (v *VLLMBackend) addOpenWebUIEndpoint(url string) {
 	newVal := strings.Join(urls, ";")
 
 	cmd := exec.CommandContext(ctx, "kubectl", "set", "env",
-		fmt.Sprintf("deploy/openwebui"), fmt.Sprintf("OPENAI_API_BASE_URLS=%s", newVal),
+		"deploy/openwebui", fmt.Sprintf("OPENAI_API_BASE_URLS=%s", newVal),
 		"-n", v.namespace)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		klog.Warningf("failed to add vLLM endpoint to OpenWebUI: %v: %s", err, string(out))
