@@ -51,6 +51,19 @@ func Install(baseDir, registry string, w io.Writer) error {
 		return fmt.Errorf("write k3s config: %w", err)
 	}
 
+	// Clean upstream resolvers for CoreDNS. The platform points the HOST's
+	// /etc/resolv.conf at the cluster DNS (10.233.0.10) so the host resolves
+	// cluster/olares service names — but by default kubelet also hands that
+	// host resolv.conf to CoreDNS as its `forward .` upstream, so CoreDNS
+	// forwards to itself → the loop plugin FATAL-exits (a chronic crash-loop
+	// that takes cluster DNS down whenever systemd-resolved is restarted).
+	// `resolv-conf` in config.yaml points kubelet at this clean file instead,
+	// so CoreDNS forwards to real resolvers and never loops.
+	if err := os.WriteFile("/etc/rancher/k3s/resolv.conf",
+		[]byte("nameserver 8.8.8.8\nnameserver 1.1.1.1\n"), 0644); err != nil {
+		return fmt.Errorf("write k3s resolv.conf: %w", err)
+	}
+
 	// Enable and start
 	cmds := [][]string{
 		{"systemctl", "daemon-reload"},
@@ -130,6 +143,10 @@ func generateK3sConfig(registry string) string {
 	b.WriteString("cluster-cidr: '10.233.64.0/18'\n")
 	b.WriteString("service-cidr: '10.233.0.0/18'\n")
 	b.WriteString("cluster-dns: '10.233.0.10'\n")
+	// CoreDNS upstream: a clean file WITHOUT the cluster DNS, so `forward .`
+	// never points back at CoreDNS itself (file written in Install()). Prevents
+	// the coredns loop-plugin crash-loop.
+	b.WriteString("resolv-conf: '/etc/rancher/k3s/resolv.conf'\n")
 
 	// External etcd
 	b.WriteString(fmt.Sprintf("datastore-endpoint: 'https://127.0.0.1:2379'\n"))
