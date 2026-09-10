@@ -187,8 +187,9 @@ func TestHostsForAppWithCustomDomain(t *testing.T) {
 	t.Setenv("CUSTOM_DOMAIN", "example.com")
 
 	rec := &AppRecord{
-		Name:      "gitea",
-		Entrances: []Entrance{{Name: "gitea"}, {Name: "git"}},
+		Name:         "gitea",
+		PublicAccess: true, // entrances have no authLevel → they follow the toggle
+		Entrances:    []Entrance{{Name: "gitea"}, {Name: "git"}},
 	}
 
 	got := hostsForApp(rec)
@@ -213,10 +214,39 @@ func TestHostsForAppFallsBackToAppName(t *testing.T) {
 	t.Setenv("USER_ZONE", "user.olares.local")
 	t.Setenv("CUSTOM_DOMAIN", "")
 
-	rec := &AppRecord{Name: "solo"}
+	rec := &AppRecord{Name: "solo", PublicAccess: true} // no entrances → toggle-controlled
 	got := hostsForApp(rec)
 	if len(got) != 1 || got[0] != "solo.user.olares.local" {
 		t.Fatalf("hostsForApp = %v, want [solo.user.olares.local]", got)
+	}
+}
+
+// TestHostsForAppAuthLevelPolicy covers the per-entrance authLevel contract:
+// "public" is always exposed, "private" never, and an unset authLevel follows
+// the app's public-access toggle.
+func TestHostsForAppAuthLevelPolicy(t *testing.T) {
+	t.Setenv("USER_ZONE", "user.olares.local")
+	t.Setenv("CUSTOM_DOMAIN", "")
+
+	entrances := []Entrance{
+		{Name: "ui"},                           // unset → follows toggle
+		{Name: "api", AuthLevel: "public"},     // always public
+		{Name: "secret", AuthLevel: "private"}, // never public
+	}
+
+	// Toggle OFF → only the always-public entrance.
+	off := hostsForApp(&AppRecord{Name: "app", PublicAccess: false, Entrances: entrances})
+	sort.Strings(off)
+	if len(off) != 1 || off[0] != "api.user.olares.local" {
+		t.Fatalf("toggle off = %v, want [api.user.olares.local]", off)
+	}
+
+	// Toggle ON → always-public + the toggle-controlled one, never the private.
+	on := hostsForApp(&AppRecord{Name: "app", PublicAccess: true, Entrances: entrances})
+	sort.Strings(on)
+	want := []string{"api.user.olares.local", "ui.user.olares.local"}
+	if len(on) != len(want) || on[0] != want[0] || on[1] != want[1] {
+		t.Fatalf("toggle on = %v, want %v", on, want)
 	}
 }
 

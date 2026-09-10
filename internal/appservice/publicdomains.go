@@ -113,10 +113,11 @@ func (s *PublicDomainSync) Reconcile(ctx context.Context, recs []*AppRecord) err
 	defer s.mu.Unlock()
 	s.byApp = make(map[string][]string, len(recs))
 	for _, rec := range recs {
-		if rec == nil || !rec.PublicAccess {
-			continue
-		}
-		if rec.State == StateUninstalled {
+		// Note: do NOT skip apps with PublicAccess==false — an entrance marked
+		// authLevel:public is public regardless of the toggle, and hostsForApp
+		// applies the per-entrance policy. Apps with no public hosts yield an
+		// empty list and are skipped below.
+		if rec == nil || rec.State == StateUninstalled {
 			continue
 		}
 		hosts := hostsForApp(rec)
@@ -187,11 +188,30 @@ func hostsForApp(rec *AppRecord) []string {
 	zone := os.Getenv("USER_ZONE")
 	custom := os.Getenv("CUSTOM_DOMAIN")
 	if len(rec.Entrances) == 0 {
-		// Fallback to the app name as the entrance name.
-		return collectHosts(rec.Name, zone, custom)
+		// No entrances: fall back to the app name, toggle-controlled.
+		if rec.PublicAccess {
+			return collectHosts(rec.Name, zone, custom)
+		}
+		return nil
 	}
 	var out []string
 	for _, e := range rec.Entrances {
+		// Per-entrance policy, so "make public" respects the chart's authLevel:
+		//   "public"  -> always public (even without the public-access toggle)
+		//   "private" -> never public (even when the toggle is on)
+		//   unset/other (e.g. "internal") -> follows the app's public-access toggle
+		var include bool
+		switch strings.ToLower(e.AuthLevel) {
+		case "public":
+			include = true
+		case "private":
+			include = false
+		default:
+			include = rec.PublicAccess
+		}
+		if !include {
+			continue
+		}
 		name := e.Name
 		if name == "" {
 			name = rec.Name

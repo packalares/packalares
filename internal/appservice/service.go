@@ -600,6 +600,15 @@ func (s *Service) doInstall(rec *AppRecord, req *InstallRequest) {
 		klog.Errorf("apply Application CRD for %s: %v", req.Name, err)
 	}
 
+	// Publish authLevel:public entrances immediately. PublicAccess defaults to
+	// false at install, so hostsForApp returns only the always-public ones.
+	if s.publicDomains != nil {
+		hosts := hostsForApp(rec)
+		if err := s.publicDomains.Sync(bgCtx, rec.Name, len(hosts) > 0, hosts); err != nil {
+			klog.Warningf("public-domains sync (install) %s: %v", rec.Name, err)
+		}
+	}
+
 	// --- Done ---
 	GetWSHub().BroadcastAppState(rec.Name, StateRunning)
 	GetWSHub().BroadcastInstallProgress(rec.Name, StateRunning, 6, 6, "Installed successfully", 0, 0)
@@ -667,6 +676,15 @@ func (s *Service) Uninstall(ctx context.Context, req *UninstallRequest) (*Instal
 		// Remove Application CRD
 		if err := s.k8s.DeleteApplicationCRD(bgCtx, rec.ReleaseName, rec.Namespace); err != nil {
 			klog.Errorf("delete Application CRD for %s: %v", req.Name, err)
+		}
+
+		// Drop the app's public domains so an uninstalled app never leaves a
+		// stale SSO-bypass entry behind (otherwise it lingers until the next
+		// app-service restart, where Reconcile skips StateUninstalled apps).
+		if s.publicDomains != nil {
+			if err := s.publicDomains.Sync(bgCtx, rec.Name, false, nil); err != nil {
+				klog.Warningf("public-domains sync (uninstall) %s: %v", rec.Name, err)
+			}
 		}
 
 		GetWSHub().BroadcastInstallProgress(rec.Name, StateUninstalling, 3, 4, "Waiting for pods to terminate...", 0, 0)

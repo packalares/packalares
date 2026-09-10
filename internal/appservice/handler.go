@@ -642,7 +642,12 @@ func (h *Handler) handlePublicAccess(w http.ResponseWriter, r *http.Request) {
 	_ = h.svc.store.Put(r.Context(), rec)
 
 	if h.svc.publicDomains != nil {
-		if err := h.svc.publicDomains.Sync(r.Context(), rec.Name, rec.PublicAccess, hostsForApp(rec)); err != nil {
+		// hostsForApp applies the per-entrance authLevel policy against the
+		// (just-updated) PublicAccess flag. Pass enabled=(hosts non-empty) so a
+		// toggle-off still keeps any authLevel:public entrances published,
+		// rather than deleting the whole app's entry.
+		hosts := hostsForApp(rec)
+		if err := h.svc.publicDomains.Sync(r.Context(), rec.Name, len(hosts) > 0, hosts); err != nil {
 			klog.Warningf("public-access sync %s: %v", rec.Name, err)
 		}
 	}
