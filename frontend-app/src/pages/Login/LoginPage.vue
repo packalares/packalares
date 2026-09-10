@@ -264,12 +264,42 @@ function updateTimerProgress() {
 }
 
 // ---------- Redirect helpers ----------
+// Hosts a redirect target may point at: this host, plus the parent domain and
+// its subdomains. nginx sends cross-subdomain absolute ?rd= values when login
+// happens on auth.<zone> for a page on desktop.<zone> (see nginx.conf.tmpl),
+// so relative-only validation would break those flows.
+function allowedRedirectHosts(): string[] {
+  const host = window.location.hostname;
+  const parts = host.split('.');
+  const isIP = /^\d+(\.\d+){3}$/.test(host);
+  // Bare IP or a 2-label host has no parent worth trusting ('example.com' would
+  // reduce to 'com' and allow every .com host).
+  if (isIP || parts.length < 3) return [host];
+  return [host, parts.slice(1).join('.')];
+}
+
+function isSafeRedirect(raw: string): boolean {
+  // Relative path: allow '/x' but not the protocol-relative '//evil.tld'.
+  if (raw.startsWith('/')) return !raw.startsWith('//');
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return false;
+  }
+  // Rejects javascript:, data: and plain http:.
+  if (u.protocol !== 'https:') return false;
+  return allowedRedirectHosts().some((h) => u.hostname === h || u.hostname.endsWith('.' + h));
+}
+
 function getRedirectUrl(responseRedirect?: string): string {
   const params = new URLSearchParams(window.location.search);
+  // URLSearchParams already percent-decodes; decoding again would let
+  // double-encoded payloads slip past isSafeRedirect.
   const rd = params.get('rd');
   // ?rd= parameter takes priority (set by auth redirect from protected page)
-  if (rd) return decodeURIComponent(rd);
-  if (responseRedirect) return responseRedirect;
+  if (rd && isSafeRedirect(rd)) return rd;
+  if (responseRedirect && isSafeRedirect(responseRedirect)) return responseRedirect;
   return '/desktop/';
 }
 
@@ -297,7 +327,7 @@ async function fetchUserInfo() {
     if (checkRes.ok) {
       const params = new URLSearchParams(window.location.search);
       const rd = params.get('rd');
-      window.location.replace(rd ? decodeURIComponent(rd) : getDesktopUrl());
+      window.location.replace(rd && isSafeRedirect(rd) ? rd : getDesktopUrl());
       return;
     }
   } catch {}
