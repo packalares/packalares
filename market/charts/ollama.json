@@ -72,8 +72,8 @@
   ],
   "title": "Ollama",
   "type": "app",
-  "upgradeDescription": "Upgrade Ollama version from v0.32.15 to v0.34.0; make the Ollama API entrance private (served via ComfyUI Studio); add app.kubernetes.io/instance label so the app can be Stopped/Suspended.\n\nFor detailed release notes including new models and features in each version, please visit:\nhttps://github.com/ollama/ollama/releases\n\n--- previous ---\nUpgrade Ollama version from v0.24.0 to v0.30.7, and bump terminal image v0.0.10 to v0.0.11.\n",
-  "version": "1.0.22",
+  "upgradeDescription": "Bump the embedded web terminal image v0.0.11 to v0.0.14.\n\nFor detailed release notes including new models and features in each version, please visit:\nhttps://github.com/ollama/ollama/releases\n\n--- previous ---\nUpgrade Ollama version from v0.32.15 to v0.34.0; make the Ollama API entrance private (served via ComfyUI Studio); add app.kubernetes.io/instance label so the app can be Stopped/Suspended.\n\n--- previous ---\nUpgrade Ollama version from v0.24.0 to v0.30.7, and bump terminal image v0.0.10 to v0.0.11.\n",
+  "version": "1.0.23",
   "versionName": "0.34.0",
   "website": "https://ollama.com/"
 }
