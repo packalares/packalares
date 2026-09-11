@@ -1,0 +1,58 @@
+{
+  "categories": [
+    "Utilities"
+  ],
+  "cfgType": "app",
+  "chartName": "docscanner",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": ">= 1.0.0"
+    }
+  ],
+  "description": "Phone photo to clean dewarped scan (UVDoc + OpenCV, CPU).",
+  "developer": "packalares",
+  "doc": "https://github.com/packalares/docscanner",
+  "entrances": [],
+  "featuredImage": "https://avatars.githubusercontent.com/u/195456102?s=200&v=4",
+  "fullDescription": "## OVERVIEW ##\nTurns a phone photo of a document into a clean, dewarped, scanner-quality image — entirely locally, on CPU, in ~1-2 s/page.\n\nPipeline: UVDoc geometric dewarp (straight lines, no perspective) followed by OpenCV cleanup (illumination flatten, local contrast, sharpen, level stretch, edge-protected stain removal). Pixels are never regenerated.\n\nREST API (FastAPI): POST /scan (image), /scan/json (base64), /scan/pdf (multi-page). Every step is toggleable and tunable via DOCSCANNER_* env.\n",
+  "hasChart": true,
+  "icon": "https://avatars.githubusercontent.com/u/195456102?s=200&v=4",
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/tanguymagne/UVDoc#MIT-1-ov-file"
+    }
+  ],
+  "limitedCPU": "4",
+  "limitedMemory": "3Gi",
+  "locale": [
+    "en-US"
+  ],
+  "name": "docscanner",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": null
+  },
+  "promoteImage": [
+    "https://avatars.githubusercontent.com/u/195456102?s=200&v=4"
+  ],
+  "rating": 0,
+  "requiredCpu": "100m",
+  "requiredDisk": "100Mi",
+  "requiredMemory": "1Gi",
+  "source": "olares",
+  "sourceCode": "https://github.com/packalares/docscanner",
+  "status": "active",
+  "supportArch": [
+    "amd64"
+  ],
+  "title": "DocScanner",
+  "type": "app",
+  "upgradeDescription": "Initial release.\n",
+  "version": "1.0.0",
+  "versionName": "1.0.0",
+  "website": "https://github.com/packalares/docscanner"
+}
