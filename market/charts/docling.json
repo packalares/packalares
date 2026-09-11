@@ -1,0 +1,58 @@
+{
+  "categories": [
+    "Utilities"
+  ],
+  "cfgType": "app",
+  "chartName": "docling",
+  "dependencies": [
+    {
+      "name": "packalares",
+      "type": "system",
+      "version": ">= 1.0.0"
+    }
+  ],
+  "description": "Local document parsing to text/markdown (PDF, Office, images, CSV).",
+  "developer": "docling-project",
+  "doc": "https://docling-project.github.io/docling/",
+  "entrances": [],
+  "featuredImage": "https://avatars.githubusercontent.com/u/195456102?s=200&v=4",
+  "fullDescription": "## OVERVIEW ##\nDocling parses documents into clean, structured text/markdown, running entirely locally — no cloud service and no data leaving the machine.\n\nSupported inputs include:\n- PDF (including scanned pages, via OCR)\n- Microsoft Office: DOCX, XLSX, PPTX\n- Images (PNG, JPEG, TIFF) via OCR\n- HTML, Markdown, AsciiDoc, CSV\n\nIt exposes a REST API (docling-serve) plus an optional UI playground. This build uses the CPU image, so it does not claim the GPU.\n",
+  "hasChart": true,
+  "icon": "https://avatars.githubusercontent.com/u/195456102?s=200&v=4",
+  "license": [
+    {
+      "name": "MIT",
+      "url": "https://github.com/docling-project/docling-serve#MIT-1-ov-file"
+    }
+  ],
+  "limitedCPU": "4",
+  "limitedMemory": "8Gi",
+  "locale": [
+    "en-US"
+  ],
+  "name": "docling",
+  "permission": {
+    "appCache": true,
+    "appData": true,
+    "userData": null
+  },
+  "promoteImage": [
+    "https://avatars.githubusercontent.com/u/195456102?s=200&v=4"
+  ],
+  "rating": 0,
+  "requiredCpu": "100m",
+  "requiredDisk": "100Mi",
+  "requiredMemory": "2Gi",
+  "source": "olares",
+  "sourceCode": "https://github.com/docling-project/docling-serve",
+  "status": "active",
+  "supportArch": [
+    "amd64"
+  ],
+  "title": "Docling",
+  "type": "app",
+  "upgradeDescription": "Initial release. docling-serve v1.1.0 (CPU image).\n",
+  "version": "1.0.0",
+  "versionName": "1.1.0",
+  "website": "https://docling-project.github.io/docling/"
+}
