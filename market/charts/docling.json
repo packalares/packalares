@@ -11,12 +11,12 @@
       "version": ">= 1.0.0"
     }
   ],
-  "description": "Local document parsing to text/markdown (PDF, Office, images, CSV).",
+  "description": "Local document parsing to text/markdown (PDF, Office, images, CSV); scanned docs parsed on-GPU via an Ollama vision model.",
   "developer": "docling-project",
   "doc": "https://docling-project.github.io/docling/",
   "entrances": [],
   "featuredImage": "https://avatars.githubusercontent.com/u/195456102?s=200&v=4",
-  "fullDescription": "## OVERVIEW ##\nDocling parses documents into clean, structured text/markdown, running entirely locally — no cloud service and no data leaving the machine.\n\nSupported inputs include:\n- PDF (including scanned pages, via OCR)\n- Microsoft Office: DOCX, XLSX, PPTX\n- Images (PNG, JPEG, TIFF) via OCR\n- HTML, Markdown, AsciiDoc, CSV\n\nIt exposes a REST API (docling-serve) plus an optional UI playground. This build uses the CPU image, so it does not claim the GPU.\n",
+  "fullDescription": "## OVERVIEW ##\nDocling parses documents into clean, structured text/markdown, running entirely locally — no cloud service and no data leaving the machine.\n\nSupported inputs include:\n- PDF (text or scanned)\n- Microsoft Office: DOCX, XLSX, PPTX\n- Images (PNG, JPEG, TIFF)\n- HTML, Markdown, AsciiDoc, CSV\n\nText PDFs and Office/CSV parse on the CPU image (no GPU claimed). Scanned PDFs and images are transcribed by an Ollama vision model, reached through the ComfyUI Studio LLM API — so that work runs on the GPU via Studio's single-GPU queue, with no custom GPU image.\n\n## ADD THE API KEY (scanned-doc path) ##\nNo key is stored in the app package. The scanned-doc path reads a Studio API key at runtime from a Kubernetes Secret (default name 'docling-vlm', key 'STUDIO_API_KEY'). The CPU path works without it.\n\n1. In ComfyUI Studio -> Settings -> API keys, create a key with the 'chat:write' scope.\n2. kubectl -n <namespace> create secret generic docling-vlm --from-literal=STUDIO_API_KEY='sk_...'\n3. kubectl -n <namespace> rollout restart deploy/docling\n",
   "hasChart": true,
   "icon": "https://avatars.githubusercontent.com/u/195456102?s=200&v=4",
   "license": [
@@ -51,8 +51,8 @@
   ],
   "title": "Docling",
   "type": "app",
-  "upgradeDescription": "Initial release. docling-serve v1.1.0 (CPU image).\n",
-  "version": "1.0.0",
+  "upgradeDescription": "1.1.1 — Auto-download the CPU-pipeline models (layout + TableFormer) via an init container so fresh installs parse text PDFs without a manual step. 1.1.0 — Scanned PDFs/images parse on-GPU via an Ollama vision model (through the Studio LLM API queue) instead of slow CPU OCR; text documents use the fast CPU pipeline. Add a Studio API key as the 'docling-vlm' Secret to enable the scanned-doc path.\n",
+  "version": "1.1.1",
   "versionName": "1.1.0",
   "website": "https://docling-project.github.io/docling/"
 }
