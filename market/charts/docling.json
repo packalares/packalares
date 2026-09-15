@@ -51,8 +51,8 @@
   ],
   "title": "Docling",
   "type": "app",
-  "upgradeDescription": "1.1.1 — Auto-download the CPU-pipeline models (layout + TableFormer) via an init container so fresh installs parse text PDFs without a manual step. 1.1.0 — Scanned PDFs/images parse on-GPU via an Ollama vision model (through the Studio LLM API queue) instead of slow CPU OCR; text documents use the fast CPU pipeline. Add a Studio API key as the 'docling-vlm' Secret to enable the scanned-doc path.\n",
-  "version": "1.1.1",
+  "upgradeDescription": "1.1.2 — Scanned pages are transcribed by calling the vision model directly (render + OpenAI request) instead of docling's VLM pipeline, avoiding a docling markdown-reassembly crash; output code-fence stripping. 1.1.1 — Auto-download CPU-pipeline models via an init container. 1.1.0 — Scanned PDFs/images parse on-GPU via an Ollama vision model (through the Studio LLM API queue); text documents use the fast CPU pipeline. Add a Studio API key as the 'docling-vlm' Secret to enable the scanned-doc path.\n",
+  "version": "1.1.2",
   "versionName": "1.1.0",
   "website": "https://docling-project.github.io/docling/"
 }
