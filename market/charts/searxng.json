@@ -14,7 +14,16 @@
   "description": "Private metasearch engine (JSON API) — the web_search backend for ComfyUI Studio.",
   "developer": "searxng",
   "doc": "https://docs.searxng.org/",
-  "entrances": [],
+  "entrances": [
+    {
+      "authLevel": "internal",
+      "host": "searxng",
+      "name": "searxng",
+      "openMethod": "window",
+      "port": 8080,
+      "title": "SearXNG"
+    }
+  ],
   "featuredImage": "https://avatars.githubusercontent.com/u/80454229?s=200&v=4",
   "fullDescription": "## OVERVIEW ##\nSearXNG is a privacy-respecting metasearch engine that aggregates results from many search services without tracking you. This build runs it as a private, in-cluster API for ComfyUI Studio's web_search tool — no data leaves your machine to a third-party search account.\n\n- JSON output is enabled (required by the Studio web_search tool).\n- The rate-limiter / bot-detection is disabled so Studio's programmatic requests aren't blocked (safe: the instance is private, not public).\n- The session secret_key is generated at install (never stored in the app package).\n\n## USE IT ##\nAfter install, open ComfyUI Studio -> Settings -> Tools and set the SearXNG URL to:\n  http://searxng.<your-namespace>.svc.cluster.local:8080\nThat enables the web_search tool in chat. No API key is required.\n",
   "hasChart": true,
@@ -51,8 +60,8 @@
   ],
   "title": "SearXNG",
   "type": "app",
-  "upgradeDescription": "Initial release. SearXNG (latest image), headless, JSON API enabled, limiter off.\n",
-  "version": "1.0.0",
-  "versionName": "1.0.0",
+  "upgradeDescription": "1.0.1 — Add a web-UI entrance (internal SSO) so the app installs cleanly; Studio still uses the in-cluster API. JSON API enabled, limiter off.\n",
+  "version": "1.0.1",
+  "versionName": "1.0.1",
   "website": "https://docs.searxng.org/"
 }
