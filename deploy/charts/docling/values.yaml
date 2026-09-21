@@ -1,0 +1,35 @@
+# Values are injected by the platform at install time (appName, sharedlib,
+# namespace, userspace…). The defaults below only support local
+# `helm template` runs / review; the platform overrides them.
+#
+# NOTE: the service's behaviour (backend URL/models, recognizers, extractor,
+# layout model, prompts, formats, thresholds) lives in config.json
+# (files/config.json → mounted at /wrapper/config.json). Edit that to tune
+# prompts/models. These chart values only cover deploy-time wiring.
+appName: docling
+
+# LLM backend the conversion wrapper calls (OpenAI /v1).
+backend:
+  # external → your Studio/Ollama (owns the GPU queue); pod stays CPU-only.
+  # local    → an in-pod llama-server sidecar (GPU) — not yet enabled here.
+  mode: "external"
+  # Empty → auto: external=Studio (http://comfyuistudio.<ns>:3002/api/llm/v1),
+  # local=in-pod Ollama (http://localhost:11434/v1).
+  baseUrl: ""
+  # local mode only: models the in-pod Ollama sidecar pulls on first start.
+  localModels:
+    - "hf.co/ggml-org/dots.ocr-GGUF:latest"
+    - "hf.co/lmstudio-community/olmOCR-2-7B-1025-GGUF:latest"
+
+# CPU layout stage (PP-DocLayoutV3). Needed only for recognizer=paddle-vl and
+# the layout/csv/tables formats; the default recognizer (dots, end-to-end)
+# needs none of it. When true, an init-container installs paddlepaddle+paddleocr
+# (CPU, from PyPI) into the cached /modelcache/pydeps once.
+layout:
+  enabled: true
+
+# API key for the LLM backend. No secret lives here — only the Secret's name.
+# Optional: the app installs and serves without it (calls 401 until created).
+vlm:
+  secretName: "docling-vlm"
+  secretKey: "STUDIO_API_KEY"

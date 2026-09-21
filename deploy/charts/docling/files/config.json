@@ -1,0 +1,62 @@
+{
+  "_comment": "Document Conversion Service config. Prompts + model choices + backend live here (not in chart values). Mounted at /config/config.json. Secrets are NEVER here — the API key is read from the env var named in backend.api_key_env, injected from a k8s Secret.",
+
+  "backend": {
+    "mode": "external",
+    "external": {
+      "base_url": "http://comfyuistudio.user-space-admin:3002/api/llm/v1",
+      "api_key_env": "STUDIO_API_KEY",
+      "timeout": 300
+    },
+    "local": {
+      "base_url": "http://localhost:8080/v1",
+      "api_key_env": "LOCAL_LLM_KEY",
+      "timeout": 600
+    }
+  },
+
+  "layout": {
+    "engine": "pp-doclayout",
+    "device": "cpu",
+    "model_name": "PP-DocLayoutV3",
+    "threshold": 0.3
+  },
+
+  "recognizers": {
+    "dots": {
+      "model": "hf.co/ggml-org/dots.ocr-GGUF:latest",
+      "mode": "end-to-end",
+      "options": { "temperature": 0, "num_predict": 8192, "repeat_penalty": 1.05 }
+    },
+    "paddle-vl": {
+      "model": "hf.co/PaddlePaddle/PaddleOCR-VL-1.6-GGUF:latest",
+      "mode": "element",
+      "options": { "temperature": 0, "num_predict": 4096 }
+    }
+  },
+
+  "extractor": {
+    "model": "hf.co/lmstudio-community/olmOCR-2-7B-1025-GGUF:latest",
+    "options": { "temperature": 0, "num_predict": 8192 }
+  },
+
+  "defaults": {
+    "recognizer": "dots",
+    "format": "markdown",
+    "text_threshold": 40,
+    "render_scale": 2.0,
+    "max_vlm_pages": 10
+  },
+
+  "prompts": {
+    "transcribe_page": "Transcribe this page to GitHub-flavored Markdown. Preserve all text and tables exactly. Output only the Markdown, with no commentary.",
+    "transcribe_md": "Convert this document to clean Markdown. Transcribe ALL text and reproduce every table as a Markdown table. Output only the document content, no commentary.",
+    "transcribe_html": "Convert this document to clean HTML. Transcribe ALL text and reproduce every table as an HTML table. Output only the HTML body content, no commentary.",
+    "ocr_text": "OCR:",
+    "table": "Table Recognition:",
+    "layout_json": "Output the layout of this page as a JSON array; for each element include its bbox [x0,y0,x1,y1], category, and text content. Output only JSON.",
+    "extract_json": "Extract the information from this document into a single JSON object. If a JSON schema is given, follow it exactly; otherwise use sensible keys (supplier, buyer, invoice, items[], totals). Output STRICTLY valid JSON: put every value in double quotes (keep numbers as strings so decimal commas like 53,48 stay valid), no trailing commas, no duplicate keys. Output ONLY the JSON, no commentary, no markdown fences."
+  },
+
+  "formats": ["markdown", "html", "text", "json", "layout-json", "csv", "tables"]
+}

@@ -1,0 +1,24 @@
+---
+# Smart-routing wrapper for docling-serve: normal (text-layer) PDFs + Office/CSV
+# go through Docling's fast CPU pipeline; scanned PDFs + images are parsed by a
+# remote vision model (Ollama) reached via the Studio LLM API, so they run on
+# the GPU through Studio's single-GPU queue — no custom GPU/cu128 image needed.
+# The file is mounted at /wrapper and started by the deployment's command.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Values.appName }}-wrapper
+  namespace: "{{ .Release.Namespace }}"
+  labels:
+    app: {{ .Values.appName }}
+data:
+  vlm_wrapper.py: |
+{{ .Files.Get "files/vlm_wrapper.py" | indent 4 }}
+  download_models.py: |
+{{ .Files.Get "files/download_models.py" | indent 4 }}
+  # Service config (backend, recognizers, extractor, layout, prompts, formats).
+  # Mounted at /wrapper/config.json (the wrapper auto-finds it next to itself).
+  # Edit here + redeploy to change prompts/models/backend. NO secrets here —
+  # the API key comes from the Secret referenced in the deployment env.
+  config.json: |
+{{ .Files.Get "files/config.json" | indent 4 }}

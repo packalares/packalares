@@ -1,0 +1,30 @@
+Docling is installed (headless API at http://{{ .Values.appName }}.{{ .Release.Namespace }}:5001).
+
+Routing:
+  • Text PDFs, DOCX, XLSX, PPTX, CSV, HTML, MD, TXT  → fast CPU pipeline.
+  • Scanned PDFs and images                          → Ollama vision model
+    ({{ .Values.vlm.model }}) via the Studio LLM API, on the GPU queue.
+
+────────────────────────────────────────────────────────────────────────
+ADD THE API KEY (required only for the scanned-doc / VLM path)
+────────────────────────────────────────────────────────────────────────
+No key is stored in this chart. The wrapper reads it at runtime from a
+Kubernetes Secret named "{{ .Values.vlm.secretName }}" (key "{{ .Values.vlm.secretKey }}").
+The CPU path works without it; scanned docs need it.
+
+1. In ComfyUI Studio → Settings → API keys, create a key with the
+   "chat:write" scope. Copy the value (shown once), e.g. sk_XXXX_....
+
+2. Create the Secret in this namespace:
+
+     kubectl -n {{ .Release.Namespace }} create secret generic {{ .Values.vlm.secretName }} \
+       --from-literal={{ .Values.vlm.secretKey }}='sk_XXXX_...'
+
+3. Restart docling so it picks up the Secret:
+
+     kubectl -n {{ .Release.Namespace }} rollout restart deploy/{{ .Values.appName }}
+
+To ROTATE the key later: recreate the Secret (add --dry-run=client -o yaml |
+kubectl apply -f -) and rollout restart again; revoke the old key in Studio.
+
+Endpoint used (Bearer-gated, queued): {{ .Values.vlm.studioApiUrl | default (printf "http://comfyuistudio.%s:3002/api/llm/v1/chat/completions" .Release.Namespace) }}

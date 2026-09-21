@@ -1,0 +1,9 @@
+apiVersion: v2
+appVersion: 1.2.0
+description: Document conversion service — docling ingest + CPU layout (PP-DocLayoutV3)
+  + pluggable LLM backend (external Studio/Ollama or local llama-server). Converts
+  PDF/Office/images to markdown, html, text, structured JSON, layout-JSON, csv/tables.
+  Recognizer selectable per request (dots end-to-end / paddle-vl element). Config in JSON.
+name: docling
+type: application
+version: 1.2.2

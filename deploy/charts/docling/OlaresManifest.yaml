@@ -1,0 +1,83 @@
+---
+olaresManifest.version: "0.10.0"
+olaresManifest.type: app
+metadata:
+  name: docling
+  title: Docling
+  icon: https://avatars.githubusercontent.com/u/195456102?s=200&v=4
+  description: Local document parsing to text/markdown (PDF, Office, images, CSV); scanned docs parsed on-GPU via an Ollama vision model.
+  version: "1.1.3"
+  categories:
+    - Utilities
+
+# Headless app — no entrances. docling-serve is a pure internal API consumed
+# by ComfyUI Studio over the cluster Service (docling.<ns>.svc:5001); it has no
+# UI and no user-facing domain. Olares supports entrance-less apps (app-service
+# handles len(Entrances)==0); Stop/Start still works via the instance label.
+entrances: []
+
+spec:
+  versionName: "1.1.3"
+  featuredImage: https://avatars.githubusercontent.com/u/195456102?s=200&v=4
+  fullDescription: |
+    Docling parses documents into clean, structured text/markdown, running
+    entirely locally — no cloud service and no data leaving the machine.
+
+    Supported inputs include:
+    - PDF (including scanned pages, via OCR)
+    - Microsoft Office: DOCX, XLSX, PPTX
+    - Images (PNG, JPEG, TIFF) via OCR
+    - HTML, Markdown, AsciiDoc, CSV
+
+    It exposes a REST API (docling-serve) on the CPU image, so it never claims
+    the GPU directly. Normal (text-layer) PDFs and Office/CSV files parse on the
+    CPU. SCANNED PDFs and images are transcribed by an Ollama vision model,
+    reached through the ComfyUI Studio LLM API — so that work runs on the GPU
+    via Studio's single-GPU queue, with no custom GPU image.
+
+    The scanned-document path needs a Studio API key, supplied out-of-band via a
+    Kubernetes Secret (default name "docling-vlm", key "STUDIO_API_KEY") — no key
+    is ever stored in the app package. Create a "chat:write" key in Studio →
+    Settings → API keys, then:
+      kubectl -n <namespace> create secret generic docling-vlm \
+        --from-literal=STUDIO_API_KEY='sk_...'
+      kubectl -n <namespace> rollout restart deploy/docling
+    Without the Secret the CPU path still works; only scanned-doc VLM calls fail.
+
+  upgradeDescription: |
+    1.1.0 — Scanned PDFs/images now parse on-GPU via an Ollama vision model
+    (through the Studio LLM API queue) instead of slow CPU OCR; text documents
+    still use the fast CPU pipeline. Add a Studio API key as the "docling-vlm"
+    Secret to enable the scanned-doc path (see full description).
+
+  developer: docling-project
+  website: https://docling-project.github.io/docling/
+  sourceCode: https://github.com/docling-project/docling-serve
+  doc: https://docling-project.github.io/docling/
+  submitter: Packalares
+  locale:
+    - en-US
+  license:
+    - text: MIT
+      url: https://github.com/docling-project/docling-serve#MIT-1-ov-file
+
+  limitedCpu: "4"
+  requiredCpu: 100m
+  requiredDisk: 100Mi
+  limitedDisk: 20Gi
+  limitedMemory: 8Gi
+  requiredMemory: 2Gi
+
+  supportArch:
+    - amd64
+
+permission:
+  appData: true
+  appCache: true
+
+options:
+  apiTimeout: 0
+  dependencies:
+    - name: packalares
+      version: '>=1.0.0'
+      type: system

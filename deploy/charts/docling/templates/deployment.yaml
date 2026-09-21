@@ -1,0 +1,202 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: {{ .Values.appName }}
+    # Required for the platform Stop/Suspend, which scales deployments by
+    # app.kubernetes.io/instance=<release>.
+    app.kubernetes.io/instance: {{ .Values.appName }}
+  name: {{ .Values.appName }}
+  namespace: "{{ .Release.Namespace }}"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.appName }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.appName }}
+        app.kubernetes.io/instance: {{ .Values.appName }}
+    spec:
+      # external mode (default): no GPU is claimed — the main container is CPU
+      # only and recognition runs on your Studio/Ollama (its GPU queue).
+      # local mode: an in-pod Ollama sidecar serves the models on localhost, so
+      # the pod needs the nvidia runtime + GPU.
+{{- if eq .Values.backend.mode "local" }}
+      runtimeClassName: nvidia
+{{- end }}
+      initContainers:
+        # docling-serve runs as a non-root user; the hostPath cache is created
+        # root-owned, so make it world-writable before the app starts.
+        - name: fix-cache-perms
+          image: "docker.io/beclab/aboveos-busybox:1.37.0"
+          command: ["sh", "-c", "mkdir -p /modelcache/hf /modelcache/docling && chmod -R 777 /modelcache"]
+          volumeMounts:
+            - mountPath: /modelcache
+              name: modelcache
+        # Pre-download the CPU-pipeline models (layout + TableFormer) into the
+        # persistent cache. Our wrapper replaces docling-serve's entrypoint,
+        # which is what normally downloads models at boot — so we do it here.
+        # Idempotent: skips instantly when the weights already exist.
+        - name: fetch-models
+          image: "ghcr.io/docling-project/docling-serve-cpu:v1.1.0"
+          command: ["python", "/wrapper/download_models.py"]
+          env:
+            - name: HF_HOME
+              value: "/modelcache/hf"
+            - name: DOCLING_ARTIFACTS_PATH
+              value: "/modelcache/docling"
+          volumeMounts:
+            - mountPath: /modelcache
+              name: modelcache
+            - mountPath: /wrapper
+              name: wrapper
+              readOnly: true
+{{- if .Values.layout.enabled }}
+        # CPU layout stage (PP-DocLayoutV3): only needed for recognizer=paddle-vl
+        # and the layout/csv/tables formats. The default recognizer (dots,
+        # end-to-end) needs none of this. Installed once into the cached
+        # /modelcache/pydeps (PyPI paddlepaddle is CPU; model comes from HF), then
+        # exposed to the app via PYTHONPATH. Idempotent: skips if already present.
+        - name: install-layout
+          image: "ghcr.io/docling-project/docling-serve-cpu:v1.1.0"
+          command: ["sh", "-c", "test -d /modelcache/pydeps/paddleocr || pip install --no-cache-dir --target=/modelcache/pydeps paddlepaddle paddleocr"]
+          volumeMounts:
+            - mountPath: /modelcache
+              name: modelcache
+{{- end }}
+      containers:
+        - name: {{ .Values.appName }}
+          image: "ghcr.io/docling-project/docling-serve-cpu:v1.1.0"
+          # Run the smart-routing wrapper (mounted at /wrapper) instead of the
+          # stock docling-serve entrypoint. It serves the same /v1/convert/source
+          # + /health API on :5001, so Studio's Docling client is unchanged.
+          command: ["sh", "-c", "cd /wrapper && exec python -m uvicorn vlm_wrapper:app --host 0.0.0.0 --port 5001"]
+          envFrom:
+            - configMapRef:
+                name: {{ .Values.appName }}-env
+          env:
+            # LLM backend the wrapper calls (OpenAI /v1). external mode → Studio,
+            # which owns the GPU queue. Namespaced URL injected here so config.json
+            # stays environment-agnostic.
+            - name: BACKEND_MODE
+              value: {{ .Values.backend.mode | quote }}
+            - name: LLM_BASE_URL
+{{- if .Values.backend.baseUrl }}
+              value: {{ .Values.backend.baseUrl | quote }}
+{{- else if eq .Values.backend.mode "local" }}
+              # local: the in-pod Ollama sidecar on localhost (not exposed outside)
+              value: "http://localhost:11434/v1"
+{{- else }}
+              # external: your Studio/Ollama, which owns the GPU queue
+              value: {{ printf "http://comfyuistudio.%s:3002/api/llm/v1" .Release.Namespace | quote }}
+{{- end }}
+{{- if .Values.layout.enabled }}
+            # Expose the cached CPU layout deps + pull PP-DocLayoutV3 from HF.
+            - name: PYTHONPATH
+              value: "/modelcache/pydeps"
+            - name: PADDLE_PDX_MODEL_SOURCE
+              value: "huggingface"
+{{- end }}
+            # Studio API key for the remote-LLM path. Sourced from a Secret the
+            # operator creates out-of-band; NEVER stored in the chart. optional
+            # so the app still installs + serves without it.
+            - name: STUDIO_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.vlm.secretName }}
+                  key: {{ .Values.vlm.secretKey }}
+                  optional: true
+          ports:
+            - containerPort: 5001
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+              scheme: HTTP
+            initialDelaySeconds: 30
+            timeoutSeconds: 10
+            periodSeconds: 60
+            successThreshold: 1
+            failureThreshold: 10
+          startupProbe:
+            httpGet:
+              path: /health
+              port: 5001
+              scheme: HTTP
+            timeoutSeconds: 5
+            periodSeconds: 10
+            successThreshold: 1
+            # Generous: first boot may download models before /health is ready.
+            failureThreshold: 60
+          resources:
+            limits:
+              cpu: "4"
+              memory: 8Gi
+            requests:
+              cpu: 100m
+              memory: 1Gi
+          volumeMounts:
+            - mountPath: /modelcache
+              name: modelcache
+            - mountPath: /wrapper
+              name: wrapper
+              readOnly: true
+{{- if eq .Values.backend.mode "local" }}
+        # Local LLM: in-pod Ollama serving the recognizers on localhost:11434
+        # (OpenAI /v1). NOT exposed via a Service — only the wrapper (same pod)
+        # reaches it. Pulls the configured models on first start into the cache.
+        - name: ollama
+          image: "docker.io/ollama/ollama:latest"
+          env:
+            - name: NVIDIA_VISIBLE_DEVICES
+              value: "all"
+            - name: NVIDIA_DRIVER_CAPABILITIES
+              value: "all"
+            - name: OLLAMA_MODELS
+              value: "/modelcache/ollama"
+          command:
+            - sh
+            - -c
+            - |
+              ollama serve &
+              sleep 6
+              for m in {{ range .Values.backend.localModels }}{{ . | quote }} {{ end }}; do
+                ollama pull "$m" || true
+              done
+              wait
+          ports:
+            - containerPort: 11434
+          volumeMounts:
+            - mountPath: /modelcache
+              name: modelcache
+{{- end }}
+      volumes:
+        - name: modelcache
+          hostPath:
+            path: "{{ .Values.sharedlib }}/ai/docling"
+            type: DirectoryOrCreate
+        - name: wrapper
+          configMap:
+            name: {{ .Values.appName }}-wrapper
+      restartPolicy: Always
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: {{ .Values.appName }}
+  name: {{ .Values.appName }}
+  namespace: "{{ .Release.Namespace }}"
+spec:
+  ports:
+    - name: "http"
+      port: 5001
+      targetPort: 5001
+  selector:
+    app: {{ .Values.appName }}
