@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/frontend-app"
+    schedule:
+      interval: "weekly"
+    # Security updates only: 0 disables routine version-update PRs without
+    # affecting security PRs, which have their own separate limit.
+    open-pull-requests-limit: 0
+    ignore:
+      # @quasar/app-webpack 4 changes the quasar.config format and breaks the
+      # desktop build until the Quasar 3 -> 4 migration is done. Remove this
+      # rule as part of that migration.
+      - dependency-name: "@quasar/app-webpack"
+        update-types: ["version-update:semver-major"]
