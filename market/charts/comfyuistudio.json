@@ -61,6 +61,7 @@
   ],
   "title": "ComfyUI Studio",
   "type": "app",
-  "version": "1.0.5",
-  "versionName": "0.18.2"
+  "version": "1.0.6",
+  "versionName": "0.37.0",
+  "upgradeDescription": "1.0.6 - Remove the duplicate ComfyUI-Manager (stray lowercase custom_nodes/comfyui-manager) via an init container; single Manager remains. ComfyUI bumped to 0.37.0 (base image).\n"
 }
