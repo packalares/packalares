@@ -30,7 +30,7 @@
   },
   "overrides": {
     "shell-quote": "1.11.0",
-    "tmp": "0.2.6",
+    "tmp": "0.2.7",
     "uuid": "11.1.1",
     "brace-expansion": "2.1.7",
     "webpack-dev-server": "5.2.6",
@@ -40,6 +40,12 @@
     "qs": "6.15.3",
     "send": "0.19.2",
     "serve-static": "1.16.3",
-    "serialize-javascript": "7.1.2"
+    "serialize-javascript": "7.1.2",
+    "proxy-addr": "2.0.8",
+    "source-map-js": "1.2.2",
+    "compression": "1.8.2",
+    "postcss-selector-parser": "7.1.6",
+    "@quasar/render-ssr-error": "2.2.6",
+    "@vue/server-renderer": "3.5.44"
   }
 }
