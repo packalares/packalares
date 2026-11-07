@@ -61,7 +61,7 @@
   ],
   "title": "ComfyUI Studio",
   "type": "app",
-  "version": "1.0.6",
-  "versionName": "0.37.0",
-  "upgradeDescription": "1.0.6 - Remove the duplicate ComfyUI-Manager (stray lowercase custom_nodes/comfyui-manager) via an init container; single Manager remains. ComfyUI bumped to 0.37.0 (base image).\n"
+  "version": "1.0.7",
+  "versionName": "0.44.0",
+  "upgradeDescription": "1.0.7 - ComfyUI engine upgrade v0.37.0 -> v0.44.0 (beclab base v0.44.0-build1708). Studio app (backend + UI) tracks latest-dev, unchanged. Re-test saved workflows: a large ComfyUI jump can change node schemas (the workflow pipeline heals stale widget/COMBO values, but verify custom nodes and models still load).\n\n--- previous ---\n1.0.6 - Remove the duplicate ComfyUI-Manager (stray lowercase custom_nodes/comfyui-manager) via an init container; single Manager remains. ComfyUI bumped to 0.37.0 (base image).\n"
 }
